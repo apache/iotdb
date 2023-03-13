@@ -175,6 +175,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .build())
+                      .setProperties(conf.getCustomizedProperties())
                       .build(),
                   DataRegionConsensusImpl::createDataRegionStateMachine)
               .orElseThrow(

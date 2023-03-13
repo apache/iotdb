@@ -84,7 +84,7 @@ public class SynchronousSequencer implements LogSequencer {
       }
 
       try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        TimeUnit.MILLISECONDS.sleep(10);
         if (System.currentTimeMillis() - startWaitingTime
             > config.getMaxWaitingTimeWhenInsertBlocked()) {
           return null;

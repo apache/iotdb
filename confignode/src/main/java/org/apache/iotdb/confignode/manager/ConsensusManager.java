@@ -89,6 +89,7 @@ public class ConsensusManager {
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                       .setStorageDir("target" + java.io.File.separator + "simple")
+                      .setProperties(CONF.getOtherProperties())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(
@@ -177,6 +178,7 @@ public class ConsensusManager {
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
+                      .setProperties(CONF.getOtherProperties())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(

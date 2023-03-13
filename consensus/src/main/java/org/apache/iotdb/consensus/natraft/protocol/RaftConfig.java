@@ -1,27 +1,28 @@
 /*
 
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
 
 
-*/
+ */
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
+import java.util.Properties;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RPCConfig;
 import org.apache.iotdb.consensus.natraft.protocol.consistency.ConsistencyLevel;
@@ -43,43 +44,18 @@ public class RaftConfig {
   private int uncommittedRaftLogNumForRejectThreshold = 10000;
   private int heartbeatIntervalMs = 1000;
   private int electionTimeoutMs = 20_000;
-  /** max number of clients in a ClientPool of a member for one node. */
-  private int maxClientPerNode = 2000;
-
-  /** max number of idle clients in a ClientPool of a member for one node. */
-  private int maxIdleClientPerNode = 1000;
-
-  /**
-   * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
-   * we need to wait so much time for other connections to be released until timeout, or a new
-   * connection will be created.
-   */
-  private long waitClientTimeoutMS = 5 * 1000L;
-
-  /**
-   * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
-   * clients.
-   */
-  private int selectorNumOfClientPool =
-      Runtime.getRuntime().availableProcessors() / 3 > 0
-          ? Runtime.getRuntime().availableProcessors() / 3
-          : 1;
-
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
   private boolean enableUsePersistLogOnDiskToCatchUp;
   private long writeOperationTimeoutMS = 20_000L;
-  // TODO-raft: apply to thrift
-  private int thriftMaxFrameSize = 64 * 1024 * 1024;
   private int logNumInBatch = 100;
   private int dispatcherBindingThreadNum = 16;
   private int followerLoadBalanceWindowsToUse = 1;
   private double followerLoadBalanceOverestimateFactor = 1.1;
-  private int flowMonitorMaxWindowSize = 1000;
+  private int flowMonitorMaxWindowNum = 1000;
   private long flowMonitorWindowInterval = 1000;
   private String storageDir = "data";
   private long electionMaxWaitMs = 5000;
   private long unAppliedRaftLogNumForRejectThreshold = 10000;
-  private long checkPeriodWhenInsertBlocked = 100;
   private long maxWaitingTimeWhenInsertBlocked = 10000;
   private boolean useFollowerLoadBalance;
   private int raftLogBufferSize = 64 * 1024 * 1024;
@@ -89,8 +65,7 @@ public class RaftConfig {
   private int maxPersistRaftLogNumberOnDisk = 10_000_000;
   private int flushRaftLogThreshold = 100_000;
   private long maxSyncLogLag = 100_000;
-  private long syncLeaderMaxWaitMs = 30_000;
-
+  private int syncLeaderMaxWaitMs = 30_000;
   private boolean enableCompressedDispatching = true;
   private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
@@ -100,6 +75,7 @@ public class RaftConfig {
     this.storageDir = config.getStorageDir();
     new File(this.storageDir).mkdirs();
     this.rpcConfig = config.getRPCConfig();
+    loadProperties(config.getProperties());
   }
 
   public boolean isEnableWeakAcceptance() {
@@ -192,35 +168,12 @@ public class RaftConfig {
   }
 
   public int getMaxClientPerNode() {
-    return maxClientPerNode;
+    return rpcConfig.getRpcMaxConcurrentClientNum();
   }
 
-  public void setMaxClientPerNode(int maxClientPerNode) {
-    this.maxClientPerNode = maxClientPerNode;
-  }
 
   public int getMaxIdleClientPerNode() {
-    return maxIdleClientPerNode;
-  }
-
-  public void setMaxIdleClientPerNode(int maxIdleClientPerNode) {
-    this.maxIdleClientPerNode = maxIdleClientPerNode;
-  }
-
-  public long getWaitClientTimeoutMS() {
-    return waitClientTimeoutMS;
-  }
-
-  public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
-    this.waitClientTimeoutMS = waitClientTimeoutMS;
-  }
-
-  public int getSelectorNumOfClientPool() {
-    return selectorNumOfClientPool;
-  }
-
-  public void setSelectorNumOfClientPool(int selectorNumOfClientPool) {
-    this.selectorNumOfClientPool = selectorNumOfClientPool;
+    return rpcConfig.getRpcMinConcurrentClientNum();
   }
 
   public int getConnectionTimeoutInMS() {
@@ -248,11 +201,7 @@ public class RaftConfig {
   }
 
   public int getThriftMaxFrameSize() {
-    return thriftMaxFrameSize;
-  }
-
-  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    return rpcConfig.getThriftMaxFrameSize();
   }
 
   public int getLogNumInBatch() {
@@ -288,12 +237,12 @@ public class RaftConfig {
     this.followerLoadBalanceOverestimateFactor = followerLoadBalanceOverestimateFactor;
   }
 
-  public int getFlowMonitorMaxWindowSize() {
-    return flowMonitorMaxWindowSize;
+  public int getFlowMonitorMaxWindowNum() {
+    return flowMonitorMaxWindowNum;
   }
 
-  public void setFlowMonitorMaxWindowSize(int flowMonitorMaxWindowSize) {
-    this.flowMonitorMaxWindowSize = flowMonitorMaxWindowSize;
+  public void setFlowMonitorMaxWindowNum(int flowMonitorMaxWindowNum) {
+    this.flowMonitorMaxWindowNum = flowMonitorMaxWindowNum;
   }
 
   public long getFlowMonitorWindowInterval() {
@@ -326,14 +275,6 @@ public class RaftConfig {
 
   public void setUnAppliedRaftLogNumForRejectThreshold(long unAppliedRaftLogNumForRejectThreshold) {
     this.unAppliedRaftLogNumForRejectThreshold = unAppliedRaftLogNumForRejectThreshold;
-  }
-
-  public long getCheckPeriodWhenInsertBlocked() {
-    return checkPeriodWhenInsertBlocked;
-  }
-
-  public void setCheckPeriodWhenInsertBlocked(long checkPeriodWhenInsertBlocked) {
-    this.checkPeriodWhenInsertBlocked = checkPeriodWhenInsertBlocked;
   }
 
   public long getMaxWaitingTimeWhenInsertBlocked() {
@@ -412,7 +353,7 @@ public class RaftConfig {
     return syncLeaderMaxWaitMs;
   }
 
-  public void setSyncLeaderMaxWaitMs(long syncLeaderMaxWaitMs) {
+  public void setSyncLeaderMaxWaitMs(int syncLeaderMaxWaitMs) {
     this.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
   }
 
@@ -442,5 +383,199 @@ public class RaftConfig {
 
   public void setDispatchingCompressionType(CompressionType dispatchingCompressionType) {
     this.dispatchingCompressionType = dispatchingCompressionType;
+  }
+
+
+  public void loadProperties(Properties properties) {
+
+    this.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "connection_timeout_ms", String.valueOf(this.getConnectionTimeoutInMS()))));
+
+    this.setHeartbeatIntervalMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "heartbeat_interval_ms", String.valueOf(this.getHeartbeatIntervalMs()))));
+
+    this.setElectionTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "election_timeout_ms", String.valueOf(this.getElectionTimeoutMs()))));
+
+    this.setElectionMaxWaitMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "election_max_wait_ms", String.valueOf(this.getElectionMaxWaitMs()))));
+
+    this.setCatchUpTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "catch_up_timeout_ms", String.valueOf(this.getCatchUpTimeoutMS()))));
+
+    this.setWriteOperationTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "write_operation_timeout_ms",
+                String.valueOf(this.getWriteOperationTimeoutMS()))));
+
+    this.setSyncLeaderMaxWaitMs(Integer.parseInt(
+        properties.getProperty(
+            "sync_leader_max_wait",
+            String.valueOf(this.getSyncLeaderMaxWaitMs()))));
+
+    this.setMinNumOfLogsInMem(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_num_of_logs_in_mem", String.valueOf(this.getMinNumOfLogsInMem()))));
+
+    this.setMaxNumOfLogsInMem(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_num_of_logs_in_mem", String.valueOf(this.getMaxNumOfLogsInMem()))));
+
+    this.setMaxMemorySizeForRaftLog(
+        Long.parseLong(
+            properties.getProperty(
+                "max_memory_for_logs", String.valueOf(this.getMaxNumOfLogsInMem()))));
+
+    this.setMaxWaitingTimeWhenInsertBlocked(
+        Long.parseLong(
+            properties.getProperty(
+                "max_insert_block_time_ms", String.valueOf(this.getMaxWaitingTimeWhenInsertBlocked()))));
+
+    this.setLogDeleteCheckIntervalSecond(
+        Integer.parseInt(
+            properties.getProperty(
+                "log_deletion_check_interval_second",
+                String.valueOf(this.getLogDeleteCheckIntervalSecond()))));
+
+    this.setEnableRaftLogPersistence(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "is_enable_raft_log_persistence",
+                String.valueOf(this.isEnableRaftLogPersistence()))));
+
+    this.setFlushRaftLogThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_raft_log_threshold", String.valueOf(this.getFlushRaftLogThreshold()))));
+
+    this.setRaftLogBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "raft_log_buffer_size", String.valueOf(this.getRaftLogBufferSize()))));
+
+    this.setLogNumInBatch(
+        Integer.parseInt(
+            properties.getProperty(
+                "log_batch_num", String.valueOf(this.getLogNumInBatch()))));
+
+    this.setMaxRaftLogIndexSizeInMemory(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_raft_log_index_size_in_memory",
+                String.valueOf(this.getMaxRaftLogIndexSizeInMemory()))));
+
+    this.setUncommittedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "uncommitted_raft_log_num_for_reject_threshold",
+                String.valueOf(this.getUncommittedRaftLogNumForRejectThreshold()))));
+
+    this.setUnAppliedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "unapplied_raft_log_num_for_reject_threshold",
+                String.valueOf(this.getUnAppliedRaftLogNumForRejectThreshold()))));
+
+    this.setMaxNumberOfPersistRaftLogFiles(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_number_of_persist_raft_log_files",
+                String.valueOf(this.getMaxNumberOfPersistRaftLogFiles()))));
+
+    this.setMaxPersistRaftLogNumberOnDisk(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_persist_raft_log_number_on_disk",
+                String.valueOf(this.getMaxPersistRaftLogNumberOnDisk()))));
+
+    this.setMaxNumberOfLogsPerFetchOnDisk(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_number_of_logs_per_fetch_on_disk",
+                String.valueOf(this.getMaxNumberOfLogsPerFetchOnDisk()))));
+
+    this.setEnableUsePersistLogOnDiskToCatchUp(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_use_persist_log_on_disk_to_catch_up",
+                String.valueOf(this.isEnableUsePersistLogOnDiskToCatchUp()))));
+
+    this.setMaxSyncLogLag(
+        Long.parseLong(
+            properties.getProperty("max_sync_log_lag", String.valueOf(this.getMaxSyncLogLag()))));
+
+    this.setUseFollowerSlidingWindow(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_follower_sliding_window",
+                String.valueOf(this.isUseFollowerSlidingWindow()))));
+
+    this.setEnableWeakAcceptance(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_weak_acceptance", String.valueOf(this.isEnableWeakAcceptance()))));
+
+    this.setDispatcherBindingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "dispatcher_binding_thread_num",
+                String.valueOf(this.getDispatcherBindingThreadNum()))));
+
+    this.setUseFollowerLoadBalance(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_follower_load_balance", String.valueOf(this.isUseFollowerLoadBalance()))));
+
+    this.setFollowerLoadBalanceWindowsToUse(
+        Integer.parseInt(
+            properties.getProperty(
+                "follower_load_balance_windows_to_use",
+                String.valueOf(this.getFollowerLoadBalanceWindowsToUse()))));
+
+    this.setFollowerLoadBalanceOverestimateFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "follower_load_balance_overestimate_factor",
+                String.valueOf(this.getFollowerLoadBalanceOverestimateFactor()))));
+
+    this.setFlowMonitorMaxWindowNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "follower_load_balance_window_num",
+                String.valueOf(this.getFlowMonitorMaxWindowNum()))));
+
+    this.setFlowMonitorWindowInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "follower_load_balance_window_interval",
+                String.valueOf(this.getFlowMonitorWindowInterval()))));
+
+    this.setEnableCompressedDispatching(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_compressed_dispatching", String.valueOf(this.isEnableCompressedDispatching()))));
+
+    this.setDispatchingCompressionType(
+        CompressionType.valueOf(CompressionType.class, properties.getProperty(
+            "default_boolean_encoding", this.getDispatchingCompressionType().toString()))
+    );
+
+    String consistencyLevel = properties.getProperty("consistency_level");
+    if (consistencyLevel != null) {
+      this.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
+    }
   }
 }

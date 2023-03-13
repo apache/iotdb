@@ -82,7 +82,7 @@ public class LogDispatcher {
   protected ICompressor compressor;
 
   public int bindingThreadNum;
-  public static int maxBatchSize = 10;
+  public int maxBatchSize = 10;
 
   public LogDispatcher(RaftMember member, RaftConfig config) {
     this.member = member;
@@ -97,6 +97,7 @@ public class LogDispatcher {
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
     createQueueAndBindingThreads(unionNodes(allNodes, newNodes));
+    maxBatchSize = config.getLogNumInBatch();
   }
 
   public void updateRateLimiter() {
@@ -449,4 +450,5 @@ public class LogDispatcher {
       }
     }
   }
+
 }

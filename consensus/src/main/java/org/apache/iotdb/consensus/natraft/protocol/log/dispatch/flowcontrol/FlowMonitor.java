@@ -51,7 +51,7 @@ public class FlowMonitor {
   private RaftConfig config;
 
   public FlowMonitor(Peer node, RaftConfig config) throws IOException {
-    this.maxWindowSize = config.getFlowMonitorMaxWindowSize();
+    this.maxWindowSize = config.getFlowMonitorMaxWindowNum();
     this.windows = new ArrayDeque<>(maxWindowSize);
     this.windowInterval = config.getFlowMonitorWindowInterval();
     this.node = node;

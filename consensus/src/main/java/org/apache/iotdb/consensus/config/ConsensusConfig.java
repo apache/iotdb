@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.config;
 
+import java.util.Properties;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.Optional;
@@ -31,13 +32,15 @@ public class ConsensusConfig {
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig ioTConsensusConfig;
   private final RPCConfig rpcConfig;
+  private final Properties properties;
 
   private ConsensusConfig(
       TEndPoint thisNode,
       int thisNodeId,
       String storageDir,
       RatisConfig ratisConfig,
-      IoTConsensusConfig ioTConsensusConfig) {
+      IoTConsensusConfig ioTConsensusConfig,
+      Properties properties) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -55,6 +58,7 @@ public class ConsensusConfig {
                 ioTConsensusConfig.getRpc().getRpcMaxConcurrentClientNum())
             .setThriftMaxFrameSize(ioTConsensusConfig.getRpc().getThriftMaxFrameSize())
             .build();
+    this.properties = properties;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -85,6 +89,10 @@ public class ConsensusConfig {
     return rpcConfig;
   }
 
+  public Properties getProperties() {
+    return properties;
+  }
+
   public static class Builder {
 
     private TEndPoint thisNode;
@@ -92,6 +100,7 @@ public class ConsensusConfig {
     private String storageDir;
     private RatisConfig ratisConfig;
     private IoTConsensusConfig ioTConsensusConfig;
+    private Properties properties = new Properties();
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -100,7 +109,8 @@ public class ConsensusConfig {
           storageDir,
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(ioTConsensusConfig)
-              .orElseGet(() -> IoTConsensusConfig.newBuilder().build()));
+              .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
+          properties);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -125,6 +135,11 @@ public class ConsensusConfig {
 
     public Builder setIoTConsensusConfig(IoTConsensusConfig ioTConsensusConfig) {
       this.ioTConsensusConfig = ioTConsensusConfig;
+      return this;
+    }
+
+    public Builder setProperties(Properties properties) {
+      this.properties = properties;
       return this;
     }
   }

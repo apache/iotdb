@@ -146,7 +146,7 @@ public class BlockingLogAppender implements LogAppender {
       }
 
       try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        TimeUnit.MILLISECONDS.sleep(10);
         if (System.currentTimeMillis() - startWaitingTime
             > config.getMaxWaitingTimeWhenInsertBlocked()) {
           result.status = Response.RESPONSE_TOO_BUSY;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import java.util.Properties;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -288,6 +289,7 @@ public class ConfigNodeConfig {
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+  private Properties otherProperties = new Properties();
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -1109,5 +1111,13 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public Properties getOtherProperties() {
+    return otherProperties;
+  }
+
+  public void setOtherProperties(Properties otherProperties) {
+    this.otherProperties = otherProperties;
   }
 }
