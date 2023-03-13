@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -35,18 +35,18 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Collections;
 
-public class CountStorageGroupTask implements IConfigTask {
+public class CountDatabaseTask implements IConfigTask {
 
-  private final CountStorageGroupStatement countStorageGroupStatement;
+  private final CountDatabaseStatement countDatabaseStatement;
 
-  public CountStorageGroupTask(CountStorageGroupStatement countStorageGroupStatement) {
-    this.countStorageGroupStatement = countStorageGroupStatement;
+  public CountDatabaseTask(CountDatabaseStatement countDatabaseStatement) {
+    this.countDatabaseStatement = countDatabaseStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.countStorageGroup(countStorageGroupStatement);
+    return configTaskExecutor.countDatabase(countDatabaseStatement);
   }
 
   public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {

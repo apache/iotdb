@@ -52,7 +52,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -440,13 +440,13 @@ public class StatementGenerator {
     return insertStatement;
   }
 
-  public static DatabaseSchemaStatement createStatement(String storageGroup)
+  public static DatabaseSchemaStatement createStatement(String database)
       throws IllegalPathException {
     long startTime = System.nanoTime();
     // construct create database statement
     DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
+    statement.setDatabasePath(parseDatabaseRawString(database));
     PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
@@ -530,14 +530,14 @@ public class StatementGenerator {
     return statement;
   }
 
-  public static DeleteStorageGroupStatement createStatement(List<String> storageGroups)
+  public static DeleteDatabaseStatement createStatement(List<String> databases)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
-    for (String path : storageGroups) {
-      parseStorageGroupRawString(path);
+    DeleteDatabaseStatement statement = new DeleteDatabaseStatement();
+    for (String path : databases) {
+      parseDatabaseRawString(path);
     }
-    statement.setPrefixPath(storageGroups);
+    statement.setPrefixPath(databases);
     PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
@@ -779,13 +779,12 @@ public class StatementGenerator {
     insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
-  private static PartialPath parseStorageGroupRawString(String storageGroup)
-      throws IllegalPathException {
-    PartialPath storageGroupPath = new PartialPath(storageGroup);
-    if (storageGroupPath.getNodeLength() < 2) {
-      throw new IllegalPathException(storageGroup);
+  private static PartialPath parseDatabaseRawString(String database) throws IllegalPathException {
+    PartialPath databasePath = new PartialPath(database);
+    if (databasePath.getNodeLength() < 2) {
+      throw new IllegalPathException(database);
     }
-    MetaFormatUtils.checkStorageGroup(storageGroup);
-    return storageGroupPath;
+    MetaFormatUtils.checkDatabase(database);
+    return databasePath;
   }
 }
