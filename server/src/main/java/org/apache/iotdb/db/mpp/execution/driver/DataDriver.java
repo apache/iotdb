@@ -71,6 +71,12 @@ public class DataDriver extends Driver {
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
         QueryDataSource dataSource = initQueryDataSource();
+        if (dataSource == null) {
+          // if this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+          // for some reasons, we may get null QueryDataSource here.
+          // And it's safe for us to throw this exception here in such case.
+          throw new IllegalStateException("QueryDataSource should never be null!");
+        }
         sourceOperators.forEach(
             sourceOperator -> {
               // construct QueryDataSource for source operator

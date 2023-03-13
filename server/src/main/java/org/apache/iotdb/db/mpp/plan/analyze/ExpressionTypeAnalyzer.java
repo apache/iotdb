@@ -256,12 +256,11 @@ public class ExpressionTypeAnalyzer {
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       }
-      if (functionExpression.isBuiltInFunction()) {
+      if (functionExpression.isBuiltInScalarFunction()) {
         return setExpressionType(
             functionExpression,
-            TypeInferenceUtils.getBuiltInFunctionDataType(
-                functionExpression.getFunctionName(),
-                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+            TypeInferenceUtils.getBuiltInScalarFunctionDataType(
+                functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       } else {
         return setExpressionType(
             functionExpression,

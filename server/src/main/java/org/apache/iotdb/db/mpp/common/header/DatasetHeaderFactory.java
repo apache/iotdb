@@ -99,6 +99,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showTriggersColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowPipePluginsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipePluginsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowRegionHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, true);
   }

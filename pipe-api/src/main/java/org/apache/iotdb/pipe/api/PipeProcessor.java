@@ -55,7 +55,7 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
  *       PipeProcessor#close() } method will be called.
  * </ul>
  */
-public interface PipeProcessor extends AutoCloseable {
+public interface PipeProcessor extends PipePlugin {
 
   /**
    * This method is mainly used to validate {@link PipeParameters} and it is executed before {@link

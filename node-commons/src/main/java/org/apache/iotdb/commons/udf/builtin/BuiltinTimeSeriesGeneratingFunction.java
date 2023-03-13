@@ -75,7 +75,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
-  CAST("CAST", UDTFCast.class),
   IN_RANGE("IN_RANGE", UDTFInRange.class),
   ON_OFF("ON_OFF", UDTFOnOff.class),
   ZERO_DURATION("ZERO_DURATION", UDTFZeroDuration.class),

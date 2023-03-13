@@ -424,7 +424,7 @@ public class DatabasePartitionTable {
         return dataPartitionTable.getSeriesSlotList();
       case SchemaRegion:
         return schemaPartitionTable.getSeriesSlotList();
-      case ConfigNodeRegion:
+      case ConfigRegion:
       default:
         return Stream.concat(
                 schemaPartitionTable.getSeriesSlotList().stream(),

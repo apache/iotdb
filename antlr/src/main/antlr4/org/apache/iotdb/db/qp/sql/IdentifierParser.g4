@@ -50,6 +50,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
@@ -134,6 +135,8 @@ keyWords
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
+    | PIPEPLUGIN
+    | PIPEPLUGINS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST

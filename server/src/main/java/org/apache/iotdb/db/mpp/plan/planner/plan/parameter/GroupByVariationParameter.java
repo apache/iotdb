@@ -34,7 +34,7 @@ public class GroupByVariationParameter extends GroupByParameter {
   boolean ignoringNull;
 
   public GroupByVariationParameter(boolean ignoringNull, double delta) {
-    super(WindowType.EVENT_WINDOW);
+    super(WindowType.VARIATION_WINDOW);
     this.delta = delta;
     this.ignoringNull = ignoringNull;
   }

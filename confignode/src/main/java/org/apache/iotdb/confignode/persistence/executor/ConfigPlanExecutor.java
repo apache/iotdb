@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePaths
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -64,6 +65,8 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -106,6 +109,7 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -156,6 +160,8 @@ public class ConfigPlanExecutor {
 
   private final ModelInfo modelInfo;
 
+  private final PipeInfo pipeInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -166,7 +172,8 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo,
       CQInfo cqInfo,
-      ModelInfo modelInfo) {
+      ModelInfo modelInfo,
+      PipeInfo pipeInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -196,6 +203,9 @@ public class ConfigPlanExecutor {
 
     this.modelInfo = modelInfo;
     this.snapshotProcessorList.add(modelInfo);
+
+    this.pipeInfo = pipeInfo;
+    this.snapshotProcessorList.add(pipeInfo);
 
     this.procedureInfo = procedureInfo;
   }
@@ -267,6 +277,10 @@ public class ConfigPlanExecutor {
         return modelInfo.showModel((ShowModelPlan) req);
       case ShowTrail:
         return modelInfo.showTrail((ShowTrailPlan) req);
+      case GetPipePluginTable:
+        return pipeInfo.getPipePluginInfo().showPipePlugins();
+      case GetPipePluginJar:
+        return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -399,6 +413,10 @@ public class ConfigPlanExecutor {
         return modelInfo.updateModelState((UpdateModelStatePlan) physicalPlan);
       case DropModel:
         return modelInfo.dropModel((DropModelPlan) physicalPlan);
+      case CreatePipePlugin:
+        return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
+      case DropPipePlugin:
+        return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }
