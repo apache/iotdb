@@ -15,11 +15,9 @@
  * limitations under the License.
  */
 import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms } from '@grafana/ui';
+import { InlineField, Input, SecretInput } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { IoTDBOptions, IoTDBSecureJsonData } from './types';
-
-const { SecretFormField, FormField } = LegacyForms;
 
 interface Props extends DataSourcePluginOptionsEditorProps<IoTDBOptions, IoTDBSecureJsonData> {}
 
@@ -77,42 +75,34 @@ export class ConfigEditor extends PureComponent<Props, State> {
 
     return (
       <div className="gf-form-group">
-        <div className="gf-form">
-          <FormField
-            label="URL"
-            labelWidth={6}
-            inputWidth={20}
+        <InlineField label="URL" labelWidth={12}>
+          <Input
             onChange={this.onURLChange}
             value={jsonData.url || ''}
             placeholder="please input URL"
+            width={40}
           />
-        </div>
-        <div className="gf-form">
-          <FormField
-            label="username"
-            labelWidth={6}
-            inputWidth={20}
+        </InlineField>
+        <InlineField label="username" labelWidth={12}>
+          <Input
             onChange={this.onUserNameChange}
             value={jsonData.username || ''}
             placeholder="please input username"
+            width={40}
           />
-        </div>
-
-        <div className="gf-form-inline">
-          <div className="gf-form">
-            <SecretFormField
-              isConfigured={(secureJsonFields && secureJsonFields.password) as boolean}
-              value={secureJsonData.password || ''}
-              label="password"
-              placeholder="please input password"
-              labelWidth={6}
-              inputWidth={20}
-              onReset={this.onResetPassword}
-              onChange={this.onPasswordChange}
-            />
-          </div>
-        </div>
+        </InlineField>
+        <InlineField label="password" labelWidth={12}>
+          <SecretInput
+            isConfigured={(secureJsonFields && secureJsonFields.password) as boolean}
+            value={secureJsonData.password || ''}
+            placeholder="please input password"
+            width={40}
+            onReset={this.onResetPassword}
+            onChange={this.onPasswordChange}
+          />
+        </InlineField>
       </div>
+
     );
   }
 }

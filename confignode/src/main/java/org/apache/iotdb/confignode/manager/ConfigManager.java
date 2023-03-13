@@ -89,6 +89,7 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -98,6 +99,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -231,6 +233,9 @@ public class ConfigManager implements IManager {
   /** ML Model. */
   private final ModelManager modelManager;
 
+  /** Pipe */
+  private final PipeManager pipeManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -249,6 +254,7 @@ public class ConfigManager implements IManager {
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
     ModelInfo modelInfo = new ModelInfo();
+    PipeInfo pipeInfo = new PipeInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -262,7 +268,8 @@ public class ConfigManager implements IManager {
             triggerInfo,
             syncInfo,
             cqInfo,
-            modelInfo);
+            modelInfo,
+            pipeInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -277,6 +284,7 @@ public class ConfigManager implements IManager {
     this.cqManager = new CQManager(this);
     this.loadManager = new LoadManager(this);
     this.modelManager = new ModelManager(this, modelInfo);
+    this.pipeManager = new PipeManager(this, pipeInfo);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
   }
@@ -1217,24 +1225,34 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipePlugin(TCreatePipePluginReq req) {
-    // TODO: implement PipeManager
     TSStatus status = confirmLeader();
-    LOGGER.info("createPipePlugin: {}", req);
-    return status;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipePluginCoordinator().createPipePlugin(req)
+        : status;
   }
 
   @Override
   public TSStatus dropPipePlugin(String pipePluginName) {
-    // TODO: implement PipeManager
     TSStatus status = confirmLeader();
-    return status;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipePluginCoordinator().dropPipePlugin(pipePluginName)
+        : status;
   }
 
   @Override
   public TGetPipePluginTableResp getPipePluginTable() {
-    // TODO: implement PipeManager
     TSStatus status = confirmLeader();
-    return new TGetPipePluginTableResp(status, Collections.emptyList());
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipePluginCoordinator().getPipePluginTable()
+        : new TGetPipePluginTableResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipePluginCoordinator().getPipePluginJar(req)
+        : new TGetJarInListResp(status, Collections.emptyList());
   }
 
   @Override

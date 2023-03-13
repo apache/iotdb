@@ -250,16 +250,18 @@ public class DiskMetrics implements IMetricSet {
     // metrics for disks
     Set<String> diskIDs = diskMetricsManager.getDiskIds();
     for (String diskID : diskIDs) {
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, NAME, READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, NAME, WRITE, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, NAME, READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, NAME, WRITE, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, WRITE, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_WRITE, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, NAME, READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, NAME, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, TYPE, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, TYPE, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, TYPE, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, TYPE, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, TYPE, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, TYPE, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, TYPE, AVG_READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, TYPE, AVG_WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, TYPE, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, TYPE, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_BUSY_PERCENTAGE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_QUEUE_SIZE, NAME, diskID);
     }
 
     // metrics for datanode and config node

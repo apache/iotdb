@@ -98,7 +98,7 @@ public class ColumnHeaderConstant {
 
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
-  public static final String PLUGIN_TYPE = "PluginType";
+  public static final String PLUGIN_JAR = "PluginJar";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -336,8 +336,8 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
-          new ColumnHeader(PLUGIN_TYPE, TSDataType.TEXT),
-          new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(TEMPLATE_NAME, TSDataType.TEXT));

@@ -99,7 +99,7 @@ public class ConfigMTree {
    */
   public void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    MetaFormatUtils.checkStorageGroup(path.getFullPath());
+    MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }

@@ -101,13 +101,12 @@ public class MetaFormatUtils {
     }
   }
 
-  /** check whether the storageGroup name uses illegal characters */
-  public static void checkStorageGroup(String storageGroup) throws IllegalPathException {
-    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
+  /** check whether the database name uses illegal characters */
+  public static void checkDatabase(String database) throws IllegalPathException {
+    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(database).matches()) {
       throw new IllegalPathException(
           String.format(
-              "The database name can only be characters, numbers and underscores. %s",
-              storageGroup));
+              "The database name can only be characters, numbers and underscores. %s", database));
     }
   }
 
