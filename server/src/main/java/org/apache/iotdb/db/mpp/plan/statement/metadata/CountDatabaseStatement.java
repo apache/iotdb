@@ -19,59 +19,24 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class CountDatabaseStatement extends CountStatement implements IConfigStatement {
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class DeleteStorageGroupStatement extends Statement implements IConfigStatement {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteStorageGroupStatement.class);
-
-  private List<String> prefixPathList;
-
-  public DeleteStorageGroupStatement() {
-    super();
-    statementType = StatementType.DELETE_STORAGE_GROUP;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    List<PartialPath> paths = new ArrayList<>();
-    for (String prefixPath : prefixPathList) {
-      try {
-        paths.add(new PartialPath(prefixPath));
-      } catch (IllegalPathException e) {
-        LOGGER.error("{} is not a legal path", prefixPath, e);
-      }
-    }
-    return paths;
-  }
-
-  public List<String> getPrefixPath() {
-    return prefixPathList;
+  public CountDatabaseStatement(PartialPath partialPath) {
+    super(partialPath);
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteStorageGroup(this, context);
-  }
-
-  public void setPrefixPath(List<String> prefixPathList) {
-    this.prefixPathList = prefixPathList;
+    return visitor.visitCountStorageGroup(this, context);
   }
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.READ;
   }
 }

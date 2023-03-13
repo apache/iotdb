@@ -66,7 +66,7 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+  public boolean updateDatabaseNode(IStorageGroupMNode sgNode) throws IOException {
     this.storageGroupMNode = cloneMNode(sgNode).getAsStorageGroupMNode();
     return true;
   }

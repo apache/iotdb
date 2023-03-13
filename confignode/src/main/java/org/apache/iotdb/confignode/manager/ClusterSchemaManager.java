@@ -130,7 +130,7 @@ public class ClusterSchemaManager {
     }
 
     try {
-      clusterSchemaInfo.checkContainsStorageGroup(databaseSchemaPlan.getSchema().getName());
+      clusterSchemaInfo.checkContainsDatabase(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -312,13 +312,12 @@ public class ClusterSchemaManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
     Map<String, TDatabaseSchema> storageSchemaMap =
-        clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(
-            setTTLPlan.getStorageGroupPathPattern());
+        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.DATABASE_NOT_EXIST,
-          "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
+          "Path [" + new PartialPath(setTTLPlan.getDatabasePathPattern()) + "] does not exist");
     }
 
     // Map<DataNodeId, TDataNodeLocation>

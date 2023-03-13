@@ -542,7 +542,7 @@ public class CachedMTreeStore implements IMTreeStore {
       IStorageGroupMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
         try {
-          file.updateStorageGroupNode(updatedStorageGroupMNode);
+          file.updateDatabaseNode(updatedStorageGroupMNode);
         } catch (IOException e) {
           logger.error(
               "IOException occurred during updating StorageGroupMNode {}",

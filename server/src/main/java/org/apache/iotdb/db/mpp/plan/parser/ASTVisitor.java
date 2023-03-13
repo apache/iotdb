@@ -98,10 +98,10 @@ import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -110,7 +110,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -127,11 +127,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
@@ -606,20 +606,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
-    ShowStorageGroupStatement showStorageGroupStatement;
+    ShowDatabaseStatement showDatabaseStatement;
 
     // Parse prefixPath
     if (ctx.prefixPath() != null) {
-      showStorageGroupStatement = new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
+      showDatabaseStatement = new ShowDatabaseStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
-      showStorageGroupStatement =
-          new ShowStorageGroupStatement(new PartialPath(SqlConstant.getSingleRootArray()));
+      showDatabaseStatement =
+          new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
 
     // Is detailed
-    showStorageGroupStatement.setDetailed(ctx.DETAILS() != null);
+    showDatabaseStatement.setDetailed(ctx.DETAILS() != null);
 
-    return showStorageGroupStatement;
+    return showDatabaseStatement;
   }
 
   // Show Devices ========================================================================
@@ -705,7 +705,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
-    return new CountStorageGroupStatement(path);
+    return new CountDatabaseStatement(path);
   }
 
   // Show version
@@ -2027,7 +2027,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     DatabaseSchemaStatement databaseSchemaStatement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    databaseSchemaStatement.setStorageGroupPath(path);
+    databaseSchemaStatement.setDatabasePath(path);
     if (ctx.storageGroupAttributesClause() != null) {
       parseStorageGroupAttributesClause(
           databaseSchemaStatement, ctx.storageGroupAttributesClause());
@@ -2040,7 +2040,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     DatabaseSchemaStatement databaseSchemaStatement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER);
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    databaseSchemaStatement.setStorageGroupPath(path);
+    databaseSchemaStatement.setDatabasePath(path);
     parseStorageGroupAttributesClause(databaseSchemaStatement, ctx.storageGroupAttributesClause());
     return databaseSchemaStatement;
   }
@@ -2077,7 +2077,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
-    setTTLStatement.setStorageGroupPath(path);
+    setTTLStatement.setDatabasePath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
   }
@@ -2086,7 +2086,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
     UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
-    unSetTTLStatement.setStorageGroupPath(partialPath);
+    unSetTTLStatement.setDatabasePath(partialPath);
     return unSetTTLStatement;
   }
 
@@ -2123,14 +2123,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
-    DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
+    DeleteDatabaseStatement deleteDatabaseStatement = new DeleteDatabaseStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
     List<String> paths = new ArrayList<>();
     for (IoTDBSqlParser.PrefixPathContext prefixPathContext : prefixPathContexts) {
       paths.add(parsePrefixPath(prefixPathContext).getFullPath());
     }
-    deleteStorageGroupStatement.setPrefixPath(paths);
-    return deleteStorageGroupStatement;
+    deleteDatabaseStatement.setPrefixPath(paths);
+    return deleteDatabaseStatement;
   }
 
   // Explain ========================================================================
