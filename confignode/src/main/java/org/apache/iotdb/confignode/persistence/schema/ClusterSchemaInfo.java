@@ -133,9 +133,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
-      mTree
-          .getDatabaseNodeByDatabasePath(partialPathName)
-          .setStorageGroupSchema(databaseSchema);
+      mTree.getDatabaseNodeByDatabasePath(partialPathName).setStorageGroupSchema(databaseSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -383,7 +381,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getMaxRegionGroupNumMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
         TDatabaseSchema databaseSchema =
-          mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema();
+            mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema();
         databaseSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
         databaseSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
