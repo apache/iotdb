@@ -1054,7 +1054,9 @@ class Session(object):
             return 0
 
         logger.error("error status is %s", status)
-        return -1
+        raise RuntimeError(
+            "execution of statement fails because: {}", status.message
+        )
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
