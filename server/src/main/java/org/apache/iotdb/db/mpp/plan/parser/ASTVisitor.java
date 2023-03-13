@@ -39,7 +39,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
@@ -158,15 +157,15 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -3046,63 +3045,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void parseSelectStatementForPipe(
-      IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement) {
-    final String UNSUPPORTED_CLAUSE_IN_PIPE = "Not support for this sql in pipe.";
-
-    if (ctx.intoClause() != null
-        || ctx.groupByClause() != null
-        || ctx.havingClause() != null
-        || ctx.fillClause() != null
-        || ctx.paginationClause() != null
-        || ctx.alignByClause() != null) {
-      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-    }
-
-    // parse select
-    IoTDBSqlParser.SelectClauseContext selectCtx = ctx.selectClause();
-    if (selectCtx.LAST() != null || selectCtx.resultColumn().size() != 1) {
-      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-    }
-    IoTDBSqlParser.ResultColumnContext resultColumnCtx = selectCtx.resultColumn(0);
-    if (resultColumnCtx.AS() != null
-        || !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(
-            resultColumnCtx.expression().getText())) {
-      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-    }
-
-    // parse from
-    IoTDBSqlParser.FromClauseContext fromCtx = ctx.fromClause();
-    if (fromCtx.prefixPath().size() != 1
-        || !IoTDBConstant.PATH_ROOT.equals(fromCtx.prefixPath(0).getText())) {
-      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-    }
-
-    // parse where
-    IoTDBSqlParser.WhereClauseContext whereCtx = ctx.whereClause();
-    if (whereCtx != null) {
-      Expression predicate = parseExpression(whereCtx.expression(), true);
-      if (!((predicate instanceof GreaterThanExpression)
-          || (predicate instanceof GreaterEqualExpression))) {
-        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-      }
-      Expression left = ((BinaryExpression) predicate).getLeftExpression();
-      Expression right = ((BinaryExpression) predicate).getRightExpression();
-
-      if (!SqlConstant.isReservedPath(parsePathFromExpression(left))) {
-        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-      }
-      if (!(right instanceof ConstantOperand)) {
-        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-      }
-      if (((ConstantOperand) right).getDataType() != TSDataType.INT64) {
-        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
-      }
-      long startTime = Long.parseLong(((ConstantOperand) right).getValueString());
-      statement.setStartTime(startTime);
-    }
-  }
-
   // PIPE
 
   @Override
@@ -3111,6 +3053,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
+    showPipeStatement.setWhereClause(ctx.CONNECTOR() != null);
     return showPipeStatement;
   }
 
@@ -3119,22 +3062,57 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     CreatePipeStatement createPipeStatement = new CreatePipeStatement(StatementType.CREATE_PIPE);
 
-    if (ctx.pipeName != null && ctx.pipeSinkName != null) {
+    if (ctx.pipeName != null) {
       createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
-      createPipeStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
     } else {
       throw new SemanticException(
           "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
     }
-    if (ctx.selectStatement() != null) {
-      parseSelectStatementForPipe(ctx.selectStatement(), createPipeStatement);
-    }
-    if (ctx.syncAttributeClauses() != null) {
-      createPipeStatement.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    if (ctx.collectorAttributesClause() != null) {
+      createPipeStatement.setCollectorAttributes(
+          parseCollectorAttributesClause(ctx.collectorAttributesClause()));
     } else {
-      createPipeStatement.setPipeAttributes(new HashMap<>());
+      createPipeStatement.setCollectorAttributes(new HashMap<>());
     }
+    if (ctx.processorAttributesClause() != null) {
+      createPipeStatement.setProcessorAttributes(
+          parseProcessorAttributesClause(ctx.processorAttributesClause()));
+    } else {
+      createPipeStatement.setProcessorAttributes(new HashMap<>());
+    }
+    createPipeStatement.setConnectorAttributes(
+        parseConnectorAttributesClause(ctx.connectorAttributesClause()));
     return createPipeStatement;
+  }
+
+  private Map<String, String> parseCollectorAttributesClause(
+      IoTDBSqlParser.CollectorAttributesClauseContext ctx) {
+    Map<String, String> collectorMap = new HashMap<>();
+    for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
+        ctx.collectorAttributeClause()) {
+      collectorMap.put(singleCtx.collectorKey.getText(), singleCtx.collectorValue.getText());
+    }
+    return collectorMap;
+  }
+
+  private Map<String, String> parseProcessorAttributesClause(
+      IoTDBSqlParser.ProcessorAttributesClauseContext ctx) {
+    Map<String, String> processorMap = new HashMap<>();
+    for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
+        ctx.processorAttributeClause()) {
+      processorMap.put(singleCtx.processorKey.getText(), singleCtx.processorValue.getText());
+    }
+    return processorMap;
+  }
+
+  private Map<String, String> parseConnectorAttributesClause(
+      IoTDBSqlParser.ConnectorAttributesClauseContext ctx) {
+    Map<String, String> connectorMap = new HashMap<>();
+    for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
+        ctx.connectorAttributeClause()) {
+      connectorMap.put(singleCtx.connectorKey.getText(), singleCtx.connectorValue.getText());
+    }
+    return connectorMap;
   }
 
   @Override
