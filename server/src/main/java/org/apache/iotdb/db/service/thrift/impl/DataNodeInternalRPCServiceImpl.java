@@ -101,6 +101,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSch
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
@@ -945,6 +946,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     } catch (Exception e) {
       return getErrorResp(onQueryException(e, OperationType.EXECUTE_STATEMENT));
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 
@@ -955,9 +959,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+  public TSStatus recordModelMetrics(TRecordModelMetricsReq req) {
+
+    IClientSession session = new InternalClientSession("MLNode");
+    SESSION_MANAGER.registerSession(session);
+    SESSION_MANAGER.supplySession(
+        session, "ml", TimeZone.getDefault().toZoneId().toString(), ClientVersion.V_1_0);
+    try {
+      InsertRowStatement insertRowStatement = StatementGenerator.createStatement(req);
+
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.execute(
+              insertRowStatement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+      return result.status;
+    } catch (Exception e) {
+      return onQueryException(e, OperationType.INSERT_RECORD);
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

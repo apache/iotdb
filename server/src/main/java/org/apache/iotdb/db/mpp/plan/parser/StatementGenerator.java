@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
+import org.apache.iotdb.common.rpc.thrift.EvaluateMetric;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -150,6 +152,41 @@ public class StatementGenerator {
     queryStatement.setWhereCondition(whereCondition);
     PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
+  }
+
+  private static String getMetricsName(EvaluateMetric evaluateMetric) {
+    switch (evaluateMetric) {
+      case MSE:
+        return "MSE";
+      case MAE:
+        return "MAE";
+      case RMSE:
+        return "RMSE";
+      default:
+        return "default";
+    }
+  }
+
+  public static InsertRowStatement createStatement(TRecordModelMetricsReq recordModelMetricsReq)
+      throws IllegalPathException {
+    String prefix = "root.__ml.exp";
+    prefix =
+        prefix
+            + "."
+            + recordModelMetricsReq.getModelId()
+            + "."
+            + recordModelMetricsReq.getTrialId();
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setDevicePath(new PartialPath(prefix));
+    insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
+    insertRowStatement.setMeasurements(
+        (String[])
+            recordModelMetricsReq.getMetrics().stream()
+                .map(StatementGenerator::getMetricsName)
+                .toArray());
+    insertRowStatement.setAligned(true);
+    insertRowStatement.setValues(recordModelMetricsReq.getValues().toArray(new Object[0]));
+    return insertRowStatement;
   }
 
   public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
