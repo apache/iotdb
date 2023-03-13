@@ -1260,7 +1260,7 @@ class Session(object):
                     return None
             else:
                 raise RuntimeError(
-                    "execution of statement fails because: {}", status.message
+                    "execution of statement fails because: " + status.message
                 )
         except TTransport.TException as e:
             raise RuntimeError("execution of statement fails because: ", e)
