@@ -82,7 +82,6 @@ public class IoTDBLastQueryWithLimitOffsetIT {
                   + resultSet.getString(ColumnHeaderConstant.VALUE)
                   + ","
                   + resultSet.getString(ColumnHeaderConstant.DATATYPE);
-          System.out.println(ans);
           assertEquals(retArray[cnt++], ans);
         }
         assertEquals(retArray.length, cnt);
