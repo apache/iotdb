@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedExc
 import org.apache.iotdb.tsfile.exception.compress.GZIPCompressOverflowException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
+import com.github.luben.zstd.Zstd;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.xerial.snappy.Snappy;
@@ -38,6 +39,7 @@ import java.util.zip.GZIPOutputStream;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.GZIP;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZ4;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.ZSTD;
 
 /** compress data according to type in schema. */
 public interface ICompressor extends Serializable {
@@ -65,6 +67,8 @@ public interface ICompressor extends Serializable {
         return new IOTDBLZ4Compressor();
       case GZIP:
         return new GZIPCompressor();
+      case ZSTD:
+        return new ZstdCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -216,8 +220,9 @@ public interface ICompressor extends Serializable {
 
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) {
+      int startPosition = compressed.position();
       compressor.compress(data, compressed);
-      return data.limit();
+      return compressed.position() - startPosition;
     }
 
     @Override
@@ -309,6 +314,60 @@ public interface ICompressor extends Serializable {
     @Override
     public CompressionType getType() {
       return GZIP;
+    }
+  }
+
+  class ZstdCompressor implements ICompressor {
+
+    private int compressionLevel;
+
+    public ZstdCompressor() {
+      super();
+      compressionLevel = Zstd.maxCompressionLevel();
+    }
+
+    @Override
+    public byte[] compress(byte[] data) throws IOException {
+      return Zstd.compress(data, compressionLevel);
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      if (data == null) {
+        return new byte[0];
+      }
+      byte[] compressedData = new byte[getMaxBytesForCompression(length)];
+      int compressedSize = compress(data, offset, length, compressedData);
+      byte[] result = new byte[compressedSize];
+      System.arraycopy(compressedData, 0, result, 0, compressedSize);
+      return result;
+    }
+
+    @Override
+    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+      return (int)
+          Zstd.compressByteArray(
+              compressed, 0, compressed.length, data, offset, length, compressionLevel);
+    }
+
+    /**
+     * @param data MUST be DirectByteBuffer for Zstd.
+     * @param compressed MUST be DirectByteBuffer for Zstd.
+     * @return byte length of compressed data.
+     */
+    @Override
+    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+      return Zstd.compress(compressed, data, compressionLevel);
+    }
+
+    @Override
+    public int getMaxBytesForCompression(int uncompressedDataSize) {
+      return (int) Zstd.compressBound(uncompressedDataSize);
+    }
+
+    @Override
+    public CompressionType getType() {
+      return ZSTD;
     }
   }
 }

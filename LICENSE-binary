@@ -279,6 +279,11 @@ org.ow2.asm:asm:5.0.4
 org.jline:jline:3.21.0
 
 
+BSD 2-Clause
+------------
+com.github.luben:zstd-jni:1.5.4-2
+
+
 MIT License
 ------------
 org.slf4j:slf4j-api

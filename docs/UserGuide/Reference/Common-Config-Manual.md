@@ -1221,12 +1221,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                            |
+|:-----------:|:------------------------------------------------------|
+| Description | Data compression method                               |
+|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4", "ZSTD" |
+|   Default   | SNAPPY                                                |
+|  Effective  | hot-load                                              |
 
 * bloomFilterErrorRate
 
