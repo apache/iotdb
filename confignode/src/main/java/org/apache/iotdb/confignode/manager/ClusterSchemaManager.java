@@ -201,7 +201,7 @@ public class ClusterSchemaManager {
     return getConsensusManager().write(databaseSchemaPlan).getStatus();
   }
 
-  /** Delete DatabaseSchema */
+  /** Delete DatabaseSchema. */
   public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan) {
     TSStatus result = getConsensusManager().write(deleteDatabasePlan).getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -232,7 +232,7 @@ public class ClusterSchemaManager {
     return (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
-  /** Only used in cluster tool show Databases */
+  /** Only used in cluster tool show Databases. */
   public TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan) {
     DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();

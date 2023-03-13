@@ -612,9 +612,9 @@ public class ConfigManager implements IManager {
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
     List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allDatabasePaths = new ArrayList<>();
-    for (String Database : allDatabases) {
+    for (String database : allDatabases) {
       try {
-        allDatabasePaths.add(new PartialPath(Database));
+        allDatabasePaths.add(new PartialPath(database));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }

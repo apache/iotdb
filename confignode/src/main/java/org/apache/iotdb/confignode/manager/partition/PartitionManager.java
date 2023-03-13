@@ -628,7 +628,7 @@ public class PartitionManager {
   }
 
   /**
-   * Check if the specified Database exists
+   * Check if the specified Database exists.
    *
    * @param database The specified Database
    * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
@@ -638,7 +638,7 @@ public class PartitionManager {
   }
 
   /**
-   * Filter the un-exist Databases
+   * Filter the un-exist Databases.
    *
    * @param databases the Databases to check
    * @return List of PartialPath the Databases that not exist

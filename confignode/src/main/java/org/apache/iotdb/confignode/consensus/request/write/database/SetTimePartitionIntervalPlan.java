@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -67,8 +68,12 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
     return timePartitionInterval == that.timePartitionInterval
         && storageGroup.equals(that.storageGroup);

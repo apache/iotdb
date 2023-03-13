@@ -419,7 +419,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Check if the specified DatabaseName is valid
+   * Check if the specified DatabaseName is valid.
    *
    * @param databaseName The specified DatabaseName
    * @throws MetadataException If the DatabaseName invalid i.e. the specified DatabaseName is

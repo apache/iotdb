@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -37,9 +38,9 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetDataReplicationFactor);
   }
 
-  public SetDataReplicationFactorPlan(String Database, int dataReplicationFactor) {
+  public SetDataReplicationFactorPlan(String database, int dataReplicationFactor) {
     this();
-    this.database = Database;
+    this.database = database;
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
@@ -67,8 +68,12 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
     return dataReplicationFactor == that.dataReplicationFactor && database.equals(that.database);
   }

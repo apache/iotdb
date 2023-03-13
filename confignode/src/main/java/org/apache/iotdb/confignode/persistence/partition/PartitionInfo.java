@@ -388,7 +388,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Check if the specified Database exists
+   * Check if the specified Database exists.
    *
    * @param database The specified Database
    * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
@@ -434,7 +434,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** Get SchemaNodeManagementPartition through matched Database */
+  /** Get SchemaNodeManagementPartition through matched Database. */
   public DataSet getSchemaNodeManagementPartition(List<String> matchedDatabases) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     Map<String, SchemaPartitionTable> schemaPartitionMap = new ConcurrentHashMap<>();
