@@ -156,4 +156,38 @@ public class IoTDBLastQueryWithLimitOffsetIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testWithSLimitOrSOffset() {
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try {
+        statement.executeQuery("select last * from root.sg.* order by timeseries asc slimit 1");
+        fail();
+      } catch (Exception ignored) {
+
+      }
+
+      try {
+        statement.executeQuery("select last * from root.sg.* order by timeseries asc soffset 1");
+        fail();
+      } catch (Exception ignored) {
+
+      }
+
+      try {
+        statement.executeQuery(
+            "select last * from root.sg.* order by timeseries asc slimit 1 soffset 1");
+        fail();
+      } catch (Exception ignored) {
+
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
