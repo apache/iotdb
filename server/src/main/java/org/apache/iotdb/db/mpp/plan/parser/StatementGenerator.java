@@ -154,7 +154,6 @@ public class StatementGenerator {
 
   public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
       throws IllegalPathException {
-    final long startTime = System.nanoTime();
     QueryStatement queryStatement = new QueryStatement();
 
     FromComponent fromComponent = new FromComponent();
@@ -168,7 +167,6 @@ public class StatementGenerator {
         new ResultColumn(
             new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
-    // todo queryFilter
     WhereCondition whereCondition = new WhereCondition();
     String queryFilter = fetchTimeseriesReq.getQueryFilter();
     String[] times = queryFilter.split(",");
@@ -195,7 +193,6 @@ public class StatementGenerator {
     queryStatement.setWhereCondition(whereCondition);
     queryStatement.setFromComponent(fromComponent);
     queryStatement.setSelectComponent(selectComponent);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
