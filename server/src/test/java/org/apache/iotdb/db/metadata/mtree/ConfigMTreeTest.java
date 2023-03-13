@@ -261,6 +261,7 @@ public class ConfigMTreeTest {
       storageGroupMNode.setDataReplicationFactor(i);
       storageGroupMNode.setSchemaReplicationFactor(i);
       storageGroupMNode.setTimePartitionInterval(i);
+      root.getNodeWithAutoCreate(pathList[i].concatNode("a")).setSchemaTemplateId(i);
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -277,6 +278,8 @@ public class ConfigMTreeTest {
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+      Assert.assertEquals(
+          i, newTree.getNodeWithAutoCreate(pathList[i].concatNode("a")).getSchemaTemplateId());
     }
 
     Assert.assertEquals(

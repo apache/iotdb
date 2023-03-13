@@ -19,9 +19,9 @@
 
 -->
 
-# 分段分组聚合
+## 分段分组聚合
 
-## 时间区间分段聚合
+### 时间区间分段聚合
 
 分段聚合是一种时序数据典型的查询方式，数据以高频进行采集，需要按照一定的时间间隔进行聚合计算，如计算每天的平均气温，需要将气温的序列按天进行分段，然后计算平均值。
 
@@ -33,11 +33,11 @@
 
 下图中指出了这三个参数的含义：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
 接下来，我们给出几个典型例子：
 
-### 未指定滑动步长的时间区间分组聚合查询
+#### 未指定滑动步长的时间区间分组聚合查询
 
 对应的 SQL 语句是：
 
@@ -72,7 +72,7 @@ Total line number = 7
 It costs 0.024s
 ```
 
-### 指定滑动步长的时间区间分组聚合查询
+#### 指定滑动步长的时间区间分组聚合查询
 
 对应的 SQL 语句是：
 
@@ -135,7 +135,7 @@ Total line number = 5
 It costs 0.006s
 ```
 
-### 按照自然月份的时间区间分组聚合查询
+#### 按照自然月份的时间区间分组聚合查询
 
 对应的 SQL 语句是：
 
@@ -225,7 +225,7 @@ select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-
 +-----------------------------+-------------------------------+
 ```
 
-### 左开右闭区间
+#### 左开右闭区间
 
 每个区间的结果时间戳为区间右端点，对应的 SQL 语句是：
 
@@ -253,7 +253,7 @@ Total line number = 7
 It costs 0.004s
 ```
 
-### 与分组聚合混合使用
+#### 与分组聚合混合使用
 
 通过定义 LEVEL 来统计指定层级下的数据点个数。
 
@@ -305,7 +305,7 @@ Total line number = 7
 It costs 0.004s
 ```
 
-## 路径层级分组聚合
+### 路径层级分组聚合
 
 在时间序列层级结构中，分层聚合查询用于**对某一层级下同名的序列进行聚合查询**。 
 
@@ -404,7 +404,7 @@ Total line number = 1
 It costs 0.013s
 ```
 
-## 标签分组聚合
+### 标签分组聚合
 
 IoTDB 支持通过 `GROUP BY TAGS` 语句根据时间序列中定义的标签的键值做聚合查询。
 
@@ -469,7 +469,7 @@ insert into root.factory1.d9(time, temperature) values(1000, 50.3);
 insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 ```
 
-### 单标签聚合查询
+#### 单标签聚合查询
 
 用户想统计该工厂每个地区的设备的温度的平均值，可以使用如下查询语句
 
@@ -496,7 +496,7 @@ It costs 0.231s
 2. 标签聚合查询除了输出聚合结果列，还会输出聚合标签的键值列。该列的列名为聚合指定的标签键，列的值则为所有查询的时间序列中出现的该标签的值。
 如果某些时间序列未设置该标签，则在键值列中有一行单独的 `NULL` ，代表未设置标签的所有时间序列数据的聚合结果。
 
-### 多标签聚合查询
+#### 多标签聚合查询
 
 除了基本的单标签聚合查询外，还可以按顺序指定多个标签进行聚合计算。
 
@@ -526,7 +526,7 @@ It costs 0.027s
 
 从结果集中可以看到，和单标签聚合相比，多标签聚合的查询结果会根据指定的标签顺序，输出相应标签的键值列。
 
-### 基于时间区间的标签聚合查询
+#### 基于时间区间的标签聚合查询
 
 按照时间区间聚合是时序数据库中最常用的查询需求之一。IoTDB 在基于时间区间的聚合基础上，支持进一步按照标签进行聚合查询。
 
@@ -559,7 +559,7 @@ SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS
 
 和标签聚合相比，基于时间区间的标签聚合的查询会首先按照时间区间划定聚合范围，在时间区间内部再根据指定的标签顺序，进行相应数据的聚合计算。在输出的结果集中，会包含一列时间列，该时间列值的含义和时间区间聚合查询的相同。
 
-### 标签聚合查询的限制
+#### 标签聚合查询的限制
 
 由于标签聚合功能仍然处于开发阶段，目前有如下未实现功能。
 
@@ -570,7 +570,7 @@ SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS
 > 5. 暂不支持聚合函数内部包含表达式，例如 `count(s+1)`。
 > 6. 不支持值过滤条件聚合，和分层聚合查询行为保持一致。
 
-## 差值分段聚合
+### 差值分段聚合
 IoTDB支持通过`GROUP BY VARIATION`语句来根据差值进行分组。`GROUP BY VARIATION`会将第一个点作为一个组的**基准点**，每个新的数据在按照给定规则与基准点进行差值运算后，
 如果差值小于给定的阈值则将该新点归于同一组，否则结束当前分组，以这个新的数据为新的基准点开启新的分组。
 该分组方式不会重叠，且没有固定的开始结束时间。其子句语法如下：
@@ -599,9 +599,9 @@ group by variation(controlExpression[,delta][,ignoreNull=true/false])
 
 下图为差值分段的一个分段方式示意图，与组中第一个数据的控制列值的差值在delta内的控制列对应的点属于相同的分组。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
 
-### 使用注意事项
+#### 使用注意事项
 1. `controlExpression`的结果应该为唯一值，如果使用通配符拼接后出现多列，则报错。
 2. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 3. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
@@ -626,7 +626,7 @@ group by variation(controlExpression[,delta][,ignoreNull=true/false])
 |1970-01-01T08:00:00.150+08:00|   66.5|   77.0|   90.0|   945.0|   99.0|   9.25|
 +-----------------------------+-------+-------+-------+--------+-------+-------+
 ```
-### delta=0时的等值事件分段
+#### delta=0时的等值事件分段
 使用如下sql语句
 ```sql
 select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6)
@@ -660,7 +660,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 |1970-01-01T08:00:00.150+08:00|1970-01-01T08:00:00.150+08:00|             66.5|                  1|             90.0|
 +-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
 ```
-### delta!=0时的差值事件分段
+#### delta!=0时的差值事件分段
 使用如下sql语句
 ```sql
 select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, 4)
@@ -691,7 +691,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 |1970-01-01T08:00:00.090+08:00|1970-01-01T08:00:00.150+08:00|             80.5|                  2|            180.0|
 +-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
 ```
-## 条件分段聚合
+### 条件分段聚合
 当需要根据指定条件对数据进行筛选，并将连续的符合条件的行分为一组进行聚合运算时，可以使用`GROUP BY CONDITION`的分段方式；不满足给定条件的行因为不属于任何分组会被直接简单忽略。
 其语法定义如下：
 ```sql
@@ -708,7 +708,7 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 
 用于指定遇到predict为null的数据行时的处理方式，为true则跳过该行，为false则结束当前分组。
 
-### 使用注意事项
+#### 使用注意事项
 1. keep条件在查询中是必需的，但可以省略掉keep字符串给出一个`long`类型常数，默认为`keep=该long型常数`的等于条件。
 2. `ignoreNull`默认为true。
 3. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
@@ -760,7 +760,7 @@ select max_time(charging_status),count(vehicle_status),last_value(soc) from root
 |1970-01-01T08:00:00.009+08:00|                                             10|                                          2|                                 60.0|
 +-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
 ```
-## 会话分段聚合
+### 会话分段聚合
 `GROUP BY SESSION`可以根据时间列的间隔进行分组，在结果集的时间列中，时间间隔小于等于设定阈值的数据会被分为一组。例如在工业场景中，设备并不总是连续运行，`GROUP BY SESSION`会将设备每次接入会话所产生的数据分为一组。
 其语法定义如下：
 ```sql
@@ -772,9 +772,9 @@ group by session(timeInterval)
 
 下图为`group by session`下的一个分组示意图
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg">
 
-### 使用注意事项
+#### 使用注意事项
 1. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 2. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
 3. 当前暂不支持与`GROUP BY LEVEL`搭配使用。

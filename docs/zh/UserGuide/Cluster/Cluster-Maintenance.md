@@ -19,9 +19,9 @@
 
 -->
 
-# 集群运维命令
+## 集群运维命令
 
-## 展示集群配置
+### 展示集群配置
 
 当前 IoTDB 支持使用如下 SQL 展示集群的关键参数：
 ```
@@ -56,7 +56,7 @@ It costs 0.225s
 
 **注意：** 必须保证该 SQL 展示的所有配置参数在同一集群各个节点完全一致
 
-## 展示 ConfigNode 信息
+### 展示 ConfigNode 信息
 
 当前 IoTDB 支持使用如下 SQL 展示 ConfigNode 的信息：
 ```
@@ -77,7 +77,7 @@ Total line number = 3
 It costs 0.030s
 ```
 
-### ConfigNode 状态定义
+#### ConfigNode 状态定义
 对 ConfigNode 各状态定义如下：
 
 - **Running**: ConfigNode 正常运行
@@ -85,7 +85,7 @@ It costs 0.030s
   - 无法接收其它 ConfigNode 同步来的数据
   - 不会被选为集群的 ConfigNode-leader
 
-## 展示 DataNode 信息
+### 展示 DataNode 信息
 
 当前 IoTDB 支持使用如下 SQL 展示 DataNode 的信息：
 ```
@@ -124,7 +124,7 @@ Total line number = 2
 It costs 0.006s
 ```
 
-### DataNode 状态定义
+#### DataNode 状态定义
 DataNode 的状态机如下图所示：
 <img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/DataNode-StateMachine-ZH.jpg?raw=true">
 
@@ -132,13 +132,24 @@ DataNode 的状态机如下图所示：
 
 - **Running**: DataNode 正常运行，可读可写
 - **Unknown**: DataNode 未正常上报心跳，ConfigNode 认为该 DataNode 不可读写
-  - 少数 DataNode Unknown 不影响集群读写
+  - 少数 Unknown DataNode 不影响集群读写
 - **Removing**: DataNode 正在移出集群，不可读写
-  - 少数 DataNode Removing 不影响集群读写 
+  - 少数 Removing DataNode 不影响集群读写 
 - **ReadOnly**: DataNode 磁盘剩余空间低于 disk_warning_threshold（默认 5%），DataNode 可读但不能写入，不能同步数据
-  - 少数 DataNode ReadOnly 不影响集群读写
-  - ReadOnly 状态下可以删除元数据和数据，可以删除 Database
-  - 所有 DataNode 处于 ReadOnly 状态时，集群不可写入元数据和数据，仍可以创建 Database
+  - 少数 ReadOnly DataNode 不影响集群读写
+  - ReadOnly DataNode 可以查询元数据和数据
+  - ReadOnly DataNode 可以删除元数据和数据
+  - ReadOnly DataNode 可以创建元数据，不能写入数据
+  - 所有 DataNode 处于 ReadOnly 状态时，集群不能写入数据，仍可以创建 Database 和元数据
+
+**对于一个 DataNode**，不同状态元数据查询、创建、删除的影响如下表所示：
+
+| DataNode 状态 | 可读  | 可创建 | 可删除 |
+|-------------|-----|-----|-----|
+| Running     | 是   | 是   | 是   |
+| Unknown     | 否   | 否   | 否   |
+| Removing    | 否   | 否   | 否   |
+| ReadOnly    | 是   | 是   | 是   |
 
 **对于一个 DataNode**，不同状态数据查询、写入、删除的影响如下表所示：
 
@@ -149,7 +160,7 @@ DataNode 的状态机如下图所示：
 | Removing    | 否   | 否   | 否   |
 | ReadOnly    | 是   | 否   | 是   |
 
-## 展示全部节点信息
+### 展示全部节点信息
 
 当前 IoTDB 支持使用如下 SQL 展示全部节点的信息：
 ```
@@ -212,7 +223,7 @@ Total line number = 6
 It costs 0.340s
 ```
 
-## 展示 Region 信息
+### 展示 Region 信息
 
 集群中以 SchemaRegion/DataRegion 作为元数据/数据的复制和管理单元，Region 的状态和分布对于系统运维和测试有很大帮助，如以下场景：
 
@@ -404,7 +415,7 @@ Total line number = 4
 It costs 0.165s
 ```
 
-### Region 状态定义
+#### Region 状态定义
 Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 
 - **Running**: Region 所在 DataNode 正常运行，Region 可读可写
@@ -420,7 +431,7 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 - 当且仅当严格多于一半的 Region 处于 Running 状态时， 该 RegionGroup 可进行数据的查询、写入和删除操作
 - 如果处于 Running 状态的 Region 少于一半，该 RegionGroup 不可进行数据的数据的查询、写入和删除操作
 
-## 展示集群槽信息
+### 展示集群槽信息
 
 集群使用分区来管理元数据和数据，分区定义如下：
 
@@ -429,7 +440,7 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 
 可以使用以下 SQL 来查询分区对应信息：
 
-### 展示数据分区所在的 DataRegion
+#### 展示数据分区所在的 DataRegion
 
 展示一个数据分区（或一个序列槽下的所有数据分区）所在的 DataRegion:
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
@@ -461,7 +472,7 @@ Total line number = 2
 It costs 0.006s
 ```
 
-### 展示元数据分区所在的 SchemaRegion
+#### 展示元数据分区所在的 SchemaRegion
 
 展示一个元数据分区所在的 SchemaRegion：
 - `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
@@ -480,7 +491,7 @@ Total line number = 1
 It costs 0.007s
 ```
 
-### 展示序列槽下的时间槽
+#### 展示序列槽下的时间槽
 展示一个序列槽下的所有时间槽：
 - `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
 
@@ -497,7 +508,7 @@ Total line number = 1
 It costs 0.007s
 ```
 
-### 展示数据库的序列槽
+#### 展示数据库的序列槽
 展示一个数据库内，数据，元数据或是所有的序列槽：
 - `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
 
@@ -531,7 +542,7 @@ Total line number = 1
 It costs 0.006s
 ```
 
-## 迁移 Region
+### 迁移 Region
 以下 SQL 语句可以被用于手动迁移一个 region， 可用于负载均衡或其他目的。
 ```
 MIGRATE REGION <Region-id> FROM <original-DataNodeId> TO <dest-DataNodeId>

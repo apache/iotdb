@@ -159,15 +159,15 @@ public class DeleteDatabaseProcedure
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
-            asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
             for (TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
+              asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
               asyncClientHandler.putDataNodeLocation(requestIndex, dataNodeLocation);
               schemaRegionDeleteTaskMap.put(
                   requestIndex,
                   new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
+              requestIndex++;
             }
-            requestIndex++;
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
             AsyncDataNodeClientPool.getInstance()
@@ -175,7 +175,16 @@ public class DeleteDatabaseProcedure
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                LOG.info(
+                    "Successfully delete SchemaRegion[{}] on {}",
+                    asyncClientHandler.getRequest(entry.getKey()),
+                    schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
                 schemaRegionDeleteTaskMap.remove(entry.getKey());
+              } else {
+                LOG.warn(
+                    "Failed to delete SchemaRegion[{}] on {}. Submit to async deletion.",
+                    asyncClientHandler.getRequest(entry.getKey()),
+                    schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
               }
             }
 

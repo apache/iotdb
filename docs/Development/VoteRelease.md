@@ -21,7 +21,9 @@
 
 # How to vote for a release
 
-For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
+For non-Chinese users, please read
+
+https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
 
 ## Download everything under voting version / rc
 

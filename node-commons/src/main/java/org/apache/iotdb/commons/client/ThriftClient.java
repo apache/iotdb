@@ -42,6 +42,19 @@ public interface ThriftClient {
   /** Removing all pooled instances corresponding to current instance's endpoint. */
   void invalidateAll();
 
+  /**
+   * Whether to print logs when exceptions are encountered.
+   *
+   * @return result
+   */
+  boolean printLogWhenEncounterException();
+
+  /**
+   * Perform corresponding operations on ThriftClient o based on the Throwable t.
+   *
+   * @param t Throwable
+   * @param o ThriftClient
+   */
   static void resolveException(Throwable t, ThriftClient o) {
     Throwable origin = t;
     if (t instanceof InvocationTargetException) {
@@ -72,15 +85,23 @@ public interface ThriftClient {
           rootCause.getLocalizedMessage(),
           rootCause);
       if (isConnectionBroken(rootCause)) {
-        logger.debug(
-            "Broken pipe error happened in sending RPC,"
-                + " we need to clear all previous cached connection",
-            t);
+        if (o.printLogWhenEncounterException()) {
+          logger.info(
+              "Broken pipe error happened in sending RPC,"
+                  + " we need to clear all previous cached connection",
+              t);
+        }
         o.invalidateAll();
       }
     }
   }
 
+  /**
+   * Determine whether the target node has gone offline once based on the cause.
+   *
+   * @param cause Throwable
+   * @return true/false
+   */
   static boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
         || (cause instanceof TTransportException

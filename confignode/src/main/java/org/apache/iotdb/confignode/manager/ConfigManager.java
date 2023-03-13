@@ -79,7 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -107,6 +107,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -127,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -229,7 +231,7 @@ public class ConfigManager implements IManager {
   /** ML Model */
   private final ModelManager modelManager;
 
-  private final ConfigNodeRegionStateMachine stateMachine;
+  private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
 
@@ -259,7 +261,7 @@ public class ConfigManager implements IManager {
             syncInfo,
             cqInfo,
             modelInfo);
-    this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
+    this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
@@ -1220,6 +1222,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? triggerManager.getTriggerJar(req)
         : new TGetJarInListResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createPipePlugin(TCreatePipePluginReq req) {
+    // TODO: implement PipeManager
+    TSStatus status = confirmLeader();
+    LOGGER.info("createPipePlugin: {}", req);
+    return status;
+  }
+
+  @Override
+  public TSStatus dropPipePlugin(String pipePluginName) {
+    // TODO: implement PipeManager
+    TSStatus status = confirmLeader();
+    return status;
+  }
+
+  @Override
+  public TGetPipePluginTableResp getPipePluginTable() {
+    // TODO: implement PipeManager
+    TSStatus status = confirmLeader();
+    return new TGetPipePluginTableResp(status, Collections.emptyList());
   }
 
   @Override

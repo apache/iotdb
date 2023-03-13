@@ -67,8 +67,8 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
@@ -79,7 +79,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySeriesComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByConditionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
@@ -248,15 +248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
-        if (queryStatement.isSelectInto()) {
-          analysis.setRespDatasetHeader(
-              DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
-        }
-        if (queryStatement.isLastQuery()) {
-          analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
-        }
-        analysis.setFinishQueryAfterAnalyze(true);
-        return analysis;
+        return finishQuery(queryStatement, analysis);
       }
 
       // extract global time filter from query filter and determine if there is a value filter
@@ -285,7 +277,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
         Set<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
+
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
+        if (deviceSet.isEmpty()) {
+          return finishQuery(queryStatement, analysis);
+        }
+
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
         Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
         analyzeHaving(
@@ -306,6 +303,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
+        if (outputExpressions.isEmpty()) {
+          return finishQuery(queryStatement, analysis);
+        }
 
         analyzeGroupBy(analysis, queryStatement, schemaTree);
         analyzeHaving(analysis, queryStatement, schemaTree);
@@ -347,6 +347,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());
     }
+    return analysis;
+  }
+
+  private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
+    if (queryStatement.isSelectInto()) {
+      analysis.setRespDatasetHeader(
+          DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+    }
+    if (queryStatement.isLastQuery()) {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+    }
+    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 
@@ -496,6 +508,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+    Set<PartialPath> noMeasurementDevices = new HashSet<>(deviceSet);
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       Expression selectExpression = resultColumn.getExpression();
@@ -508,6 +521,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (PartialPath device : deviceSet) {
         List<Expression> selectExpressionsOfOneDevice =
             ExpressionAnalyzer.concatDeviceAndRemoveWildcard(selectExpression, device, schemaTree);
+        if (selectExpressionsOfOneDevice.isEmpty()) {
+          continue;
+        }
+        noMeasurementDevices.remove(device);
         for (Expression expression : selectExpressionsOfOneDevice) {
           Expression measurementExpression =
               ExpressionAnalyzer.getMeasurementExpression(expression);
@@ -567,6 +584,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
     }
+
+    // remove devices without measurements to compute
+    deviceSet.removeAll(noMeasurementDevices);
 
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
     return outputExpressions;
@@ -1189,7 +1209,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
       for (Expression expression : deviceToGroupByExpression.values()) {
         checkGroupByVariationExpressionType(analysis, expression, delta);
@@ -1198,13 +1218,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
-    } else if (windowType == WindowType.SERIES_WINDOW) {
-      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
+    } else if (windowType == WindowType.CONDITION_WINDOW) {
+      Expression keepExpression =
+          ((GroupByConditionComponent) groupByComponent).getKeepExpression();
       for (Expression expression : deviceToGroupByExpression.values()) {
-        checkGroupBySeriesExpressionType(analysis, expression, keepExpression);
+        checkGroupByConditionExpressionType(analysis, expression, keepExpression);
       }
       GroupByParameter groupByParameter =
-          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
+          new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else if (windowType == WindowType.SESSION_WINDOW) {
@@ -1244,18 +1265,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupByExpression = expressions.get(0);
     }
 
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
       checkGroupByVariationExpressionType(analysis, groupByExpression, delta);
       GroupByParameter groupByParameter =
           new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
-    } else if (windowType == WindowType.SERIES_WINDOW) {
-      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
-      checkGroupBySeriesExpressionType(analysis, groupByExpression, keepExpression);
+    } else if (windowType == WindowType.CONDITION_WINDOW) {
+      Expression keepExpression =
+          ((GroupByConditionComponent) groupByComponent).getKeepExpression();
+      checkGroupByConditionExpressionType(analysis, groupByExpression, keepExpression);
       GroupByParameter groupByParameter =
-          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
+          new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
     } else if (windowType == WindowType.SESSION_WINDOW) {
@@ -1277,7 +1299,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void checkGroupBySeriesExpressionType(
+  private void checkGroupByConditionExpressionType(
       Analysis analysis, Expression groupByExpression, Expression keepExpression) {
     TSDataType type = analyzeExpression(analysis, groupByExpression);
     if (type != TSDataType.BOOLEAN) {
@@ -2613,13 +2635,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
 
     context.setQueryType(QueryType.WRITE);
-    List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
-    for (List<String> measurements : measurementsList) {
-      Set<String> measurementsSet = new HashSet<>(measurements);
-      if (measurementsSet.size() < measurements.size()) {
-        throw new SemanticException(
-            "Measurement under an aligned device is not allowed to have the same measurement name");
-      }
+    List<String> measurements = createTemplateStatement.getMeasurements();
+    Set<String> measurementsSet = new HashSet<>(measurements);
+    if (measurementsSet.size() < measurements.size()) {
+      throw new SemanticException(
+          "Measurement under template is not allowed to have the same measurement name");
     }
     Analysis analysis = new Analysis();
     analysis.setStatement(createTemplateStatement);
@@ -2831,7 +2851,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private List<TDataNodeLocation> getRunningDataNodeLocations() {
     try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new StatementAnalyzeException(
