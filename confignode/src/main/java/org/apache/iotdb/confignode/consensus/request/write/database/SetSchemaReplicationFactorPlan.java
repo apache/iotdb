@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -28,48 +27,55 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DeleteDatabasePlan extends ConfigPhysicalPlan {
+public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
 
-  private String name;
+  private String storageGroup;
 
-  public DeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.DeleteDatabase);
+  private int schemaReplicationFactor;
+
+  public SetSchemaReplicationFactorPlan() {
+    super(ConfigPhysicalPlanType.SetSchemaReplicationFactor);
   }
 
-  public DeleteDatabasePlan(String name) {
+  public SetSchemaReplicationFactorPlan(String storageGroup, int schemaReplicationFactor) {
     this();
-    this.name = name;
+    this.storageGroup = storageGroup;
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public String getName() {
-    return name;
+  public String getDatabase() {
+    return storageGroup;
+  }
+
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(name, stream);
+
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeInt(schemaReplicationFactor);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    name = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    schemaReplicationFactor = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    DeleteDatabasePlan that = (DeleteDatabasePlan) o;
-    return name.equals(that.name);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetSchemaReplicationFactorPlan that = (SetSchemaReplicationFactorPlan) o;
+    return schemaReplicationFactor == that.schemaReplicationFactor
+        && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(storageGroup, schemaReplicationFactor);
   }
 }

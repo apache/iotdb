@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -28,77 +27,55 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
-  private String storageGroup;
-  private PreDeleteType preDeleteType;
+public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
-  public PreDeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.PreDeleteDatabase);
+  private String storageGroup;
+
+  private long timePartitionInterval;
+
+  public SetTimePartitionIntervalPlan() {
+    super(ConfigPhysicalPlanType.SetTimePartitionInterval);
   }
 
-  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
+  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
     this();
     this.storageGroup = storageGroup;
-    this.preDeleteType = preDeleteType;
+    this.timePartitionInterval = timePartitionInterval;
   }
 
-  public String getStorageGroup() {
+  public String getDatabase() {
     return storageGroup;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public PreDeleteType getPreDeleteType() {
-    return preDeleteType;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
+
     BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.write(preDeleteType.getType());
+    stream.writeLong(timePartitionInterval);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    timePartitionInterval = buffer.getLong();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
-    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
+    return timePartitionInterval == that.timePartitionInterval
+        && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
-  }
-
-  public enum PreDeleteType {
-    EXECUTE((byte) 0),
-    ROLLBACK((byte) 1);
-
-    private final byte type;
-
-    PreDeleteType(byte type) {
-      this.type = type;
-    }
-
-    public byte getType() {
-      return type;
-    }
+    return Objects.hash(storageGroup, timePartitionInterval);
   }
 }
