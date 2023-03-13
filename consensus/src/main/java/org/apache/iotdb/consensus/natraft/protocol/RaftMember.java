@@ -47,11 +47,11 @@ import org.apache.iotdb.consensus.natraft.protocol.heartbeat.ElectionReqHandler;
 import org.apache.iotdb.consensus.natraft.protocol.heartbeat.HeartbeatReqHandler;
 import org.apache.iotdb.consensus.natraft.protocol.heartbeat.HeartbeatThread;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
-import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.appender.BlockingLogAppender;
 import org.apache.iotdb.consensus.natraft.protocol.log.appender.LogAppender;
 import org.apache.iotdb.consensus.natraft.protocol.log.appender.LogAppenderFactory;
+import org.apache.iotdb.consensus.natraft.protocol.log.appender.SlidingWindowLogAppender.Factory;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.AsyncLogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.BaseApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.catchup.CatchUpManager;
@@ -93,7 +93,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -116,7 +115,7 @@ public class RaftMember {
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   private RaftConfig config;
-  protected static final LogAppenderFactory appenderFactory = new BlockingLogAppender.Factory();
+  protected final LogAppenderFactory appenderFactory;
 
   protected static final LogSequencerFactory SEQUENCER_FACTORY = new SynchronousSequencer.Factory();
 
@@ -235,6 +234,8 @@ public class RaftMember {
             stateMachine,
             config,
             this::examineUnappliedEntry);
+    this.appenderFactory =
+        config.isUseFollowerSlidingWindow() ? new Factory() : new BlockingLogAppender.Factory();
     this.logAppender = appenderFactory.create(this, config);
     this.logSequencer = SEQUENCER_FACTORY.create(this, config);
     this.logDispatcher = new LogDispatcher(this, config);
@@ -517,21 +518,11 @@ public class RaftMember {
     }
 
     AppendEntryResult response;
-    List<Entry> entries = new ArrayList<>();
-    for (ByteBuffer buffer : request.getEntries()) {
-      buffer.mark();
-      Entry e;
-      try {
-        e = LogParser.getINSTANCE().parse(buffer);
-        e.setByteSize(buffer.limit() - buffer.position());
-      } catch (BufferUnderflowException ex) {
-        buffer.reset();
-        throw ex;
-      }
-      entries.add(e);
-    }
+    List<Entry> entries = LogUtils.parseEntries(request.entries);
 
-    response = logAppender.appendEntries(request, entries);
+    response =
+        logAppender.appendEntries(
+            request.prevLogIndex, request.prevLogTerm, request.leaderCommit, request.term, entries);
 
     if (logger.isDebugEnabled()) {
       logger.debug(

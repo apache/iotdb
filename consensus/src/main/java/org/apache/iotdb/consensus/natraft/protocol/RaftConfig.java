@@ -25,6 +25,7 @@ package org.apache.iotdb.consensus.natraft.protocol;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RPCConfig;
 import org.apache.iotdb.consensus.natraft.protocol.consistency.ConsistencyLevel;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -89,6 +90,9 @@ public class RaftConfig {
   private int flushRaftLogThreshold = 100_000;
   private long maxSyncLogLag = 100_000;
   private long syncLeaderMaxWaitMs = 30_000;
+
+  private boolean enableCompressedDispatching = true;
+  private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
 
@@ -422,5 +426,21 @@ public class RaftConfig {
 
   public RPCConfig getRpcConfig() {
     return rpcConfig;
+  }
+
+  public boolean isEnableCompressedDispatching() {
+    return enableCompressedDispatching;
+  }
+
+  public void setEnableCompressedDispatching(boolean enableCompressedDispatching) {
+    this.enableCompressedDispatching = enableCompressedDispatching;
+  }
+
+  public CompressionType getDispatchingCompressionType() {
+    return dispatchingCompressionType;
+  }
+
+  public void setDispatchingCompressionType(CompressionType dispatchingCompressionType) {
+    this.dispatchingCompressionType = dispatchingCompressionType;
   }
 }

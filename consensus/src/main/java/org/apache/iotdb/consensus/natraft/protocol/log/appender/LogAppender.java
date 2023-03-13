@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.appender;
 
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
-import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import java.util.List;
@@ -31,7 +30,8 @@ import java.util.List;
  */
 public interface LogAppender {
 
-  AppendEntryResult appendEntries(AppendEntriesRequest request, List<Entry> entries);
+  AppendEntryResult appendEntries(
+      long prevLogIndex, long prevLogTerm, long leaderCommit, long term, List<Entry> entries);
 
   void reset();
 }

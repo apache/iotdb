@@ -32,6 +32,9 @@ import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.utils.IOUtils;
+import org.apache.iotdb.consensus.natraft.utils.LogUtils;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
@@ -42,6 +45,8 @@ import org.apache.iotdb.consensus.raft.thrift.NoMemberException;
 import org.apache.iotdb.consensus.raft.thrift.RaftService;
 import org.apache.iotdb.consensus.raft.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.consensus.raft.thrift.SendSnapshotRequest;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -50,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
 
@@ -135,12 +141,46 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   public void appendEntries(
       AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
       throws TException {
+    long startTime = Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.getOperationStartTime();
     RaftMember member = getMemberOrCreate(request.groupId, request);
     try {
       resultHandler.onComplete(member.appendEntries(request));
     } catch (UnknownLogTypeException e) {
       throw new TException(e);
     }
+    Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.calOperationCostTimeFromStart(startTime);
+  }
+
+  @Override
+  public void appendCompressedEntries(
+      AppendCompressedEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
+      throws TException {
+    long startTime = Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.getOperationStartTime();
+    AppendEntriesRequest decompressedRequest = new AppendEntriesRequest();
+    decompressedRequest
+        .setTerm(request.getTerm())
+        .setLeader(request.leader)
+        .setPrevLogIndex(request.prevLogIndex)
+        .setPrevLogTerm(request.prevLogTerm)
+        .setLeaderCommit(request.leaderCommit)
+        .setGroupId(request.groupId)
+        .setLeaderId(request.leaderId);
+
+    try {
+      long compressionStartTime = Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.getOperationStartTime();
+      List<ByteBuffer> buffers =
+          LogUtils.decompressEntries(
+              request.entryBytes,
+              IUnCompressor.getUnCompressor(CompressionType.values()[request.compressionType]));
+      decompressedRequest.setEntries(buffers);
+      Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.calOperationCostTimeFromStart(compressionStartTime);
+
+      RaftMember member = getMemberOrCreate(request.groupId, decompressedRequest);
+      resultHandler.onComplete(member.appendEntries(decompressedRequest));
+    } catch (UnknownLogTypeException | IOException e) {
+      throw new TException(e);
+    }
+    Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.calOperationCostTimeFromStart(startTime);
   }
 
   @Override

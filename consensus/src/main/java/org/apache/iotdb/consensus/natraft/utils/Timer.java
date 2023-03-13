@@ -103,6 +103,12 @@ public class Timer {
         TIME_SCALE,
         true,
         DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_SEND_LOG(
+        RAFT_MEMBER_SENDER,
+        "send log to a follower",
+        TIME_SCALE,
+        true,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     RAFT_SENDER_BUILD_LOG_REQUEST(
         RAFT_MEMBER_SENDER,
         "build SendLogRequest",
@@ -184,6 +190,12 @@ public class Timer {
     RAFT_SENDER_DATA_LOG_APPLY(
         RAFT_MEMBER_SENDER, "apply data log", TIME_SCALE, true, RAFT_SENDER_COMMIT_WAIT_LOG_APPLY),
     // raft member - receiver
+    RAFT_RECEIVER_DECOMPRESS_ENTRY(
+        RAFT_MEMBER_RECEIVER,
+        "receiver decompress entries",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_RECEIVER_WAIT_FOR_PREV_LOG(
         RAFT_MEMBER_RECEIVER,
         "receiver wait for prev log",
@@ -300,6 +312,18 @@ public class Timer {
         LOG_DISPATCHER,
         "total process time",
         TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_RAW_SIZE(
+        LOG_DISPATCHER,
+        "raw dispatching size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_COMPRESSED_SIZE(
+        LOG_DISPATCHER,
+        "compressed dispatching size",
+        1,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_WINDOW_LENGTH(RAFT_MEMBER_RECEIVER, "window length", 1, true, ROOT),
@@ -421,8 +445,12 @@ public class Timer {
       if (!ENABLE_INSTRUMENTING) {
         return "";
       }
-      StringBuilder result = new StringBuilder();
+      StringBuilder result = new StringBuilder("\n");
       printTo(Statistic.ROOT, result);
+      result
+          .append("Dispatcher compression ratio: ")
+          .append(LOG_DISPATCHER_COMPRESSED_SIZE.getSum() * 1.0 / LOG_DISPATCHER_RAW_SIZE.getSum())
+          .append("\n");
       return result.toString();
     }
 

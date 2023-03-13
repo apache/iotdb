@@ -24,7 +24,6 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.natraft.utils.Response;
-import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import org.slf4j.Logger;
@@ -62,8 +61,6 @@ public class SlidingWindowLogAppender implements LogAppender {
   /**
    * After insert an entry into the window, check if its previous and latter entries should be
    * removed if it mismatches.
-   *
-   * @param pos
    */
   private void checkLog(int pos) {
     checkLogPrev(pos);
@@ -108,10 +105,6 @@ public class SlidingWindowLogAppender implements LogAppender {
   /**
    * Flush window range [0, flushPos) into the LogManager, where flushPos is the first null position
    * in the window.
-   *
-   * @param result
-   * @param leaderCommit
-   * @return
    */
   private long flushWindow(AppendEntryResult result, long leaderCommit) {
     long windowPrevLogIndex = firstPosPrevIndex;
@@ -183,7 +176,8 @@ public class SlidingWindowLogAppender implements LogAppender {
   }
 
   @Override
-  public AppendEntryResult appendEntries(AppendEntriesRequest request, List<Entry> entries) {
+  public AppendEntryResult appendEntries(
+      long prevLogIndex, long prevLogTerm, long leaderCommit, long term, List<Entry> entries) {
     if (entries.isEmpty()) {
       return new AppendEntryResult(Response.RESPONSE_AGREE)
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
@@ -191,15 +185,15 @@ public class SlidingWindowLogAppender implements LogAppender {
 
     AppendEntryResult result = null;
     for (Entry entry : entries) {
-      result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, entry);
+      result = appendEntry(prevLogIndex, prevLogTerm, leaderCommit, entry);
 
       if (result.status != Response.RESPONSE_AGREE
           && result.status != Response.RESPONSE_STRONG_ACCEPT
           && result.status != Response.RESPONSE_WEAK_ACCEPT) {
         return result;
       }
-      request.prevLogIndex = entry.getCurrLogIndex();
-      request.prevLogTerm = entry.getCurrLogTerm();
+      prevLogIndex = entry.getCurrLogIndex();
+      prevLogTerm = entry.getCurrLogTerm();
     }
 
     return result;

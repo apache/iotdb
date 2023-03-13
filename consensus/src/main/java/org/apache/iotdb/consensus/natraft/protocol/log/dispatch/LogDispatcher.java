@@ -29,8 +29,12 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
+import org.apache.iotdb.consensus.natraft.utils.LogUtils;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -74,6 +78,8 @@ public class LogDispatcher {
   protected ExecutorService resultHandlerThread =
       IoTDBThreadPoolFactory.newFixedThreadPool(2, "AppendResultHandler");
   protected boolean queueOrdered;
+  protected boolean enableCompressedDispatching;
+  protected ICompressor compressor;
 
   public int bindingThreadNum;
   public static int maxBatchSize = 10;
@@ -82,6 +88,8 @@ public class LogDispatcher {
     this.member = member;
     this.config = config;
     this.queueOrdered = !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
+    this.enableCompressedDispatching = config.isEnableCompressedDispatching();
+    this.compressor = ICompressor.getCompressor(config.getDispatchingCompressionType());
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
     if (!queueOrdered) {
       maxBatchSize = 1;
@@ -266,7 +274,30 @@ public class LogDispatcher {
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       AsyncRaftServiceClient client = member.getClient(receiver.getEndpoint());
       try {
+        long startTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         AppendEntryResult appendEntryResult = SyncClientAdaptor.appendEntries(client, request);
+        Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
+        handler.onComplete(appendEntryResult);
+      } catch (Exception e) {
+        handler.onError(e);
+      }
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
+      }
+    }
+
+    private void appendEntriesAsync(
+        List<ByteBuffer> logList,
+        AppendCompressedEntriesRequest request,
+        List<VotingEntry> currBatch) {
+      AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
+      AsyncRaftServiceClient client = member.getClient(receiver.getEndpoint());
+      try {
+        long startTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
+        AppendEntryResult appendEntryResult =
+            SyncClientAdaptor.appendCompressedEntries(client, request);
+        Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         handler.onComplete(appendEntryResult);
       } catch (Exception e) {
         handler.onError(e);
@@ -299,6 +330,29 @@ public class LogDispatcher {
       return request;
     }
 
+    protected AppendCompressedEntriesRequest prepareCompressedRequest(
+        List<ByteBuffer> logList, List<VotingEntry> currBatch, int firstIndex) {
+      AppendCompressedEntriesRequest request = new AppendCompressedEntriesRequest();
+
+      request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
+      request.setLeader(member.getThisNode().getEndpoint());
+      request.setLeaderId(member.getThisNode().getNodeId());
+      request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
+
+      request.setTerm(member.getStatus().getTerm().get());
+
+      request.setEntryBytes(LogUtils.compressEntries(logList, compressor));
+      request.setCompressionType((byte) compressor.getType().ordinal());
+      // set index for raft
+      request.setPrevLogIndex(currBatch.get(firstIndex).getEntry().getCurrLogIndex() - 1);
+      try {
+        request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
+      } catch (Exception e) {
+        logger.error("getTerm failed for newly append entries", e);
+      }
+      return request;
+    }
+
     private void sendLogs(List<VotingEntry> currBatch) {
       if (currBatch.isEmpty()) {
         return;
@@ -316,21 +370,30 @@ public class LogDispatcher {
         int prevIndex = logIndex;
 
         for (; logIndex < currBatch.size(); logIndex++) {
-          long curSize = currBatch.get(logIndex).getAppendEntryRequest().entry.array().length;
+          VotingEntry entry = currBatch.get(logIndex);
+          long curSize = entry.getAppendEntryRequest().entry.array().length;
           if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
             break;
           }
           logSize += curSize;
-          logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
+          logList.add(entry.getAppendEntryRequest().entry);
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
+              entry.getEntry().createTime);
         }
 
-        AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
+        if (!enableCompressedDispatching) {
+          AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
+          appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        } else {
+          AppendCompressedEntriesRequest appendEntriesRequest =
+              prepareCompressedRequest(logList, currBatch, prevIndex);
+          appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        }
+
         if (config.isUseFollowerLoadBalance()) {
           FlowMonitorManager.INSTANCE.report(receiver, logSize);
         }
         nodesRateLimiter.get(receiver).acquire((int) logSize);
-
-        appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       }
     }
 
