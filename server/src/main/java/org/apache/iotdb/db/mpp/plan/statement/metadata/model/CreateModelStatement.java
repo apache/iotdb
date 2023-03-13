@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.model;
 
+import org.apache.iotdb.common.rpc.thrift.ModelTask;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -71,7 +73,22 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     this.queryStatement = queryStatement;
   }
 
-  public void semanticCheck() {}
+  public ModelTask getModelTask() {
+    return ModelTask.valueOf(attributes.get("model_task"));
+  }
+
+  public String getModelType() {
+    return attributes.get("model_type");
+  }
+
+  public void semanticCheck() {
+    if (!attributes.containsKey("model_task")) {
+      throw new SemanticException("The attribute `model_task` must be specified.");
+    }
+    if (!attributes.containsKey("model_type")) {
+      throw new SemanticException("The attribute `model_type` must be specified.");
+    }
+  }
 
   @Override
   public List<? extends PartialPath> getPaths() {

@@ -452,8 +452,7 @@ migrateRegion
 // ---- Create Model
 createModel
     : CREATE AUTO? MODEL modelId=identifier
-        WITH MODEL_TASK operator_eq modelTask=attributeValue
-            (COMMA attributePair)*
+        WITH attributePair (COMMA attributePair)*
         BEGIN
             selectStatement
         END

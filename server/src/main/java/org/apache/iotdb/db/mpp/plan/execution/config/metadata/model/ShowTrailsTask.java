@@ -19,15 +19,25 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata.model;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowTrailsTask implements IConfigTask {
 
@@ -44,5 +54,26 @@ public class ShowTrailsTask implements IConfigTask {
   }
 
   public static void buildTsBlock(
-      List<ByteBuffer> trailInfoList, SettableFuture<ConfigTaskResult> future) {}
+      List<ByteBuffer> trailInfoList, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showTrailsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (ByteBuffer trailInfo : trailInfoList) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
+      builder.declarePosition();
+    }
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTrailsHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
 }

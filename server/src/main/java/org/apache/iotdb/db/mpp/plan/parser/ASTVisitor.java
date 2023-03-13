@@ -923,7 +923,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     Map<String, String> attributes = new HashMap<>();
     for (IoTDBSqlParser.AttributePairContext attribute : ctx.attributePair()) {
-      attributes.put(parseAttributeKey(attribute.key), parseAttributeValue(attribute.value));
+      attributes.put(
+          parseAttributeKey(attribute.key).toLowerCase(), parseAttributeValue(attribute.value));
     }
     createModelStatement.setAttributes(attributes);
 

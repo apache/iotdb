@@ -50,7 +50,7 @@ public class ModelInformation {
   private TrainingState trainingState;
 
   private String bestTrailId;
-  private Map<String, TrailInformation> trailMap;
+  private final Map<String, TrailInformation> trailMap;
 
   public ModelInformation(
       String modelId,
@@ -65,6 +65,7 @@ public class ModelInformation {
     this.isAuto = isAuto;
     this.queryExpressions = queryExpressions;
     this.queryFilter = queryFilter;
+    this.trailMap = new HashMap<>();
   }
 
   public ModelInformation(ByteBuffer buffer) {

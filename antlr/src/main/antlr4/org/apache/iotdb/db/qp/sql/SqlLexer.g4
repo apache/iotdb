@@ -394,10 +394,6 @@ MODELS
     : M O D E L S
     ;
 
-MODEL_TASK
-    : M O D E L '_' T A S K
-    ;
-
 NODEID
     : N O D E I D
     ;

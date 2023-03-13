@@ -1658,16 +1658,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     for (Expression expression : analysis.getSelectExpressions()) {
       queryExpressions.add(expression.toString());
     }
-    String queryFilter = analysis.getWhereExpression().toString();
+    Expression whereExpression = analysis.getWhereExpression();
+    String queryFilter = whereExpression == null ? null : whereExpression.toString();
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TCreateModelReq createModelReq = new TCreateModelReq();
       createModelReq.setModelId(createModelStatement.getModelId());
+      createModelReq.setModelTask(createModelStatement.getModelTask());
+      createModelReq.setModelType(createModelStatement.getModelType());
+      createModelReq.setIsAuto(createModelStatement.isAuto());
       createModelReq.setQueryExpressions(queryExpressions);
       createModelReq.setQueryFilter(queryFilter);
-      createModelReq.setIsAuto(createModelStatement.isAuto());
       createModelReq.setModelConfigs(createModelStatement.getAttributes());
       final TSStatus executionStatus = client.createModel(createModelReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
