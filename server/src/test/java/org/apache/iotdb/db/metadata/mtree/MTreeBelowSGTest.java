@@ -145,7 +145,7 @@ public abstract class MTreeBelowSGTest {
   public void testSetStorageGroup() throws MetadataException {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
+      assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -185,14 +185,14 @@ public abstract class MTreeBelowSGTest {
     }
 
     try {
-      root.deleteStorageGroup(new PartialPath("root.laptop.d1"));
+      root.deleteDatabase(new PartialPath("root.laptop.d1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
-    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
+    assertFalse(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
+    assertFalse(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
   }
 
   @Test
@@ -200,7 +200,7 @@ public abstract class MTreeBelowSGTest {
     String path1 = "root";
     String sgPath1 = "root.vehicle";
     storageGroup = getStorageGroup(new PartialPath(sgPath1));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath(path1)));
     try {
       storageGroup.createTimeseries(
           new PartialPath("root.vehicle.d1.s1"),
@@ -221,7 +221,7 @@ public abstract class MTreeBelowSGTest {
     }
 
     assertEquals(
-        root.getBelongedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
+        root.getBelongedDatabases(new PartialPath("root.vehicle.d1.s1")),
         Collections.singletonList(new PartialPath(sgPath1)));
   }
 

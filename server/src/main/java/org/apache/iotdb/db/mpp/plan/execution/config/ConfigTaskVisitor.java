@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreatePipePluginTask;
@@ -41,10 +41,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
@@ -75,13 +75,13 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -96,10 +96,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
@@ -155,20 +155,18 @@ public class ConfigTaskVisitor
 
   @Override
   public IConfigTask visitDeleteStorageGroup(
-      DeleteStorageGroupStatement statement, TaskContext context) {
+      DeleteDatabaseStatement statement, TaskContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(
-      ShowStorageGroupStatement statement, TaskContext context) {
-    return new ShowStorageGroupTask(statement);
+  public IConfigTask visitShowStorageGroup(ShowDatabaseStatement statement, TaskContext context) {
+    return new ShowDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitCountStorageGroup(
-      CountStorageGroupStatement statement, TaskContext context) {
-    return new CountStorageGroupTask(statement);
+  public IConfigTask visitCountStorageGroup(CountDatabaseStatement statement, TaskContext context) {
+    return new CountDatabaseTask(statement);
   }
 
   @Override
