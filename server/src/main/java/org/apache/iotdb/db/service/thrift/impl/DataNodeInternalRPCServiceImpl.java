@@ -926,13 +926,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
 
+    TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
+
     // todo will use statementId and sessionId in the future.
     IClientSession session = new InternalClientSession("MLNode");
     SESSION_MANAGER.registerSession(session);
     SESSION_MANAGER.supplySession(
         session, "ml", TimeZone.getDefault().toZoneId().toString(), ClientVersion.V_1_0);
 
-    TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
     try {
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req, session.getZoneId());
@@ -954,6 +955,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+      List<ByteBuffer> tsData = new ArrayList<>();
+
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         DatasetHeader header = queryExecution.getDatasetHeader();
         resp.setStatus(result.status);
@@ -961,17 +964,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setColumnTypeList(header.getRespDataTypeList());
         resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
         resp.setQueryId(queryId);
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
-        resp.setTsDataset(pair.left);
-        resp.setHasMoreData(pair.right);
+
+        while (queryExecution.hasNextResult()) {
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
+          tsData.addAll(pair.left);
+        }
+
+        resp.setTsDataset(tsData);
+        resp.setHasMoreData(false);
         return resp;
       }
     } catch (Exception e) {
       return getErrorResp(onQueryException(e, OperationType.EXECUTE_STATEMENT));
-    } finally {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-      SESSION_MANAGER.removeCurrSession();
     }
   }
 
