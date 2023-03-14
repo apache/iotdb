@@ -31,10 +31,10 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 * 2023.2.25,IoTDB Core Technology Meetup 1：Discussion on Native and Cloud Native Open Source Project Application Practice Beijing Station，2023 IoTDB核心技术Meetup 2：论道原生·云原生开源项目应用实践专场北京站,Online
 
 * 2022.12.3-4,2022 Apache IoTDB IoT Summit,2022 Apache IoTDB物联网生态大会,Online.
-  * (Chinese，中文) Time Series Databases in the Era of Internet of Things，[《万物互联时代的时序数据库》](#Time Series Databases in the Era of the Internet of Things) .Reporter:周炯 Jiong Zhou
-  * (Chinese，中文) [《为物联网工业而生—Apache IoTDB 1.0》 ](#Apache IoTDB 1.0 ).为物联网工业而生—Apache IoTDB 1.0全新版本.Reporter:黄向东 XiangDong Huang
-  * (Chinese，中文)Application and Practice of Apache IoTDB in Nuclear Power Industry for Time Series Data Management，[《工业时序数据库 Apache IoTDB 在核电的应用实践》](#in Nuclear Power Industry).Reporter:刘旭嘉 XuJia Liu
-  * (Chinese，中文) Application Case of Apache IoTDB in State Grid Corporation of China for Time Series Data Management，[《Apache IoTDB 在国家电网的应用案例》](#State Grid Corporation of China) .Reporter:谢可 Ke Xie
+  * (Chinese，中文) Time Series Databases in the Era of Internet of Things，[《万物互联时代的时序数据库》](#TimeSeriesDatabasesintheEraoftheInternetofThings) .Reporter:周炯 Jiong Zhou
+  * (Chinese，中文) [《为物联网工业而生—Apache IoTDB 1.0》 ](#ApacheIoTDB1.0).为物联网工业而生—Apache IoTDB 1.0全新版本.Reporter:黄向东 XiangDong Huang
+  * (Chinese，中文)Application and Practice of Apache IoTDB in Nuclear Power Industry for Time Series Data Management，[《工业时序数据库 Apache IoTDB 在核电的应用实践》](#inNuclearPowerIndustry).Reporter:刘旭嘉 XuJia Liu
+  * (Chinese，中文) Application Case of Apache IoTDB in State Grid Corporation of China for Time Series Data Management，[《Apache IoTDB 在国家电网的应用案例》](#StateGridCorporationofChina) .Reporter:谢可 Ke Xie
   * (English，英文)[Application and Practice of Apache IoTDB in Multi-Level Data Synchronization on German Automotive Production Lines](#APAMDS).Reporter:Julian Feinauer
   * (Chinese，中文)Edge-Cloud Collaboration with Apache IoTDB's New Single-Node Distributed Architecture，[《端边云协同：Apache IoTDB 全新单机分布式架构》](#ECCANS).Reporter:乔嘉林 JiaLin Qiao
   * (Chinese，中文)Practical Implementation of Apache IoTDB's Second-Level Scaling Capability and Storage-Compute Separation， [《Apache IoTDB 秒级扩容能力与存算分离实践》](#ASSCPS).Reporter:曹高飞 GaoFei Cao
@@ -44,10 +44,10 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
   * (Chinese，中文)Application of Apache IoTDB in JD's Internet of Everything (IoE) Scenario[《Apache IoTDB 在京东万物互联场景中的应用》](#TWOF),Reporter:刘刚,Gang Liu
   * (Chinese，中文)Application Solution of Apache IoTDB in the Manufacturing System of AVIC Onboard Functional Cloud[《Apache IoTDB 在中航机载职能云下制造系统的应用解决方案》](#TWOS),Reporter:王闯, Chaung Wang
   * (Chinese，中文)Practice of Apache IoTDB in the Construction of Changan Intelligent Automobile Cloud[《Apache IoTDB 在长安智能汽车云建设的实践》](#TWOT),Reporter:黄立,Li Huang
-  * (Chinese，中文)Case Study of Apache IoTDB in the Remote Intelligent Operation and Maintenance Platform of Treasure Equipment,[《Apache IoTDB 在宝物装备远程智能运维平台中的使用案例》](#TWFO),Reporter:徐少峰,ShaoFeng Xu
+  * (Chinese，中文)Case Study of Apache IoTDB in the Remote Intelligent Operation and Maintenance Platform of Treasure Equipment,[《Apache IoTDB 在宝物装备远程智能运维平台中的使用案例》](#TWOFO),Reporter:徐少峰,ShaoFeng Xu
   * (Chinese，中文)Practice of MCC CIE Industrial Internet Platform and CISDigital-TimeS (Based on IoTDB) in the Steel Industry,[《中冶赛迪工业互联网平台与CISDigital-TimeS(基于IoTDB)在钢铁行业的实践》](#TWOFI),Reporter:郑强,Qiang Zheng
   * (Chinese，中文)Timecho：Open-Source Commercialization Companies and Their Core Products Incubated in Apache IoTDB Ecosystem， [《Timecho：孵化于 Apache IoTDB 的开源商业化公司及其核心产品》](#OCCCP) .Reporter:刘海 Hai Liu
-  * (Chinese，中文)Exploration and Progress of YONGYOU's Application and Ecological Construction in Apache IoTDB， [《用友在Apache IoTDB 应用与生态建设方面的探索与时间》](#N/A ) .Reporter:郭关飞 GuanFei Guo
+  * (Chinese，中文)Exploration and Progress of YONGYOU's Application and Ecological Construction in Apache IoTDB， [《用友在Apache IoTDB 应用与生态建设方面的探索与时间》](#NA) .Reporter:郭关飞 GuanFei Guo
   * (Chinese，中文)Commercialization and Application of Apache IoTDB in Dongfang Guoxin， [《Apache IoTDB 在东方国信的商业化及应用》](#CAAC).Reporter:王超 Chao Wang
   * (Chinese，中文) Building a Solution for Big Data Computing Platform in the Era of Internet of Things with MaxCompute and Apache IoTDB，[《Apache IoTDB 在化为云的实践》](#PACT).Reporter:王超 Chao Wang
   * (Chinese，中文)  [《迈向物联网时代的大数据计算平台——MaxCompute 基于 Apache IoTDB 构建的解决方案》](#ASBBDCP).Reporter:白渐 Jian Bai
@@ -171,61 +171,61 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 ### Chinese 中文
 
-*<span id = "iTime Series Databases in the Era of the Internet of Things "> 《万物互联时代的时序数据库》.reporter: Jiong Zhou. </span>
+*<span id = "TimeSeriesDatabasesintheEraoftheInternetofThings"> 《万物互联时代的时序数据库》.reporter: Jiong Zhou. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=606841263&bvid=BV1z84y1x74Y&cid=939097311&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "Apache IoTDB 1.0  "> 《为物联网工业而生—Apache IoTDB 1.0 全新版本》.reporter:XiangDong Huang. </span>
+*<span id = "ApacheIoTDB1.0"> 《为物联网工业而生—Apache IoTDB 1.0 全新版本》.reporter:XiangDong Huang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=306789635&bvid=BV1UA411D7bG&cid=939097145&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 
-*<span id = "in Nuclear Power Industry "> 《工业时序数据库 Apache IoTDB 在核电的应用实践》.reporter: XuJia Liu. </span>
+*<span id = "inNuclearPowerIndustry"> 《工业时序数据库 Apache IoTDB 在核电的应用实践》.reporter: XuJia Liu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=606825136&bvid=BV1W84y1x7RH&cid=939097231&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "State Grid Corporation of China "> 《Apache IoTDB 在国家电网的应用案例》.reporter: Ke Xie. </span>
+*<span id = "StateGridCorporationofChina"> 《Apache IoTDB 在国家电网的应用案例》.reporter: Ke Xie. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=434269138&bvid=BV1R3411Q718&cid=939097224&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " ECCANS"> 《端边云协同：Apache IoTDB 全新单机分布式架构》.reporter: JiaLin Qiao. </span>
+*<span id = "ECCANS"> 《端边云协同：Apache IoTDB 全新单机分布式架构》.reporter: JiaLin Qiao. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=777277146&bvid=BV1314y1g7yT&cid=950790593&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 
-*<span id = " ASSCPS"> 《Apache IoTDB 秒级扩容能力与存算分离实践》.reporter: GaoFei Cao. </span>
+*<span id = "ASSCPS"> 《Apache IoTDB 秒级扩容能力与存算分离实践》.reporter: GaoFei Cao. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=734779093&bvid=BV1BD4y1L7iq&cid=950790637&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " CPTSDO"> 《为物联网场景优化的时序数据库共识协议》.reporter: JinRui Zhang. </span>
+*<span id = "CPTSDO"> 《为物联网场景优化的时序数据库共识协议》.reporter: JinRui Zhang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=477351147&bvid=BV1mK411275q&cid=950790658&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " LSPP"> 《大规模并行处理与边缘计算在 Apache IoTDB 中的实践》.reporter: Yuan Tian. </span>
+*<span id = "LSPP"> 《大规模并行处理与边缘计算在 Apache IoTDB 中的实践》.reporter: Yuan Tian. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=649841437&bvid=BV1Xe4y1V7VS&cid=950790474&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " PTSOD"> 《Apache IoTDB首创时序顺乱序分离存储引擎 IoTLSM》.reporter: HaoNan Hou. </span>
+*<span id = "PTSOD"> 《Apache IoTDB首创时序顺乱序分离存储引擎 IoTLSM》.reporter: HaoNan Hou. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=649778759&bvid=BV1ee4y1V73w&cid=950790591&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " TWOF"> 《Apache IoTDB 在京东万物互联场景中的应用》.reporter: Gang Liu. </span>
+*<span id = "TWOF"> 《Apache IoTDB 在京东万物互联场景中的应用》.reporter: Gang Liu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=395646814&bvid=BV1Ao4y167tJ&cid=1045771160&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " TWOS"> 《Apache IoTDB 在中航机载职能云下制造系统的应用解决方案》.reporter: Chaung Wang. </span>
+*<span id = "TWOS"> 《Apache IoTDB 在中航机载职能云下制造系统的应用解决方案》.reporter: Chaung Wang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=738152860&bvid=BV11D4y1M7bL&cid=1045771164&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " TWOT"> 《Apache IoTDB 在长安智能汽车云建设的实践》.reporter: Li Huang. </span>
+*<span id = "TWOT"> 《Apache IoTDB 在长安智能汽车云建设的实践》.reporter: Li Huang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=438147422&bvid=BV1Hj411u7R6&cid=1045770798&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " TWOFO"> 《Apache IoTDB 在宝物装备远程智能运维平台中的使用案例》.reporter: ShaoFeng Xu. </span>
+*<span id = "TWOFO"> 《Apache IoTDB 在宝物装备远程智能运维平台中的使用案例》.reporter: ShaoFeng Xu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=525696785&bvid=BV1sM411s7VZ&cid=1045771173&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " TWOFI"> 《中冶赛迪工业互联网平台与CISDigital-TimeS(基于IoTDB)在钢铁行业的实践》.reporter: Qiang Zheng. </span>
+*<span id = "TWOFI"> 《中冶赛迪工业互联网平台与CISDigital-TimeS(基于IoTDB)在钢铁行业的实践》.reporter: Qiang Zheng. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=780723599&bvid=BV1324y1g77m&cid=1045771276&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
@@ -234,7 +234,7 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 <iframe src="//player.bilibili.com/player.html?aid=267639233&bvid=BV1iY411C7LZ&cid=1029203532&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = " N/A"> 《用友在Apache IoTDB 应用与生态建设方面的探索与时间》.reporter: GuanFei Peng. </span>
+*<span id = "NA"> 《用友在Apache IoTDB 应用与生态建设方面的探索与时间》.reporter: GuanFei Peng. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=780156150&bvid=BV1m24y1G7mf&cid=1029205593&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
@@ -246,7 +246,7 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 <iframe src="//player.bilibili.com/player.html?aid=395156229&bvid=BV1uo4y1a7HS&cid=1029201797&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "ALCPhuawei"> 《迈向物联网时代的大数据计算平台——MaxCompute 基于 Apache IoTDB 构建的解决方案》.reporter:Jian Bai . </span>
+*<span id = "ASBBDCP"> 《迈向物联网时代的大数据计算平台——MaxCompute 基于 Apache IoTDB 构建的解决方案》.reporter:Jian Bai . </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=525160086&bvid=BV1jM411j7R3&cid=1029191327&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
