@@ -50,7 +50,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   SIGN("SIGN", UDTFSign.class),
   CEIL("CEIL", UDTFCeil.class),
   FLOOR("FLOOR", UDTFFloor.class),
-  ROUND("ROUND", UDTFRound.class),
   EXP("EXP", UDTFExp.class),
   LN("LN", UDTFLog.class),
   LOG10("LOG10", UDTFLog10.class),

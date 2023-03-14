@@ -63,6 +63,7 @@ public class SqlConstant {
 
   public static final String CAST_FUNCTION = "CAST";
   public static final String CAST_TYPE = "type";
+  public static final String ROUND = "round";
   public static final String REPLACE_FUNCTION = "REPLACE";
   public static final String REPLACE_FROM = "FROM";
   public static final String REPLACE_TO = "TO";

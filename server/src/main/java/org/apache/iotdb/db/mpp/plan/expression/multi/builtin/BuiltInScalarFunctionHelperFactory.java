@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.multi.builtin;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.DiffFunctionHelper;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.ReplaceFunctionHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.RoundFunctionHelper;
 
 public class BuiltInScalarFunctionHelperFactory {
   public static BuiltInScalarFunctionHelper createHelper(String functionName) {
@@ -33,6 +34,8 @@ public class BuiltInScalarFunctionHelperFactory {
         return new CastFunctionHelper();
       case "REPLACE":
         return new ReplaceFunctionHelper();
+      case "ROUND":
+        return new RoundFunctionHelper();
       default:
         throw new IllegalArgumentException(
             String.format("Invalid scalar function [%s].", functionName));

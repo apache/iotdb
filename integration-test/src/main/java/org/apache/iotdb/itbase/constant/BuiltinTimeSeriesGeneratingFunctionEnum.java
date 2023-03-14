@@ -38,7 +38,6 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   SIGN("SIGN"),
   CEIL("CEIL"),
   FLOOR("FLOOR"),
-  ROUND("ROUND"),
   EXP("EXP"),
   LN("LN"),
   LOG10("LOG10"),
