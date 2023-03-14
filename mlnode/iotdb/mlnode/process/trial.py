@@ -42,20 +42,9 @@ def parse_trial_config(**kwargs):
     }
 
 
-def parse_model_config(**kwargs):
-    return {
-        **kwargs
-    }
-
-
-def parse_data_config(**kwargs):
-    return {
-        **kwargs
-    }
-
-
 class BasicTrial(object):
     def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
+        # TODO: check param and only store useful param
         self.trial_configs = parse_trial_config(**trial_configs)
         self.model = model
         self.model_configs = model_configs
@@ -125,6 +114,7 @@ class ForecastingTrainingTrial(BasicTrial):
             optimizer.step()
 
         train_loss = np.average(train_loss)
+        # TODO: manage these training output
         print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'.format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
 

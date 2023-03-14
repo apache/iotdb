@@ -26,6 +26,8 @@ from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
                                    MLNODE_MODEL_STORAGE_CACHESIZE)
 
 
+# TODO: Add permission check firstly
+
 # TODO: Concurrency
 class ModelStorager(object):
     def __init__(self, root_path='ml_models', cache_size=30):

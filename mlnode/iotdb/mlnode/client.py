@@ -90,12 +90,12 @@ class DataNodeClient(object):
         self.__client = IDataNodeRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         sessionId=0,
-                         statementId=0,
+                         sessionId: int = 0,
+                         statementId: int = 0,
                          queryExpressions: list = [],
                          queryFilter: str = '',
-                         fetchSize=20480,
-                         timeout=1000):
+                         fetchSize: int = 1024,
+                         timeout: int = 1000):
         req = TFetchTimeseriesReq(
             sessionId=sessionId,
             statementId=statementId,
@@ -107,10 +107,22 @@ class DataNodeClient(object):
         res = self.__client.fetchTimeseries(req)
         return res
 
-    def record_model_metrics(self, modelID, trialID, metrics, values):
-        t = time.time()
-        req = TRecordModelMetricsReq(modelId=modelID, trialId=trialID, metrics=metrics, timestamp=t, values=values)
-        return self.__client.recordModelMetrics(req)
+    def record_model_metrics(self,
+                             modelId: str = '',
+                             trialId: str = '',
+                             metrics: list = [],
+                             timestamp: int = -1,  # default: current time in ms
+                             values: list = []):
+        timestamp = int(time.time()) * 1000 if timestamp == -1 else timestamp
+        req = TRecordModelMetricsReq(
+            modelId=modelId,
+            trialId=trialId,
+            metrics=metrics,
+            timestamp=timestamp,
+            values=values
+        )
+        res = self.__client.recordModelMetrics(req)
+        return res
 
 
 class ConfigNodeClient(object):
@@ -134,7 +146,12 @@ class ConfigNodeClient(object):
         return self.__client.updateModelInfo(req)
 
 
-dataClient = DataNodeClient(host='127.0.0.1', port=10730)
+# TODO: add reconnection mechanism
+try:
+    dataClient = DataNodeClient(host='127.0.0.1', port=10730)
+except Exception:
+    raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
+
 config_test = {
     'source_type': 'thrift',
     'dataset_type': 'window',
@@ -173,7 +190,7 @@ if __name__ == "__main__":
         modelId='test',
         isAuto=False,
         modelConfigs=config_test,
-        queryExpressions=['root.eg.etth1.**'], # 7 variables
+        queryExpressions=['root.eg.etth1.**'],  # 7 variables
         queryFilter='-1,1501516800000',
     ))
     # print(client.delete_model(model_path='mid_debug/tid_1.pt'))

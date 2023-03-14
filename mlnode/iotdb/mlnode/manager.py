@@ -52,8 +52,6 @@ class Manager(object):
                 self.task_trial_map
             ), args=()
         )
-        # self.training_pool.close()
-        # self.training_pool.join()
 
     # def create_inference_task_pool(self, configs):
     #     """
@@ -88,4 +86,3 @@ class Manager(object):
     #     return self.task_map[task_id]
 
 
-# TaskManager = Manager(10)

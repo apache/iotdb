@@ -98,7 +98,6 @@ class ForecastingTrainingTask(BasicTask):
                     data_source=datasource,
                     **self.data_configs)
                 print('data created')
-                assert dataset.get_variable_num() == model_cfg['input_vars']
                 self.task_configs['trial_id'] = 0 # TODO: set a default trial id
                 trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
                 pid = os.getpid()

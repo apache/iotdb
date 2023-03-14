@@ -53,7 +53,8 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         raise BadNodeUrlError(endpoint_url)
 
 
-def parse_training_request(req: TCreateTrainingTaskReq):  # TODO: extend for other request
+# TODO: may have many bug
+def parse_training_request(req: TCreateTrainingTaskReq):
     """
     Parse TCreateTrainingTaskReq with given yaml template
 
@@ -63,7 +64,7 @@ def parse_training_request(req: TCreateTrainingTaskReq):  # TODO: extend for oth
     Returns:
         data_conf: configurations related to data
         model_conf: configurations related to model
-        task_conf: configurations related to ml task
+        task_conf: configurations related to task
     """
     config = req.modelConfigs
     config.update(model_id=str(req.modelId))

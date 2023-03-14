@@ -47,6 +47,7 @@ def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         self.taskManager = Manager(10)
+        # TODO: maybe possess modelStorger, dataCLient?
 
     def deleteModel(self, req: TDeleteModelReq):
         model_path = req.modelPath

@@ -19,7 +19,6 @@
 
 from iotdb.mlnode.datats.offline.dataset import *
 
-
 support_forecasting_dataset = {
     'timeseries': TimeSeriesDataset,
     'window': WindowDataset
@@ -29,6 +28,8 @@ support_forecasting_dataset = {
 def _dataset_cfg(**kwargs):
     return {
         'time_embed': 'h',
+        'input_vars': 1,
+        'output_vars': 1,
         **kwargs
     }
 
@@ -70,9 +71,13 @@ def create_forecasting_dataset(
     dataset_cfg = support_dataset_cfgs[dataset_type]
     dataset_cls = support_forecasting_dataset[dataset_type]
 
+    print(kwargs)
     for k, v in kwargs.items():
         if k in dataset_cfg.keys():
             dataset_cfg[k] = v
     dataset = dataset_cls(data_source, **dataset_cfg)
+    assert dataset.get_variable_num() == dataset_cfg['input_vars'], \
+        'Variable number should be consistent with input_vars ({0}), but got ({1})' \
+        .format(dataset_cfg['input_vars'], dataset.get_variable_num())
 
     return dataset, dataset_cfg

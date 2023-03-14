@@ -4,24 +4,26 @@
 ---
 source_type: file
 filename: dataset/ETT-small/ETTh1.csv
-ip: 127.0.0.1
-port: 6667
-username: root
-password: root
-sql:
-  train: SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01
-  val: SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01
-  test: SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01
+#ip: 127.0.0.1
+#port: 6667
+#username: root
+#password: root
+#sql:
+#  train: SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01
+#  val: SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01
+#  test: SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01
 query_expressions: ['root.eg.etth1.s0', 'root.eg.etth1.s1']
 query_filter: '-1,1501516800000'
 dataset_type: window
 time_embed: h
 input_len: 96
 pred_len: 96
+input_vars: 7
+output_vars: 7
 
 # model config
 ---
-model_name: dlinear  
+model_name: dlinear
 input_len: 96
 pred_len: 96
 input_vars: 7
