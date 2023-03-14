@@ -26,7 +26,9 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -312,6 +314,14 @@ public class ExportTsFile extends AbstractTsFileTool {
         }
         MeasurementSchema measurementSchema =
             new MeasurementSchema(path.getMeasurement(), tsDataType);
+
+        List<Field> seriesList =
+            session.executeQueryStatement("show timeseries " + column, timeout).next().getFields();
+
+        measurementSchema.setEncoding(
+            TSEncoding.valueOf(seriesList.get(4).getStringValue()).serialize());
+        measurementSchema.setCompressor(
+            CompressionType.valueOf(seriesList.get(5).getStringValue()).serialize());
         schemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
       }
       List<Tablet> tabletList = new ArrayList<>();
