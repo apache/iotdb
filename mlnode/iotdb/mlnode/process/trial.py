@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader
 
 
 def parse_trial_config(**kwargs):
-    return {
+    support_cfg = {
         "batch_size": 32,
         "learning_rate": 0.0001,
         "epochs": 10,
@@ -36,10 +36,25 @@ def parse_trial_config(**kwargs):
         "devices": [0],
         "use_multi_gpu": False,
         "gpu": 0,
-        "seq_len": 96,
+        "input_len": 96,
         "pred_len": 96,
-        **kwargs
     }
+    print(kwargs)
+    for k, v in kwargs.items():
+        if k in support_cfg.keys():
+            if type(v) != type(support_cfg[k]):
+                raise RuntimeError(
+                    "Trial config {} should have {} type, but got {} instead" \
+                        .format(k, type(support_cfg[k]).__name__, type(v).__name__)
+                )
+            support_cfg[k] = v
+    for k in ["input_len", "pred_len"]:
+        if support_cfg[k] <= 0:
+            raise RuntimeError(
+                "Trial config {} should be positive integer but got {}" \
+                .format(k, support_cfg[k])
+            )
+    return support_cfg
 
 
 class BasicTrial(object):

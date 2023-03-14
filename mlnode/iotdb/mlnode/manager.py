@@ -22,11 +22,26 @@ import signal
 import psutil
 import multiprocessing as mp
 from subprocess import call
-from iotdb.mlnode.process.task import ForecastingTrainingTask
-
+from iotdb.mlnode.process.task_factory import create_task
+from iotdb.mlnode.log import logger
 # def _create_inference_task(configs, task_map, task_id):
 #     trial = ForecastingInferenceTrial(configs, debug_inference_data())
 #     trial.start()
+
+
+def kill_process(pid):
+    """
+    Kill the process by pid
+    """
+    if sys.platform == 'win32':
+        try:
+            process = psutil.Process(pid=pid)
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+        except psutil.NoSuchProcess:
+            print(f'Tried to kill process (pid = {pid}), but the process does not exist.')
+    else:
+        cmds = ['kill', str(pid)]
+        call(cmds)
 
 
 class Manager(object):
@@ -44,13 +59,18 @@ class Manager(object):
     def submit_training_task(self, data_configs, model_configs, task_configs):
         model_id = task_configs['model_id']
         self.task_trial_map[model_id] = self.resource_manager.dict()
-        self.training_pool.apply_async(
-            ForecastingTrainingTask(
+        try:
+            task = create_task(
                 task_configs,
                 model_configs,
                 data_configs,
                 self.task_trial_map
-            ), args=()
+            )
+        except Exception as e:
+            logger.exception(e)
+            return e, False
+        self.training_pool.apply_async(
+            task, args=()
         )
 
     # def create_inference_task_pool(self, configs):
@@ -62,27 +82,6 @@ class Manager(object):
     #     self.task_map[task_id] = self.resource_manager.dict()
     #     return task_id
 
-    def kill_process(self, pid):
-        """
-        Kill the process by pid
-        """
-        if sys.platform == 'win32':
-            try:
-                process = psutil.Process(pid=pid)
-                process.send_signal(signal.CTRL_BREAK_EVENT)
-            except psutil.NoSuchProcess:
-                print(f'Tried to kill process (pid = {pid}), but the process does not exist.')
-        else:
-            cmds = ['kill', str(pid)]
-            call(cmds)
-
-    # def _generate_taskid(self, model_id):
-    #     """
-    #     Generate a unique task id
-    #     """
-    #     return model_id + '_' + str(int(time.time() * 1000000))
-
     # def _get_task_state(self, task_id):
     #     return self.task_map[task_id]
-
 

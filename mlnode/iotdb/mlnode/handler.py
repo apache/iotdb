@@ -59,8 +59,11 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         data_conf, model_conf, task_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
         # print(data_conf, model_conf, task_conf)
-        self.taskManager.submit_training_task(data_conf, model_conf, task_conf) # TODO, check param and decide the response
-        return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")
+        exception, status = self.taskManager.submit_training_task(data_conf, model_conf, task_conf) # TODO, check param and decide the response
+        if status:
+            return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")
+        else:
+            return get_status(TSStatusCode.FAIL_STATUS, str(exception))
 
     # def forecast(self, req: TForecastReq):
     #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")

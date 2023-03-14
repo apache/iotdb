@@ -153,6 +153,7 @@ except Exception:
     raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
 
 config_test = {
+    'task_class': 'forecast_training_task',
     'source_type': 'thrift',
     'dataset_type': 'window',
     'time_embed': 'h',
@@ -175,7 +176,6 @@ config_test = {
 }
 
 if __name__ == "__main__":
-    pass
     # test datanode rpc service
     # client = DataNodeClient(host='127.0.0.1', port=10730)
     # print(dataClient.fetch_timeseries(
