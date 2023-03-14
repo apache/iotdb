@@ -162,12 +162,20 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
+    boolean meetError = false;
+    Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
       try {
         channel.abort();
       } catch (Exception e) {
-        LOGGER.warn("Error occurred when try to abort channel.");
+        if (!meetError) {
+          firstException = e;
+          meetError = true;
+        }
       }
+    }
+    if (meetError) {
+      LOGGER.warn("Error occurred when try to abort channel.", firstException);
     }
     aborted = true;
     sinkListener.onAborted(this);
@@ -180,12 +188,20 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
+    boolean meetError = false;
+    Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
       try {
         channel.close();
       } catch (Exception e) {
-        LOGGER.warn("Error occurred when try to abort channel.");
+        if (!meetError) {
+          firstException = e;
+          meetError = true;
+        }
       }
+    }
+    if (meetError) {
+      LOGGER.warn("Error occurred when try to close channel.", firstException);
     }
     closed = true;
     sinkListener.onFinish(this);
