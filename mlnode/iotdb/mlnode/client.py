@@ -172,7 +172,7 @@ config_test = {
     'batch_size': 32,
     'num_workers': 0,
     'epochs': 10,
-    'metric_name': ['MSE', 'MAE']
+    'metric_names': ['MSE', 'MAE']
 }
 
 if __name__ == "__main__":
@@ -182,12 +182,18 @@ if __name__ == "__main__":
     #     queryExpressions=['root.eg.etth1.s0', 'root.eg.etth1.s1'],
     #     queryFilter='-1,1501516800000'
     # ))
+    # print(dataClient.record_model_metrics(
+    #     modelId='mid_test',
+    #     trialId='tid_0',
+    #     metrics=['MSE'],
+    #     values=[0.01]
+    # ))
 
     # test mlnode rpc service
     client = MLNodeClient(host="127.0.0.1", port=10810)
 
     print(client.create_training_task(
-        modelId='test',
+        modelId='mid_test',
         isAuto=False,
         modelConfigs=config_test,
         queryExpressions=['root.eg.etth1.**'],  # 7 variables

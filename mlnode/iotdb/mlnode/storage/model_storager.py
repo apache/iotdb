@@ -27,8 +27,7 @@ from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
 
 
 # TODO: Add permission check firstly
-
-# TODO: Concurrency
+# TODO: Consider concurrency, maybe
 class ModelStorager(object):
     def __init__(self, root_path='ml_models', cache_size=30):
         current_path = os.getcwd()
@@ -41,17 +40,17 @@ class ModelStorager(object):
         """
         Return: True if successfully saved
         """
-        fold_path = os.path.join(self.root_path, f'mid_{model_id}')
+        fold_path = os.path.join(self.root_path, f'{model_id}')
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
         torch.jit.save(torch.jit.trace(model, sample_input),
-                       os.path.join(fold_path, f'tid_{trial_id}.pt'),
+                       os.path.join(fold_path, f'{trial_id}.pt'),
                        _extra_files={'model_config': json.dumps(model_config)})
-        return os.path.exists(os.path.join(fold_path, f'tid_{trial_id}.pt'))
+        return os.path.exists(os.path.join(fold_path, f'{trial_id}.pt'))
 
     def load_model(self, model_id, trial_id):
-        file_path = os.path.join(self.root_path, f'mid_{model_id}', f'tid_{trial_id}.pt')
+        file_path = os.path.join(self.root_path, f'{model_id}', f'{trial_id}.pt')
         if model_id in self._loaded_model_cache:
             return self._loaded_model_cache[file_path]
         else:
@@ -72,7 +71,7 @@ class ModelStorager(object):
         """
         Return: True if successfully deleted
         """
-        file_path = os.path.join(self.root_path, f'mid_{model_id}', f'tid_{trial_id}.pt')
+        file_path = os.path.join(self.root_path, f'{model_id}', f'{trial_id}.pt')
         self._remove_from_cache(file_path)
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -82,14 +81,14 @@ class ModelStorager(object):
         """
         Return: True if successfully deleted
         """
-        folder_path = os.path.join(self.root_path, f'mid_{model_id}')
+        folder_path = os.path.join(self.root_path, f'{model_id}')
         if os.path.exists(folder_path):
             for file_name in os.listdir(folder_path):
                 self._remove_from_cache(os.path.join(folder_path, file_name))
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
-    def delete_by_path(self, model_path): # TODO: for test only
+    def delete_by_path(self, model_path):  # TODO: for test only
         """
         Return: True if successfully deleted
         """

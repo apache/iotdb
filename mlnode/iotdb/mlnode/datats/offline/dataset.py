@@ -29,7 +29,8 @@ __all__ = ['TimeSeriesDataset', 'WindowDataset']
 
 class TimeSeriesDataset(Dataset):
     """
-    Build Row-by-Row dataset (with each element as multivariable time series at the same time and correponding timestamp embedding)
+    Build Row-by-Row dataset (with each element as multivariable time series at
+    the same time and correponding timestamp embedding)
     
     Args:
         data_source: the whole multivariate time series for a while
@@ -59,7 +60,8 @@ class TimeSeriesDataset(Dataset):
 
 class WindowDataset(TimeSeriesDataset):
     """
-    Build Windowed dataset (with each element as multivariable time series with a sliding window and correponding timestamps embedding),
+    Build Windowed dataset (with each element as multivariable time series
+    with a sliding window and corresponding timestamps embedding),
     the sliding step is one unit in give data source
 
     Args:
@@ -77,6 +79,8 @@ class WindowDataset(TimeSeriesDataset):
         self.input_len = input_len
         self.pred_len = pred_len
         self.data = data_source.get_data()
+        assert input_len <= self.data.shape[0], 'input_len should not be larger than the number of time series points'
+        assert pred_len <= self.data.shape[0], 'pred_len should not be larger than the number of time series points'
         self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
         self.n_vars = self.data.shape[-1]
 

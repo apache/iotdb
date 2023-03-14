@@ -16,19 +16,21 @@
 # under the License.
 #
 
+
 from iotdb.mlnode.process.task import ForecastingTrainingTask
 
 support_task_types = {
-        "forecast_training_task": ForecastingTrainingTask
-    }
+    'forecast_training_task': ForecastingTrainingTask
+}
 
 
 def create_task(task_configs, model_configs, data_configs, task_trial_map):
     task_class = task_configs["task_class"]
     if task_class not in support_task_types:
-        raise RuntimeError(f'Unknown task type: ({task_class}),'
-                           f' which should be one of {support_task_types.keys()}')
-    task = support_task_types[task_class](
+        raise RuntimeError(f'Unknown task type: ({task_class}), which'
+                           f' should be one of {support_task_types.keys()}')
+    task_fn = support_task_types[task_class]
+    task = task_fn(
         task_configs,
         model_configs,
         data_configs,

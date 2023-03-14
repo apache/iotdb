@@ -22,8 +22,10 @@ import signal
 import psutil
 import multiprocessing as mp
 from subprocess import call
-from iotdb.mlnode.process.task_factory import create_task
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.process.task_factory import create_task
+
+
 # def _create_inference_task(configs, task_map, task_id):
 #     trial = ForecastingInferenceTrial(configs, debug_inference_data())
 #     trial.start()
@@ -38,7 +40,8 @@ def kill_process(pid):
             process = psutil.Process(pid=pid)
             process.send_signal(signal.CTRL_BREAK_EVENT)
         except psutil.NoSuchProcess:
-            print(f'Tried to kill process (pid = {pid}), but the process does not exist.')
+            print(f'Tried to kill process (pid = {pid}), '
+                  f'but the process does not exist.')
     else:
         cmds = ['kill', str(pid)]
         call(cmds)
@@ -53,10 +56,12 @@ class Manager(object):
         """
         self.resource_manager = mp.Manager()
         self.task_trial_map = self.resource_manager.dict()
-        # signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
+        # signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+        # leave to the os to clean up zombie processes
         self.training_pool = mp.Pool(pool_num)
 
     def submit_training_task(self, data_configs, model_configs, task_configs):
+        assert 'model_id' in task_configs.keys(), 'Task config should contain model_id'
         model_id = task_configs['model_id']
         self.task_trial_map[model_id] = self.resource_manager.dict()
         try:
@@ -69,9 +74,10 @@ class Manager(object):
         except Exception as e:
             logger.exception(e)
             return e, False
-        self.training_pool.apply_async(
-            task, args=()
-        )
+
+        logger.info(f'Task: ({model_id}) - Training process submitted successfully')
+        self.training_pool.apply_async(task, args=())
+        return model_id, True
 
     # def create_inference_task_pool(self, configs):
     #     """

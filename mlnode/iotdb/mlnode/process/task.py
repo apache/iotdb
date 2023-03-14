@@ -16,13 +16,9 @@
 # under the License.
 #
 
-import sys
+
 import os
-import time
-import signal
 import optuna
-import psutil
-import multiprocessing as mp
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.algorithm.model_factory import create_forecast_model
 from iotdb.mlnode.datats.data_factory import create_forecasting_dataset
@@ -52,8 +48,7 @@ class TrainingTrialObjective:
         model, model_cfg = create_forecast_model(**self.model_configs)
         dataset, dataset_cfg = create_forecasting_dataset(**self.data_configs)
 
-        pid = os.getpid()
-        self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = pid
+        self.task_trial_map[self.trial_configs['model_id']][trial.trial_id] = os.getpid()
         trial = ForecastingTrainingTrial(self.trial_configs, model, self.model_configs, dataset)
         loss = trial.start()
         return loss
@@ -64,6 +59,7 @@ class BasicTask(object):
     This class serve as a function, accepting configs and launch trials
     according to the configs.
     """
+
     def __init__(self, task_configs, model_configs, data_configs, task_trial_map):
         self.task_trial_map = task_trial_map
         self.task_configs = task_configs
@@ -76,24 +72,26 @@ class BasicTask(object):
 
 class ForecastingTrainingTask(BasicTask):
     def __init__(self, task_configs, model_configs, data_configs, task_trial_map):
-        super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, data_configs, task_trial_map)
+        super(ForecastingTrainingTask, self).__init__ \
+            (task_configs, model_configs, data_configs, task_trial_map)
+        model_id = self.task_configs['model_id']
         self.tuning = self.task_configs["tuning"]
-        if self.tuning:
+
+        if self.tuning:             # TODO
             self.study = optuna.create_study(direction='minimize')
         else:
             model, model_cfg = create_forecast_model(**self.model_configs)
-            logger.info('model created')
+            logger.info(f'Task: ({model_id}) - Model created')
             datasource = DataSource(**self.data_configs)
-            logger.info('datasource created')
+            logger.info(f'Task: ({model_id}) - Data source created')
             dataset, dataset_cfg = create_forecasting_dataset(
                 data_source=datasource,
                 **self.data_configs)
-            logger.info('data created')
-            assert dataset.get_variable_num() == model_cfg['input_vars']
-            self.task_configs['trial_id'] = '0'  # TODO: set a default trial id
+            logger.info(f'Task: ({model_id}) - Data loader created')
+            self.task_configs['trial_id'] = 'tid_0'  # TODO: set a default trial id
             self.trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
-            pid = os.getpid()
-            self.task_trial_map[self.task_configs['model_id']][0] = pid
+
+            self.task_trial_map[self.task_configs['model_id']][0] = os.getpid()
 
     def __call__(self):
         try:

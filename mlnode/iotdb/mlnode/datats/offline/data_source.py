@@ -43,13 +43,14 @@ class DataSource(object):
         self.source_type = source_type
 
         if self.source_type == 'file':
-            assert filename is not None
+            assert filename is not None, 'filename is required when source_type is "file"'
             self._read_file_data(filename)
         # elif self.source_type == 'sql':
         #     assert session is not None and sql is not None
         #     self._read_sql_data(session, sql)
         elif self.source_type == 'thrift':
-            assert query_expressions is not None and query_filter is not None
+            assert query_expressions is not None and query_filter is not None, \
+                'query_expressions and query_filter are required when source_type is "thrift"'
             self._read_thrift_data(query_expressions, query_filter)
         else:
             raise NotImplementedError('Unknown data source type (%s)' % source_type)
@@ -81,13 +82,21 @@ class DataSource(object):
         except Exception:
             raise RuntimeError(f'Fail to fetch data with query expressions: {query_expressions}'
                                f' and query filter: {query_filter}')
+
+        if len(res.tsDataset) == 0:
+            raise RuntimeError(f'No data fetched with query filter: {query_filter}')
+
         raw_data = serde.convert_to_df(res.columnNameList,
                                        res.columnTypeList,
                                        res.columnNameIndexMap,
                                        res.tsDataset)
+        if raw_data.empty:
+            raise RuntimeError(f'Fetched empty data with query expressions: {query_expressions}'
+                               f' and query filter: {query_filter}')
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
-        self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True).tz_convert('Asia/Shanghai') # for iotdb
+        self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True) \
+            .tz_convert('Asia/Shanghai')  # for iotdb
 
     def get_data(self):
         return self.data

@@ -71,7 +71,6 @@ def create_forecasting_dataset(
     dataset_cfg = support_dataset_cfgs[dataset_type]
     dataset_cls = support_forecasting_dataset[dataset_type]
 
-    print(kwargs)
     for k, v in kwargs.items():
         if k in dataset_cfg.keys():
             dataset_cfg[k] = v

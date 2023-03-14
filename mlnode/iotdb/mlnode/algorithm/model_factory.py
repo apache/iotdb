@@ -88,7 +88,8 @@ def create_forecast_model(
 
     Args:
         model_name: see available models by `list_model`
-        task_type: 'm' for multivariate forecasting, 'ms' for covariate forecasting, 's' for univariate forecasting
+        task_type: 'm' for multivariate forecasting, 'ms' for covariate forecasting,
+                   's' for univariate forecasting
         input_len: time length of model input 
         pred_len: time length of model output
         input_vars: number of input series
@@ -111,8 +112,8 @@ def create_forecast_model(
     common_cfg['pred_len'] = pred_len
     common_cfg['input_vars'] = input_vars
     common_cfg['output_vars'] = output_vars
-    assert input_len > 0 and pred_len > 0, 'Length of input/output series should larger than 0'
-    assert input_vars > 0 and output_vars > 0, 'Number of input/output series should larger than 0'
+    assert input_len > 0 and pred_len > 0, 'Length of input/output series should be positive'
+    assert input_vars > 0 and output_vars > 0, 'Number of input/output series should be positive'
 
     create_fn = eval(model_name)
     model, model_config = create_fn(

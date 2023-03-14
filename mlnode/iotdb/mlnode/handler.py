@@ -47,23 +47,23 @@ def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         self.taskManager = Manager(10)
-        # TODO: maybe possess modelStorger, dataCLient?
+        # TODO: possess modelStorger, dataClient
+        # TODO: add reconnection mechanism for dataClient
 
     def deleteModel(self, req: TDeleteModelReq):
         model_path = req.modelPath
         if modelStorager.delete_by_path(model_path):
-            return get_status(TSStatusCode.SUCCESS_STATUS, "Successfully delete")
+            return get_status(TSStatusCode.SUCCESS_STATUS, f'Successfully delete model')
         else:
-            return get_status(TSStatusCode.FAIL_STATUS, "Fail to delete")
+            return get_status(TSStatusCode.FAIL_STATUS, f'Fail to delete model with path: ({model_path})')
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        data_conf, model_conf, task_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
-        # print(data_conf, model_conf, task_conf)
-        exception, status = self.taskManager.submit_training_task(data_conf, model_conf, task_conf) # TODO, check param and decide the response
+        data_conf, model_conf, task_conf = parse_training_request(req)
+        info, status = self.taskManager.submit_training_task(data_conf, model_conf, task_conf)
         if status:
-            return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")
+            return get_status(TSStatusCode.SUCCESS_STATUS, f'Successfully create training task: ({str(info)})')
         else:
-            return get_status(TSStatusCode.FAIL_STATUS, str(exception))
+            return get_status(TSStatusCode.FAIL_STATUS, str(info))
 
     # def forecast(self, req: TForecastReq):
     #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")
