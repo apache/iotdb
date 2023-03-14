@@ -186,13 +186,11 @@ public class IoTDBRoundFunctionIT {
     assertTestFail(
         "select round(s5) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Error occurred during inferring UDF data type: \n"
-            + "org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException: the data type of the input series (index: 0) is not valid. expected: [INT32, INT64, FLOAT, DOUBLE]. actual: BOOLEAN.");
+            + ": Input series of Scalar function [ROUND] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]");
 
     assertTestFail(
         "select round(s6) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Error occurred during inferring UDF data type: \n"
-            + "org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException: the data type of the input series (index: 0) is not valid. expected: [INT32, INT64, FLOAT, DOUBLE]. actual: TEXT.");
+            + ": Input series of Scalar function [ROUND] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]");
   }
 }
