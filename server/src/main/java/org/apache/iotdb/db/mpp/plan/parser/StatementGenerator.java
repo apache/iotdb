@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
-import org.apache.iotdb.common.rpc.thrift.EvaluateMetric;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -104,6 +102,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -155,19 +154,6 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  private static String getMetricsName(EvaluateMetric evaluateMetric) {
-    switch (evaluateMetric) {
-      case MSE:
-        return "MSE";
-      case MAE:
-        return "MAE";
-      case RMSE:
-        return "RMSE";
-      default:
-        return "default";
-    }
-  }
-
   public static InsertRowStatement createStatement(TRecordModelMetricsReq recordModelMetricsReq)
       throws IllegalPathException {
     String prefix = "root.__ml.exp";
@@ -180,14 +166,12 @@ public class StatementGenerator {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setDevicePath(new PartialPath(prefix));
     insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
-    insertRowStatement.setType(StatementType.INSERT);
-    insertRowStatement.setMeasurements(
-        recordModelMetricsReq.getMetrics().stream()
-            .map(StatementGenerator::getMetricsName)
-            .toArray(String[]::new));
+    insertRowStatement.setMeasurements(recordModelMetricsReq.getMetrics().toArray(new String[0]));
     insertRowStatement.setAligned(true);
-    insertRowStatement.setNeedInferType(true);
-    insertRowStatement.setDataTypes(new TSDataType[recordModelMetricsReq.getMetricsSize()]);
+
+    TSDataType[] dataTypes = new TSDataType[recordModelMetricsReq.getValues().size()];
+    Arrays.fill(dataTypes, TSDataType.DOUBLE);
+    insertRowStatement.setDataTypes(dataTypes);
     insertRowStatement.setValues(recordModelMetricsReq.getValues().toArray(new Object[0]));
     return insertRowStatement;
   }
