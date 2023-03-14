@@ -57,13 +57,13 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -519,11 +519,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan) {
+  public DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan) {
     TSStatus status = confirmLeader();
     CountDatabaseResp result = new CountDatabaseResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.countMatchedStorageGroups(countDatabasePlan);
+      return clusterSchemaManager.countMatchedDatabases(countDatabasePlan);
     } else {
       result.setStatus(status);
     }
@@ -531,10 +531,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getStorageGroupReq) {
+  public DataSet getMatchedDatabaseSchemas(GetDatabasePlan getDatabaseReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
+      return clusterSchemaManager.getMatchedDatabaseSchema(getDatabaseReq);
     } else {
       DatabaseSchemaResp dataSet = new DatabaseSchemaResp();
       dataSet.setStatus(status);
@@ -563,33 +563,32 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteStorageGroups(List<String> deletedPaths) {
+  public synchronized TSStatus deleteDatabases(List<String> deletedPaths) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
-      Map<String, TDatabaseSchema> deleteStorageSchemaMap =
+      Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
-      if (deleteStorageSchemaMap.isEmpty()) {
+      if (deleteDatabaseSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TDatabaseSchema> parsedDeleteStorageGroups =
-          new ArrayList<>(deleteStorageSchemaMap.values());
-      return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
+      ArrayList<TDatabaseSchema> parsedDeleteDatabases =
+          new ArrayList<>(deleteDatabaseSchemaMap.values());
+      return procedureManager.deleteDatabases(parsedDeleteDatabases);
     } else {
       return status;
     }
   }
 
-  private List<TSeriesPartitionSlot> calculateRelatedSlot(
-      PartialPath path, PartialPath storageGroup) {
+  private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
     // The path contains `**`
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
     // path doesn't contain * so the size of innerPathList should be 1
-    PartialPath innerPath = path.alterPrefixPath(storageGroup).get(0);
+    PartialPath innerPath = path.alterPrefixPath(database).get(0);
     // The innerPath contains `*` and the only `*` is not in last level
     if (innerPath.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
@@ -611,30 +610,28 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    List<String> allStorageGroups = getClusterSchemaManager().getDatabaseNames();
-    List<PartialPath> allStorageGroupPaths = new ArrayList<>();
-    for (String storageGroup : allStorageGroups) {
+    List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
+    List<PartialPath> allDatabasePaths = new ArrayList<>();
+    for (String database : allDatabases) {
       try {
-        allStorageGroupPaths.add(new PartialPath(storageGroup));
+        allDatabasePaths.add(new PartialPath(database));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }
     }
     Map<String, Boolean> scanAllRegions = new HashMap<>();
     for (PartialPath path : relatedPaths) {
-      for (int i = 0; i < allStorageGroups.size(); i++) {
-        String storageGroup = allStorageGroups.get(i);
-        PartialPath storageGroupPath = allStorageGroupPaths.get(i);
-        if (path.overlapWith(storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            && !scanAllRegions.containsKey(storageGroup)) {
-          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, storageGroupPath);
+      for (int i = 0; i < allDatabases.size(); i++) {
+        String database = allDatabases.get(i);
+        PartialPath databasePath = allDatabasePaths.get(i);
+        if (path.overlapWith(databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            && !scanAllRegions.containsKey(database)) {
+          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, databasePath);
           if (relatedSlot.isEmpty()) {
-            scanAllRegions.put(storageGroup, true);
-            partitionSlotsMap.put(storageGroup, new HashSet<>());
+            scanAllRegions.put(database, true);
+            partitionSlotsMap.put(database, new HashSet<>());
           } else {
-            partitionSlotsMap
-                .computeIfAbsent(storageGroup, k -> new HashSet<>())
-                .addAll(relatedSlot);
+            partitionSlotsMap.computeIfAbsent(database, k -> new HashSet<>()).addAll(relatedSlot);
           }
         }
       }
@@ -669,17 +666,17 @@ public class ConfigManager implements IManager {
     }
 
     List<String> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> storageGroups = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     for (String devicePath : devicePaths) {
       if (!devicePath.contains("*")) {
         // Only check devicePaths that without "*"
-        for (String storageGroup : storageGroups) {
-          if (PathUtils.isStartWith(devicePath, storageGroup)) {
+        for (String database : databases) {
+          if (PathUtils.isStartWith(devicePath, database)) {
             partitionSlotsMap
-                .computeIfAbsent(storageGroup, key -> new ArrayList<>())
+                .computeIfAbsent(database, key -> new ArrayList<>())
                 .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
             break;
           }
@@ -1378,10 +1375,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan) {
+  public TShowDatabaseResp showDatabase(GetDatabasePlan getDatabasePlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return getClusterSchemaManager().showStorageGroup(getStorageGroupPlan);
+      return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
     }
@@ -1400,23 +1397,6 @@ public class ConfigManager implements IManager {
   @Override
   public RetryFailedTasksThread getRetryFailedTasksThread() {
     return retryFailedTasksThread;
-  }
-
-  /**
-   * @param storageGroups the databases to check
-   * @return List of PartialPath the databases that not exist
-   */
-  public List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
-    List<PartialPath> noExistSg = new ArrayList<>();
-    if (storageGroups == null) {
-      return noExistSg;
-    }
-    for (PartialPath storageGroup : storageGroups) {
-      if (!clusterSchemaManager.getDatabaseNames().contains(storageGroup.toString())) {
-        noExistSg.add(storageGroup);
-      }
-    }
-    return noExistSg;
   }
 
   @Override

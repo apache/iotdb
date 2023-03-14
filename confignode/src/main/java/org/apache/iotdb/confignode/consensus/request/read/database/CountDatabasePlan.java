@@ -51,7 +51,7 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
   }
 
-  public String[] getStorageGroupPattern() {
+  public String[] getDatabasePattern() {
     return storageGroupPattern;
   }
 

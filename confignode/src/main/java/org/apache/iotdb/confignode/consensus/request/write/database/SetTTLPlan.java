@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -77,8 +78,12 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SetTTLPlan setTTLPlan = (SetTTLPlan) o;
     return TTL == setTTLPlan.TTL
         && Arrays.equals(this.databasePathPattern, setTTLPlan.databasePathPattern);
@@ -86,6 +91,6 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(databasePathPattern, TTL);
+    return Objects.hash(Arrays.hashCode(databasePathPattern), TTL);
   }
 }
