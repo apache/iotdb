@@ -41,8 +41,12 @@ def parse_trial_config(**kwargs):
         "gpu": 0,
         "use_multi_gpu": False,
         "devices": [0],
-        "metric_names": ["MSE"]
+        "metric_names": ["MSE"], # TODO: CHECK
+        "model_id": 'default',
+        "trial_id": 'default_trial'
     }
+
+    trial_config = {}
 
     for k, v in kwargs.items():
         if k in support_cfg.keys():
@@ -51,39 +55,60 @@ def parse_trial_config(**kwargs):
                     'Trial config {} should have {} type, but got {} instead'
                     .format(k, type(support_cfg[k]).__name__, type(v).__name__)
                 )
-            support_cfg[k] = v
+            trial_config[k] = v
     # TODO: check all param
-    for k in ["input_len", "pred_len"]:
-        if support_cfg[k] <= 0:
+
+    if trial_config['input_len'] <= 0:
+        raise RuntimeError(
+            'Trial config input_len should be positive integer but got {}'
+            .format(trial_config['input_len'])
+        )
+
+    if trial_config['pred_len'] <= 0:
+        raise RuntimeError(
+            'Trial config pred_len should be positive integer but got {}'
+            .format(trial_config['pred_len'])
+        )
+
+    for metric in trial_config['metric_names']:
+        if metric not in all_metrics:
             raise RuntimeError(
-                'Trial config {} should be positive integer but got {}'
-                .format(k, support_cfg[k])
+                f'Unknown metric type: ({metric}), which'
+                f' should be one of {all_metrics}'
             )
-    return support_cfg
+    return trial_config
 
 
 class BasicTrial(object):
     def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
-        self.trial_configs = parse_trial_config(**trial_configs) # TODO: remove all configs
+        trial_configs = parse_trial_config(**trial_configs) # TODO: remove all configs
+        self.model_id = trial_configs['model_id']
+        self.trial_id = trial_configs['trial_id']
+        self.batch_size = trial_configs['batch_size']
+        self.learning_rate = trial_configs['learning_rate']
+        self.epochs = trial_configs['epochs']
+        self.num_workers = trial_configs['num_workers']
+        self.pred_len = trial_configs['pred_len']
+        self.metric_names = trial_configs['metric_names']
+        self.use_gpu = trial_configs['use_gpu']
+
         self.model = model
         self.model_configs = model_configs
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
         self.dataset = dataset
 
-        self.model_id = trial_configs["model_id"]
-        self.trial_id = trial_configs["trial_id"]
-
     def _build_data(self):
         raise NotImplementedError
 
     def _acquire_device(self):
-        if self.trial_configs["use_gpu"]:
-            os.environ["CUDA_VISIBLE_DEVICES"] = \
-                str(self.trial_configs["gpu"]) \
-                    if not self.trial_configs["use_multi_gpu"] \
-                    else self.trial_configs["devices"]
-            device = torch.device('cuda:{}'.format(self.trial_configs["gpu"]))
+        if self.use_gpu:
+            # os.environ["CUDA_VISIBLE_DEVICES"] = \
+            #     str(self.trial_configs["gpu"]) \
+            #         if not self.trial_configs["use_multi_gpu"] \
+            #         else self.trial_configs["devices"]
+            # device = torch.device('cuda:{}'.format(self.trial_configs["gpu"]))
+            raise NotImplementedError
         else:
             device = torch.device('cpu')
         return device
@@ -103,16 +128,14 @@ class ForecastingTrainingTrial(BasicTrial):
             self.dataset,
             shuffle=True,
             drop_last=True,
-            batch_size=self.trial_configs["batch_size"],
-            num_workers=self.trial_configs["num_workers"]
+            batch_size=self.batch_size,
+            num_workers=self.num_workers
         )
         return train_loader
 
     def train(self, model, optimizer, criterion, dataloader, epoch):
         model.train()
         train_loss = []
-        print("Start training...")
-
         epoch_time = time.time()
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
             optimizer.zero_grad()
@@ -123,15 +146,15 @@ class ForecastingTrainingTrial(BasicTrial):
             batch_y_mark = batch_y_mark.float().to(self.device)
 
             # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
+            dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-            outputs = outputs[:, -self.trial_configs["pred_len"]:]
-            batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
+            outputs = outputs[:, -self.pred_len:]
+            batch_y = batch_y[:, -self.pred_len:]
             loss = criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
             if (i + 1) % 50 == 0:
-                print('\titers: {0}, epoch: {1} | loss: {2:.7f}'
+                logger.info('\titers: {0}, epoch: {1} | loss: {2:.7f}'
                       .format(i + 1, epoch + 1, loss.item()))
 
             loss.backward()
@@ -139,14 +162,14 @@ class ForecastingTrainingTrial(BasicTrial):
 
         train_loss = np.average(train_loss)
         # TODO: manage these training output
-        print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'
+        logger.info('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'
               .format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
 
     def validate(self, model, criterion, dataloader, epoch):
         model.eval()
         val_loss = []
-        metrics_dict = {name: [] for name in self.trial_configs['metric_names']}
+        metrics_dict = {name: [] for name in self.metric_names}
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
             batch_x = batch_x.float().to(self.device)
             batch_y = batch_y.float().to(self.device)
@@ -155,16 +178,16 @@ class ForecastingTrainingTrial(BasicTrial):
             batch_y_mark = batch_y_mark.float().to(self.device)
 
             # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
+            dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-            outputs = outputs[:, -self.trial_configs["pred_len"]:]
-            batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
+            outputs = outputs[:, -self.pred_len:]
+            batch_y = batch_y[:, -self.pred_len:]
 
             loss = criterion(outputs, batch_y)
 
             val_loss.append(loss.item())
-            for name in self.trial_configs['metric_names']:
+            for name in self.metric_names:
                 value = eval(name)(outputs.detach().cpu().numpy(),
                                    batch_y.detach().cpu().numpy())
                 metrics_dict[name].append(value)
@@ -180,15 +203,15 @@ class ForecastingTrainingTrial(BasicTrial):
             values=list(metrics_dict.values())
         )
         val_loss = np.average(val_loss)
-        print('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
+        logger.info('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
         return val_loss
 
     def start(self):
         best_loss = np.inf
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(),
-                                     lr=self.trial_configs["learning_rate"])
-        for epoch in range(self.trial_configs["epochs"]):
+                                     lr=self.learning_rate)
+        for epoch in range(self.epochs):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch)
             # TODO: add validation methods
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
@@ -265,5 +288,5 @@ class ForecastingInferenceTrial(BasicTrial):
         out_timestamp = torch.from_numpy(timestamp_transform(out_timestamp_raw)).to(self.device)
 
         output = self.inference(self.model, data, data_stamp, out_timestamp)
-        print("inference finished.")
+        logger.info("inference finished.")
         return output, out_timestamp_raw
