@@ -69,6 +69,8 @@ public class AccumulatorFactory {
             Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
       case TIME_DURATION:
         return new TimeDurationAccumulator();
+      case MODE:
+        return new ModeAccumulator();
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

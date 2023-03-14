@@ -133,6 +133,7 @@ public class SchemaUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.MODE:
       default:
         return null;
     }
