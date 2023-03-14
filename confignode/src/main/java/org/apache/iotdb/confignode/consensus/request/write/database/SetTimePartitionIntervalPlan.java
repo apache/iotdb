@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -28,32 +28,42 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DeleteDatabasePlan extends ConfigPhysicalPlan {
+public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
-  private String name;
+  private String storageGroup;
 
-  public DeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.DeleteDatabase);
+  private long timePartitionInterval;
+
+  public SetTimePartitionIntervalPlan() {
+    super(ConfigPhysicalPlanType.SetTimePartitionInterval);
   }
 
-  public DeleteDatabasePlan(String name) {
+  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
     this();
-    this.name = name;
+    this.storageGroup = storageGroup;
+    this.timePartitionInterval = timePartitionInterval;
   }
 
-  public String getName() {
-    return name;
+  public String getDatabase() {
+    return storageGroup;
+  }
+
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(name, stream);
+
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeLong(timePartitionInterval);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    name = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    timePartitionInterval = buffer.getLong();
   }
 
   @Override
@@ -64,12 +74,13 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DeleteDatabasePlan that = (DeleteDatabasePlan) o;
-    return name.equals(that.name);
+    SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
+    return timePartitionInterval == that.timePartitionInterval
+        && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(storageGroup, timePartitionInterval);
   }
 }
