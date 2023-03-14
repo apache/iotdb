@@ -31,6 +31,7 @@ IoTDB 允许在创建一个时间序列的时候指定该列的压缩方式。�
 * SNAPPY 压缩
 * LZ4 压缩
 * GZIP 压缩
+* ZSTD 压缩
 
 压缩方式的指定语法详见本文 [SQL 参考文档](../Reference/SQL-Reference.md)。
 

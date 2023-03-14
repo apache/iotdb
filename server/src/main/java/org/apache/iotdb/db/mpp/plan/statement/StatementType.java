@@ -157,4 +157,6 @@ public enum StatementType {
   CREATE_PIPEPLUGIN,
   DROP_PIPEPLUGIN,
   SHOW_PIPEPLUGINS,
+
+  SHOW_PIPES,
 }

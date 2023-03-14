@@ -31,7 +31,7 @@ import java.util.Objects;
 
 public class SetTTLPlan extends ConfigPhysicalPlan {
 
-  private String[] storageGroupPathPattern;
+  private String[] databasePathPattern;
 
   private long TTL;
 
@@ -39,14 +39,14 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetTTL);
   }
 
-  public SetTTLPlan(List<String> storageGroupPathPattern, long TTL) {
+  public SetTTLPlan(List<String> databasePathPattern, long TTL) {
     this();
-    this.storageGroupPathPattern = storageGroupPathPattern.toArray(new String[0]);
+    this.databasePathPattern = databasePathPattern.toArray(new String[0]);
     this.TTL = TTL;
   }
 
-  public String[] getStorageGroupPathPattern() {
-    return storageGroupPathPattern;
+  public String[] getDatabasePathPattern() {
+    return databasePathPattern;
   }
 
   public long getTTL() {
@@ -57,8 +57,8 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(storageGroupPathPattern.length);
-    for (String node : storageGroupPathPattern) {
+    stream.writeInt(databasePathPattern.length);
+    for (String node : databasePathPattern) {
       BasicStructureSerDeUtil.write(node, stream);
     }
     stream.writeLong(TTL);
@@ -68,9 +68,9 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
 
     int length = buffer.getInt();
-    storageGroupPathPattern = new String[length];
+    databasePathPattern = new String[length];
     for (int i = 0; i < length; i++) {
-      storageGroupPathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+      databasePathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
     }
     TTL = buffer.getLong();
   }
@@ -81,11 +81,11 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) return false;
     SetTTLPlan setTTLPlan = (SetTTLPlan) o;
     return TTL == setTTLPlan.TTL
-        && Arrays.equals(this.storageGroupPathPattern, setTTLPlan.storageGroupPathPattern);
+        && Arrays.equals(this.databasePathPattern, setTTLPlan.databasePathPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPathPattern, TTL);
+    return Objects.hash(databasePathPattern, TTL);
   }
 }

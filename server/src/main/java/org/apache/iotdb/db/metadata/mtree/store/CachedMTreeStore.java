@@ -548,7 +548,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
           cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
         try {
-          file.updateStorageGroupNode(updatedStorageGroupMNode);
+          file.updateDatabaseNode(updatedStorageGroupMNode);
         } catch (IOException e) {
           logger.error(
               "IOException occurred during updating StorageGroupMNode {}",

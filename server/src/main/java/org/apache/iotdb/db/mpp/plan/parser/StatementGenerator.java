@@ -52,7 +52,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -146,7 +146,7 @@ public class StatementGenerator {
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
     queryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
@@ -180,7 +180,7 @@ public class StatementGenerator {
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
 
     return lastQueryStatement;
   }
@@ -236,7 +236,7 @@ public class StatementGenerator {
       whereCondition.setPredicate(predicate);
       queryStatement.setWhereCondition(whereCondition);
     }
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
@@ -250,7 +250,7 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -266,7 +266,7 @@ public class StatementGenerator {
     insertStatement.setValues(insertRecordReq.getValues().toArray(new Object[0]));
     insertStatement.setNeedInferType(true);
     insertStatement.setAligned(insertRecordReq.isAligned);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -295,7 +295,7 @@ public class StatementGenerator {
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -334,7 +334,7 @@ public class StatementGenerator {
       insertTabletStatementList.add(insertTabletStatement);
     }
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -358,7 +358,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -384,7 +384,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -409,7 +409,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -436,18 +436,18 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static DatabaseSchemaStatement createStatement(String storageGroup)
+  public static DatabaseSchemaStatement createStatement(String database)
       throws IllegalPathException {
     long startTime = System.nanoTime();
     // construct create database statement
     DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    statement.setDatabasePath(parseDatabaseRawString(database));
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -464,7 +464,7 @@ public class StatementGenerator {
     statement.setTags(req.tags);
     statement.setAttributes(req.attributes);
     statement.setAlias(req.measurementAlias);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -493,7 +493,7 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAlias);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -526,19 +526,19 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAliasList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
-  public static DeleteStorageGroupStatement createStatement(List<String> storageGroups)
+  public static DeleteDatabaseStatement createStatement(List<String> databases)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
-    for (String path : storageGroups) {
-      parseStorageGroupRawString(path);
+    DeleteDatabaseStatement statement = new DeleteDatabaseStatement();
+    for (String path : databases) {
+      parseDatabaseRawString(path);
     }
-    statement.setPrefixPath(storageGroups);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    statement.setPrefixPath(databases);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -553,7 +553,7 @@ public class StatementGenerator {
     statement.setPathList(pathList);
     statement.setDeleteStartTime(req.getStartTime());
     statement.setDeleteEndTime(req.getEndTime());
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -644,7 +644,7 @@ public class StatementGenerator {
     CreateSchemaTemplateStatement statement =
         new CreateSchemaTemplateStatement(
             req.getName(), measurements, dataTypes, encodings, compressors, isAlign);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -669,7 +669,7 @@ public class StatementGenerator {
       default:
         break;
     }
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return result;
   }
 
@@ -678,7 +678,7 @@ public class StatementGenerator {
     long startTime = System.nanoTime();
     SetSchemaTemplateStatement statement =
         new SetSchemaTemplateStatement(req.getTemplateName(), new PartialPath(req.getPrefixPath()));
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -688,14 +688,14 @@ public class StatementGenerator {
     UnsetSchemaTemplateStatement statement =
         new UnsetSchemaTemplateStatement(
             req.getTemplateName(), new PartialPath(req.getPrefixPath()));
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
   public static DropSchemaTemplateStatement createStatement(TSDropSchemaTemplateReq req) {
     final long startTime = System.nanoTime();
     DropSchemaTemplateStatement statement = new DropSchemaTemplateStatement(req.getTemplateName());
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -707,7 +707,7 @@ public class StatementGenerator {
       pathPatternList.add(new PartialPath(pathPatternString));
     }
     DeleteTimeSeriesStatement statement = new DeleteTimeSeriesStatement(pathPatternList);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -757,8 +757,7 @@ public class StatementGenerator {
       }
       return astVisitor.visit(tree);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordParseCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
     }
   }
 
@@ -780,13 +779,12 @@ public class StatementGenerator {
     insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
-  private static PartialPath parseStorageGroupRawString(String storageGroup)
-      throws IllegalPathException {
-    PartialPath storageGroupPath = new PartialPath(storageGroup);
-    if (storageGroupPath.getNodeLength() < 2) {
-      throw new IllegalPathException(storageGroup);
+  private static PartialPath parseDatabaseRawString(String database) throws IllegalPathException {
+    PartialPath databasePath = new PartialPath(database);
+    if (databasePath.getNodeLength() < 2) {
+      throw new IllegalPathException(database);
     }
-    MetaFormatUtils.checkStorageGroup(storageGroup);
-    return storageGroupPath;
+    MetaFormatUtils.checkDatabase(database);
+    return databasePath;
   }
 }

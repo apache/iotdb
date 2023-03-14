@@ -148,7 +148,13 @@ public enum ConfigPhysicalPlanType {
   UpdateModelState((short) 1202),
   DropModel((short) 1203),
   ShowModel((short) 1204),
-  ShowTrail((short) 1205);
+  ShowTrail((short) 1205),
+
+  /** Pipe Plugin */
+  CreatePipePlugin((short) 1300),
+  DropPipePlugin((short) 1301),
+  GetPipePluginTable((short) 1302),
+  GetPipePluginJar((short) 1303);
 
   private final short planType;
 

@@ -62,7 +62,7 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
  * will be called to create a new connection with the sink when the method {@link
  * PipeConnector#heartbeat()} throws exceptions.
  */
-public interface PipeConnector extends AutoCloseable {
+public interface PipeConnector extends PipePlugin {
 
   /**
    * This method is mainly used to validate {@link PipeParameters} and it is executed before {@link

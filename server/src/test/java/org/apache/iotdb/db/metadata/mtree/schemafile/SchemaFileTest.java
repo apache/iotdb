@@ -85,7 +85,7 @@ public class SchemaFileTest {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IDatabaseMNode<ICacheMNode> newSGNode =
         nodeFactory.createDatabaseDeviceMNode(null, "newSG", 10000L).getAsDatabaseMNode();
-    sf.updateStorageGroupNode(newSGNode);
+    sf.updateDatabaseNode(newSGNode);
 
     ICacheMNode root = virtualTriangleMTree(5, "root.test");
     ICacheMNode int0 = root.getChild("int0");
@@ -160,7 +160,7 @@ public class SchemaFileTest {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
     IDatabaseMNode<ICacheMNode> sgNode =
         nodeFactory.createDatabaseDeviceMNode(null, "sg", 11_111L).getAsDatabaseMNode();
-    sf.updateStorageGroupNode(sgNode);
+    sf.updateDatabaseNode(sgNode);
 
     ICacheMNode root = getVerticalTree(100, "VT");
     Iterator<ICacheMNode> ite = getTreeBFT(root);
