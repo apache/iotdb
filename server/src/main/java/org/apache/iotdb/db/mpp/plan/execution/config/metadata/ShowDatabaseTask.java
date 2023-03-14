@@ -22,21 +22,21 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class ShowStorageGroupTask implements IConfigTask {
+public class ShowDatabaseTask implements IConfigTask {
 
-  private final ShowStorageGroupStatement showStorageGroupStatement;
+  private final ShowDatabaseStatement showDatabaseStatement;
 
-  public ShowStorageGroupTask(ShowStorageGroupStatement showStorageGroupStatement) {
-    this.showStorageGroupStatement = showStorageGroupStatement;
+  public ShowDatabaseTask(ShowDatabaseStatement showDatabaseStatement) {
+    this.showDatabaseStatement = showDatabaseStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showStorageGroup(showStorageGroupStatement);
+    return configTaskExecutor.showDatabase(showDatabaseStatement);
   }
 }

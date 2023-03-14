@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -25,67 +26,61 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
-public class SetTTLPlan extends ConfigPhysicalPlan {
+public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
-  private String[] storageGroupPathPattern;
+  private String storageGroup;
 
-  private long TTL;
+  private long timePartitionInterval;
 
-  public SetTTLPlan() {
-    super(ConfigPhysicalPlanType.SetTTL);
+  public SetTimePartitionIntervalPlan() {
+    super(ConfigPhysicalPlanType.SetTimePartitionInterval);
   }
 
-  public SetTTLPlan(List<String> storageGroupPathPattern, long TTL) {
+  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
     this();
-    this.storageGroupPathPattern = storageGroupPathPattern.toArray(new String[0]);
-    this.TTL = TTL;
+    this.storageGroup = storageGroup;
+    this.timePartitionInterval = timePartitionInterval;
   }
 
-  public String[] getStorageGroupPathPattern() {
-    return storageGroupPathPattern;
+  public String getDatabase() {
+    return storageGroup;
   }
 
-  public long getTTL() {
-    return TTL;
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(storageGroupPathPattern.length);
-    for (String node : storageGroupPathPattern) {
-      BasicStructureSerDeUtil.write(node, stream);
-    }
-    stream.writeLong(TTL);
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeLong(timePartitionInterval);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-
-    int length = buffer.getInt();
-    storageGroupPathPattern = new String[length];
-    for (int i = 0; i < length; i++) {
-      storageGroupPathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
-    }
-    TTL = buffer.getLong();
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    timePartitionInterval = buffer.getLong();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL
-        && Arrays.equals(this.storageGroupPathPattern, setTTLPlan.storageGroupPathPattern);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
+    return timePartitionInterval == that.timePartitionInterval
+        && storageGroup.equals(that.storageGroup);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPathPattern, TTL);
+    return Objects.hash(storageGroup, timePartitionInterval);
   }
 }

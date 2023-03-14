@@ -30,17 +30,11 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar.CastF
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
+import java.util.Map;
+
 import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
-import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
 
-public class CastHelper implements BuiltInScalarFunctionHelper {
-  @Override
-  public void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
-      throws SemanticException {
-    checkFunctionExpressionInputSize(
-        functionExpression.getExpressionString(), functionExpression.getExpressions().size(), 1);
-  }
-
+public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
       throws SemanticException {}
@@ -67,6 +61,14 @@ public class CastHelper implements BuiltInScalarFunctionHelper {
       FunctionExpression expression, LayerPointReader layerPointReader) {
     return new CastFunctionTransformer(
         layerPointReader, this.getBuiltInScalarFunctionReturnType(expression));
+  }
+
+  @Override
+  public void appendFunctionAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    // Cast has only one attribute
+    builder.append(" AS ");
+    builder.append(functionAttributes.entrySet().iterator().next().getValue());
   }
 
   public static int castLongToInt(long value) {

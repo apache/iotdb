@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.metrics.metricsets.net;
 
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,11 +55,16 @@ public class LinuxNetMetricManager implements INetMetricManager {
   private static final long UPDATE_INTERVAL = 10_000L;
 
   private static final int IFACE_NAME_INDEX = 0;
+
+  private static final MetricConfig METRIC_CONFIG =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   // initialized after reading status file
   private int receivedBytesIndex = 0;
   private int transmittedBytesIndex = 0;
   private int receivedPacketsIndex = 0;
   private int transmittedPacketsIndex = 0;
+  private int connectionNum = 0;
+  private final String[] getConnectNumCmd;
   private Set<String> ifaceSet;
 
   private final Map<String, Long> receivedBytesMapForIface;
@@ -70,6 +80,12 @@ public class LinuxNetMetricManager implements INetMetricManager {
     receivedPacketsMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
     transmittedPacketsMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
     collectNetStatusIndex();
+    this.getConnectNumCmd =
+        new String[] {
+          "/bin/sh",
+          "-c",
+          String.format("ls -l /proc/%s/fd | grep socket: | wc -l", METRIC_CONFIG.getPid())
+        };
   }
 
   private long lastUpdateTime = 0L;
@@ -102,6 +118,11 @@ public class LinuxNetMetricManager implements INetMetricManager {
   public Map<String, Long> getTransmittedPackets() {
     checkUpdate();
     return transmittedPacketsMapForIface;
+  }
+
+  @Override
+  public int getConnectionNum() {
+    return connectionNum;
   }
 
   private void checkUpdate() {
@@ -192,6 +213,22 @@ public class LinuxNetMetricManager implements INetMetricManager {
       }
     } catch (IOException e) {
       log.error("Meets error when reading {} for net status", NET_STATUS_PATH, e);
+    }
+
+    // update socket num
+    try {
+      Process process = Runtime.getRuntime().exec(this.getConnectNumCmd);
+      StringBuilder result = new StringBuilder();
+      try (BufferedReader input =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = input.readLine()) != null) {
+          result.append(line);
+        }
+      }
+      this.connectionNum = Integer.parseInt(result.toString().trim());
+    } catch (IOException e) {
+      log.error("Failed to get socket num", e);
     }
   }
 }

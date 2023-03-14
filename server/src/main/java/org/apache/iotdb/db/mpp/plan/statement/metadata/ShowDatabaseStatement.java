@@ -48,12 +48,12 @@ import java.util.stream.Collectors;
  *
  * <p>SHOW DATABASES prefixPath?
  */
-public class ShowStorageGroupStatement extends ShowStatement implements IConfigStatement {
+public class ShowDatabaseStatement extends ShowStatement implements IConfigStatement {
 
   private final PartialPath pathPattern;
   private boolean isDetailed;
 
-  public ShowStorageGroupStatement(PartialPath pathPattern) {
+  public ShowDatabaseStatement(PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;

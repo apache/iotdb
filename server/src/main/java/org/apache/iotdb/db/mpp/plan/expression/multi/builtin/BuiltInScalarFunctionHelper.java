@@ -26,6 +26,10 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.Map;
+
+import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
+
 /**
  * This interface defines the methods that FunctionExpression may use if it is a FunctionExpression
  * representing a built-in function
@@ -35,8 +39,11 @@ public interface BuiltInScalarFunctionHelper extends BuiltInFunctionHelper {
    * Check if the input size is correct. For example, function DIFF only supports one column as
    * input. Throw {@link SemanticException} if the input size is not correct.
    */
-  void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
-      throws SemanticException;
+  default void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
+      throws SemanticException {
+    checkFunctionExpressionInputSize(
+        functionExpression.getExpressionString(), functionExpression.getExpressions().size(), 1);
+  }
 
   /**
    * Check if the input TsDataType is correct. Throw {@link SemanticException} if the type is not
@@ -71,4 +78,16 @@ public interface BuiltInScalarFunctionHelper extends BuiltInFunctionHelper {
    */
   Transformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, LayerPointReader layerPointReader);
+
+  /**
+   * Some builtin-scalar function may have a different header. This method will be called by {@link
+   * FunctionExpression#getExpressionStringInternal()} )}
+   *
+   * @param builder String builder in FunctionExpression. Append function attributes through it.
+   * @param functionAttributes attributes of the function
+   */
+  default void appendFunctionAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    FunctionExpression.appendAttributes(hasExpression, builder, functionAttributes);
+  }
 }

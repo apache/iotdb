@@ -55,4 +55,8 @@ public interface INetMetricManager {
   default Set<String> getIfaceSet() {
     return Collections.emptySet();
   }
+
+  default int getConnectionNum() {
+    return 0;
+  }
 }
