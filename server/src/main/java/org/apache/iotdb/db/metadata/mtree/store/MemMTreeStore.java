@@ -156,7 +156,6 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
     }
     if (result.isDatabase()) {
       root = result;
-      // TODO: 这里和cached不一致，记得检查
     }
     return result;
   }
