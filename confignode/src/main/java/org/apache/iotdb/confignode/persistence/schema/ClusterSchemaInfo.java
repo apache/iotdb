@@ -133,7 +133,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       mTree.setStorageGroup(partialPathName);
 
       // Set DatabaseSchema
-      mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).setStorageGroupSchema(databaseSchema);
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(databaseSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {

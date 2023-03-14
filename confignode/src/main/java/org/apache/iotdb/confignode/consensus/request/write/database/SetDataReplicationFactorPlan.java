@@ -75,8 +75,7 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
       return false;
     }
     SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
-    return dataReplicationFactor == that.dataReplicationFactor
-        && database.equals(that.database);
+    return dataReplicationFactor == that.dataReplicationFactor && database.equals(that.database);
   }
 
   @Override
