@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -179,12 +180,14 @@ public class StatementGenerator {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setDevicePath(new PartialPath(prefix));
     insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
+    insertRowStatement.setType(StatementType.INSERT);
     insertRowStatement.setMeasurements(
-        (String[])
-            recordModelMetricsReq.getMetrics().stream()
-                .map(StatementGenerator::getMetricsName)
-                .toArray());
+        recordModelMetricsReq.getMetrics().stream()
+            .map(StatementGenerator::getMetricsName)
+            .toArray(String[]::new));
     insertRowStatement.setAligned(true);
+    insertRowStatement.setNeedInferType(true);
+    insertRowStatement.setDataTypes(new TSDataType[recordModelMetricsReq.getMetricsSize()]);
     insertRowStatement.setValues(recordModelMetricsReq.getValues().toArray(new Object[0]));
     return insertRowStatement;
   }
