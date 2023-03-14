@@ -153,6 +153,7 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
     | RUNNING

@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 public enum BuiltinScalarFunction {
   DIFF("diff"),
   CAST("cast"),
+  REPLACE("replace"),
   ;
 
   private final String functionName;
@@ -46,6 +47,10 @@ public enum BuiltinScalarFunction {
           Arrays.stream(BuiltinScalarFunction.values())
               .map(BuiltinScalarFunction::getFunctionName)
               .collect(Collectors.toList()));
+
+  public static boolean contains(String functionName) {
+    return NATIVE_FUNCTION_NAMES.contains(functionName.toLowerCase());
+  }
 
   /**
    * We shouldn't apply these functions to each DataRegion for one device, because these functions

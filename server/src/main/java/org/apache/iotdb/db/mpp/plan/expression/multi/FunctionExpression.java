@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -47,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
 
 public class FunctionExpression extends Expression {
 
@@ -264,40 +263,42 @@ public class FunctionExpression extends Expression {
         }
       }
       if (!functionAttributes.isEmpty()) {
-        // currently only the header of cast function is different
-        // this if-else branch can be extracted into a method if more new functions have different
-        // header
-        if (functionName.equalsIgnoreCase(CAST_FUNCTION)) {
-          // Cast has only one attribute
-          builder.append(" AS ");
-          builder.append(functionAttributes.entrySet().iterator().next().getValue());
+        // Some builtin-scalar function may have different header.
+        if (BuiltinScalarFunction.contains(functionName)) {
+          BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+              .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
         } else {
-          if (!expressions.isEmpty()) {
-            builder.append(", ");
-          }
-          Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
-          Entry<String, String> entry = iterator.next();
-          builder
-              .append("\"")
-              .append(entry.getKey())
-              .append("\"=\"")
-              .append(entry.getValue())
-              .append("\"");
-          while (iterator.hasNext()) {
-            entry = iterator.next();
-            builder
-                .append(", ")
-                .append("\"")
-                .append(entry.getKey())
-                .append("\"=\"")
-                .append(entry.getValue())
-                .append("\"");
-          }
+          appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
         }
       }
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  public static void appendAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    if (hasExpression) {
+      builder.append(", ");
+    }
+    Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
+    Entry<String, String> entry = iterator.next();
+    builder
+        .append("\"")
+        .append(entry.getKey())
+        .append("\"=\"")
+        .append(entry.getValue())
+        .append("\"");
+    while (iterator.hasNext()) {
+      entry = iterator.next();
+      builder
+          .append(", ")
+          .append("\"")
+          .append(entry.getKey())
+          .append("\"=\"")
+          .append(entry.getValue())
+          .append("\"");
+    }
   }
 
   @Override
