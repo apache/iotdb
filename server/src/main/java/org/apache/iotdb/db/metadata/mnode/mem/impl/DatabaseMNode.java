@@ -27,7 +27,7 @@ public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode>
     implements IMemMNode {
 
   public DatabaseMNode(IMemMNode parent, String name) {
-    super(new BasicInternalMNode(parent, name), new DatabaseInfo(name));
+    super(new BasicInternalMNode(parent, name), new DatabaseInfo<>());
   }
 
   // TODO: @yukun, remove this constructor

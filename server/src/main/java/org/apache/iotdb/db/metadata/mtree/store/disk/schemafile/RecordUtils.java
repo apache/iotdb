@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -63,9 +63,9 @@ public class RecordUtils {
   private static final byte ENTITY_TYPE = 1;
   private static final byte MEASUREMENT_TYPE = 4;
 
-  private static final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private static final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
-  public static ByteBuffer node2Buffer(ICacheMNode node) {
+  public static ByteBuffer node2Buffer(ICachedMNode node) {
     if (node.isMeasurement()) {
       return measurement2Buffer(node.getAsMeasurementMNode());
     } else {
@@ -95,7 +95,7 @@ public class RecordUtils {
    * @param node
    * @return
    */
-  private static ByteBuffer internal2Buffer(ICacheMNode node) {
+  private static ByteBuffer internal2Buffer(ICachedMNode node) {
     byte nodeType = INTERNAL_TYPE;
     boolean isAligned = false;
     int schemaTemplateIdWithState = MetadataConstant.NON_TEMPLATE;
@@ -140,7 +140,7 @@ public class RecordUtils {
    *
    * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
    */
-  private static ByteBuffer measurement2Buffer(IMeasurementMNode<ICacheMNode> node) {
+  private static ByteBuffer measurement2Buffer(IMeasurementMNode<ICachedMNode> node) {
     int bufferLength =
         node.getAlias() == null
             ? 4 + MEASUREMENT_BASIC_LENGTH
@@ -178,9 +178,9 @@ public class RecordUtils {
    * @param buffer content of the node
    * @return node constructed from buffer
    */
-  public static ICacheMNode buffer2Node(String nodeName, ByteBuffer buffer)
+  public static ICachedMNode buffer2Node(String nodeName, ByteBuffer buffer)
       throws MetadataException {
-    ICacheMNode resNode;
+    ICachedMNode resNode;
 
     byte nodeType = ReadWriteIOUtils.readByte(buffer);
     if (nodeType < 2) {
@@ -290,7 +290,7 @@ public class RecordUtils {
   @TestOnly
   public static String buffer2String(ByteBuffer buffer) throws MetadataException {
     StringBuilder builder = new StringBuilder("[");
-    ICacheMNode node = buffer2Node("unspecified", buffer);
+    ICachedMNode node = buffer2Node("unspecified", buffer);
     if (node.isMeasurement()) {
       builder.append("measurementNode, ");
       builder.append(
@@ -334,12 +334,12 @@ public class RecordUtils {
 
   // region padding with ICacheMNode
   /** These 2 convert methods are coupling with tag, template module respectively. */
-  private static long convertTags2Long(IMeasurementMNode<ICacheMNode> node) {
+  private static long convertTags2Long(IMeasurementMNode<ICachedMNode> node) {
     return node.getOffset();
   }
 
   /** Including schema and pre-delete flag of a measurement, could be expanded further. */
-  private static long convertMeasStat2Long(IMeasurementMNode<ICacheMNode> node) {
+  private static long convertMeasStat2Long(IMeasurementMNode<ICachedMNode> node) {
     byte dataType = node.getSchema().getTypeInByte();
     byte encoding = node.getSchema().getEncodingType().serialize();
     byte compressor = node.getSchema().getCompressor().serialize();
@@ -348,7 +348,7 @@ public class RecordUtils {
     return (preDelete << 24 | dataType << 16 | encoding << 8 | compressor);
   }
 
-  private static ICacheMNode paddingMeasurement(
+  private static ICachedMNode paddingMeasurement(
       String nodeName, long tagIndex, long statsBytes, String alias, Map<String, String> props) {
     byte preDel = (byte) (statsBytes >>> 24);
     byte dataType = (byte) (statsBytes >>> 16);
@@ -363,7 +363,7 @@ public class RecordUtils {
             CompressionType.deserialize(compressor),
             props);
 
-    ICacheMNode res =
+    ICachedMNode res =
         nodeFactory.createMeasurementMNode(null, nodeName, schema, alias).getAsMNode();
     res.getAsMeasurementMNode().setOffset(tagIndex);
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 
 import java.util.List;
@@ -33,14 +33,14 @@ public class MemManager {
     this.regionStatistics = regionStatistics;
   }
 
-  public void requestPinnedMemResource(ICacheMNode node) {
+  public void requestPinnedMemResource(ICachedMNode node) {
     int size = node.estimateSize();
     regionStatistics.requestMemory(size);
     regionStatistics.updatePinnedMemorySize(size);
     regionStatistics.updatePinnedMNodeNum(1);
   }
 
-  public void upgradeMemResource(ICacheMNode node) {
+  public void upgradeMemResource(ICachedMNode node) {
     int size = node.estimateSize();
     regionStatistics.updatePinnedMemorySize(size);
     regionStatistics.updatePinnedMNodeNum(1);
@@ -48,7 +48,7 @@ public class MemManager {
     regionStatistics.updateUnpinnedMNodeNum(-1);
   }
 
-  public void releasePinnedMemResource(ICacheMNode node) {
+  public void releasePinnedMemResource(ICachedMNode node) {
     int size = node.estimateSize();
     regionStatistics.updateUnpinnedMemorySize(size);
     regionStatistics.updateUnpinnedMNodeNum(1);
@@ -56,16 +56,16 @@ public class MemManager {
     regionStatistics.updatePinnedMNodeNum(-1);
   }
 
-  public void releaseMemResource(ICacheMNode node) {
+  public void releaseMemResource(ICachedMNode node) {
     int size = node.estimateSize();
     regionStatistics.updateUnpinnedMemorySize(-size);
     regionStatistics.updateUnpinnedMNodeNum(-1);
     regionStatistics.releaseMemory(size);
   }
 
-  public void releaseMemResource(List<ICacheMNode> evictedNodes) {
+  public void releaseMemResource(List<ICachedMNode> evictedNodes) {
     int size = 0;
-    for (ICacheMNode node : evictedNodes) {
+    for (ICachedMNode node : evictedNodes) {
       size += node.estimateSize();
     }
     regionStatistics.updateUnpinnedMNodeNum(-evictedNodes.size());

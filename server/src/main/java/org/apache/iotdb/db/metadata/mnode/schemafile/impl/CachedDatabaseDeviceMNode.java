@@ -18,24 +18,18 @@
  */
 package org.apache.iotdb.db.metadata.mnode.schemafile.impl;
 
-import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.mem.info.MeasurementInfo;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
+import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.info.DatabaseDeviceInfo;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CachedBasicMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode, CacheBasicMNode>
-    implements ICacheMNode {
+public class CachedDatabaseDeviceMNode
+    extends AbstractDatabaseDeviceMNode<ICachedMNode, CachedBasicMNode> implements ICachedMNode {
 
-  public CacheMeasurementMNode(
-      IDeviceMNode<ICacheMNode> parent, String name, IMeasurementSchema schema, String alias) {
-    super(
-        new CacheBasicMNode(parent == null ? null : parent.getAsMNode(), name),
-        new MeasurementInfo(schema, alias));
+  public CachedDatabaseDeviceMNode(ICachedMNode parent, String name, long dataTTL) {
+    super(new CachedBasicInternalMNode(parent, name), new DatabaseDeviceInfo<>());
+    setDataTTL(dataTTL);
   }
 
   @Override
@@ -49,12 +43,7 @@ public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode,
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
-  }
-
-  @Override
-  public IMNodeContainer<ICacheMNode> getChildren() {
-    return CachedMNodeContainer.emptyMNodeContainer();
   }
 }

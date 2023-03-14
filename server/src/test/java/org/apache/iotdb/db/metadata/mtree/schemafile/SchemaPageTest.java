@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
 
 public class SchemaPageTest {
 
-  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -57,11 +57,11 @@ public class SchemaPageTest {
   public void flatTreeInsert() throws IOException, MetadataException {
     ISchemaPage page =
         ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
-    ICacheMNode root = virtualFlatMTree(15);
+    ICachedMNode root = virtualFlatMTree(15);
     for (int i = 0; i < 7; i++) {
       page.getAsSegmentedPage().allocNewSegment(SchemaFileConfig.SEG_SIZE_LST[0]);
       int cnt = 0;
-      for (ICacheMNode child : root.getChildren().values()) {
+      for (ICachedMNode child : root.getChildren().values()) {
         cnt++;
         try {
           page.getAsSegmentedPage()
@@ -105,8 +105,8 @@ public class SchemaPageTest {
     Assert.assertEquals(256, (int) nPage.getAsInternalPage().getRecordByKey("aab"));
   }
 
-  private ICacheMNode virtualFlatMTree(int childSize) {
-    ICacheMNode internalNode = nodeFactory.createDeviceMNode(null, "vRoot1").getAsMNode();
+  private ICachedMNode virtualFlatMTree(int childSize) {
+    ICachedMNode internalNode = nodeFactory.createDeviceMNode(null, "vRoot1").getAsMNode();
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;

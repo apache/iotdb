@@ -22,16 +22,16 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheAboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheBasicInternalMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedAboveDatabaseMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedBasicInternalMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedDatabaseMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedDeviceMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
+public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
 
   private CacheMNodeFactory() {}
 
@@ -46,39 +46,39 @@ public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
   }
 
   @Override
-  public IMeasurementMNode<ICacheMNode> createMeasurementMNode(
-      IDeviceMNode<ICacheMNode> parent, String name, IMeasurementSchema schema, String alias) {
-    return new CacheMeasurementMNode(parent, name, schema, alias);
+  public IMeasurementMNode<ICachedMNode> createMeasurementMNode(
+      IDeviceMNode<ICachedMNode> parent, String name, IMeasurementSchema schema, String alias) {
+    return new CachedMeasurementMNode(parent, name, schema, alias);
   }
 
   @Override
-  public IDeviceMNode<ICacheMNode> createDeviceMNode(ICacheMNode parent, String name) {
-    return new CacheDeviceMNode(parent, name);
+  public IDeviceMNode<ICachedMNode> createDeviceMNode(ICachedMNode parent, String name) {
+    return new CachedDeviceMNode(parent, name);
   }
 
   @Override
-  public IDatabaseMNode<ICacheMNode> createDatabaseMNode(ICacheMNode parent, String name) {
-    return new CacheDatabaseMNode(parent, name);
+  public IDatabaseMNode<ICachedMNode> createDatabaseMNode(ICachedMNode parent, String name) {
+    return new CachedDatabaseMNode(parent, name);
   }
 
   @Override
-  public IDatabaseMNode<ICacheMNode> createDatabaseMNode(
-      ICacheMNode parent, String name, long dataTTL) {
-    return new CacheDatabaseMNode(parent, name, dataTTL);
+  public IDatabaseMNode<ICachedMNode> createDatabaseMNode(
+      ICachedMNode parent, String name, long dataTTL) {
+    return new CachedDatabaseMNode(parent, name, dataTTL);
   }
 
   @Override
-  public ICacheMNode createDatabaseDeviceMNode(ICacheMNode parent, String name, long dataTTL) {
-    return new CacheDatabaseDeviceMNode(parent, name, dataTTL);
+  public ICachedMNode createDatabaseDeviceMNode(ICachedMNode parent, String name, long dataTTL) {
+    return new CachedDatabaseDeviceMNode(parent, name, dataTTL);
   }
 
   @Override
-  public ICacheMNode createAboveDatabaseMNode(ICacheMNode parent, String name) {
-    return new CacheAboveDatabaseMNode(parent, name);
+  public ICachedMNode createAboveDatabaseMNode(ICachedMNode parent, String name) {
+    return new CachedAboveDatabaseMNode(parent, name);
   }
 
   @Override
-  public ICacheMNode createInternalMNode(ICacheMNode parent, String name) {
-    return new CacheBasicInternalMNode(parent, name);
+  public ICachedMNode createInternalMNode(ICachedMNode parent, String name) {
+    return new CachedBasicInternalMNode(parent, name);
   }
 }

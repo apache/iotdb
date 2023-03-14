@@ -19,15 +19,18 @@
 package org.apache.iotdb.db.metadata.mnode.config.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.metadata.mnode.config.basic.ConfigBasicMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.info.DatabaseInfo;
+import org.apache.iotdb.db.metadata.mnode.config.info.ConfigDatabaseInfo;
 
 public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, ConfigBasicMNode>
     implements IConfigMNode {
+  private final ConfigDatabaseInfo configDatabaseInfo;
 
   public ConfigDatabaseMNode(IConfigMNode parent, String name) {
-    super(new ConfigBasicInternalMNode(parent, name), new DatabaseInfo(name));
+    super(new ConfigBasicInternalMNode(parent, name), new ConfigDatabaseInfo(name));
+    this.configDatabaseInfo = (ConfigDatabaseInfo) getDatabaseInfo();
   }
 
   @Override
@@ -58,6 +61,16 @@ public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, Con
   @Override
   public void unsetSchemaTemplate() {
     basicMNode.unsetSchemaTemplate();
+  }
+
+  @Override
+  public void setDatabaseSchema(TDatabaseSchema schema) {
+    configDatabaseInfo.setSchema(schema);
+  }
+
+  @Override
+  public TDatabaseSchema getDatabaseSchema() {
+    return configDatabaseInfo.getSchema();
   }
 
   @Override

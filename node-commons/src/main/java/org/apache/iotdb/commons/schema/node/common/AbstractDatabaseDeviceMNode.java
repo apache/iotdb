@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import java.util.Map;
 
@@ -194,23 +193,6 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<N>, BasicNode
   @Override
   public void setDataTTL(long dataTTL) {
     databaseDeviceInfo.setDataTTL(dataTTL);
-  }
-
-  @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
-
-  @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {}
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {}
-
-  @Override
-  public void setStorageGroupSchema(TDatabaseSchema schema) {}
-
-  @Override
-  public TDatabaseSchema getStorageGroupSchema() {
-    return null;
   }
 
   @Override

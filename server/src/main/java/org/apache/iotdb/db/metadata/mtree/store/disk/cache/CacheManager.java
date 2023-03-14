@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
@@ -73,7 +73,7 @@ public abstract class CacheManager implements ICacheManager {
     this.memManager = memManager;
   }
 
-  public void initRootStatus(ICacheMNode root) {
+  public void initRootStatus(ICachedMNode root) {
     pinMNodeWithMemStatusUpdate(root);
   }
 
@@ -84,7 +84,7 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterMemoryRead(ICacheMNode node) throws MNodeNotCachedException {
+  public void updateCacheStatusAfterMemoryRead(ICachedMNode node) throws MNodeNotCachedException {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
       throw new MNodeNotCachedException();
@@ -107,7 +107,7 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterDiskRead(ICacheMNode node) {
+  public void updateCacheStatusAfterDiskRead(ICachedMNode node) {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
@@ -121,7 +121,7 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterAppend(ICacheMNode node) {
+  public void updateCacheStatusAfterAppend(ICachedMNode node) {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
@@ -135,9 +135,9 @@ public abstract class CacheManager implements ICacheManager {
    *
    * @param node
    */
-  private void addToBufferAfterAppend(ICacheMNode node) {
+  private void addToBufferAfterAppend(ICachedMNode node) {
     removeAncestorsFromCache(node);
-    ICacheMNode parent = node.getParent();
+    ICachedMNode parent = node.getParent();
     CacheEntry cacheEntry = getCacheEntry(parent);
     if (!cacheEntry.isVolatile()) {
       // the cacheEntry may be set to volatile concurrently, the unVolatile node should not be added
@@ -154,9 +154,9 @@ public abstract class CacheManager implements ICacheManager {
    * The ancestors of volatile node should not stay in nodeCache in which the node will be evicted.
    * When invoking this method, all the ancestors have been pinned.
    */
-  private void removeAncestorsFromCache(ICacheMNode node) {
-    ICacheMNode parent = node.getParent();
-    ICacheMNode current = node;
+  private void removeAncestorsFromCache(ICachedMNode node) {
+    ICachedMNode parent = node.getParent();
+    ICachedMNode current = node;
     CacheEntry cacheEntry = getCacheEntry(parent);
     while (!current.isDatabase() && isInNodeCache(cacheEntry)) {
       removeFromNodeCache(cacheEntry);
@@ -173,7 +173,7 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterUpdate(ICacheMNode node) {
+  public void updateCacheStatusAfterUpdate(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (!cacheEntry.isVolatile()) {
       if (!node.isDatabase()) {
@@ -199,14 +199,14 @@ public abstract class CacheManager implements ICacheManager {
    *
    * @param node
    */
-  private void addToBufferAfterUpdate(ICacheMNode node) {
+  private void addToBufferAfterUpdate(ICachedMNode node) {
     if (node.isDatabase()) {
       nodeBuffer.setUpdatedStorageGroupMNode(node.getAsDatabaseMNode());
       return;
     }
 
     removeAncestorsFromCache(node);
-    ICacheMNode parent = node.getParent();
+    ICachedMNode parent = node.getParent();
     CacheEntry cacheEntry = getCacheEntry(parent);
 
     /*
@@ -235,25 +235,25 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void updateCacheStatusAfterPersist(ICacheMNode node) {
-    ICacheMNode tmp = node;
+  public void updateCacheStatusAfterPersist(ICachedMNode node) {
+    ICachedMNode tmp = node;
     while (!tmp.isDatabase() && !isInNodeCache(getCacheEntry(tmp))) {
       addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
     }
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    Map<String, ICacheMNode> persistedChildren = container.getNewChildBuffer();
-    for (ICacheMNode child : persistedChildren.values()) {
+    Map<String, ICachedMNode> persistedChildren = container.getNewChildBuffer();
+    for (ICachedMNode child : persistedChildren.values()) {
       updateCacheStatusAfterPersist(child, container);
     }
 
     persistedChildren = container.getUpdatedChildBuffer();
-    for (ICacheMNode child : persistedChildren.values()) {
+    for (ICachedMNode child : persistedChildren.values()) {
       updateCacheStatusAfterPersist(child, container);
     }
   }
 
-  private void updateCacheStatusAfterPersist(ICacheMNode node, ICachedMNodeContainer container) {
+  private void updateCacheStatusAfterPersist(ICachedMNode node, ICachedMNodeContainer container) {
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(false);
     container.moveMNodeToCache(node.getName());
@@ -266,8 +266,8 @@ public abstract class CacheManager implements ICacheManager {
    * @return null if not exist
    */
   @Override
-  public IDatabaseMNode<ICacheMNode> collectUpdatedStorageGroupMNodes() {
-    IDatabaseMNode<ICacheMNode> storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
+  public IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes() {
+    IDatabaseMNode<ICachedMNode> storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
     nodeBuffer.setUpdatedStorageGroupMNode(null);
     return storageGroupMNode;
   }
@@ -279,22 +279,22 @@ public abstract class CacheManager implements ICacheManager {
    * @return
    */
   @Override
-  public List<ICacheMNode> collectVolatileMNodes() {
-    List<ICacheMNode> nodesToPersist = new ArrayList<>();
+  public List<ICachedMNode> collectVolatileMNodes() {
+    List<ICachedMNode> nodesToPersist = new ArrayList<>();
     nodeBuffer.forEachNode(node -> collectVolatileNodes(node, nodesToPersist));
     nodeBuffer.clear();
     return nodesToPersist;
   }
 
-  private void collectVolatileNodes(ICacheMNode node, List<ICacheMNode> nodesToPersist) {
-    Iterator<ICacheMNode> bufferIterator =
+  private void collectVolatileNodes(ICachedMNode node, List<ICachedMNode> nodesToPersist) {
+    Iterator<ICachedMNode> bufferIterator =
         getCachedMNodeContainer(node).getChildrenBufferIterator();
 
     if (bufferIterator.hasNext()) {
       nodesToPersist.add(node);
     }
 
-    ICacheMNode child;
+    ICachedMNode child;
     while (bufferIterator.hasNext()) {
       child = bufferIterator.next();
       collectVolatileNodes(child, nodesToPersist);
@@ -302,11 +302,11 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   @Override
-  public void remove(ICacheMNode node) {
+  public void remove(ICachedMNode node) {
     removeRecursively(node);
   }
 
-  private void removeOne(CacheEntry cacheEntry, ICacheMNode node) {
+  private void removeOne(CacheEntry cacheEntry, ICachedMNode node) {
     if (cacheEntry.isVolatile()) {
       nodeBuffer.remove(cacheEntry);
     } else {
@@ -321,13 +321,13 @@ public abstract class CacheManager implements ICacheManager {
     memManager.releaseMemResource(node);
   }
 
-  private void removeRecursively(ICacheMNode node) {
+  private void removeRecursively(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
       return;
     }
     removeOne(cacheEntry, node);
-    for (ICacheMNode child : node.getChildren().values()) {
+    for (ICachedMNode child : node.getChildren().values()) {
       removeRecursively(child);
     }
   }
@@ -340,9 +340,9 @@ public abstract class CacheManager implements ICacheManager {
    */
   @Override
   public synchronized boolean evict() {
-    ICacheMNode node = null;
+    ICachedMNode node = null;
     CacheEntry cacheEntry = null;
-    List<ICacheMNode> evictedMNodes = new ArrayList<>();
+    List<ICachedMNode> evictedMNodes = new ArrayList<>();
     boolean isSuccess = false;
     while (!isSuccess) {
       node = getPotentialNodeTobeEvicted();
@@ -376,8 +376,8 @@ public abstract class CacheManager implements ICacheManager {
     return !evictedMNodes.isEmpty();
   }
 
-  private void collectEvictedMNodes(ICacheMNode node, List<ICacheMNode> evictedMNodes) {
-    for (ICacheMNode child : node.getChildren().values()) {
+  private void collectEvictedMNodes(ICachedMNode node, List<ICachedMNode> evictedMNodes) {
+    for (ICachedMNode child : node.getChildren().values()) {
       removeFromNodeCache(getCacheEntry(child));
       child.setCacheEntry(null);
       evictedMNodes.add(child);
@@ -394,7 +394,7 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   @Override
-  public void pinMNode(ICacheMNode node) throws MNodeNotPinnedException {
+  public void pinMNode(ICachedMNode node) throws MNodeNotPinnedException {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null || !cacheEntry.isPinned()) {
       throw new MNodeNotPinnedException();
@@ -409,7 +409,7 @@ public abstract class CacheManager implements ICacheManager {
     }
   }
 
-  private void pinMNodeWithMemStatusUpdate(ICacheMNode node) {
+  private void pinMNodeWithMemStatusUpdate(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first
     if (cacheEntry == null) {
@@ -421,11 +421,11 @@ public abstract class CacheManager implements ICacheManager {
     doPin(node);
   }
 
-  private void doPin(ICacheMNode node) {
+  private void doPin(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     // do pin MNode in memory
     if (!cacheEntry.isPinned()) {
-      ICacheMNode parent = node.getParent();
+      ICachedMNode parent = node.getParent();
       if (!node.isDatabase()) {
         getCacheEntry(parent).pin();
       }
@@ -443,7 +443,7 @@ public abstract class CacheManager implements ICacheManager {
    * @return
    */
   @Override
-  public boolean unPinMNode(ICacheMNode node) {
+  public boolean unPinMNode(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
       return false;
@@ -452,7 +452,7 @@ public abstract class CacheManager implements ICacheManager {
     return doUnPin(node);
   }
 
-  private boolean doUnPin(ICacheMNode node) {
+  private boolean doUnPin(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
 
     boolean isPinStatusChanged = false;
@@ -472,13 +472,13 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   @Override
-  public void clear(ICacheMNode root) {
+  public void clear(ICachedMNode root) {
     clearMNodeInMemory(root);
     clearNodeCache();
     nodeBuffer.clear();
   }
 
-  private void clearMNodeInMemory(ICacheMNode node) {
+  private void clearMNodeInMemory(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (cacheEntry == null) {
       return;
@@ -489,13 +489,13 @@ public abstract class CacheManager implements ICacheManager {
     }
     memManager.releaseMemResource(node);
 
-    Iterator<ICacheMNode> iterator = getCachedMNodeContainer(node).getChildrenIterator();
+    Iterator<ICachedMNode> iterator = getCachedMNodeContainer(node).getChildrenIterator();
     while (iterator.hasNext()) {
       clearMNodeInMemory(iterator.next());
     }
   }
 
-  protected CacheEntry getCacheEntry(ICacheMNode node) {
+  protected CacheEntry getCacheEntry(ICachedMNode node) {
     return node.getCacheEntry();
   }
 
@@ -504,7 +504,7 @@ public abstract class CacheManager implements ICacheManager {
     return nodeBuffer.getBufferNodeNum();
   }
 
-  protected void initCacheEntryForNode(ICacheMNode node) {
+  protected void initCacheEntryForNode(ICachedMNode node) {
     node.setCacheEntry(new CacheEntry());
   }
 
@@ -512,15 +512,15 @@ public abstract class CacheManager implements ICacheManager {
 
   // MNode update operation like node replace may reset the mapping between cacheEntry and node,
   // thus it should be updated
-  protected abstract void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICacheMNode node);
+  protected abstract void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node);
 
   protected abstract boolean isInNodeCache(CacheEntry cacheEntry);
 
-  protected abstract void addToNodeCache(CacheEntry cacheEntry, ICacheMNode node);
+  protected abstract void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node);
 
   protected abstract void removeFromNodeCache(CacheEntry cacheEntry);
 
-  protected abstract ICacheMNode getPotentialNodeTobeEvicted();
+  protected abstract ICachedMNode getPotentialNodeTobeEvicted();
 
   protected abstract void clearNodeCache();
 
@@ -528,8 +528,8 @@ public abstract class CacheManager implements ICacheManager {
 
     private static final int MAP_NUM = 17;
 
-    private IDatabaseMNode<ICacheMNode> updatedStorageGroupMNode;
-    private Map<CacheEntry, ICacheMNode>[] maps = new Map[MAP_NUM];
+    private IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode;
+    private Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
 
     NodeBuffer() {
       for (int i = 0; i < MAP_NUM; i++) {
@@ -537,15 +537,15 @@ public abstract class CacheManager implements ICacheManager {
       }
     }
 
-    public IDatabaseMNode<ICacheMNode> getUpdatedStorageGroupMNode() {
+    public IDatabaseMNode<ICachedMNode> getUpdatedStorageGroupMNode() {
       return updatedStorageGroupMNode;
     }
 
-    public void setUpdatedStorageGroupMNode(IDatabaseMNode<ICacheMNode> updatedStorageGroupMNode) {
+    public void setUpdatedStorageGroupMNode(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode) {
       this.updatedStorageGroupMNode = updatedStorageGroupMNode;
     }
 
-    void put(CacheEntry cacheEntry, ICacheMNode node) {
+    void put(CacheEntry cacheEntry, ICachedMNode node) {
       maps[getLoc(cacheEntry)].put(cacheEntry, node);
     }
 
@@ -553,9 +553,9 @@ public abstract class CacheManager implements ICacheManager {
       maps[getLoc(cacheEntry)].remove(cacheEntry);
     }
 
-    void forEachNode(Consumer<ICacheMNode> action) {
-      for (Map<CacheEntry, ICacheMNode> map : maps) {
-        for (ICacheMNode node : map.values()) {
+    void forEachNode(Consumer<ICachedMNode> action) {
+      for (Map<CacheEntry, ICachedMNode> map : maps) {
+        for (ICachedMNode node : map.values()) {
           action.accept(node);
         }
       }
@@ -570,7 +570,7 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     void clear() {
-      for (Map<CacheEntry, ICacheMNode> map : maps) {
+      for (Map<CacheEntry, ICachedMNode> map : maps) {
         map.clear();
       }
     }

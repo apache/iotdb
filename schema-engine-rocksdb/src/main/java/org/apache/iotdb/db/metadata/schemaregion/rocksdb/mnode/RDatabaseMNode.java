@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -109,23 +108,6 @@ public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode<IMe
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
-
-  @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {}
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {}
-
-  @Override
-  public void setStorageGroupSchema(TDatabaseSchema schema) {}
-
-  @Override
-  public TDatabaseSchema getStorageGroupSchema() {
-    return null;
   }
 
   @Override

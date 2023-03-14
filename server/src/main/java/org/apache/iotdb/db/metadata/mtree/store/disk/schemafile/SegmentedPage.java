@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedExcepti
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -42,7 +42,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   // maintains leaf segment instance inside this page, lazily instantiated
   // map segmentIndex -> segmentInstance
-  private final transient Map<Short, ISegment<ByteBuffer, ICacheMNode>> segCacheMap;
+  private final transient Map<Short, ISegment<ByteBuffer, ICachedMNode>> segCacheMap;
 
   /**
    * This class is aimed to manage space inside one page.
@@ -81,7 +81,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   @Override
   public long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
-    ISegment<ByteBuffer, ICacheMNode> tarSeg = getSegment(segIdx);
+    ISegment<ByteBuffer, ICachedMNode> tarSeg = getSegment(segIdx);
 
     if (tarSeg.insertRecord(key, buffer) < 0) {
       // relocate inside page, if not enough space for new size segment, throw exception
@@ -100,18 +100,18 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  public ICacheMNode read(short segIdx, String key) throws MetadataException {
+  public ICachedMNode read(short segIdx, String key) throws MetadataException {
     return getSegment(segIdx).getRecordByKey(key);
   }
 
   @Override
-  public ICacheMNode readByAlias(short segIdx, String alias) throws MetadataException {
+  public ICachedMNode readByAlias(short segIdx, String alias) throws MetadataException {
     return getSegment(segIdx).getRecordByAlias(alias);
   }
 
   @Override
   public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
-    ISegment<ByteBuffer, ICacheMNode> seg = getSegment(segIdx);
+    ISegment<ByteBuffer, ICachedMNode> seg = getSegment(segIdx);
     try {
       if (seg.updateRecord(key, buffer) < 0) {
         throw new MetadataException("Record to update not found.");
@@ -131,7 +131,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  public Queue<ICacheMNode> getChildren(short segId) throws MetadataException {
+  public Queue<ICachedMNode> getChildren(short segId) throws MetadataException {
     return getSegment(segId).getAllRecords();
   }
 
@@ -189,7 +189,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   @Override
   public synchronized short allocNewSegment(short size) throws MetadataException {
-    ISegment<ByteBuffer, ICacheMNode> newSeg =
+    ISegment<ByteBuffer, ICachedMNode> newSeg =
         WrappedSegment.initAsSegment(allocSpareBufferSlice(size));
 
     if (newSeg == null) {
@@ -224,7 +224,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
     this.pageBuffer.position(spareOffset);
     this.pageBuffer.limit(spareOffset + newSegSize);
-    ISegment<ByteBuffer, ICacheMNode> newSeg =
+    ISegment<ByteBuffer, ICachedMNode> newSeg =
         WrappedSegment.loadAsSegment(this.pageBuffer.slice());
 
     // registerNewSegment will modify page status considering the new segment
@@ -291,7 +291,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   @Override
   public synchronized void syncPageBuffer() {
     super.syncPageBuffer();
-    for (Map.Entry<Short, ISegment<ByteBuffer, ICacheMNode>> entry : segCacheMap.entrySet()) {
+    for (Map.Entry<Short, ISegment<ByteBuffer, ICachedMNode>> entry : segCacheMap.entrySet()) {
       entry.getValue().syncBuffer();
     }
 
@@ -332,7 +332,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    * @param index index rather than offset of the segment
    * @return null if InternalSegment, otherwise instance
    */
-  private ISegment<ByteBuffer, ICacheMNode> getSegment(short index)
+  private ISegment<ByteBuffer, ICachedMNode> getSegment(short index)
       throws SegmentNotFoundException {
     if (segOffsetLst.size() <= index || segOffsetLst.get(index) < 0) {
       throw new SegmentNotFoundException(pageIndex, index);
@@ -350,7 +350,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     bufferR.position(getSegmentOffset(index));
     bufferR.limit(bufferR.position() + WrappedSegment.getSegBufLen(bufferR));
 
-    ISegment<ByteBuffer, ICacheMNode> res;
+    ISegment<ByteBuffer, ICachedMNode> res;
     try {
       res = WrappedSegment.loadAsSegment(bufferR.slice());
     } catch (RecordDuplicatedException e) {
@@ -389,7 +389,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    * @return reallocated segment instance
    * @throws SchemaPageOverflowException if this page has no enough space
    */
-  private ISegment<ByteBuffer, ICacheMNode> relocateSegment(
+  private ISegment<ByteBuffer, ICachedMNode> relocateSegment(
       ISegment<?, ?> seg, short segIdx, short newSize) throws MetadataException {
     if (seg.size() == SchemaFileConfig.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
       throw new SchemaPageOverflowException(pageIndex);
@@ -404,7 +404,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
     // allocate buffer slice successfully
     seg.extendsTo(newBuffer);
-    ISegment<ByteBuffer, ICacheMNode> newSeg = WrappedSegment.loadAsSegment(newBuffer);
+    ISegment<ByteBuffer, ICachedMNode> newSeg = WrappedSegment.loadAsSegment(newBuffer);
 
     // since this buffer is allocated from pageSpareOffset, new spare offset can simply add size up
     segOffsetLst.set(segIdx, spareOffset);
@@ -516,7 +516,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    * @param newSize extended size
    * @return extended segment based on page buffer
    */
-  private ISegment<ByteBuffer, ICacheMNode> extendSegmentInPlace(
+  private ISegment<ByteBuffer, ICachedMNode> extendSegmentInPlace(
       short segId, short oriSegSize, short newSize) throws MetadataException {
     // extend segment, modify pageSpareOffset, segCacheMap
     short offset = getSegmentOffset(segId);
@@ -539,7 +539,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     // pass page buffer slice to instantiate segment
     pageBuffer.position(offset);
     pageBuffer.limit(offset + newSize);
-    ISegment<ByteBuffer, ICacheMNode> newSeg = WrappedSegment.loadAsSegment(pageBuffer.slice());
+    ISegment<ByteBuffer, ICachedMNode> newSeg = WrappedSegment.loadAsSegment(pageBuffer.slice());
 
     // modify status
     segOffsetLst.set(segId, offset);
@@ -552,7 +552,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   public void updateRecordSegAddr(short segId, String key, long newSegAddr)
       throws SegmentNotFoundException {
-    ISegment<ByteBuffer, ICacheMNode> seg = getSegment(segId);
+    ISegment<ByteBuffer, ICachedMNode> seg = getSegment(segId);
     // TODO: add to interface
     ((WrappedSegment) seg).updateRecordSegAddr(key, newSegAddr);
   }
@@ -564,7 +564,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    * @param seg the segment to register
    * @return index of the segment
    */
-  private synchronized short registerNewSegment(ISegment<ByteBuffer, ICacheMNode> seg)
+  private synchronized short registerNewSegment(ISegment<ByteBuffer, ICachedMNode> seg)
       throws MetadataException {
     short thisIndex = (short) segOffsetLst.size();
     if (segCacheMap.containsKey(thisIndex)) {

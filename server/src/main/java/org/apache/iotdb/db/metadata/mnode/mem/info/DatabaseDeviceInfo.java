@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mnode.mem.info;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.info.IDatabaseDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
     implements IDatabaseDeviceInfo<N> {
@@ -32,7 +31,7 @@ public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
   private long dataTTL;
 
   @Override
-  public void moveDataToNewMNode(IDatabaseMNode<?> newMNode) {
+  public void moveDataToNewMNode(IDatabaseMNode<N> newMNode) {
     newMNode.setDataTTL(dataTTL);
   }
 
@@ -44,23 +43,6 @@ public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
-
-  @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {}
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {}
-
-  @Override
-  public void setStorageGroupSchema(TDatabaseSchema schema) {}
-
-  @Override
-  public TDatabaseSchema getStorageGroupSchema() {
-    return null;
   }
 
   /**

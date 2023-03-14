@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 
@@ -38,16 +38,16 @@ import java.util.Iterator;
  */
 public interface IPageManager {
 
-  void writeNewChildren(ICacheMNode parNode) throws MetadataException, IOException;
+  void writeNewChildren(ICachedMNode parNode) throws MetadataException, IOException;
 
-  void writeUpdatedChildren(ICacheMNode parNode) throws MetadataException, IOException;
+  void writeUpdatedChildren(ICachedMNode parNode) throws MetadataException, IOException;
 
-  void delete(ICacheMNode node) throws IOException, MetadataException;
+  void delete(ICachedMNode node) throws IOException, MetadataException;
 
-  ICacheMNode getChildNode(ICacheMNode parent, String childName)
+  ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException;
 
-  Iterator<ICacheMNode> getChildren(ICacheMNode parent) throws MetadataException, IOException;
+  Iterator<ICachedMNode> getChildren(ICachedMNode parent) throws MetadataException, IOException;
 
   void clear() throws IOException, MetadataException;
 

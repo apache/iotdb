@@ -16,31 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode.mem.info;
+package org.apache.iotdb.db.metadata.mnode.config.info;
 
-import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.info.IDatabaseInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 
-public class DatabaseInfo<N extends IMNode<N>> implements IDatabaseInfo<N> {
+public class ConfigDatabaseInfo implements IDatabaseInfo<IConfigMNode> {
 
-  private long dataTTL;
+  private TDatabaseSchema schema;
 
-  public DatabaseInfo() {}
+  public ConfigDatabaseInfo(String name) {
+    this.schema = new TDatabaseSchema(name);
+  }
 
   @Override
-  public void moveDataToNewMNode(IDatabaseMNode<N> newMNode) {
-    newMNode.setDataTTL(dataTTL);
+  public void moveDataToNewMNode(IDatabaseMNode<IConfigMNode> newMNode) {
+    newMNode.getAsMNode().setDatabaseSchema(schema);
   }
 
   @Override
   public long getDataTTL() {
-    return dataTTL;
+    return schema.getTTL();
   }
 
   @Override
   public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+    schema.setTTL(dataTTL);
+  }
+
+  public TDatabaseSchema getSchema() {
+    return schema;
+  }
+
+  public void setSchema(TDatabaseSchema schema) {
+    this.schema = schema;
   }
 
   /**
@@ -48,11 +59,12 @@ public class DatabaseInfo<N extends IMNode<N>> implements IDatabaseInfo<N> {
    *
    * <ol>
    *   <li>object header, 8B
-   *   <li>long dataTTL, 8B
+   *   <li>reference schema, 8B
+   *   <li>object TDatabaseSchema, 112B (calculated by RamUsageEstimator)
    * </ol>
    */
   @Override
   public int estimateSize() {
-    return 8 + 8;
+    return 8 + 8 + 112;
   }
 }

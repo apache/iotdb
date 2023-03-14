@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
 public class SchemaFileLogTest {
 
   private static final int TEST_SCHEMA_REGION_ID = 0;
-  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -73,16 +73,16 @@ public class SchemaFileLogTest {
   public void essentialLogTest() throws IOException, MetadataException {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICacheMNode> newSGNode =
+    IDatabaseMNode<ICachedMNode> newSGNode =
         nodeFactory.createDatabaseDeviceMNode(null, "newSG", 10000L).getAsDatabaseMNode();
     sf.updateDatabaseNode(newSGNode);
 
-    ICacheMNode root = virtualTriangleMTree(5, "root.test");
+    ICachedMNode root = virtualTriangleMTree(5, "root.test");
 
-    Iterator<ICacheMNode> ite = getTreeBFT(root);
-    ICacheMNode lastNode = null;
+    Iterator<ICachedMNode> ite = getTreeBFT(root);
+    ICachedMNode lastNode = null;
     while (ite.hasNext()) {
-      ICacheMNode curNode = ite.next();
+      ICachedMNode curNode = ite.next();
       if (!curNode.isMeasurement()) {
         sf.writeMNode(curNode);
         lastNode = curNode;
@@ -97,7 +97,7 @@ public class SchemaFileLogTest {
             ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), corruptPageIndex);
 
     // record number of children now
-    Iterator<ICacheMNode> res = sf.getChildren(lastNode);
+    Iterator<ICachedMNode> res = sf.getChildren(lastNode);
     int cnt = 0;
     while (res.hasNext()) {
       cnt++;

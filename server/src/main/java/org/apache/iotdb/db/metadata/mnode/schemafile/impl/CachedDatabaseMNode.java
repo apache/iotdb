@@ -18,17 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.mnode.schemafile.impl;
 
-import org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.info.DeviceInfo;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CacheBasicMNode;
+import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.info.DatabaseInfo;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CachedBasicMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-public class CacheDeviceMNode extends AbstractDeviceMNode<ICacheMNode, CacheBasicMNode>
-    implements ICacheMNode {
+public class CachedDatabaseMNode extends AbstractDatabaseMNode<ICachedMNode, CachedBasicMNode>
+    implements ICachedMNode {
 
-  public CacheDeviceMNode(ICacheMNode parent, String name) {
-    super(new CacheBasicInternalMNode(parent, name), new DeviceInfo<>());
+  public CachedDatabaseMNode(ICachedMNode parent, String name) {
+    super(new CachedBasicInternalMNode(parent, name), new DatabaseInfo<>());
+  }
+
+  // TODO: @yukun, remove this constructor
+  public CachedDatabaseMNode(ICachedMNode parent, String name, long dataTTL) {
+    this(parent, name);
+    setDataTTL(dataTTL);
   }
 
   @Override
@@ -42,7 +48,7 @@ public class CacheDeviceMNode extends AbstractDeviceMNode<ICacheMNode, CacheBasi
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
   }
 }

@@ -33,9 +33,9 @@ import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.metadata.mnode.config.factory.ConfigMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.ConfigMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveDBCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -638,8 +638,8 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(
-        storageGroupNode.getStorageGroupSchema(), outputStream);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
+        storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
   public void deserialize(InputStream inputStream) throws IOException {
@@ -705,8 +705,9 @@ public class ConfigMTree {
     IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-    databaseMNode.setStorageGroupSchema(
-        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(inputStream));
+    databaseMNode
+        .getAsMNode()
+        .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
     return databaseMNode.getAsMNode();
   }
 

@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,7 +42,7 @@ import java.util.Queue;
  * Act like a wrapper of a bytebuffer which reflects a segment. <br>
  * And itself is wrapped inside a SchemaPage.
  */
-public class WrappedSegment extends Segment<ICacheMNode> {
+public class WrappedSegment extends Segment<ICachedMNode> {
 
   // reconstruct every initiation after keyAddressList but not write into buffer
   private List<Pair<String, String>> aliasKeyList;
@@ -86,7 +86,7 @@ public class WrappedSegment extends Segment<ICacheMNode> {
     this(ByteBuffer.allocate(size));
   }
 
-  public static ISegment<ByteBuffer, ICacheMNode> initAsSegment(ByteBuffer buffer)
+  public static ISegment<ByteBuffer, ICachedMNode> initAsSegment(ByteBuffer buffer)
       throws RecordDuplicatedException {
     if (buffer == null) {
       return null;
@@ -94,7 +94,7 @@ public class WrappedSegment extends Segment<ICacheMNode> {
     return new WrappedSegment(buffer, true);
   }
 
-  public static ISegment<ByteBuffer, ICacheMNode> loadAsSegment(ByteBuffer buffer)
+  public static ISegment<ByteBuffer, ICachedMNode> loadAsSegment(ByteBuffer buffer)
       throws RecordDuplicatedException {
     if (buffer == null) {
       return null;
@@ -168,7 +168,7 @@ public class WrappedSegment extends Segment<ICacheMNode> {
   }
 
   @Override
-  public ICacheMNode getRecordByKey(String key) throws MetadataException {
+  public ICachedMNode getRecordByKey(String key) throws MetadataException {
     // index means order for target node in keyAddressList, NOT aliasKeyList
     int index = getRecordIndexByKey(key);
 
@@ -187,7 +187,7 @@ public class WrappedSegment extends Segment<ICacheMNode> {
   }
 
   @Override
-  public ICacheMNode getRecordByAlias(String alias) throws MetadataException {
+  public ICachedMNode getRecordByAlias(String alias) throws MetadataException {
     int ix = getRecordIndexByAlias(alias);
 
     if (ix < 0) {
@@ -206,8 +206,8 @@ public class WrappedSegment extends Segment<ICacheMNode> {
   }
 
   @Override
-  public Queue<ICacheMNode> getAllRecords() throws MetadataException {
-    Queue<ICacheMNode> res = new ArrayDeque<>(keyAddressList.size());
+  public Queue<ICachedMNode> getAllRecords() throws MetadataException {
+    Queue<ICachedMNode> res = new ArrayDeque<>(keyAddressList.size());
     ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
     roBuffer.clear();
     for (Pair<String, Short> p : keyAddressList) {

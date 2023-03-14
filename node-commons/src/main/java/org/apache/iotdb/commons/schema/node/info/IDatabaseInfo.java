@@ -18,26 +18,16 @@
  */
 package org.apache.iotdb.commons.schema.node.info;
 
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
-public interface IDatabaseInfo {
+public interface IDatabaseInfo<N extends IMNode<N>> {
 
-  void moveDataToNewMNode(IDatabaseMNode<?> newMNode);
+  void moveDataToNewMNode(IDatabaseMNode<N> newMNode);
 
   long getDataTTL();
 
   void setDataTTL(long dataTTL);
-
-  void setSchemaReplicationFactor(int schemaReplicationFactor);
-
-  void setDataReplicationFactor(int dataReplicationFactor);
-
-  void setTimePartitionInterval(long timePartitionInterval);
-
-  void setStorageGroupSchema(TDatabaseSchema schema);
-
-  TDatabaseSchema getStorageGroupSchema();
 
   int estimateSize();
 }

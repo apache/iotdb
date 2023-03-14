@@ -19,15 +19,15 @@
 package org.apache.iotdb.db.metadata.mnode.schemafile.impl;
 
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CachedBasicMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CacheBasicInternalMNode extends CacheBasicMNode {
+public class CachedBasicInternalMNode extends CachedBasicMNode {
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -35,10 +35,10 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile IMNodeContainer<ICacheMNode> children = null;
+  private transient volatile IMNodeContainer<ICachedMNode> children = null;
 
   /** Constructor of MNode. */
-  public CacheBasicInternalMNode(ICacheMNode parent, String name) {
+  public CachedBasicInternalMNode(ICachedMNode parent, String name) {
     super(parent, name);
   }
 
@@ -50,8 +50,8 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
 
   /** get the child with the name */
   @Override
-  public ICacheMNode getChild(String name) {
-    ICacheMNode child = null;
+  public ICachedMNode getChild(String name) {
+    ICachedMNode child = null;
     if (children != null) {
       child = children.get(name);
     }
@@ -66,7 +66,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
    * @return the child of this node after addChild
    */
   @Override
-  public ICacheMNode addChild(String name, ICacheMNode child) {
+  public ICachedMNode addChild(String name, ICachedMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -80,7 +80,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
       }
     }
     child.setParent(this);
-    ICacheMNode existingChild = children.putIfAbsent(name, child);
+    ICachedMNode existingChild = children.putIfAbsent(name, child);
     return existingChild == null ? child : existingChild;
   }
 
@@ -96,7 +96,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
    * @return return the MNode already added
    */
   @Override
-  public ICacheMNode addChild(ICacheMNode child) {
+  public ICachedMNode addChild(ICachedMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -117,7 +117,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
 
   /** delete a child */
   @Override
-  public ICacheMNode deleteChild(String name) {
+  public ICachedMNode deleteChild(String name) {
     if (children != null) {
       return children.remove(name);
     }
@@ -131,11 +131,11 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, ICacheMNode newChildNode) {
+  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {
     if (!oldChildName.equals(newChildNode.getName())) {
       throw new RuntimeException("New child's name must be the same as old child's name!");
     }
-    ICacheMNode oldChildNode = this.getChild(oldChildName);
+    ICachedMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
     }
@@ -146,7 +146,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
   }
 
   @Override
-  public void moveDataToNewMNode(ICacheMNode newMNode) {
+  public void moveDataToNewMNode(ICachedMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
 
     if (children != null) {
@@ -156,7 +156,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
   }
 
   @Override
-  public IMNodeContainer<ICacheMNode> getChildren() {
+  public IMNodeContainer<ICachedMNode> getChildren() {
     if (children == null) {
       return CachedMNodeContainer.emptyMNodeContainer();
     }
@@ -164,7 +164,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
   }
 
   @Override
-  public void setChildren(IMNodeContainer<ICacheMNode> children) {
+  public void setChildren(IMNodeContainer<ICachedMNode> children) {
     this.children = children;
   }
 
@@ -185,7 +185,7 @@ public class CacheBasicInternalMNode extends CacheBasicMNode {
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
   }
 }

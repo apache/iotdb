@@ -50,12 +50,12 @@ public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(schema, stream);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    schema = ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
+    schema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
   }
 
   @Override

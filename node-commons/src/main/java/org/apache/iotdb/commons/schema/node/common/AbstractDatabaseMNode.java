@@ -27,17 +27,16 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDatabaseMNode<N> {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
-  private final IDatabaseInfo databaseInfo;
+  private final IDatabaseInfo<N> databaseInfo;
   protected final BasicNode basicMNode;
 
-  public AbstractDatabaseMNode(BasicNode basicMNode, IDatabaseInfo databaseInfo) {
+  public AbstractDatabaseMNode(BasicNode basicMNode, IDatabaseInfo<N> databaseInfo) {
     this.basicMNode = basicMNode;
     this.databaseInfo = databaseInfo;
   }
@@ -192,31 +191,6 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
     databaseInfo.setDataTTL(dataTTL);
   }
 
-  @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
-    databaseInfo.setSchemaReplicationFactor(schemaReplicationFactor);
-  }
-
-  @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {
-    databaseInfo.setDataReplicationFactor(dataReplicationFactor);
-  }
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    databaseInfo.setTimePartitionInterval(timePartitionInterval);
-  }
-
-  @Override
-  public void setStorageGroupSchema(TDatabaseSchema schema) {
-    databaseInfo.setStorageGroupSchema(schema);
-  }
-
-  @Override
-  public TDatabaseSchema getStorageGroupSchema() {
-    return databaseInfo.getStorageGroupSchema();
-  }
-
   /**
    * The basic memory occupied by any AbstractDatabaseMNode object
    *
@@ -233,5 +207,9 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   @Override
   public int estimateSize() {
     return 8 + 8 + databaseInfo.estimateSize() + basicMNode.estimateSize();
+  }
+
+  protected IDatabaseInfo<N> getDatabaseInfo() {
+    return databaseInfo;
   }
 }

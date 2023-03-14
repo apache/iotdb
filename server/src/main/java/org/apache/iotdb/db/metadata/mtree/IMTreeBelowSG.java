@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// TODO: eliminate this class
 public interface IMTreeBelowSG<N extends IMNode<N>> {
   void clear();
 

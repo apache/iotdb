@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.schemafile.info.CacheMNodeInfo;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
@@ -38,18 +38,18 @@ import java.util.List;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CacheBasicMNode implements ICacheMNode {
+public class CachedBasicMNode implements ICachedMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
-  private ICacheMNode parent;
+  private ICachedMNode parent;
   private final CacheMNodeInfo cacheMNodeInfo;
 
   /** from root to this node, only be set when used once for InternalMNode */
   private String fullPath;
 
   /** Constructor of MNode. */
-  public CacheBasicMNode(ICacheMNode parent, String name) {
+  public CachedBasicMNode(ICachedMNode parent, String name) {
     this.parent = parent;
     this.cacheMNodeInfo = new CacheMNodeInfo(name);
   }
@@ -65,12 +65,12 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public ICacheMNode getParent() {
+  public ICachedMNode getParent() {
     return parent;
   }
 
   @Override
-  public void setParent(ICacheMNode parent) {
+  public void setParent(ICachedMNode parent) {
     this.parent = parent;
   }
 
@@ -84,7 +84,7 @@ public class CacheBasicMNode implements ICacheMNode {
 
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(getName());
-    ICacheMNode curr = this;
+    ICachedMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
@@ -100,7 +100,7 @@ public class CacheBasicMNode implements ICacheMNode {
   @Override
   public PartialPath getPartialPath() {
     List<String> detachedPath = new ArrayList<>();
-    ICacheMNode temp = this;
+    ICachedMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
       temp = temp.getParent();
@@ -117,7 +117,7 @@ public class CacheBasicMNode implements ICacheMNode {
 
   /** get the child with the name */
   @Override
-  public ICacheMNode getChild(String name) {
+  public ICachedMNode getChild(String name) {
     return null;
   }
 
@@ -129,7 +129,7 @@ public class CacheBasicMNode implements ICacheMNode {
    * @return the child of this node after addChild
    */
   @Override
-  public ICacheMNode addChild(String name, ICacheMNode child) {
+  public ICachedMNode addChild(String name, ICachedMNode child) {
     return null;
   }
 
@@ -145,13 +145,13 @@ public class CacheBasicMNode implements ICacheMNode {
    * @return return the MNode already added
    */
   @Override
-  public ICacheMNode addChild(ICacheMNode child) {
+  public ICachedMNode addChild(ICachedMNode child) {
     return null;
   }
 
   /** delete a child */
   @Override
-  public ICacheMNode deleteChild(String name) {
+  public ICachedMNode deleteChild(String name) {
     return null;
   }
 
@@ -162,21 +162,21 @@ public class CacheBasicMNode implements ICacheMNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, ICacheMNode newChildNode) {}
+  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {}
 
   @Override
-  public void moveDataToNewMNode(ICacheMNode newMNode) {
+  public void moveDataToNewMNode(ICachedMNode newMNode) {
     newMNode.setParent(parent);
     newMNode.setCacheEntry(getCacheEntry());
   }
 
   @Override
-  public IMNodeContainer<ICacheMNode> getChildren() {
+  public IMNodeContainer<ICachedMNode> getChildren() {
     return CachedMNodeContainer.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(IMNodeContainer<ICacheMNode> children) {}
+  public void setChildren(IMNodeContainer<ICachedMNode> children) {}
 
   @Override
   public boolean isAboveDatabase() {
@@ -204,17 +204,17 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public IDatabaseMNode<ICacheMNode> getAsDatabaseMNode() {
+  public IDatabaseMNode<ICachedMNode> getAsDatabaseMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
-  public IDeviceMNode<ICacheMNode> getAsDeviceMNode() {
+  public IDeviceMNode<ICachedMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
-  public IMeasurementMNode<ICacheMNode> getAsMeasurementMNode() {
+  public IMeasurementMNode<ICachedMNode> getAsMeasurementMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
@@ -258,7 +258,7 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
   }
 }

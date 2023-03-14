@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
@@ -95,7 +95,7 @@ public class BTreePageManager extends PageManager {
    * @throws IOException
    */
   @Override
-  protected void buildSubIndex(ICacheMNode parNode) throws MetadataException, IOException {
+  protected void buildSubIndex(ICachedMNode parNode) throws MetadataException, IOException {
     ISchemaPage cursorPage = getPageInstance(getPageIndex(getNodeAddress(parNode)));
 
     if (cursorPage.getAsInternalPage() == null) {
@@ -114,8 +114,8 @@ public class BTreePageManager extends PageManager {
     }
 
     long nextAddr = cursorPage.getAsSegmentedPage().getNextSegAddress((short) 0);
-    Queue<ICacheMNode> children = cursorPage.getAsSegmentedPage().getChildren((short) 0);
-    ICacheMNode child;
+    Queue<ICachedMNode> children = cursorPage.getAsSegmentedPage().getChildren((short) 0);
+    ICachedMNode child;
     // TODO: inefficient to build B+Tree up-to-bottom, improve further
     while (!children.isEmpty() || nextAddr != -1L) {
       if (children.isEmpty()) {
@@ -293,7 +293,7 @@ public class BTreePageManager extends PageManager {
   }
 
   @Override
-  public void delete(ICacheMNode node) throws IOException, MetadataException {
+  public void delete(ICachedMNode node) throws IOException, MetadataException {
     // remove corresponding record
     long recSegAddr = getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
@@ -351,7 +351,7 @@ public class BTreePageManager extends PageManager {
   }
 
   @Override
-  public ICacheMNode getChildNode(ICacheMNode parent, String childName)
+  public ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException {
     if (getNodeAddress(parent) < 0) {
       throw new MetadataException(
@@ -360,7 +360,7 @@ public class BTreePageManager extends PageManager {
     }
 
     long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);
-    ICacheMNode child =
+    ICachedMNode child =
         getPageInstance(getPageIndex(actualSegAddr))
             .getAsSegmentedPage()
             .read(getSegIndex(actualSegAddr), childName);
@@ -381,7 +381,7 @@ public class BTreePageManager extends PageManager {
     return child;
   }
 
-  private ICacheMNode getChildWithAlias(ICacheMNode par, String alias)
+  private ICachedMNode getChildWithAlias(ICachedMNode par, String alias)
       throws IOException, MetadataException {
     long srtAddr = getNodeAddress(par);
     ISchemaPage page = getPageInstance(getPageIndex(srtAddr));
@@ -400,7 +400,7 @@ public class BTreePageManager extends PageManager {
   }
 
   @Override
-  public Iterator<ICacheMNode> getChildren(ICacheMNode parent)
+  public Iterator<ICachedMNode> getChildren(ICachedMNode parent)
       throws MetadataException, IOException {
     int pageIdx = getPageIndex(getNodeAddress(parent));
     short segId = getSegIndex(getNodeAddress(parent));
@@ -411,10 +411,10 @@ public class BTreePageManager extends PageManager {
     }
 
     long actualSegAddr = page.getAsSegmentedPage().getNextSegAddress(segId);
-    Queue<ICacheMNode> initChildren = page.getAsSegmentedPage().getChildren(segId);
-    return new Iterator<ICacheMNode>() {
+    Queue<ICachedMNode> initChildren = page.getAsSegmentedPage().getChildren(segId);
+    return new Iterator<ICachedMNode>() {
       long nextSeg = actualSegAddr;
-      Queue<ICacheMNode> children = initChildren;
+      Queue<ICachedMNode> children = initChildren;
 
       @Override
       public boolean hasNext() {
@@ -441,7 +441,7 @@ public class BTreePageManager extends PageManager {
       }
 
       @Override
-      public ICacheMNode next() {
+      public ICachedMNode next() {
         return children.poll();
       }
     };

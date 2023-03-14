@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode.config;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public interface IConfigMNode extends IMNode<IConfigMNode> {
 
@@ -33,4 +34,12 @@ public interface IConfigMNode extends IMNode<IConfigMNode> {
   boolean isSchemaTemplatePreUnset();
 
   void unsetSchemaTemplate();
+
+  default void setDatabaseSchema(TDatabaseSchema schema) {
+    throw new UnsupportedOperationException();
+  }
+
+  default TDatabaseSchema getDatabaseSchema() {
+    throw new UnsupportedOperationException();
+  }
 }

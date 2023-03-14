@@ -19,15 +19,15 @@
 package org.apache.iotdb.db.metadata.mnode.schemafile.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractAboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CachedBasicMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-public class CacheAboveDatabaseMNode
-    extends AbstractAboveDatabaseMNode<ICacheMNode, CacheBasicMNode> implements ICacheMNode {
+public class CachedAboveDatabaseMNode
+    extends AbstractAboveDatabaseMNode<ICachedMNode, CachedBasicMNode> implements ICachedMNode {
 
-  public CacheAboveDatabaseMNode(ICacheMNode parent, String name) {
-    super(new CacheBasicInternalMNode(parent, name));
+  public CachedAboveDatabaseMNode(ICachedMNode parent, String name) {
+    super(new CachedBasicInternalMNode(parent, name));
   }
 
   @Override
@@ -41,7 +41,7 @@ public class CacheAboveDatabaseMNode
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
   }
 }

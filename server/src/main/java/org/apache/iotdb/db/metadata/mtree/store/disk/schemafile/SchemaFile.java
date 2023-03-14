@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
@@ -77,7 +77,7 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
-  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   // todo refactor constructor for schema file in Jan.
   private SchemaFile(
@@ -168,8 +168,8 @@ public class SchemaFile implements ISchemaFile {
   // region Interface Implementation
 
   @Override
-  public ICacheMNode init() throws MetadataException {
-    ICacheMNode resNode;
+  public ICachedMNode init() throws MetadataException {
+    ICachedMNode resNode;
     String[] sgPathNodes =
         storageGroupName == null
             ? new String[] {"noName"}
@@ -195,7 +195,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateDatabaseNode(IDatabaseMNode<ICacheMNode> sgNode) throws IOException {
+  public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isDevice();
     if (sgNode.isDevice()) {
@@ -206,7 +206,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void delete(ICacheMNode node) throws IOException, MetadataException {
+  public void delete(ICachedMNode node) throws IOException, MetadataException {
     if (node.isDatabase()) {
       // should clear this file
       clear();
@@ -216,7 +216,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void writeMNode(ICacheMNode node) throws MetadataException, IOException {
+  public void writeMNode(ICachedMNode node) throws MetadataException, IOException {
     long curSegAddr = getNodeAddress(node);
 
     if (node.isDatabase()) {
@@ -239,13 +239,13 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public ICacheMNode getChildNode(ICacheMNode parent, String childName)
+  public ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException {
     return pageManager.getChildNode(parent, childName);
   }
 
   @Override
-  public Iterator<ICacheMNode> getChildren(ICacheMNode parent)
+  public Iterator<ICachedMNode> getChildren(ICachedMNode parent)
       throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
@@ -417,11 +417,11 @@ public class SchemaFile implements ISchemaFile {
         + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
-  public static long getNodeAddress(ICacheMNode node) {
+  public static long getNodeAddress(ICachedMNode node) {
     return ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress();
   }
 
-  public static ICacheMNode setNodeAddress(ICacheMNode node, long addr) {
+  public static ICachedMNode setNodeAddress(ICachedMNode node, long addr) {
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(addr);
     return node;
   }

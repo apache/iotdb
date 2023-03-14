@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -47,12 +47,12 @@ public class LRUCacheManager extends CacheManager {
   // MNode update operation like node replace may reset the mapping between cacheEntry and node,
   // thus it should be updated
   @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICacheMNode node) {
+  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
     getAsLRUCacheEntry(cacheEntry).setNode(node);
   }
 
   @Override
-  protected void initCacheEntryForNode(ICacheMNode node) {
+  protected void initCacheEntryForNode(ICachedMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry(node);
     node.setCacheEntry(cacheEntry);
   }
@@ -64,7 +64,7 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected void addToNodeCache(CacheEntry cacheEntry, ICacheMNode node) {
+  protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
     getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry, node);
   }
@@ -76,8 +76,8 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected ICacheMNode getPotentialNodeTobeEvicted() {
-    ICacheMNode result = null;
+  protected ICachedMNode getPotentialNodeTobeEvicted() {
+    ICachedMNode result = null;
     for (LRUCacheList cacheList : lruCacheLists) {
       result = cacheList.getPotentialNodeTobeEvicted();
       if (result != null) {
@@ -120,21 +120,21 @@ public class LRUCacheManager extends CacheManager {
 
     // although the node instance may be replaced, the name and full path of the node won't be
     // changed, which means the cacheEntry always map to only one logic node
-    protected volatile ICacheMNode node;
+    protected volatile ICachedMNode node;
 
     private volatile LRUCacheEntry pre = null;
 
     private volatile LRUCacheEntry next = null;
 
-    public LRUCacheEntry(ICacheMNode node) {
+    public LRUCacheEntry(ICachedMNode node) {
       this.node = node;
     }
 
-    public ICacheMNode getNode() {
+    public ICachedMNode getNode() {
       return node;
     }
 
-    public void setNode(ICacheMNode node) {
+    public void setNode(ICachedMNode node) {
       this.node = node;
     }
 
@@ -181,7 +181,7 @@ public class LRUCacheManager extends CacheManager {
       }
     }
 
-    private void addToCacheList(LRUCacheEntry lruCacheEntry, ICacheMNode node) {
+    private void addToCacheList(LRUCacheEntry lruCacheEntry, ICachedMNode node) {
       lock.lock();
       try {
         lruCacheEntry.setNode(node);
@@ -202,7 +202,7 @@ public class LRUCacheManager extends CacheManager {
       }
     }
 
-    private ICacheMNode getPotentialNodeTobeEvicted() {
+    private ICachedMNode getPotentialNodeTobeEvicted() {
       lock.lock();
       try {
         LRUCacheEntry target = last;

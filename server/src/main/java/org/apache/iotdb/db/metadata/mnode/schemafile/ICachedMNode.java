@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mnode.schemafile;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-public interface ICacheMNode extends IMNode<ICacheMNode> {
+public interface ICachedMNode extends IMNode<ICachedMNode> {
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);

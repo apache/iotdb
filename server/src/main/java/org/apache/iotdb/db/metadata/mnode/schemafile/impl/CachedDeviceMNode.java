@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.mnode.schemafile.impl;
 
-import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.info.DatabaseDeviceInfo;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CacheBasicMNode;
+import org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.info.DeviceInfo;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.basic.CachedBasicMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-public class CacheDatabaseDeviceMNode
-    extends AbstractDatabaseDeviceMNode<ICacheMNode, CacheBasicMNode> implements ICacheMNode {
+public class CachedDeviceMNode extends AbstractDeviceMNode<ICachedMNode, CachedBasicMNode>
+    implements ICachedMNode {
 
-  public CacheDatabaseDeviceMNode(ICacheMNode parent, String name, long dataTTL) {
-    super(new CacheBasicInternalMNode(parent, name), new DatabaseDeviceInfo<>());
-    setDataTTL(dataTTL);
+  public CachedDeviceMNode(ICachedMNode parent, String name) {
+    super(new CachedBasicInternalMNode(parent, name), new DeviceInfo<>());
   }
 
   @Override
@@ -43,7 +42,7 @@ public class CacheDatabaseDeviceMNode
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public ICachedMNode getAsMNode() {
     return this;
   }
 }

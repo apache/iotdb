@@ -20,4 +20,5 @@ package org.apache.iotdb.commons.schema.node.info;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
 
-public interface IDatabaseDeviceInfo<N extends IMNode<N>> extends IDatabaseInfo, IDeviceInfo<N> {}
+public interface IDatabaseDeviceInfo<N extends IMNode<N>>
+    extends IDatabaseInfo<N>, IDeviceInfo<N> {}

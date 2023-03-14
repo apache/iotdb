@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
@@ -51,7 +51,7 @@ import java.util.Queue;
 
 public class SchemaFileSketchTest {
 
-  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -75,9 +75,9 @@ public class SchemaFileSketchTest {
     int TEST_SCHEMA_REGION_ID = 0;
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
-    Iterator<ICacheMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
+    Iterator<ICachedMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
     while (ite.hasNext()) {
-      ICacheMNode cur = ite.next();
+      ICachedMNode cur = ite.next();
       if (!cur.isMeasurement()) {
         sf.writeMNode(cur);
       }
@@ -118,9 +118,9 @@ public class SchemaFileSketchTest {
     }
   }
 
-  private Iterator<ICacheMNode> getTreeBFT(ICacheMNode root) {
-    return new Iterator<ICacheMNode>() {
-      Queue<ICacheMNode> queue = new LinkedList<>();
+  private Iterator<ICachedMNode> getTreeBFT(ICachedMNode root) {
+    return new Iterator<ICachedMNode>() {
+      Queue<ICachedMNode> queue = new LinkedList<>();
 
       {
         this.queue.add(root);
@@ -132,10 +132,10 @@ public class SchemaFileSketchTest {
       }
 
       @Override
-      public ICacheMNode next() {
-        ICacheMNode curNode = queue.poll();
+      public ICachedMNode next() {
+        ICachedMNode curNode = queue.poll();
         if (!curNode.isMeasurement() && curNode.getChildren().size() > 0) {
-          for (ICacheMNode child : curNode.getChildren().values()) {
+          for (ICachedMNode child : curNode.getChildren().values()) {
             queue.add(child);
           }
         }
@@ -144,10 +144,10 @@ public class SchemaFileSketchTest {
     };
   }
 
-  private ICacheMNode getFlatTree(int flatSize, String id) {
-    ICacheMNode root = nodeFactory.createInternalMNode(null, "root");
-    ICacheMNode test = nodeFactory.createInternalMNode(root, "test");
-    ICacheMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
+  private ICachedMNode getFlatTree(int flatSize, String id) {
+    ICachedMNode root = nodeFactory.createInternalMNode(null, "root");
+    ICachedMNode test = nodeFactory.createInternalMNode(root, "test");
+    ICachedMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
