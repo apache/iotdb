@@ -43,7 +43,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics());
+    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new WritingMetrics());
 
     // bind query related metrics

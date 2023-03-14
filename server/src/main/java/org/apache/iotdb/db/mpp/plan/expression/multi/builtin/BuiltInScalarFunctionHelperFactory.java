@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.multi.builtin;
 
-import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastHelper;
-import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.DiffHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastFunctionHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.DiffFunctionHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.ReplaceFunctionHelper;
 
 public class BuiltInScalarFunctionHelperFactory {
   public static BuiltInScalarFunctionHelper createHelper(String functionName) {
     functionName = functionName.toUpperCase();
     switch (functionName) {
       case "DIFF":
-        return new DiffHelper();
+        return new DiffFunctionHelper();
       case "CAST":
-        return new CastHelper();
+        return new CastFunctionHelper();
+      case "REPLACE":
+        return new ReplaceFunctionHelper();
       default:
         throw new IllegalArgumentException(
             String.format("Invalid scalar function [%s].", functionName));

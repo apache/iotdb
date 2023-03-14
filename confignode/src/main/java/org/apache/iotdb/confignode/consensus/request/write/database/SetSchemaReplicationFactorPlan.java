@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -28,43 +28,42 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
-  private String storageGroup;
-  private PreDeleteType preDeleteType;
+public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
 
-  public PreDeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.PreDeleteDatabase);
+  private String database;
+
+  private int schemaReplicationFactor;
+
+  public SetSchemaReplicationFactorPlan() {
+    super(ConfigPhysicalPlanType.SetSchemaReplicationFactor);
   }
 
-  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
+  public SetSchemaReplicationFactorPlan(String database, int schemaReplicationFactor) {
     this();
-    this.storageGroup = storageGroup;
-    this.preDeleteType = preDeleteType;
+    this.database = database;
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public PreDeleteType getPreDeleteType() {
-    return preDeleteType;
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.write(preDeleteType.getType());
+
+    BasicStructureSerDeUtil.write(database, stream);
+    stream.writeInt(schemaReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
+    database = BasicStructureSerDeUtil.readString(buffer);
+    schemaReplicationFactor = buffer.getInt();
   }
 
   @Override
@@ -75,30 +74,13 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
-    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
+    SetSchemaReplicationFactorPlan that = (SetSchemaReplicationFactorPlan) o;
+    return schemaReplicationFactor == that.schemaReplicationFactor
+        && database.equals(that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
-  }
-
-  public enum PreDeleteType {
-    EXECUTE((byte) 0),
-    ROLLBACK((byte) 1);
-
-    private final byte type;
-
-    PreDeleteType(byte type) {
-      this.type = type;
-    }
-
-    public byte getType() {
-      return type;
-    }
+    return Objects.hash(database, schemaReplicationFactor);
   }
 }

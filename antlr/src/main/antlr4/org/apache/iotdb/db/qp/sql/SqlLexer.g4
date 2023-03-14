@@ -554,6 +554,10 @@ RESOURCE
     : R E S O U R C E
     ;
 
+REPLACE
+    : R E P L A C E
+    ;
+
 REVOKE
     : R E V O K E
     ;

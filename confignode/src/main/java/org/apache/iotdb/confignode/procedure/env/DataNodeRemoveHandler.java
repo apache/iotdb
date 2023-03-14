@@ -560,6 +560,9 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
 
+    // Adjust maxRegionGroupNum
+    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
+
     // Remove metrics
     PartitionMetrics.unbindDataNodePartitionMetrics(
         NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));

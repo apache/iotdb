@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -28,32 +28,43 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DeleteDatabasePlan extends ConfigPhysicalPlan {
+public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
+  private String storageGroup;
+  private PreDeleteType preDeleteType;
 
-  private String name;
-
-  public DeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.DeleteDatabase);
+  public PreDeleteDatabasePlan() {
+    super(ConfigPhysicalPlanType.PreDeleteDatabase);
   }
 
-  public DeleteDatabasePlan(String name) {
+  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
     this();
-    this.name = name;
+    this.storageGroup = storageGroup;
+    this.preDeleteType = preDeleteType;
   }
 
-  public String getName() {
-    return name;
+  public String getStorageGroup() {
+    return storageGroup;
+  }
+
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
+  }
+
+  public PreDeleteType getPreDeleteType() {
+    return preDeleteType;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(name, stream);
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.write(preDeleteType.getType());
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    name = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
   }
 
   @Override
@@ -64,12 +75,30 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DeleteDatabasePlan that = (DeleteDatabasePlan) o;
-    return name.equals(that.name);
+    if (!super.equals(o)) {
+      return false;
+    }
+    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
+    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
+  }
+
+  public enum PreDeleteType {
+    EXECUTE((byte) 0),
+    ROLLBACK((byte) 1);
+
+    private final byte type;
+
+    PreDeleteType(byte type) {
+      this.type = type;
+    }
+
+    public byte getType() {
+      return type;
+    }
   }
 }
