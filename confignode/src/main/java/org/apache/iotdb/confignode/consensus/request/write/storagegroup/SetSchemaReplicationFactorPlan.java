@@ -29,7 +29,7 @@ import java.util.Objects;
 
 public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String database;
 
   private int schemaReplicationFactor;
 
@@ -37,14 +37,14 @@ public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetSchemaReplicationFactor);
   }
 
-  public SetSchemaReplicationFactorPlan(String storageGroup, int schemaReplicationFactor) {
+  public SetSchemaReplicationFactorPlan(String database, int schemaReplicationFactor) {
     this();
-    this.storageGroup = storageGroup;
+    this.database = database;
     this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
   public int getSchemaReplicationFactor() {
@@ -55,13 +55,13 @@ public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    BasicStructureSerDeUtil.write(storageGroup, stream);
+    BasicStructureSerDeUtil.write(database, stream);
     stream.writeInt(schemaReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    database = BasicStructureSerDeUtil.readString(buffer);
     schemaReplicationFactor = buffer.getInt();
   }
 
@@ -71,11 +71,11 @@ public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) return false;
     SetSchemaReplicationFactorPlan that = (SetSchemaReplicationFactorPlan) o;
     return schemaReplicationFactor == that.schemaReplicationFactor
-        && storageGroup.equals(that.storageGroup);
+        && database.equals(that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, schemaReplicationFactor);
+    return Objects.hash(database, schemaReplicationFactor);
   }
 }

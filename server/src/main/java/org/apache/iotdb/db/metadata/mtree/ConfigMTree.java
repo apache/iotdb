@@ -35,7 +35,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveDBCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -99,7 +99,7 @@ public class ConfigMTree {
    */
   public void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    MetaFormatUtils.checkStorageGroup(path.getFullPath());
+    MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -143,8 +143,8 @@ public class ConfigMTree {
   }
 
   /** Delete a database */
-  public void deleteStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(path);
+  public void deleteDatabase(PartialPath path) throws MetadataException {
+    IStorageGroupMNode storageGroupMNode = getDatabaseNodeByDatabasePath(path);
     IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the database node sg1
@@ -167,9 +167,8 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all databases related to given path
    */
-  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
-      throws MetadataException {
-    return collectStorageGroups(pathPattern, false, true);
+  public List<PartialPath> getBelongedDatabases(PartialPath pathPattern) throws MetadataException {
+    return collectDatabases(pathPattern, false, true);
   }
 
   /**
@@ -181,12 +180,12 @@ public class ConfigMTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a list contains all database names under given path pattern
    */
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
+  public List<PartialPath> getMatchedDatabases(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return collectStorageGroups(pathPattern, isPrefixMatch, false);
+    return collectDatabases(pathPattern, isPrefixMatch, false);
   }
 
-  private List<PartialPath> collectStorageGroups(
+  private List<PartialPath> collectDatabases(
       PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
@@ -208,7 +207,7 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllStorageGroupPaths() {
+  public List<PartialPath> getAllDatabasePaths() {
     List<PartialPath> res = new ArrayList<>();
     Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
@@ -230,7 +229,7 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getDatabaseNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try (DatabaseCounter counter = new DatabaseCounter(root, pathPattern, store, isPrefixMatch)) {
       return (int) counter.count();
@@ -240,7 +239,7 @@ public class ConfigMTree {
   /**
    * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
    */
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
+  public IStorageGroupMNode getDatabaseNodeByDatabasePath(PartialPath storageGroupPath)
       throws MetadataException {
     String[] nodes = storageGroupPath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -273,7 +272,7 @@ public class ConfigMTree {
    * device], return the MNode of root.sg Get database node, the give path don't need to be database
    * path.
    */
-  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+  public IStorageGroupMNode getDatabaseNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
@@ -297,7 +296,7 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public boolean isStorageGroupAlreadySet(PartialPath path) {
+  public boolean isDatabaseAlreadySet(PartialPath path) {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
@@ -321,7 +320,7 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public void checkStorageGroupAlreadySet(PartialPath path) throws DatabaseAlreadySetException {
+  public void checkDatabaseAlreadySet(PartialPath path) throws DatabaseAlreadySetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
@@ -372,8 +371,8 @@ public class ConfigMTree {
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    try (MNodeAboveSGCollector<?> collector =
-        new MNodeAboveSGCollector<Void>(root, pathPattern, store, isPrefixMatch) {
+    try (MNodeAboveDBCollector<?> collector =
+        new MNodeAboveDBCollector<Void>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected Void collectMNode(IMNode node) {
             result.add(getPartialPathFromRootToNode(node));
@@ -383,7 +382,7 @@ public class ConfigMTree {
 
       collector.setTargetLevel(nodeLevel);
       collector.traverse();
-      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+      return new Pair<>(result, collector.getInvolvedDatabaseMNodes());
     }
   }
 
@@ -403,8 +402,8 @@ public class ConfigMTree {
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
       PartialPath pathPattern) throws MetadataException {
     Set<TSchemaNode> result = new TreeSet<>();
-    try (MNodeAboveSGCollector<?> collector =
-        new MNodeAboveSGCollector<Void>(
+    try (MNodeAboveDBCollector<?> collector =
+        new MNodeAboveDBCollector<Void>(
             root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
           @Override
           protected Void collectMNode(IMNode node) {
@@ -416,7 +415,7 @@ public class ConfigMTree {
           }
         }) {
       collector.traverse();
-      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+      return new Pair<>(result, collector.getInvolvedDatabaseMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
@@ -644,7 +643,7 @@ public class ConfigMTree {
     InternalMNode internalMNode;
 
     if (type == STORAGE_GROUP_MNODE_TYPE) {
-      storageGroupMNode = deserializeStorageGroupMNode(inputStream);
+      storageGroupMNode = deserializeDatabaseMNode(inputStream);
       name = storageGroupMNode.getName();
       stack.push(new Pair<>(storageGroupMNode, true));
     } else {
@@ -670,7 +669,7 @@ public class ConfigMTree {
           name = internalMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
-          storageGroupMNode = deserializeStorageGroupMNode(inputStream);
+          storageGroupMNode = deserializeDatabaseMNode(inputStream);
           childNum = 0;
           while (!stack.isEmpty() && !stack.peek().right) {
             storageGroupMNode.addChild(stack.pop().left);
@@ -692,8 +691,7 @@ public class ConfigMTree {
     return internalMNode;
   }
 
-  private StorageGroupMNode deserializeStorageGroupMNode(InputStream inputStream)
-      throws IOException {
+  private StorageGroupMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
     StorageGroupMNode storageGroupMNode =
         new StorageGroupMNode(null, ReadWriteIOUtils.readString(inputStream));
     storageGroupMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -177,6 +178,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
     // sync dispatch to local
+    long localScheduleStartTime = System.nanoTime();
     for (FragmentInstance localInstance : localInstances) {
       try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
         dispatchOneInstance(localInstance);
@@ -190,6 +192,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       }
     }
+    PerformanceOverviewMetricsManager.recordScheduleLocalCost(
+        System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();

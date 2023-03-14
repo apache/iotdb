@@ -62,6 +62,10 @@ public enum DataNodeRequestType {
   INACTIVE_TRIGGER_INSTANCE,
   UPDATE_TRIGGER_LOCATION,
 
+  /** Pipe Plugin */
+  CREATE_PIPE_PLUGIN,
+  DROP_PIPE_PLUGIN,
+
   /** Sync */
   PRE_CREATE_PIPE,
   OPERATE_PIPE,

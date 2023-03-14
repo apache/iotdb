@@ -210,6 +210,16 @@ struct TFireTriggerResp {
   2: required i32 fireResult
 }
 
+struct TCreatePipePluginInstanceReq {
+  1: required binary pipePluginMeta
+  2: required binary jarFile
+}
+
+struct TDropPipePluginInstanceReq {
+  1: required string pipePluginName
+  2: required bool needToDeleteJar
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -608,6 +618,20 @@ service IDataNodeRPCService {
    * @param string:username, list<string>:roleList
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
+
+  /**
+   * Config node will create a pipe plugin on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createPipePlugin(TCreatePipePluginInstanceReq req)
+
+  /**
+   * Config node will drop a pipe plugin on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
   /* Maintenance Tools */
 

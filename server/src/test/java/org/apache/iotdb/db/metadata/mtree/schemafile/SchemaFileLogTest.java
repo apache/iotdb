@@ -72,7 +72,7 @@ public class SchemaFileLogTest {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
-    sf.updateStorageGroupNode(newSGNode);
+    sf.updateDatabaseNode(newSGNode);
 
     IMNode root = virtualTriangleMTree(5, "root.test");
 
