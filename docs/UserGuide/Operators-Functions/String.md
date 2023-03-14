@@ -589,7 +589,7 @@ Output series:
 
 ### Usage
 
-The function is used to replace the specific substring with given string.
+**This is not a built-in function and can only be used after registering the library-udf.** The function is used to replace the specific substring with given string.
 
 **Name:** STRREPLACE
 
@@ -668,7 +668,7 @@ Output series:
 
 ### Usage
 
-The function is used to fetch matched contents from text with given regular expression.
+**This is not a built-in function and can only be used after registering the library-udf.** The function is used to fetch matched contents from text with given regular expression.
 
 **Name:** REGEXMATCH
 
@@ -727,7 +727,7 @@ Output series:
 
 ### Usage
 
-The function is used to replace the specific regular expression matches with given string.
+**This is not a built-in function and can only be used after registering the library-udf.** The function is used to replace the specific regular expression matches with given string.
 
 **Name:** REGEXREPLACE
 
@@ -786,7 +786,7 @@ Output series:
 
 ### Usage
 
-The function is used to split text with given regular expression and return specific element.
+**This is not a built-in function and can only be used after registering the library-udf.** The function is used to split text with given regular expression and return specific element.
 
 **Name:** REGEXSPLIT
 
