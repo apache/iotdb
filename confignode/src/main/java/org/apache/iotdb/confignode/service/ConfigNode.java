@@ -219,7 +219,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics());
+    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
 
     LOGGER.info("Successfully setup internal services.");
   }
