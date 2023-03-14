@@ -293,10 +293,10 @@ showAllTTL
 // Function =========================================================================================
 // ---- Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClause?
     ;
 
-uriClasue
+uriClause
     : USING URI uri
     ;
 
@@ -322,7 +322,7 @@ createTrigger
         triggerEventClause
         ON prefixPath
         AS className=STRING_LITERAL
-        uriClasue?
+        uriClause?
         triggerAttributeClause?
     ;
 
