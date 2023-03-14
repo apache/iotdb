@@ -38,6 +38,7 @@ outer_layers: 4
 model_id: test
 tuning: False
 task_type: m
+task_class: forecast_training_task
 input_len: 96
 pred_len: 96
 input_vars: 7

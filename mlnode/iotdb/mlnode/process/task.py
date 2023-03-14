@@ -27,6 +27,7 @@ from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.algorithm.model_factory import create_forecast_model
 from iotdb.mlnode.datats.data_factory import create_forecasting_dataset
 from iotdb.mlnode.datats.offline.data_source import DataSource
+from iotdb.mlnode.log import logger
 
 
 class TrainingTrialObjective:
@@ -76,33 +77,34 @@ class BasicTask(object):
 class ForecastingTrainingTask(BasicTask):
     def __init__(self, task_configs, model_configs, data_configs, task_trial_map):
         super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, data_configs, task_trial_map)
+        self.tuning = self.task_configs["tuning"]
+        if self.tuning:
+            self.study = optuna.create_study(direction='minimize')
+        else:
+            model, model_cfg = create_forecast_model(**self.model_configs)
+            logger.info('model created')
+            datasource = DataSource(**self.data_configs)
+            logger.info('datasource created')
+            dataset, dataset_cfg = create_forecasting_dataset(
+                data_source=datasource,
+                **self.data_configs)
+            logger.info('data created')
+            assert dataset.get_variable_num() == model_cfg['input_vars']
+            self.task_configs['trial_id'] = 0  # TODO: set a default trial id
+            self.trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
+            pid = os.getpid()
+            self.task_trial_map[self.task_configs['model_id']][0] = pid
 
     def __call__(self):
         try:
-            tuning = self.task_configs["tuning"]
-            if tuning:
-                study = optuna.create_study(direction='minimize')
-                study.optimize(TrainingTrialObjective(
-                    self.task_configs, #TODO: How to generate diff trial_id by optuna
+            if self.tuning:
+                self.study.optimize(TrainingTrialObjective(
+                    self.task_configs,  # TODO: How to generate diff trial_id by optuna
                     self.model_configs,
-                    self.data_configs
+                    self.data_configs,
+                    self.task_trial_map
                 ), n_trials=20)
             else:
-                #TODO: use logger, with more meaningful informations
-                print('call the task')
-                model, model_cfg = create_forecast_model(**self.model_configs)
-                print('model created')
-                datasource = DataSource(**self.data_configs)
-                print('datasource created')
-                dataset, dataset_cfg = create_forecasting_dataset(
-                    data_source=datasource,
-                    **self.data_configs)
-                print('data created')
-                assert dataset.get_variable_num() == model_cfg['input_vars']
-                self.task_configs['trial_id'] = 0 # TODO: set a default trial id
-                trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
-                pid = os.getpid()
-                self.task_trial_map[self.task_configs['model_id']][0] = pid
-                loss = trial.start()
+                loss = self.trial.start()
         except Exception as e:
-            print(e)  # can not see exception output
+            logger.exception(e)
