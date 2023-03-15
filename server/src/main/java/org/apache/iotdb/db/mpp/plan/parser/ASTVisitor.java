@@ -211,6 +211,8 @@ import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FROM;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.db.constant.SqlConstant.ROUND_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.ROUND_PLACES;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -2348,6 +2350,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseCastFunction(context, canUseFullPath);
     } else if (context.REPLACE() != null) {
       return parseReplaceFunction(context, canUseFullPath);
+    } else if (context.ROUND() != null) {
+      return parseRoundFunction(context, canUseFullPath);
     }
     throw new UnsupportedOperationException();
   }
@@ -2366,6 +2370,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     functionExpression.addExpression(parseExpression(replaceClause.text, canUseFullPath));
     functionExpression.addAttribute(REPLACE_FROM, parseStringLiteral(replaceClause.from.getText()));
     functionExpression.addAttribute(REPLACE_TO, parseStringLiteral(replaceClause.to.getText()));
+    return functionExpression;
+  }
+
+  private Expression parseRoundFunction(
+      IoTDBSqlParser.ScalarFunctionExpressionContext roundClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(ROUND_FUNCTION);
+    functionExpression.addExpression(parseExpression(roundClause.text, canUseFullPath));
+    if (roundClause.places != null) {
+      functionExpression.addAttribute(
+          ROUND_PLACES, parseStringLiteral(roundClause.places.getText()));
+    }
     return functionExpression;
   }
 

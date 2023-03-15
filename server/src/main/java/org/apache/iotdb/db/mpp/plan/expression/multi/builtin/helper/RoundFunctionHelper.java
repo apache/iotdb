@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
@@ -31,8 +30,9 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar.Round
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
-import java.util.List;
+import java.util.Map;
 
+import static org.apache.iotdb.db.constant.SqlConstant.ROUND_PLACES;
 import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
 
 public class RoundFunctionHelper implements BuiltInScalarFunctionHelper {
@@ -61,30 +61,24 @@ public class RoundFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public ColumnTransformer getBuiltInScalarFunctionColumnTransformer(
       FunctionExpression expression, ColumnTransformer columnTransformer) {
-    List<Expression> expressions = expression.getExpressions();
-    if (expressions.size() == 1) {
-      return new RoundFunctionColumnTransformer(
-          TypeFactory.getType(this.getBuiltInScalarFunctionReturnType(expression)),
-          columnTransformer,
-          0);
-    }
     return new RoundFunctionColumnTransformer(
         TypeFactory.getType(this.getBuiltInScalarFunctionReturnType(expression)),
         columnTransformer,
-        Integer.parseInt(expressions.get(1).getExpressionString()));
+        Integer.parseInt(expression.getFunctionAttributes().getOrDefault(ROUND_PLACES, "0")));
   }
 
   @Override
   public Transformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, LayerPointReader layerPointReader) {
-    List<Expression> expressions = expression.getExpressions();
-    if (expressions.size() == 1) {
-      return new RoundFunctionTransformer(
-          layerPointReader, this.getBuiltInScalarFunctionReturnType(expression), 0);
-    }
     return new RoundFunctionTransformer(
         layerPointReader,
         this.getBuiltInScalarFunctionReturnType(expression),
-        Integer.parseInt(expressions.get(1).getExpressionString()));
+        Integer.parseInt(expression.getFunctionAttributes().getOrDefault(ROUND_PLACES, "0")));
+  }
+
+  @Override
+  public void appendFunctionAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    builder.append(",").append(functionAttributes.get(ROUND_PLACES));
   }
 }
