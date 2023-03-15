@@ -43,10 +43,12 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         switch (sourceType) {
           case INT32:
-            columnBuilder.writeDouble(column.getInt(i));
+            columnBuilder.writeDouble(
+                Math.rint(column.getInt(i) * Math.pow(10, places)) / Math.pow(10, places));
             break;
           case INT64:
-            columnBuilder.writeDouble(column.getLong(i));
+            columnBuilder.writeDouble(
+                Math.rint(column.getLong(i) * Math.pow(10, places)) / Math.pow(10, places));
             break;
           case FLOAT:
             columnBuilder.writeDouble(
