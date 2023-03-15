@@ -80,7 +80,7 @@ public interface BuiltInScalarFunctionHelper extends BuiltInFunctionHelper {
       FunctionExpression expression, LayerPointReader layerPointReader);
 
   /**
-   * Some builtin-scalar function may have a different header. This method will be called by {@link
+   * Some built-in scalar functions may have a different header. This method will be called by {@link
    * FunctionExpression#getExpressionStringInternal()} )}
    *
    * @param builder String builder in FunctionExpression. Append function attributes through it.
