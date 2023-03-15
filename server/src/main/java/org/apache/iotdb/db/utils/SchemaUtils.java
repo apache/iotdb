@@ -193,6 +193,7 @@ public class SchemaUtils {
       case MIN_TIME:
       case MAX_TIME:
       case COUNT_IF:
+      case MODE:
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(

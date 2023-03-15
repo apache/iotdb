@@ -16,6 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+<@pp.dropOutputFile />
+
+<#list allDataTypes.types as type>
+
+    <#assign className = "${type.dataType?cap_first}ModeAccumulator">
+    <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/aggregation/${className}.java" />
 
 package org.apache.iotdb.db.mpp.aggregation;
 
@@ -37,11 +43,17 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class ModeAccumulator implements Accumulator {
-  private final Map<Integer, Long> countMap = new HashMap<>(); // ftl
+/*
+* This class is generated using freemarker and the ${.template_name} template.
+*/
+@SuppressWarnings("unused")
+public class ${className} implements Accumulator {
+  private final Map<${type.javaBoxName}, Long> countMap = new HashMap<>();
 
+  <#if type.dataType != "boolean">
   private final int MAP_SIZE_THRESHOLD = 10000;
 
+  </#if>
   @Override
   public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
@@ -49,14 +61,16 @@ public class ModeAccumulator implements Accumulator {
         continue;
       }
       if (!column[1].isNull(i)) {
-        countMap.compute(column[1].getInt(i), (k, v) -> v == null ? 1 : v + 1); // ftl
+        countMap.compute(column[1].get${type.dataType?cap_first}(i), (k, v) -> v == null ? 1 : v + 1);
+        <#if type.dataType != "boolean">
 
         if (countMap.size() > MAP_SIZE_THRESHOLD) {
           throw new RuntimeException(
               String.format(
-                  "size of countMap in ModeAccumulator has exceed the threshold %s",
+                  "distinct values has exceeded the threshold %s when calculate Mode",
                   MAP_SIZE_THRESHOLD));
         }
+        </#if>
       }
     }
   }
@@ -81,7 +95,7 @@ public class ModeAccumulator implements Accumulator {
 
     // Step of ModeAccumulator is STATIC,
     // countMap only need to record one entry which key is finalResult
-    countMap.put(finalResult.getInt(0), 1L); // ftl
+    countMap.put(finalResult.get${type.dataType?cap_first}(0), 0L);
   }
 
   @Override
@@ -94,7 +108,7 @@ public class ModeAccumulator implements Accumulator {
     if (countMap.isEmpty()) {
       tsBlockBuilder.appendNull();
     } else {
-      tsBlockBuilder.writeInt( // ftl
+      tsBlockBuilder.write${type.dataType?cap_first}(
           Collections.max(countMap.entrySet(), Map.Entry.comparingByValue()).getKey());
     }
   }
@@ -116,14 +130,14 @@ public class ModeAccumulator implements Accumulator {
 
   @Override
   public TSDataType getFinalType() {
-    return TSDataType.INT32; // ftl
+    return ${type.tsDataType};
   }
 
   private Binary serializeCountMap() {
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(countMap.size(), stream);
-      for (Map.Entry<Integer, Long> entry : countMap.entrySet()) { // ftl
+      for (Map.Entry<${type.javaBoxName}, Long> entry : countMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), stream);
         ReadWriteIOUtils.write(entry.getValue(), stream);
       }
@@ -136,18 +150,22 @@ public class ModeAccumulator implements Accumulator {
   private void deserializeAndMergeCountMap(Binary partialResult) {
     InputStream stream = new ByteArrayInputStream(partialResult.getValues());
     try {
-      for (int i = 0; i < ReadWriteIOUtils.readInt(stream); i++) { // ftl
-        countMap.put(ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream)); // ftl
+      for (int i = 0; i < ReadWriteIOUtils.readInt(stream); i++) {
+        countMap.put(ReadWriteIOUtils.read${type.dataType?cap_first}(stream), ReadWriteIOUtils.readLong(stream));
+        <#if type.dataType != "boolean">
 
         if (countMap.size() > MAP_SIZE_THRESHOLD) {
           throw new RuntimeException(
               String.format(
-                  "size of countMap in ModeAccumulator has exceed the threshold %s",
+                  "distinct values has exceeded the threshold %s when calculate Mode",
                   MAP_SIZE_THRESHOLD));
         }
+        </#if>
       }
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
     }
   }
 }
+
+</#list>
