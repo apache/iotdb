@@ -57,6 +57,7 @@ public class RatisMetricSet implements IMetricSet {
   public static final String READ_CHECK = "checkReadCondition";
   public static final String WRITE_LOCALLY = "writeLocally";
   public static final String WRITE_REMOTELY = "writeRemotely";
+  public static final String WRITE_WAIT_REPLY = "writeWaitReply";
   public static final String TOTAL_WRITE_TIME = "totalConsensusWrite";
   public static final String TOTAL_READ_TIME = "totalConsensusRead";
   public static final String SUBMIT_READ_REQUEST = "submitReadRequest";
@@ -78,6 +79,7 @@ public class RatisMetricSet implements IMetricSet {
     RATIS_WRITE_STAGES.add(WRITE_CHECK);
     RATIS_WRITE_STAGES.add(WRITE_LOCALLY);
     RATIS_WRITE_STAGES.add(WRITE_REMOTELY);
+    RATIS_WRITE_STAGES.add(WRITE_WAIT_REPLY);
     RATIS_WRITE_STAGES.add(WRITE_STATE_MACHINE);
     RATIS_WRITE_STAGES.add(TOTAL_WRITE_TIME);
 

@@ -212,6 +212,7 @@ class RatisConsensus implements IConsensus {
       if (!shouldRetry(reply)) {
         return reply;
       }
+      long waitReplyStartTime = System.nanoTime();
       logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
 
       try {
@@ -219,6 +220,10 @@ class RatisConsensus implements IConsensus {
       } catch (InterruptedException e) {
         logger.warn("{} retry write sleep is interrupted: {}", this, e);
         Thread.currentThread().interrupt();
+      } finally {
+        // statistic the time of wait reply
+        RatisMetricsManager.getInstance()
+            .recordWriteWaitReply(System.nanoTime() - waitReplyStartTime, consensusGroupType);
       }
     }
     return reply;

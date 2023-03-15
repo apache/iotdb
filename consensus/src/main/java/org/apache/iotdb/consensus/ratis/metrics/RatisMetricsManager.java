@@ -74,6 +74,17 @@ public class RatisMetricsManager {
         RatisMetricSet.WRITE_REMOTELY);
   }
 
+  /** Record the time cost in write wait reply. */
+  public void recordWriteWaitReply(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        consensusGroupType + "_" + Metric.RATIS_CONSENSUS_WRITE,
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        RatisMetricSet.WRITE_WAIT_REPLY);
+  }
+
   /** Record the total write time cost. */
   public void recordTotalWriteCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
