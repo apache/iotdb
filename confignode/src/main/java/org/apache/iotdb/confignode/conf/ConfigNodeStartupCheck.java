@@ -60,7 +60,8 @@ public class ConfigNodeStartupCheck {
       throw new ConfigurationException(
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
-          CONF.getInternalAddress() + ":" + CONF.getInternalPort());
+          CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
+          "the config_node_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
@@ -70,7 +71,8 @@ public class ConfigNodeStartupCheck {
       throw new ConfigurationException(
           "data_replication_factor",
           String.valueOf(CONF.getDataReplicationFactor()),
-          String.valueOf(1));
+          String.valueOf(1),
+          "the data_region_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
@@ -80,7 +82,8 @@ public class ConfigNodeStartupCheck {
       throw new ConfigurationException(
           "schema_replication_factor",
           String.valueOf(CONF.getSchemaReplicationFactor()),
-          String.valueOf(1));
+          String.valueOf(1),
+          "the schema_region_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the schema region consensus protocol is set to IoTConsensus,
@@ -90,21 +93,28 @@ public class ConfigNodeStartupCheck {
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
+              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
+          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
     }
 
     // The leader distribution policy is limited
     if (!ILeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "leader_distribution_policy", CONF.getRoutePriorityPolicy(), "GREEDY or MIN_COST_FLOW");
+          "leader_distribution_policy",
+          CONF.getRoutePriorityPolicy(),
+          "GREEDY or MIN_COST_FLOW",
+          "an unrecognized leader_distribution_policy is set");
     }
 
     // The route priority policy is limited
     if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
         && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "route_priority_policy", CONF.getRoutePriorityPolicy(), "LEADER or GREEDY");
+          "route_priority_policy",
+          CONF.getRoutePriorityPolicy(),
+          "LEADER or GREEDY",
+          "an unrecognized route_priority_policy is set");
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0
@@ -113,7 +123,7 @@ public class ConfigNodeStartupCheck {
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
 
-    // The least RegionGroupNum should be positive
+    // The default RegionGroupNum should be positive
     if (CONF.getDefaultSchemaRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_schema_region_group_num should be positive");
     }
