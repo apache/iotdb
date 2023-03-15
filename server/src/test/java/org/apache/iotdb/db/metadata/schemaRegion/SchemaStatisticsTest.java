@@ -150,7 +150,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
       Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     }
-    System.out.println(engineStatistics.getMemoryUsage());
     Assert.assertEquals(0, schemaRegion1.getSchemaRegionStatistics().getSchemaRegionId());
     Assert.assertEquals(1, schemaRegion2.getSchemaRegionStatistics().getSchemaRegionId());
     checkSchemaFileStatistics(engineStatistics);
