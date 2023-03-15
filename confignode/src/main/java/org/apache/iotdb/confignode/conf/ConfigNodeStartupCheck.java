@@ -61,7 +61,8 @@ public class ConfigNodeStartupCheck {
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
-          "the config_node_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+          "the config_node_consensus_protocol_class is "
+              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
@@ -72,7 +73,8 @@ public class ConfigNodeStartupCheck {
           "data_replication_factor",
           String.valueOf(CONF.getDataReplicationFactor()),
           String.valueOf(1),
-          "the data_region_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+          "the data_region_consensus_protocol_class is "
+              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
@@ -83,7 +85,8 @@ public class ConfigNodeStartupCheck {
           "schema_replication_factor",
           String.valueOf(CONF.getSchemaReplicationFactor()),
           String.valueOf(1),
-          "the schema_region_consensus_protocol_class is set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+          "the schema_region_consensus_protocol_class is "
+              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
     }
 
     // When the schema region consensus protocol is set to IoTConsensus,
