@@ -103,11 +103,6 @@ class BasicTrial(object):
 
     def _acquire_device(self):
         if self.use_gpu:
-            # os.environ["CUDA_VISIBLE_DEVICES"] = \
-            #     str(self.trial_configs["gpu"]) \
-            #         if not self.trial_configs["use_multi_gpu"] \
-            #         else self.trial_configs["devices"]
-            # device = torch.device('cuda:{}'.format(self.trial_configs["gpu"]))
             raise NotImplementedError
         else:
             device = torch.device('cpu')
@@ -211,9 +206,9 @@ class ForecastingTrainingTrial(BasicTrial):
         best_loss = np.inf
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(),
-                                     lr=self.trial_configs["learning_rate"])
+                                     lr=self.learning_rate)
         print("Start training...")
-        for epoch in range(self.trial_configs["epochs"]):
+        for epoch in range(self.epochs):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch)
             # TODO: add validation methods
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
