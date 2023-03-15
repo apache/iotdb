@@ -974,6 +974,7 @@ expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression
     ;
 
+
 functionName
     : identifier
     | COUNT
