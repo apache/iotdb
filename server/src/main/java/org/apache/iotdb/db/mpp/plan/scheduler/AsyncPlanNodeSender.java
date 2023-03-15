@@ -118,7 +118,11 @@ public class AsyncPlanNodeSender {
       } else {
         // some expected and accepted status except SUCCESS_STATUS need to be returned
         if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          failureStatusList.add(status);
+          if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            failureStatusList.addAll(status.getSubStatus());
+          } else {
+            failureStatusList.add(status);
+          }
         }
       }
     }
