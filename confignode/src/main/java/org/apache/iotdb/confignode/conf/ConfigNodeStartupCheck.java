@@ -51,7 +51,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     super(nodeRole);
   }
 
-  private void portCheck() throws StartupException {
+  @Override
+  protected void portCheck() throws StartupException {
     Set<Integer> portSet = new HashSet<>();
     portSet.add(CONF.getConsensusPort());
     portSet.add(CONF.getInternalPort());
@@ -62,6 +63,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     }
   }
 
+  @Override
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
     envCheck();
     portCheck();

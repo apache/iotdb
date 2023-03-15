@@ -53,10 +53,12 @@ public class DataNodeStartCheck extends StartupChecks {
     }
   }
 
+  @Override
   protected void portCheck() {
     preChecks.add(this::checkDataNodePortUnique);
   }
 
+  @Override
   public void startUpCheck() throws StartupException {
     envCheck();
     portCheck();

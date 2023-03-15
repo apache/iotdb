@@ -52,7 +52,7 @@ public abstract class StartupChecks {
   }
 
   private void checkJMXPort(String nodeRole) {
-    Boolean jmxLocal = Boolean.valueOf(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
+    boolean jmxLocal = Boolean.parseBoolean(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
 
     if (jmxLocal) {
@@ -86,4 +86,8 @@ public abstract class StartupChecks {
       check.execute();
     }
   }
+
+  protected abstract void portCheck() throws StartupException;
+
+  protected abstract void startUpCheck() throws Exception;
 }

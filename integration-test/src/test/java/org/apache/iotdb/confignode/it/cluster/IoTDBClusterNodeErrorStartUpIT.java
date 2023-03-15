@@ -69,6 +69,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
 
+  private static final int START_RETRY_NUM = 6;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -310,34 +312,36 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().generateRandomDataNodeWrapper();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // set ConfigNode port repeat
       TShowClusterResp showClusterResp = client.showCluster();
-      int beforeRegisterConfigNodes = showClusterResp.getConfigNodeListSize();
-//      portConflictConfigNodeWrapper.setConsensusPort(portConflictConfigNodeWrapper.getPort());
+      int beforeStartConfigNodes = showClusterResp.getConfigNodeListSize();
+      portConflictConfigNodeWrapper.setConsensusPort(portConflictConfigNodeWrapper.getPort());
       portConflictConfigNodeWrapper.changeConfig(
           (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
           (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
           null);
-      //为什么加在这里,变成了注册了两次,不start却是注册了0次?
       portConflictConfigNodeWrapper.start();
-      TConfigNodeRegisterReq configNodeRegisterReq =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(
-              TEST_CLUSTER_NAME, portConflictConfigNodeWrapper);
-      configNodeRegisterReq
-          .getClusterParameters()
-          .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
-      TConfigNodeRegisterResp configNodeRegisterResp =
-          client.registerConfigNode(configNodeRegisterReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          configNodeRegisterResp.getStatus().getCode());
-      //加在这里,则只注册了一次?
-      portConflictConfigNodeWrapper.start();
-      showClusterResp = client.showCluster();
-      int afterRegisterConfigNodes =  showClusterResp.getConfigNodeListSize();
-      Assert.assertEquals(beforeRegisterConfigNodes,afterRegisterConfigNodes);
-      // portConflictDataNodeWrapper.setPort(portConflictDataNodeWrapper.getSchemaRegionConsensusPort());
-      //      portConflictDataNodeWrapper.changeConfig();
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        Thread.sleep(1000);
+      }
+      int afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
+      Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
+      // set datanode port repeat
+      int beforeStartDataNodes = showClusterResp.getDataNodeListSize();
+      portConflictDataNodeWrapper.setMppDataExchangePort(
+          portConflictDataNodeWrapper.getDataRegionConsensusPort());
+      portConflictDataNodeWrapper.changeConfig(
+          (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+          (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+          null);
+      portConflictDataNodeWrapper.start();
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        Thread.sleep(1000);
+      }
+      int afterStartDataNodes = showClusterResp.getDataNodeListSize();
+      Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
     }
-    System.out.println("testIllegalNodeStartUp");
   }
 }
