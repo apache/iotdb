@@ -146,12 +146,6 @@ class ConfigNodeClient(object):
         return self.__client.updateModelInfo(req)
 
 
-# TODO: add reconnection mechanism
-try:
-    dataClient = DataNodeClient(host='127.0.0.1', port=10730)
-except Exception:
-    raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
-
 config_nbeats = {
     'task_class': 'forecast_training_task',
     'source_type': 'thrift',
@@ -222,6 +216,7 @@ if __name__ == "__main__":
     BEGIN
         SELECT *
         FROM root.eg.etth1.**
+        WHERE 
     END
     '''
     print(client.create_training_task(
@@ -229,6 +224,6 @@ if __name__ == "__main__":
         isAuto=False,
         modelConfigs=config_dlinear,            # config_nbeats,       #
         queryExpressions=['root.eg.etth1.**'],  # 7 variables
-        queryFilter='0,-1',
+        queryFilter='0,1501516800000',          # timestamp in ms
     ))
     # print(client.delete_model(model_path='mid_debug/tid_1.pt'))

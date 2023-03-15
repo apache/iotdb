@@ -19,7 +19,7 @@
 
 import pandas as pd
 from iotdb.mlnode import serde
-from iotdb.mlnode.client import dataClient
+from iotdb.mlnode.client import DataNodeClient
 
 
 class DataSource(object):
@@ -75,7 +75,12 @@ class DataSource(object):
 
     def _read_thrift_data(self, query_expressions, query_filter):  # TODO: fetch until all
         try:
-            res = dataClient.fetch_timeseries(
+            data_client = DataNodeClient(host='127.0.0.1', port=10730)
+        except Exception:
+            raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
+
+        try:
+            res = data_client.fetch_timeseries(
                 queryExpressions=query_expressions,
                 queryFilter=query_filter,
             )

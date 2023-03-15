@@ -23,7 +23,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.client import dataClient
+from iotdb.mlnode.client import DataNodeClient
 from iotdb.mlnode.algorithm.utils.metric import *
 from iotdb.mlnode.storage.model_storager import modelStorager
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
@@ -117,6 +117,10 @@ class ForecastingTrainingTrial(BasicTrial):
         super(ForecastingTrainingTrial, self) \
             .__init__(trial_configs, model, model_configs, dataset, **kwargs)
         self.dataloader = self._build_data()
+        try:
+            self.data_client = DataNodeClient(host='127.0.0.1', port=10730)
+        except Exception:
+            raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
 
     def _build_data(self):
         train_loader = DataLoader(
@@ -192,7 +196,7 @@ class ForecastingTrainingTrial(BasicTrial):
             metrics_dict[name] = np.average(value_list)
 
         # TODO: handle some exception
-        dataClient.record_model_metrics(
+        self.data_client.record_model_metrics(
             modelId=self.model_id,
             trialId=self.trial_id,
             metrics=list(metrics_dict.keys()),
