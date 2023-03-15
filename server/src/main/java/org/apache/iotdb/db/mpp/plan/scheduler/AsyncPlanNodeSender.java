@@ -109,20 +109,12 @@ public class AsyncPlanNodeSender {
               TSStatusCode.representOf(status.code),
               entry.getValue().message,
               instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
-          if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-            failureStatusList.addAll(status.getSubStatus());
-          } else {
-            failureStatusList.add(status);
-          }
+          failureStatusList.add(status);
         }
       } else {
         // some expected and accepted status except SUCCESS_STATUS need to be returned
         if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-            failureStatusList.addAll(status.getSubStatus());
-          } else {
-            failureStatusList.add(status);
-          }
+          failureStatusList.add(status);
         }
       }
     }

@@ -141,7 +141,7 @@ public class MeasurementGroup {
 
     for (int i = 0; i < this.measurements.size(); i++) {
       if (indexSet.contains(i)) {
-        measurementSet.remove(measurements.get(i));
+        measurementSet.remove(this.measurements.get(i));
         continue;
       }
       measurements.add(this.measurements.get(i));
