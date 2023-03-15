@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -26,45 +26,54 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
-public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
-  private String storageGroup;
-  private PreDeleteType preDeleteType;
+public class SetTTLPlan extends ConfigPhysicalPlan {
 
-  public PreDeleteDatabasePlan() {
-    super(ConfigPhysicalPlanType.PreDeleteDatabase);
+  private String[] storageGroupPathPattern;
+
+  private long TTL;
+
+  public SetTTLPlan() {
+    super(ConfigPhysicalPlanType.SetTTL);
   }
 
-  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
+  public SetTTLPlan(List<String> storageGroupPathPattern, long TTL) {
     this();
-    this.storageGroup = storageGroup;
-    this.preDeleteType = preDeleteType;
+    this.storageGroupPathPattern = storageGroupPathPattern.toArray(new String[0]);
+    this.TTL = TTL;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String[] getStorageGroupPathPattern() {
+    return storageGroupPathPattern;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
-  }
-
-  public PreDeleteType getPreDeleteType() {
-    return preDeleteType;
+  public long getTTL() {
+    return TTL;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(storageGroup, stream);
-    stream.write(preDeleteType.getType());
+
+    stream.writeInt(storageGroupPathPattern.length);
+    for (String node : storageGroupPathPattern) {
+      BasicStructureSerDeUtil.write(node, stream);
+    }
+    stream.writeLong(TTL);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
-    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
+
+    int length = buffer.getInt();
+    storageGroupPathPattern = new String[length];
+    for (int i = 0; i < length; i++) {
+      storageGroupPathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+    }
+    TTL = buffer.getLong();
   }
 
   @Override
@@ -75,30 +84,13 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
-    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
+    SetTTLPlan setTTLPlan = (SetTTLPlan) o;
+    return TTL == setTTLPlan.TTL
+        && Arrays.equals(this.storageGroupPathPattern, setTTLPlan.storageGroupPathPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
-  }
-
-  public enum PreDeleteType {
-    EXECUTE((byte) 0),
-    ROLLBACK((byte) 1);
-
-    private final byte type;
-
-    PreDeleteType(byte type) {
-      this.type = type;
-    }
-
-    public byte getType() {
-      return type;
-    }
+    return Objects.hash(Arrays.hashCode(storageGroupPathPattern), TTL);
   }
 }

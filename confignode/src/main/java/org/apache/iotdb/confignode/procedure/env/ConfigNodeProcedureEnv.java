@@ -37,9 +37,9 @@ import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
@@ -122,7 +122,7 @@ public class ConfigNodeProcedureEnv {
    */
   public TSStatus deleteConfig(String name) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteStorageGroup(deleteDatabasePlan);
+    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
   }
 
   /**
@@ -162,18 +162,21 @@ public class ConfigNodeProcedureEnv {
       }
 
       if (nodeStatus == NodeStatus.Running) {
-        final TSStatus invalidateSchemaStatus =
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                    invalidateCacheReq,
-                    DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
+        // Always invalidate PartitionCache first
         final TSStatus invalidatePartitionStatus =
             SyncDataNodeClientPool.getInstance()
                 .sendSyncRequestToDataNodeWithRetry(
                     dataNodeConfiguration.getLocation().getInternalEndPoint(),
                     invalidateCacheReq,
                     DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
+
+        final TSStatus invalidateSchemaStatus =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                    invalidateCacheReq,
+                    DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
+
         if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
           LOG.error(
               "Invalidate cache failed, invalidate partition cache status is {}, invalidate schema cache status is {}",
