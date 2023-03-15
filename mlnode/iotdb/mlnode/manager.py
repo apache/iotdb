@@ -51,7 +51,7 @@ class Manager(object):
     def __init__(self, pool_num):
         """
         resource_manager: a manager that manage resources shared between processes
-        task_map: a map shared between processes and storing the tasks' states #TODO: trial_id-pid
+        task_map: a map shared between processes and storing the tasks' states
         pool: a multiprocessing process pool
         """
         self.resource_manager = mp.Manager()

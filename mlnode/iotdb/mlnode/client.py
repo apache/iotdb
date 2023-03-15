@@ -152,7 +152,29 @@ try:
 except Exception:
     raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
 
-config_test = {
+config_nbeats = {
+    'task_class': 'forecast_training_task',
+    'source_type': 'thrift',
+    'dataset_type': 'window',
+    'time_embed': 'h',
+    'input_len': 96,
+    'pred_len': 96,
+    'model_name': 'nbeats',
+    'input_vars': 7,
+    'output_vars': 7,
+    'task_type': 'm',
+    'block_type': 'g',
+    'd_model': 128,
+    'inner_layers': 4,
+    'outer_layers': 4,
+    'learning_rate': 1e-4,
+    'batch_size': 32,
+    'num_workers': 0,
+    'epochs': 10,
+    'metric_names': ['MSE', 'MAE']
+}
+
+config_dlinear = {
     'task_class': 'forecast_training_task',
     'source_type': 'thrift',
     'dataset_type': 'window',
@@ -164,11 +186,7 @@ config_test = {
     'output_vars': 7,
     'task_type': 'm',
     'kernel_size': 25,
-    'block_type': 'g',
-    'd_model': 128,
-    'inner_layers': 4,
-    'outer_layers': 4,
-    'learning_rate': 1e-4,
+    'learning_rate': 1e-3,
     'batch_size': 32,
     'num_workers': 0,
     'epochs': 10,
@@ -192,11 +210,25 @@ if __name__ == "__main__":
     # test mlnode rpc service
     client = MLNodeClient(host="127.0.0.1", port=10810)
 
+    '''
+    CREATE MODEL mid_etth1_dlinear_default 
+    WITH
+        INPUT_LEN=96,
+        OUTPUT_LEN=96
+        MODEL_TYPE=dlinear,
+        BATCH_SIZE=32,
+        LEARNING_RATE=0.001,
+        EPOCHS=10, 
+    BEGIN
+        SELECT *
+        FROM root.eg.etth1.**
+    END
+    '''
     print(client.create_training_task(
-        modelId='mid_test',
+        modelId='mid_etth1_dlinear_default',    # 'mid_etth1_nbeats_default', #
         isAuto=False,
-        modelConfigs=config_test,
+        modelConfigs=config_dlinear,            # config_nbeats,       #
         queryExpressions=['root.eg.etth1.**'],  # 7 variables
-        queryFilter='-1,1501516800000',
+        queryFilter='0,-1',
     ))
     # print(client.delete_model(model_path='mid_debug/tid_1.pt'))

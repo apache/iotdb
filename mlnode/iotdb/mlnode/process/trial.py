@@ -111,7 +111,6 @@ class ForecastingTrainingTrial(BasicTrial):
     def train(self, model, optimizer, criterion, dataloader, epoch):
         model.train()
         train_loss = []
-        print("Start training...")
 
         epoch_time = time.time()
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
@@ -188,6 +187,7 @@ class ForecastingTrainingTrial(BasicTrial):
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(),
                                      lr=self.trial_configs["learning_rate"])
+        print("Start training...")
         for epoch in range(self.trial_configs["epochs"]):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch)
             # TODO: add validation methods

@@ -99,7 +99,7 @@ class WindowDataset(TimeSeriesDataset):
         return len(self.data) - self.input_len - self.pred_len + 1
 
 
-# TODO: should be more simple, numpy array maybe
+# TODO: implement inference dataset, which should be more simple, numpy array maybe
 class InferenceDataset(Dataset):
     def __init__(self):
         pass

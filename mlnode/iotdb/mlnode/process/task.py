@@ -77,7 +77,7 @@ class ForecastingTrainingTask(BasicTask):
         model_id = self.task_configs['model_id']
         self.tuning = self.task_configs["tuning"]
 
-        if self.tuning:             # TODO
+        if self.tuning:             # TODO implement tuning task
             self.study = optuna.create_study(direction='minimize')
         else:
             model, model_cfg = create_forecast_model(**self.model_configs)
