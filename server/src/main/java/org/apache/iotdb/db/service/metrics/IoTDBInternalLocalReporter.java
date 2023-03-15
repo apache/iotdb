@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -87,7 +87,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowDatabaseResp showDatabaseResp =
-          client.showDatabase(Collections.singletonList(IoTDBMetricsUtils.DATABASE));
+          client.showDatabase(Arrays.asList(IoTDBMetricsUtils.DATABASE.split("\\.")));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == showDatabaseResp.getStatus().getCode()
           && showDatabaseResp.getDatabaseInfoMapSize() == 0) {
         TDatabaseSchema databaseSchema = new TDatabaseSchema();
