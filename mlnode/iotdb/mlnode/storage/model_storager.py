@@ -21,6 +21,7 @@ import os
 import json
 import torch
 import shutil
+import torch.nn as nn
 from pylru import lrucache
 from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
                                    MLNODE_MODEL_STORAGE_CACHESIZE)
@@ -29,14 +30,20 @@ from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
 # TODO: Add permission check firstly
 # TODO: Consider concurrency, maybe
 class ModelStorager(object):
-    def __init__(self, root_path='ml_models', cache_size=30):
+    def __init__(self,
+                 root_path: str = 'ml_models',
+                 cache_size: int = 30):
         current_path = os.getcwd()
         self.root_path = os.path.join(current_path, root_path)
         if not os.path.exists(self.root_path):
             os.mkdir(self.root_path)
         self._loaded_model_cache = lrucache(cache_size)
 
-    def save_model(self, model, model_config, model_id, trial_id):
+    def save_model(self,
+                   model: nn.Module,
+                   model_config: dict,
+                   model_id: str,
+                   trial_id: str):
         """
         Return: True if successfully saved
         """
@@ -49,7 +56,7 @@ class ModelStorager(object):
                        _extra_files={'model_config': json.dumps(model_config)})
         return os.path.exists(os.path.join(fold_path, f'{trial_id}.pt'))
 
-    def load_model(self, model_id, trial_id):
+    def load_model(self, model_id: str, trial_id: str):
         file_path = os.path.join(self.root_path, f'{model_id}', f'{trial_id}.pt')
         if model_id in self._loaded_model_cache:
             return self._loaded_model_cache[file_path]
@@ -63,11 +70,11 @@ class ModelStorager(object):
                 self._loaded_model_cache[file_path] = jit_model, model_config
                 return jit_model, model_config
 
-    def _remove_from_cache(self, key):
+    def _remove_from_cache(self, key: str):
         if key in self._loaded_model_cache:
             del self._loaded_model_cache[key]
 
-    def delete_trial(self, model_id, trial_id):
+    def delete_trial(self, model_id: str, trial_id: str):
         """
         Return: True if successfully deleted
         """
@@ -77,7 +84,7 @@ class ModelStorager(object):
             os.remove(file_path)
         return not os.path.exists(file_path)
 
-    def delete_model(self, model_id):
+    def delete_model(self, model_id: str):
         """
         Return: True if successfully deleted
         """
@@ -88,7 +95,7 @@ class ModelStorager(object):
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
-    def delete_by_path(self, model_path):  # TODO: for test only
+    def delete_by_path(self, model_path: str):  # TODO: for test only, remove this when thrift has redefined
         """
         Return: True if successfully deleted
         """
@@ -101,15 +108,6 @@ class ModelStorager(object):
         pass
 
 
+# initialize a singleton
 modelStorager = ModelStorager(root_path=MLNODE_MODEL_STORAGE_DIR,
                               cache_size=MLNODE_MODEL_STORAGE_CACHESIZE)
-
-# Usage:
-# from iotdb.mlnode.algorithm.model_factory import create_forecast_model
-# from iotdb.mlnode.storage.model_storager import modelStorager
-
-# model, model_cfg = create_forecast_model(model_name='nbeats')
-# modelStorager.save_model(model, model_cfg, model_id: int, trial_id: int)
-# model, model_cfg = modelStorager.load_model(model_id: int, trial_id: int)
-# modelStorager.delete_trial(model_id: int, trial_id: int) #
-# modelStorager.delete_model(model_id: int) # delete all model with responding trials
