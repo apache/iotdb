@@ -36,9 +36,8 @@ import java.util.concurrent.TimeUnit;
 
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
-  private final TsBlockBuilder builder;
+  private TsBlockBuilder builder;
   private final int valueColumnCount;
-  private boolean finished = false;
 
   public AlignedSeriesScanOperator(
       OperatorContext context,
@@ -61,6 +60,25 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
+  public AlignedSeriesScanOperator(
+      OperatorContext context, PlanNodeId sourceId, AlignedPath seriesPath) {
+    this.sourceId = sourceId;
+    this.operatorContext = context;
+    this.valueColumnCount = seriesPath.getColumnNum();
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + valueColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+  }
+
+  @Override
+  public void setSeriesScanUtil(SeriesScanUtil seriesScanUtil) {
+    this.seriesScanUtil = seriesScanUtil;
+    // time + all value columns
+    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
+  }
+
   @Override
   public TsBlock next() {
     if (retainedTsBlock != null) {
@@ -73,6 +91,9 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public boolean hasNext() {
+    if (finished.get()) {
+      return false;
+    }
     if (retainedTsBlock != null) {
       return true;
     }
@@ -108,17 +129,12 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
-      finished = builder.isEmpty();
+      finished.set(builder.isEmpty());
 
-      return !finished;
+      return !finished.get();
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     }
-  }
-
-  @Override
-  public boolean isFinished() {
-    return finished;
   }
 
   @Override

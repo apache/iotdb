@@ -186,4 +186,9 @@ public class SumAccumulator implements Accumulator {
       }
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new SumAccumulator(seriesDataType);
+  }
 }

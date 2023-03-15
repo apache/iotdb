@@ -122,4 +122,9 @@ public class MinTimeAccumulator implements Accumulator {
     hasCandidateResult = true;
     minTime = Math.min(minTime, curTime);
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MinTimeAccumulator();
+  }
 }

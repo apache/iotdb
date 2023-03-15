@@ -62,6 +62,15 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
     initHeap();
   }
 
+  public PreAggrWindowWithNaturalMonthIterator(
+      AggrWindowIterator aggrWindowIterator, boolean isAscending, boolean leftCRightO) {
+    this.isAscending = isAscending;
+    this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
+    this.aggrWindowIterator = aggrWindowIterator;
+    this.leftCRightO = leftCRightO;
+    initHeap();
+  }
+
   @Override
   public TimeRange getFirstTimeRange() {
     long retStartTime = timeBoundaryHeap.pollFirst();
@@ -162,5 +171,11 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
     initHeap();
 
     return tmpInterval;
+  }
+
+  @Override
+  public ITimeRangeIterator copy() {
+    return new PreAggrWindowWithNaturalMonthIterator(
+        (AggrWindowIterator) aggrWindowIterator.copy(), isAscending, leftCRightO);
   }
 }

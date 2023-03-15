@@ -430,6 +430,12 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
+  public void allowRunning() {
+    throw new UnsupportedOperationException(
+        "AllowRunning() can only be invoked by localSourceHandle.");
+  }
+
+  @Override
   public String toString() {
     return String.format(
         "Query[%s]-[%s-%s-SourceHandle-%s]",

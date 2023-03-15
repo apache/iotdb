@@ -48,10 +48,13 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -84,6 +87,8 @@ public class SeriesScanUtil {
   // file index
   protected int curSeqFileIndex;
   protected int curUnseqFileIndex;
+  // If seqFileIndexIterator != null, means tsFileResources have been filtered well
+  public Iterator<Integer> seqFileIndexIterator;
 
   // TimeSeriesMetadata cache
   protected ITimeSeriesMetadata firstTimeSeriesMetadata;
@@ -163,6 +168,16 @@ public class SeriesScanUtil {
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
     curUnseqFileIndex = 0;
+  }
+
+  public void initQueryDataSource(
+      QueryDataSource dataSource, List<Integer> seqFileIndexList, int[] unSeqFileOrderIndex) {
+    this.dataSource =
+        new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
+
+    this.dataSource.setUnSeqFileOrderIndex(unSeqFileOrderIndex);
+    this.orderUtils.setSeqFileIndexList(seqFileIndexList);
+    this.curUnseqFileIndex = 0;
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -1223,6 +1238,8 @@ public class SeriesScanUtil {
     TsFileResource getNextUnseqFileResource(boolean isDelete);
 
     void setCurSeqFileIndex(QueryDataSource dataSource);
+
+    void setSeqFileIndexList(List<Integer> seqFileIndexList);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1300,7 +1317,13 @@ public class SeriesScanUtil {
                 seriesPath.getDevice(), getGlobalTimeFilter(), true, false)) {
           break;
         }
-        curSeqFileIndex--;
+        if (seqFileIndexIterator == null) {
+          curSeqFileIndex--;
+        } else if (seqFileIndexIterator.hasNext()) {
+          curSeqFileIndex = seqFileIndexIterator.next();
+        } else {
+          return false;
+        }
       }
       return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
     }
@@ -1323,7 +1346,13 @@ public class SeriesScanUtil {
     public TsFileResource getNextSeqFileResource(boolean isDelete) {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
-        curSeqFileIndex--;
+        if (seqFileIndexIterator == null) {
+          curSeqFileIndex--;
+        } else if (seqFileIndexIterator.hasNext()) {
+          curSeqFileIndex = seqFileIndexIterator.next();
+        } else {
+          curSeqFileIndex = -1;
+        }
       }
       return tsFileResource;
     }
@@ -1340,6 +1369,16 @@ public class SeriesScanUtil {
     @Override
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
+    }
+
+    @Override
+    public void setSeqFileIndexList(List<Integer> seqFileIndexList) {
+      seqFileIndexIterator = Lists.reverse(seqFileIndexList).iterator();
+      if (seqFileIndexIterator.hasNext()) {
+        curSeqFileIndex = seqFileIndexIterator.next();
+      } else {
+        curSeqFileIndex = -1;
+      }
     }
   }
 
@@ -1418,7 +1457,13 @@ public class SeriesScanUtil {
                 seriesPath.getDevice(), getGlobalTimeFilter(), true, false)) {
           break;
         }
-        curSeqFileIndex++;
+        if (seqFileIndexIterator == null) {
+          curSeqFileIndex++;
+        } else if (seqFileIndexIterator.hasNext()) {
+          curSeqFileIndex = seqFileIndexIterator.next();
+        } else {
+          return false;
+        }
       }
       return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
     }
@@ -1441,7 +1486,13 @@ public class SeriesScanUtil {
     public TsFileResource getNextSeqFileResource(boolean isDelete) {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
-        curSeqFileIndex++;
+        if (seqFileIndexIterator == null) {
+          curSeqFileIndex++;
+        } else if (seqFileIndexIterator.hasNext()) {
+          curSeqFileIndex = seqFileIndexIterator.next();
+        } else {
+          curSeqFileIndex = dataSource.getSeqResourcesSize();
+        }
       }
       return tsFileResource;
     }
@@ -1458,6 +1509,16 @@ public class SeriesScanUtil {
     @Override
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
+    }
+
+    @Override
+    public void setSeqFileIndexList(List<Integer> seqFileIndexList) {
+      seqFileIndexIterator = seqFileIndexList.iterator();
+      if (seqFileIndexIterator.hasNext()) {
+        curSeqFileIndex = seqFileIndexIterator.next();
+      } else {
+        curSeqFileIndex = dataSource.getSeqResourcesSize();
+      }
     }
   }
 }

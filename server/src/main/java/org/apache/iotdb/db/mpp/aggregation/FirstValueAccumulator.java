@@ -371,4 +371,9 @@ public class FirstValueAccumulator implements Accumulator {
       firstValue.setBinary(value);
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new FirstValueAccumulator(seriesDataType);
+  }
 }

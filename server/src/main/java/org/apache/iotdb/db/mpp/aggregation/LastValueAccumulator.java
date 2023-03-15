@@ -365,4 +365,9 @@ public class LastValueAccumulator implements Accumulator {
       lastValue.setBinary(value);
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new LastValueAccumulator(seriesDataType);
+  }
 }

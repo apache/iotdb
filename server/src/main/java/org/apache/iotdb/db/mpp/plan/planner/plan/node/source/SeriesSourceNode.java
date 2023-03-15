@@ -21,14 +21,39 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public abstract class SeriesSourceNode extends SourceNode {
-  protected SeriesSourceNode(PlanNodeId id) {
+
+  // The path of the target series which will be scanned.
+  protected final PartialPath seriesPath;
+
+  // The order to traverse the data.
+  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
+  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
+  protected Ordering scanOrder = Ordering.ASC;
+
+  protected SeriesSourceNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
+    this.seriesPath = seriesPath;
   }
 
-  public abstract PartialPath getPartitionPath();
+  public PartialPath getPartitionPath() {
+    return seriesPath;
+  }
 
   public abstract Filter getPartitionTimeFilter();
+
+  public Ordering getScanOrder() {
+    return scanOrder;
+  }
+
+  public void setScanOrder(Ordering scanOrder) {
+    this.scanOrder = scanOrder;
+  }
+
+  public PartialPath getSeriesPath() {
+    return seriesPath;
+  }
 }

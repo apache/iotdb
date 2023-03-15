@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -60,7 +59,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       PlanNodeId id,
       AlignedPath alignedPath,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id, aggregationDescriptorList);
+    super(id, alignedPath, aggregationDescriptorList);
     this.alignedPath = alignedPath;
     this.aggregationDescriptorList =
         AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList);
@@ -92,11 +91,6 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
-  }
-
-  @Override
-  public Ordering getScanOrder() {
-    return scanOrder;
   }
 
   @Override
@@ -277,11 +271,6 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         timeFilter,
         groupByTimeParameter,
         regionReplicaSet);
-  }
-
-  @Override
-  public PartialPath getPartitionPath() {
-    return alignedPath;
   }
 
   @Override

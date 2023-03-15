@@ -320,4 +320,9 @@ public class ExtremeAccumulator implements Accumulator {
       extremeResult.setDouble(extVal);
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new ExtremeAccumulator(seriesDataType);
+  }
 }

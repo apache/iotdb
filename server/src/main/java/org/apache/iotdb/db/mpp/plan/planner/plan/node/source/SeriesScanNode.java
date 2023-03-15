@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -51,14 +50,6 @@ import java.util.Objects;
  */
 public class SeriesScanNode extends SeriesSourceNode {
 
-  // The path of the target series which will be scanned.
-  private final MeasurementPath seriesPath;
-
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private Ordering scanOrder = Ordering.ASC;
-
   // time filter for current series, could be null if doesn't exist
   @Nullable private Filter timeFilter;
 
@@ -75,8 +66,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   private TRegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath) {
-    super(id);
-    this.seriesPath = seriesPath;
+    super(id, seriesPath);
   }
 
   public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, Ordering scanOrder) {
@@ -133,16 +123,9 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.offset = offset;
   }
 
-  public Ordering getScanOrder() {
-    return scanOrder;
-  }
-
-  public void setScanOrder(Ordering scanOrder) {
-    this.scanOrder = scanOrder;
-  }
-
+  @Override
   public MeasurementPath getSeriesPath() {
-    return seriesPath;
+    return (MeasurementPath) seriesPath;
   }
 
   @Nullable
@@ -300,11 +283,6 @@ public class SeriesScanNode extends SeriesSourceNode {
         limit,
         offset,
         regionReplicaSet);
-  }
-
-  @Override
-  public PartialPath getPartitionPath() {
-    return seriesPath;
   }
 
   @Override

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -64,9 +63,6 @@ import java.util.stream.Collectors;
  */
 public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
-  // The path of the target series which will be aggregated.
-  private final MeasurementPath seriesPath;
-
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
@@ -74,8 +70,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       PlanNodeId id,
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id, AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList));
-    this.seriesPath = seriesPath;
+    super(id, seriesPath, AggregationNode.getDeduplicatedDescriptors(aggregationDescriptorList));
   }
 
   public SeriesAggregationScanNode(
@@ -103,11 +98,6 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   }
 
   @Override
-  public Ordering getScanOrder() {
-    return scanOrder;
-  }
-
-  @Override
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
@@ -123,8 +113,9 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     return groupByTimeParameter;
   }
 
+  @Override
   public MeasurementPath getSeriesPath() {
-    return seriesPath;
+    return (MeasurementPath) seriesPath;
   }
 
   @Override
@@ -288,11 +279,6 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         timeFilter,
         groupByTimeParameter,
         regionReplicaSet);
-  }
-
-  @Override
-  public PartialPath getPartitionPath() {
-    return seriesPath;
   }
 
   @Override

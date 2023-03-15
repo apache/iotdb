@@ -61,9 +61,10 @@ public class LocalExecutionPlanContext {
   private final Map<String, Set<String>> allSensorsMap;
   private int degreeOfParallelism =
       IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+  private boolean allowParallelScanOperator = true;
   // this is shared with all subContexts
-  private AtomicInteger nextPipelineId;
-  private List<PipelineDriverFactory> pipelineDriverFactories;
+  private final AtomicInteger nextPipelineId;
+  private final List<PipelineDriverFactory> pipelineDriverFactories;
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
 
@@ -105,6 +106,7 @@ public class LocalExecutionPlanContext {
     this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
+    this.allowParallelScanOperator = parentContext.allowParallelScanOperator;
   }
 
   // for schema region
@@ -265,5 +267,13 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public boolean isAllowParallelScanOperator() {
+    return allowParallelScanOperator;
+  }
+
+  public void setAllowParallelScanOperator(boolean allowParallelScanOperator) {
+    this.allowParallelScanOperator = allowParallelScanOperator;
   }
 }

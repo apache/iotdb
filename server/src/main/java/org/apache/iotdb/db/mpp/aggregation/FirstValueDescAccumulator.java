@@ -106,4 +106,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       }
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new FirstValueDescAccumulator(seriesDataType);
+  }
 }

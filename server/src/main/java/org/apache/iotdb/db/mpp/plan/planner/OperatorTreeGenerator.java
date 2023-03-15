@@ -117,11 +117,14 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.mpp.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.mpp.execution.operator.sink.ShuffleHelperOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanTraverseOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanTraverseOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
@@ -136,6 +139,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -184,8 +188,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -270,14 +276,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SeriesScanOperator.class.getSimpleName());
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
@@ -286,40 +286,44 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
 
-    SeriesScanOperator seriesScanOperator =
-        new SeriesScanOperator(
-            operatorContext,
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            seriesScanOptionsBuilder.build());
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  SeriesScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return seriesScanOperator;
+      SeriesScanOperator scanOperator =
+          new SeriesScanOperator(
+              operatorContext,
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              seriesScanOptionsBuilder.build());
+
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(scanOperator);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return scanOperator;
+    } else {
+      return divideSplitToPipeline(context, node, seriesScanOptionsBuilder);
+    }
   }
 
   @Override
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
     AlignedPath seriesPath = node.getAlignedPath();
-
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AlignedSeriesScanOperator.class.getSimpleName());
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
@@ -328,42 +332,47 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
     seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
 
-    AlignedSeriesScanOperator seriesScanOperator =
-        new AlignedSeriesScanOperator(
-            operatorContext,
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            seriesScanOptionsBuilder.build());
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedSeriesScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context
-        .getTimeSliceAllocator()
-        .recordExecutionWeight(operatorContext, seriesPath.getColumnNum());
-    return seriesScanOperator;
+      AlignedSeriesScanOperator seriesScanOperator =
+          new AlignedSeriesScanOperator(
+              operatorContext,
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              seriesScanOptionsBuilder.build());
+
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
+      context
+          .getTimeSliceAllocator()
+          .recordExecutionWeight(operatorContext, seriesPath.getColumnNum());
+      return seriesScanOperator;
+    } else {
+      return divideSplitToPipeline(context, node, seriesScanOptionsBuilder);
+    }
   }
 
   @Override
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SeriesAggregationScanOperator.class.getSimpleName());
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
 
+    boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
@@ -393,37 +402,50 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    SeriesAggregationScanOperator aggregateScanOperator =
-        new SeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            scanOptionsBuilder.build(),
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            node.getGroupByTimeParameter(),
-            maxReturnSize);
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  SeriesAggregationScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
-    return aggregateScanOperator;
+      SeriesAggregationScanOperator aggregateScanOperator =
+          new SeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              scanOptionsBuilder.build(),
+              operatorContext,
+              aggregators,
+              timeRangeIterator,
+              node.getGroupByTimeParameter(),
+              maxReturnSize);
+
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
+      return aggregateScanOperator;
+    } else {
+      return divideSplitToPipeline(
+          context,
+          node,
+          scanOptionsBuilder,
+          aggregators,
+          timeRangeIterator,
+          groupByTimeParameter,
+          maxReturnSize);
+    }
   }
 
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     AlignedPath seriesPath = node.getAlignedPath();
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
+
     boolean ascending = node.getScanOrder() == Ordering.ASC;
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AlignedSeriesAggregationScanOperator.class.getSimpleName());
     List<Aggregator> aggregators = new ArrayList<>();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       checkArgument(
@@ -465,24 +487,235 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
-        new AlignedSeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            scanOptionsBuilder.build(),
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            groupByTimeParameter,
-            maxReturnSize);
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedSeriesAggregationScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext())
-        .addSourceOperator(seriesAggregationScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
-    return seriesAggregationScanOperator;
+      AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
+          new AlignedSeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              scanOptionsBuilder.build(),
+              operatorContext,
+              aggregators,
+              timeRangeIterator,
+              groupByTimeParameter,
+              maxReturnSize);
+
+      ((DataDriverContext) context.getDriverContext())
+          .addSourceOperator(seriesAggregationScanOperator);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
+      return seriesAggregationScanOperator;
+    } else {
+      return divideSplitToPipeline(
+          context,
+          node,
+          scanOptionsBuilder,
+          aggregators,
+          timeRangeIterator,
+          groupByTimeParameter,
+          maxReturnSize);
+    }
+  }
+
+  /**
+   * Used for SeriesScanNode and AlignedSeriesScanNode.
+   *
+   * @param node SeriesScanNode or AlignedSeriesScanNode
+   */
+  private Operator divideSplitToPipeline(
+      LocalExecutionPlanContext context,
+      SeriesSourceNode node,
+      SeriesScanOptions.Builder seriesScanOptionsBuilder) {
+    int dop = context.getDegreeOfParallelism();
+    List<AbstractDataSourceOperator> scanOperatorList = new ArrayList<>();
+    List<Operator> childSourceOperator = new ArrayList<>();
+    for (int i = 0; i < dop; i++) {
+      PlanNodeId planNodeId = new PlanNodeId(String.format("%s-%d", node.getPlanNodeId(), i));
+      // the first split belongs to parentPipeline
+      LocalExecutionPlanContext subContext = (i == 0) ? context : context.createSubContext();
+      OperatorContext scanOperatorContext;
+      AbstractDataSourceOperator scanOperator;
+      if (node instanceof SeriesScanNode) {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    SeriesScanOperator.class.getSimpleName());
+        scanOperator = new SeriesScanOperator(scanOperatorContext, planNodeId);
+      } else {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    AlignedSeriesScanOperator.class.getSimpleName());
+        scanOperator =
+            new AlignedSeriesScanOperator(
+                scanOperatorContext, planNodeId, ((AlignedSeriesScanNode) node).getAlignedPath());
+      }
+
+      scanOperatorList.add(scanOperator);
+      if (i == 0) {
+        childSourceOperator.add(scanOperator);
+        context.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+      } else {
+        subContext.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+        Operator exchangeOperator =
+            createNewPipelineForChildOperation(
+                context, subContext, scanOperator, planNodeId, false);
+        childSourceOperator.add(exchangeOperator);
+        context.setExchangeSumNum(context.getExchangeSumNum() + 1);
+      }
+    }
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SeriesScanTraverseOperator.class.getSimpleName());
+    SeriesScanTraverseOperator traverseOperator =
+        new SeriesScanTraverseOperator(
+            node.getPlanNodeId(),
+            operatorContext,
+            node.getSeriesPath(),
+            node.getScanOrder(),
+            childSourceOperator,
+            scanOperatorList,
+            seriesScanOptionsBuilder,
+            (node instanceof AlignedSeriesScanNode));
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(traverseOperator);
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return traverseOperator;
+  }
+
+  /**
+   * Used for SeriesAggregationScanNode and AlignedSeriesAggregationScanNode.
+   *
+   * @param node SeriesAggregationScanNode or AlignedSeriesAggregationScanNode
+   */
+  private Operator divideSplitToPipeline(
+      LocalExecutionPlanContext context,
+      SeriesSourceNode node,
+      SeriesScanOptions.Builder seriesScanOptionsBuilder,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    int dop = context.getDegreeOfParallelism();
+    List<AbstractDataSourceOperator> scanOperatorList = new ArrayList<>();
+    List<Operator> childSourceOperator = new ArrayList<>();
+
+    List<Aggregator> childAggregators = new ArrayList<>();
+    for (Aggregator oldAggregator : aggregators) {
+      Aggregator newAggregator = oldAggregator.copy();
+      newAggregator.setStep(AggregationStep.PARTIAL);
+      childAggregators.add(newAggregator);
+    }
+    for (int i = 0; i < dop; i++) {
+      PlanNodeId planNodeId = new PlanNodeId(String.format("%s-%d", node.getPlanNodeId(), i));
+      // the first split belongs to parentPipeline
+      LocalExecutionPlanContext subContext = (i == 0) ? context : context.createSubContext();
+      OperatorContext scanOperatorContext;
+      AbstractDataSourceOperator aggScanOperator;
+      List<Aggregator> aggregatorsCopy = new ArrayList<>();
+      childAggregators.forEach(aggregator -> aggregatorsCopy.add(aggregator.copy()));
+
+      if (node instanceof SeriesAggregationScanNode) {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    SeriesAggregationScanOperator.class.getSimpleName());
+        aggScanOperator =
+            new SeriesAggregationScanOperator(
+                planNodeId,
+                node.getScanOrder(),
+                scanOperatorContext,
+                aggregatorsCopy,
+                timeRangeIterator.copy(),
+                groupByTimeParameter,
+                maxReturnSize);
+      } else {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    AlignedSeriesAggregationScanOperator.class.getSimpleName());
+        aggScanOperator =
+            new AlignedSeriesAggregationScanOperator(
+                planNodeId,
+                ((AlignedSeriesAggregationScanNode) node).getAlignedPath(),
+                node.getScanOrder(),
+                scanOperatorContext,
+                aggregatorsCopy,
+                timeRangeIterator.copy(),
+                groupByTimeParameter,
+                maxReturnSize);
+      }
+
+      scanOperatorList.add(aggScanOperator);
+      if (i == 0) {
+        childSourceOperator.add(aggScanOperator);
+        context.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+      } else {
+        subContext.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+        Operator exchangeOperator =
+            createNewPipelineForChildOperation(
+                context, subContext, aggScanOperator, planNodeId, false);
+        childSourceOperator.add(exchangeOperator);
+        context.setExchangeSumNum(context.getExchangeSumNum() + 1);
+      }
+    }
+
+    // update aggregator of traverse operator
+    List<Aggregator> parentAggregators = new ArrayList<>();
+    for (Aggregator oldAggregator : aggregators) {
+      Aggregator newAggregator = oldAggregator.copy();
+      newAggregator.setStep(
+          oldAggregator.getStep().isOutputPartial()
+              ? AggregationStep.INTERMEDIATE
+              : AggregationStep.FINAL);
+      parentAggregators.add(newAggregator);
+    }
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SeriesAggregationScanTraverseOperator.class.getSimpleName());
+    SeriesAggregationScanTraverseOperator traverseOperator =
+        new SeriesAggregationScanTraverseOperator(
+            node.getPlanNodeId(),
+            operatorContext,
+            node.getSeriesPath(),
+            node.getScanOrder(),
+            childSourceOperator,
+            scanOperatorList,
+            seriesScanOptionsBuilder,
+            (node instanceof AlignedSeriesAggregationScanNode),
+            parentAggregators,
+            timeRangeIterator.copy(),
+            maxReturnSize);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(traverseOperator);
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return traverseOperator;
   }
 
   @Override
@@ -2496,14 +2729,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private Operator createNewPipelineForChildNode(
       LocalExecutionPlanContext context, LocalExecutionPlanContext subContext, PlanNode childNode) {
     Operator childOperation = childNode.accept(this, subContext);
+    return createNewPipelineForChildOperation(
+        context, subContext, childOperation, childNode.getPlanNodeId(), true);
+  }
+
+  private Operator createNewPipelineForChildOperation(
+      LocalExecutionPlanContext context,
+      LocalExecutionPlanContext subContext,
+      Operator childOperation,
+      PlanNodeId planNodeId,
+      boolean allowRunning) {
     ISinkChannel localSinkChannel =
         MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
             // Attention, there is no parent node, use first child node instead
-            subContext.getDriverContext(), childNode.getPlanNodeId().getId());
+            subContext.getDriverContext(), planNodeId.getId(), allowRunning);
     subContext.setISink(localSinkChannel);
     subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
-    ExchangeOperator sourceOperator =
+    ExchangeOperator exchangeOperator =
         new ExchangeOperator(
             context
                 .getDriverContext()
@@ -2512,12 +2755,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                 ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                 context.getDriverContext()),
-            childNode.getPlanNodeId(),
+            planNodeId,
             childOperation.calculateMaxReturnSize());
 
-    context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
-    context.addExchangeOperator(sourceOperator);
-    return sourceOperator;
+    context.getTimeSliceAllocator().recordExecutionWeight(exchangeOperator.getOperatorContext(), 1);
+    context.addExchangeOperator(exchangeOperator);
+    return exchangeOperator;
   }
 
   public List<Operator> dealWithConsumeChildrenOneByOneNode(
@@ -2528,7 +2771,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     // 1. divide every child to pipeline using the max dop
     if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
-      // If dop = 1, we don't create extra pipeline
+      // If dop = 1 or the size of children = 1, we don't create extra pipeline for current operator
       for (PlanNode childSource : node.getChildren()) {
         Operator childOperation = childSource.accept(this, context);
         finalExchangeNum = Math.max(finalExchangeNum, context.getExchangeSumNum());
@@ -2536,6 +2779,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         parentPipelineChildren.add(childOperation);
       }
     } else {
+      // For oneByOneNode with more than one child, we offer running priority and dop to the
+      // following children, and don't allow parallel scan operator
+      context.setAllowParallelScanOperator(false);
       List<Integer> childPipelineNums = new ArrayList<>();
       List<Integer> childExchangeNums = new ArrayList<>();
       int sumOfChildPipelines = 0, sumOfChildExchangeNums = 0;
@@ -2556,7 +2802,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           ISinkChannel localSinkChannel =
               MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
                   // Attention, there is no parent node, use first child node instead
-                  context.getDriverContext(), childNode.getPlanNodeId().getId());
+                  context.getDriverContext(), childNode.getPlanNodeId().getId(), true);
           subContext.setISink(localSinkChannel);
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 

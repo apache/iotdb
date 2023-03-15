@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -40,21 +39,22 @@ import java.util.Objects;
 import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class AlignedLastQueryScanNode extends SeriesSourceNode {
+
   // The path of the target series which will be scanned.
-  private final AlignedPath seriesPath;
+  private final AlignedPath alignedPath;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
   public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath) {
-    super(id);
-    this.seriesPath = seriesPath;
+    super(id, seriesPath);
+    this.alignedPath = seriesPath;
   }
 
   public AlignedLastQueryScanNode(
       PlanNodeId id, AlignedPath seriesPath, TRegionReplicaSet regionReplicaSet) {
-    super(id);
-    this.seriesPath = seriesPath;
+    super(id, seriesPath);
+    this.alignedPath = seriesPath;
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -86,7 +86,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new AlignedLastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new AlignedLastQueryScanNode(getPlanNodeId(), alignedPath, regionReplicaSet);
   }
 
   @Override
@@ -146,13 +146,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     return new AlignedLastQueryScanNode(planNodeId, partialPath);
   }
 
-  public AlignedPath getSeriesPath() {
-    return seriesPath;
-  }
-
   @Override
-  public PartialPath getPartitionPath() {
-    return seriesPath;
+  public AlignedPath getSeriesPath() {
+    return alignedPath;
   }
 
   @Override

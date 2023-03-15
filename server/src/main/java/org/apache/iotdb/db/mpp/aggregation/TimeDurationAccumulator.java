@@ -121,4 +121,9 @@ public class TimeDurationAccumulator implements Accumulator {
     initResult = true;
     minTime = Math.min(minTime, curTime);
   }
+
+  @Override
+  public Accumulator copy() {
+    return new TimeDurationAccumulator();
+  }
 }

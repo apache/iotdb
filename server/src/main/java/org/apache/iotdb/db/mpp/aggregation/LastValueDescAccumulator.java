@@ -122,4 +122,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
       }
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new LastValueDescAccumulator(seriesDataType);
+  }
 }

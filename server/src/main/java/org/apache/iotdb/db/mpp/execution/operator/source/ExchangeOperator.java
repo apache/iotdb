@@ -123,4 +123,8 @@ public class ExchangeOperator implements SourceOperator {
   public void close() throws Exception {
     sourceHandle.close();
   }
+
+  public void allowRunning() {
+    this.sourceHandle.allowRunning();
+  }
 }

@@ -306,18 +306,21 @@ public class PipelineBuilderTest {
   }
 
   /**
-   * This test will test dop = 6. Expected result is still five pipelines:
+   * This test will test dop = 6. Expected result is still six pipelines:
    *
    * <p>The first is: TimeJoin1 - [ExchangeOperator, ExchangeOperator, ExchangeOperator,
    * ExchangeOperator];
    *
-   * <p>The second is: ExchangeOperator - SeriesScan0.
+   * <p>The second is: ExchangeOperator - SeriesScanTraverseOperator - [SeriesScan0-0,
+   * ExchangeOperator].
    *
-   * <p>The third is: ExchangeOperator - SeriesScan1.
+   * <p>The third is: ExchangeOperator - SeriesScan0-1.
    *
-   * <p>The forth is: ExchangeOperator - SeriesScan2.
+   * <p>The forth is: ExchangeOperator - SeriesScan1.
    *
-   * <p>The fifth is: ExchangeOperator - SeriesScan3.
+   * <p>The fifth is: ExchangeOperator - SeriesScan2.
+   *
+   * <p>The sixth is: ExchangeOperator - SeriesScan3.
    */
   @Test
   public void testConsumeAllChildrenPipelineBuilder6() throws IllegalPathException {
@@ -329,7 +332,7 @@ public class PipelineBuilderTest {
     List<Operator> childrenOperator =
         operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
     // The number of pipeline is 4, since parent pipeline hasn't joined
-    assertEquals(4, context.getPipelineNumber());
+    assertEquals(5, context.getPipelineNumber());
 
     // Validate the first pipeline
     assertEquals(4, childrenOperator.size());
@@ -363,7 +366,7 @@ public class PipelineBuilderTest {
     assertEquals("SeriesScanNode3", exchangeOperator4.getSourceId().getId());
 
     // Validate the number exchange operator
-    assertEquals(4, context.getExchangeSumNum());
+    assertEquals(5, context.getExchangeSumNum());
   }
 
   /**

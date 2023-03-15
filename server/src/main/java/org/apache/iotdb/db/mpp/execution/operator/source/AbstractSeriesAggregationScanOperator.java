@@ -51,18 +51,16 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected TsBlock inputTsBlock;
 
-  protected final ITimeRangeIterator timeRangeIterator;
+  protected ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   protected TimeRange curTimeRange;
 
   // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
-  protected final List<Aggregator> aggregators;
+  protected List<Aggregator> aggregators;
 
   // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
-
-  protected boolean finished = false;
 
   private final long cachedRawDataSize;
   private final long maxReturnSize;
@@ -97,6 +95,22 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.maxReturnSize = maxReturnSize;
   }
 
+  public void setAggregators(List<Aggregator> aggregators) {
+    this.aggregators = aggregators;
+  }
+
+  public void setTimeRangeIterator(ITimeRangeIterator timeRangeIterator) {
+    this.timeRangeIterator = timeRangeIterator;
+  }
+
+  public List<Aggregator> getAggregators() {
+    return aggregators;
+  }
+
+  public ITimeRangeIterator getTimeRangeIterator() {
+    return timeRangeIterator;
+  }
+
   @Override
   public long calculateMaxPeekMemory() {
     return cachedRawDataSize + maxReturnSize;
@@ -114,6 +128,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean hasNext() {
+    if (finished.get()) {
+      return false;
+    }
     return timeRangeIterator.hasNextTimeRange();
   }
 
@@ -149,7 +166,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = !hasNextWithTimer());
+    finished.compareAndSet(false, !hasNextWithTimer());
+    return finished.get();
   }
 
   protected void calculateNextAggregationResult() {

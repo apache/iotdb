@@ -201,4 +201,9 @@ public class AvgAccumulator implements Accumulator {
       }
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new AvgAccumulator(seriesDataType);
+  }
 }

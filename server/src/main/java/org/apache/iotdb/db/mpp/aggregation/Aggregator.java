@@ -41,7 +41,7 @@ public class Aggregator {
   protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
-  protected final AggregationStep step;
+  protected AggregationStep step;
 
   protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -144,5 +144,25 @@ public class Aggregator {
 
   public boolean hasFinalResult() {
     return accumulator.hasFinalResult();
+  }
+
+  public Accumulator getAccumulator() {
+    return accumulator;
+  }
+
+  public void setStep(AggregationStep step) {
+    this.step = step;
+  }
+
+  public AggregationStep getStep() {
+    return step;
+  }
+
+  public void setInputLocationList(List<InputLocation[]> inputLocationList) {
+    this.inputLocationList = inputLocationList;
+  }
+
+  public Aggregator copy() {
+    return new Aggregator(accumulator.copy(), step, inputLocationList);
   }
 }

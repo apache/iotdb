@@ -21,12 +21,30 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
     implements DataSourceOperator {
+
   protected SeriesScanUtil seriesScanUtil;
+
+  protected AtomicBoolean finished = new AtomicBoolean(false);
 
   @Override
   public void initQueryDataSource(QueryDataSource dataSource) {
     seriesScanUtil.initQueryDataSource(dataSource);
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished.get();
+  }
+
+  public void setSeriesScanUtil(SeriesScanUtil seriesScanUtil) {
+    this.seriesScanUtil = seriesScanUtil;
+  }
+
+  public void setFinished(boolean finished) {
+    this.finished.set(finished);
   }
 }

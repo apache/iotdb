@@ -41,11 +41,11 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
  */
 public class AggregationOperator extends AbstractConsumeAllOperator {
 
-  private final ITimeRangeIterator timeRangeIterator;
+  protected final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  private final List<Aggregator> aggregators;
+  protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;

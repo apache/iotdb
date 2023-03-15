@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -50,11 +49,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   // The paths of the target series which will be scanned.
   private final AlignedPath alignedPath;
 
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private Ordering scanOrder = Ordering.ASC;
-
   // time filter for current series, could be null if doesn't exist
   @Nullable private Filter timeFilter;
 
@@ -71,7 +65,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   private TRegionReplicaSet regionReplicaSet;
 
   public AlignedSeriesScanNode(PlanNodeId id, AlignedPath alignedPath) {
-    super(id);
+    super(id, alignedPath);
     this.alignedPath = alignedPath;
   }
 
@@ -99,10 +93,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
-  }
-
-  public Ordering getScanOrder() {
-    return scanOrder;
   }
 
   @Nullable
@@ -296,11 +286,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         this.getPlanNodeId(),
         this.getAlignedPath().getFormattedString(),
         PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
-  }
-
-  @Override
-  public PartialPath getPartitionPath() {
-    return alignedPath;
   }
 
   @Override

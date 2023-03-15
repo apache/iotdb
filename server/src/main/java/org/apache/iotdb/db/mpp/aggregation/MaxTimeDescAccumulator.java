@@ -43,4 +43,9 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
   public boolean hasFinalResult() {
     return initResult;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MaxTimeDescAccumulator();
+  }
 }
