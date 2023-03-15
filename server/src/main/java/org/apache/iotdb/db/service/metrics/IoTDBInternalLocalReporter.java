@@ -82,7 +82,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     sessionInfo = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
 
-    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager = ConfigNodeClientManager.getInstance();
+    IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
+        ConfigNodeClientManager.getInstance();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowDatabaseResp showDatabaseResp =
