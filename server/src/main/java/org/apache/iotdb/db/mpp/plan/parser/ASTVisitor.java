@@ -208,6 +208,9 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_TO;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -2315,8 +2318,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseInExpression(context, canUseFullPath);
     }
 
-    if (context.castInput != null) {
-      return parseCastFunction(context, canUseFullPath);
+    if (context.scalarFunctionExpression() != null) {
+      return parseScalarFunctionExpression(context.scalarFunctionExpression(), canUseFullPath);
     }
 
     if (context.functionName() != null) {
@@ -2339,11 +2342,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     throw new UnsupportedOperationException();
   }
 
+  private Expression parseScalarFunctionExpression(
+      IoTDBSqlParser.ScalarFunctionExpressionContext context, boolean canUseFullPath) {
+    if (context.CAST() != null) {
+      return parseCastFunction(context, canUseFullPath);
+    } else if (context.REPLACE() != null) {
+      return parseReplaceFunction(context, canUseFullPath);
+    }
+    throw new UnsupportedOperationException();
+  }
+
   private Expression parseCastFunction(
-      IoTDBSqlParser.ExpressionContext castClause, boolean canUseFullPath) {
+      IoTDBSqlParser.ScalarFunctionExpressionContext castClause, boolean canUseFullPath) {
     FunctionExpression functionExpression = new FunctionExpression(CAST_FUNCTION);
     functionExpression.addExpression(parseExpression(castClause.castInput, canUseFullPath));
     functionExpression.addAttribute(CAST_TYPE, parseAttributeValue(castClause.attributeValue()));
+    return functionExpression;
+  }
+
+  private Expression parseReplaceFunction(
+      IoTDBSqlParser.ScalarFunctionExpressionContext replaceClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(REPLACE_FUNCTION);
+    functionExpression.addExpression(parseExpression(replaceClause.text, canUseFullPath));
+    functionExpression.addAttribute(REPLACE_FROM, parseStringLiteral(replaceClause.from.getText()));
+    functionExpression.addAttribute(REPLACE_TO, parseStringLiteral(replaceClause.to.getText()));
     return functionExpression;
   }
 

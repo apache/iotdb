@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -27,28 +28,28 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
+public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
   private String database;
 
-  private int schemaReplicationFactor;
+  private int dataReplicationFactor;
 
-  public SetSchemaReplicationFactorPlan() {
-    super(ConfigPhysicalPlanType.SetSchemaReplicationFactor);
+  public SetDataReplicationFactorPlan() {
+    super(ConfigPhysicalPlanType.SetDataReplicationFactor);
   }
 
-  public SetSchemaReplicationFactorPlan(String database, int schemaReplicationFactor) {
+  public SetDataReplicationFactorPlan(String database, int dataReplicationFactor) {
     this();
     this.database = database;
-    this.schemaReplicationFactor = schemaReplicationFactor;
+    this.dataReplicationFactor = dataReplicationFactor;
   }
 
   public String getDatabase() {
     return database;
   }
 
-  public int getSchemaReplicationFactor() {
-    return schemaReplicationFactor;
+  public int getDataReplicationFactor() {
+    return dataReplicationFactor;
   }
 
   @Override
@@ -56,26 +57,29 @@ public class SetSchemaReplicationFactorPlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
 
     BasicStructureSerDeUtil.write(database, stream);
-    stream.writeInt(schemaReplicationFactor);
+    stream.writeInt(dataReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     database = BasicStructureSerDeUtil.readString(buffer);
-    schemaReplicationFactor = buffer.getInt();
+    dataReplicationFactor = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SetSchemaReplicationFactorPlan that = (SetSchemaReplicationFactorPlan) o;
-    return schemaReplicationFactor == that.schemaReplicationFactor
-        && database.equals(that.database);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
+    return dataReplicationFactor == that.dataReplicationFactor && database.equals(that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, schemaReplicationFactor);
+    return Objects.hash(database, dataReplicationFactor);
   }
 }
