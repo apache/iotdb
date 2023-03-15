@@ -1,46 +1,30 @@
 {
-  "name": "IoTDB",
-  "version": "1.0.0",
+  "name": "iotdb-website",
+  "version": "2.0.0",
   "description": "Apache IoTDB Website",
-  "main": "index.js",
+  "license": "Apache Licence 2.0",
+  "type": "module",
   "scripts": {
-    "dev": "node --max_old_space_size=6000 ./node_modules/vuepress/cli.js dev src",
-    "build": "node --max_old_space_size=6000 ./node_modules/vuepress/cli.js build src",
-    "deploy": "node --max_old_space_size=6000 deploy.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
-  "keywords": [
-    "IoTDB",
-    "Time Series Data",
-    "Database",
-    "NoSQL",
-    "TSDB",
-    "Time Series Database"
-  ],
-  "author": "Apache IoTDB",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/apache/iotdb"
-  },
-  "homepage": "https://iotdb.apache.org",
-  "directories": {},
-  "dependencies": {
-    "element-ui": "^2.13.0"
+    "build": "node --max_old_space_size=6000  ./node_modules/vuepress/bin/vuepress.js build src",
+    "docs:clean-dev": "vuepress dev src --clean-cache",
+    "dev": "vuepress dev src",
+    "docs:update-package": "npx vp-update",
+    "deploy": "node --max_old_space_size=6000 deploy.js",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix"
   },
   "devDependencies": {
-    "@dovyp/vuepress-plugin-clipboard-copy": "^1.0.0-alpha.7",
-    "remark": "^11.0.2",
-    "remark-validate-links": "^9.2.0",
-    "unified-engine": "^7.0.0",
-    "vfile-reporter": "^6.0.1",
-    "vue-tabs-component": "^1.5.0",
-    "vuepress": "^1.7.1",
-    "vuepress-plugin-tabs": "^0.3.0",
-    "vue-router": "3.4.5",
-    "@vuepress/plugin-html-redirect": "0.1.4",
-    "@vuepress/plugin-back-to-top": "^1.9.7"
+    "@rushstack/eslint-patch": "^1.2.0",
+    "@vue/eslint-config-airbnb-with-typescript": "^7.0.0",
+    "@vuepress/client": "2.0.0-beta.61",
+    "@vuepress/plugin-docsearch": "2.0.0-beta.61",
+    "@vuepress/plugin-google-analytics": "2.0.0-beta.61",
+    "@vuepress/utils": "2.0.0-beta.61",
+    "element-plus": "^2.3.0",
+    "eslint": "^8.36.0",
+    "eslint-plugin-vue": "^9.9.0",
+    "gh-pages": "^5.0.0",
+    "vue": "^3.2.47",
+    "vuepress": "2.0.0-beta.61",
+    "vuepress-theme-hope": "2.0.0-beta.193"
   }
 }

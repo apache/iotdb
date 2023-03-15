@@ -182,7 +182,7 @@ git checkout rel/x.x
 * 系统配置模块(`iotdb-datanode.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
 
 ## 开始
 
@@ -377,7 +377,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Write-And-Delete-Data/CSV-Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

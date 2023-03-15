@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -27,9 +29,10 @@ public class LRUCacheManager extends CacheManager {
 
   private static final int NUM_OF_LIST = 17;
 
-  private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
+  private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager() {
+  public LRUCacheManager(MemManager memManager) {
+    super(memManager);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }
@@ -104,6 +107,15 @@ public class LRUCacheManager extends CacheManager {
     return hash < 0 ? hash + NUM_OF_LIST : hash;
   }
 
+  @Override
+  public long getCacheNodeNum() {
+    long res = 0;
+    for (LRUCacheList cacheList : lruCacheLists) {
+      res += cacheList.size.get();
+    }
+    return res;
+  }
+
   private static class LRUCacheEntry extends CacheEntry {
 
     // although the node instance may be replaced, the name and full path of the node won't be
@@ -154,6 +166,8 @@ public class LRUCacheManager extends CacheManager {
 
     private volatile LRUCacheEntry last;
 
+    private final AtomicLong size = new AtomicLong(0);
+
     private final Lock lock = new ReentrantLock();
 
     private void updateCacheStatusAfterAccess(LRUCacheEntry lruCacheEntry) {
@@ -172,6 +186,7 @@ public class LRUCacheManager extends CacheManager {
       try {
         lruCacheEntry.setNode(node);
         moveToFirst(lruCacheEntry);
+        size.getAndIncrement();
       } finally {
         lock.unlock();
       }
@@ -181,6 +196,7 @@ public class LRUCacheManager extends CacheManager {
       lock.lock();
       try {
         removeOne(lruCacheEntry);
+        size.getAndDecrement();
       } finally {
         lock.unlock();
       }
@@ -203,6 +219,7 @@ public class LRUCacheManager extends CacheManager {
     private void clear() {
       first = null;
       last = null;
+      size.getAndSet(0);
     }
 
     private void moveToFirst(LRUCacheEntry entry) {

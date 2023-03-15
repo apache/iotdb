@@ -51,7 +51,7 @@ public class ConfigNodeConfig {
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties
-  private int configNodeRegionId = 0;
+  private int configRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
@@ -168,6 +168,13 @@ public class ConfigNodeConfig {
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** External lib directory for pipe, stores user-uploaded JAR files */
+  private String pipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded pipe JAR files */
+  private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
 
@@ -202,10 +209,10 @@ public class ConfigNodeConfig {
   private String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader */
-  private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
-  private long configNodeRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
-  private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+  private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
@@ -287,6 +294,8 @@ public class ConfigNodeConfig {
   /** The getOrCreatePartitionTable interface will log new created Partition if set true */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
+  private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -303,6 +312,8 @@ public class ConfigNodeConfig {
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
+    pipeDir = addHomeDir(pipeDir);
+    pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -378,12 +389,12 @@ public class ConfigNodeConfig {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public int getConfigNodeRegionId() {
-    return configNodeRegionId;
+  public int getConfigRegionId() {
+    return configRegionId;
   }
 
-  public void setConfigNodeRegionId(int configNodeRegionId) {
-    this.configNodeRegionId = configNodeRegionId;
+  public void setConfigRegionId(int configRegionId) {
+    this.configRegionId = configRegionId;
   }
 
   public int getSeriesSlotNum() {
@@ -616,6 +627,23 @@ public class ConfigNodeConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getPipeDir() {
+    return pipeDir;
+  }
+
+  public void setPipeDir(String pipeDir) {
+    this.pipeDir = pipeDir;
+    updatePipeTemporaryLibDir();
+  }
+
+  public String getPipeTemporaryLibDir() {
+    return pipeTemporaryLibDir;
+  }
+
+  public void updatePipeTemporaryLibDir() {
+    this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public int getSchemaReplicationFactor() {
@@ -1099,5 +1127,13 @@ public class ConfigNodeConfig {
 
   public void setEnablePrintingNewlyCreatedPartition(boolean enablePrintingNewlyCreatedPartition) {
     isEnablePrintingNewlyCreatedPartition = enablePrintingNewlyCreatedPartition;
+  }
+
+  public long getForceWalPeriodForConfigNodeSimpleInMs() {
+    return forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
+    this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
   }
 }

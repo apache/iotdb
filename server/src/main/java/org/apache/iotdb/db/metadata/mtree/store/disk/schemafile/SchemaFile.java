@@ -130,12 +130,18 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
+  // load or init
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
+    File pmtFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId)
+                + File.separator
+                + MetadataConstant.SCHEMA_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
-        true,
+        !pmtFile.exists(),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
@@ -183,7 +189,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+  public boolean updateDatabaseNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
     this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();

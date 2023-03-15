@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -297,5 +298,15 @@ public class SchemaRegionTestUtil {
       throw new RuntimeException(e);
     }
     return result;
+  }
+
+  public static long deleteTimeSeries(ISchemaRegion schemaRegion, PartialPath pathPattern)
+      throws MetadataException {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(pathPattern);
+    patternTree.constructTree();
+    long num = schemaRegion.constructSchemaBlackList(patternTree);
+    schemaRegion.deleteTimeseriesInBlackList(patternTree);
+    return num;
   }
 }

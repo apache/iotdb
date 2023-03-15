@@ -62,6 +62,10 @@ public enum DataNodeRequestType {
   INACTIVE_TRIGGER_INSTANCE,
   UPDATE_TRIGGER_LOCATION,
 
+  /** Pipe Plugin */
+  CREATE_PIPE_PLUGIN,
+  DROP_PIPE_PLUGIN,
+
   /** Sync */
   PRE_CREATE_PIPE,
   OPERATE_PIPE,
@@ -88,5 +92,8 @@ public enum DataNodeRequestType {
   COUNT_PATHS_USING_TEMPLATE,
 
   /** @TODO Need to migrate to 'Node Maintenance' */
-  KILL_QUERY_INSTANCE
+  KILL_QUERY_INSTANCE,
+
+  /** ML Model */
+  DELETE_MODEL_METRICS
 }

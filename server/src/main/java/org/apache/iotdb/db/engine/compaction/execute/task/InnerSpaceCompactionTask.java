@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -95,6 +95,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       tsFileResourceList = tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     }
     this.hashCode = this.toString().hashCode();
+    this.innerSeqTask = sequence;
+    this.crossTask = false;
     collectSelectedFilesInfo();
     createSummary();
   }
@@ -108,10 +110,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] InnerSpaceCompaction task starts with {} files",
+        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
         storageGroupName,
         dataRegionId,
-        selectedTsFileResourceList.size());
+        sequence ? "Sequence" : "Unsequence",
+        selectedTsFileResourceList.size(),
+        selectedFileSize / 1024 / 1024);
     try {
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
@@ -246,14 +250,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileMetricManager.getInstance()
           .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
 
-      CompactionMetricsRecorder.updateSummary(summary);
+      CompactionMetricsManager.getInstance().updateSummary(summary);
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
-          "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
+          "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s, {}",
           storageGroupName,
           dataRegionId,
+          sequence ? "Sequence" : "Unsequence",
           targetTsFileResource.getTsFile().getName(),
           costTime,
           selectedFileSize / 1024.0d / 1024.0d / costTime,

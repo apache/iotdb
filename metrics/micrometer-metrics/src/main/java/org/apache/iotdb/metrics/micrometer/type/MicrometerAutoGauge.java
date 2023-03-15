@@ -22,34 +22,31 @@ package org.apache.iotdb.metrics.micrometer.type;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import io.micrometer.core.instrument.Tags;
-import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 public class MicrometerAutoGauge<T> implements AutoGauge {
+
   private final WeakReference<T> refObject;
-  private final ToLongFunction<T> mapper;
+  private final ToDoubleFunction<T> mapper;
 
   public MicrometerAutoGauge(
       io.micrometer.core.instrument.MeterRegistry meterRegistry,
       String metricName,
       T object,
-      ToLongFunction<T> mapper,
+      ToDoubleFunction<T> mapper,
       String... tags) {
-    LoggerFactory.getLogger(MicrometerAutoGauge.class).info("{},{}", metricName, tags);
     this.refObject =
-        new WeakReference<>(
-            meterRegistry.gauge(
-                metricName, Tags.of(tags), object, value -> (double) mapper.applyAsLong(value)));
+        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
     this.mapper = mapper;
   }
 
   @Override
-  public long value() {
+  public double value() {
     if (refObject.get() == null) {
-      return 0L;
+      return 0d;
     }
-    return mapper.applyAsLong(refObject.get());
+    return mapper.applyAsDouble(refObject.get());
   }
 }

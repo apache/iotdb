@@ -19,10 +19,15 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
@@ -53,9 +58,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
   private final IStateMachine applicationStateMachine;
   private final IStateMachine.RetryPolicy retryPolicy;
-
-  // Raft Storage sub dir for statemachine data, default (_sm)
-  private File statemachineDir;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
 
@@ -77,7 +79,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         .startAndTransition(
             () -> {
               snapshotStorage.init(storage);
-              this.statemachineDir = snapshotStorage.getStateMachineDir();
               loadSnapshot(snapshotStorage.findLatestSnapshotDir());
             });
   }
@@ -107,10 +108,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public CompletableFuture<Message> applyTransaction(TransactionContext trx) {
+    boolean isLeader = false;
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
-    IConsensusRequest applicationRequest = null;
+    IConsensusRequest applicationRequest;
 
     // if this server is leader
     // it will first try to obtain applicationRequest from transaction context
@@ -118,6 +120,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         && trx.getClientRequest().getMessage() instanceof RequestMessage) {
       RequestMessage requestMessage = (RequestMessage) trx.getClientRequest().getMessage();
       applicationRequest = requestMessage.getActualRequest();
+      isLeader = true;
     } else {
       applicationRequest =
           new ByteBufferConsensusRequest(
@@ -136,7 +139,19 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         }
         IConsensusRequest deserializedRequest =
             applicationStateMachine.deserializeRequest(applicationRequest);
+
+        long startWriteTime = System.nanoTime();
         TSStatus result = applicationStateMachine.write(deserializedRequest);
+        if (isLeader) {
+          MetricService.getInstance()
+              .timer(
+                  System.nanoTime() - startWriteTime,
+                  TimeUnit.NANOSECONDS,
+                  Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
+                  MetricLevel.IMPORTANT,
+                  Tag.STAGE.toString(),
+                  PerformanceOverviewMetrics.ENGINE);
+        }
 
         if (firstTry) {
           finalStatus = result;
@@ -173,7 +188,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       try {
         TimeUnit.SECONDS.sleep(60);
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        logger.warn("{}: interrupted when waiting until system ready: {}", this, e);
+        Thread.currentThread().interrupt();
       }
     }
   }

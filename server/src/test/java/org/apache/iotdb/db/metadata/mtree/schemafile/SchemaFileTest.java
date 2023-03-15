@@ -85,7 +85,7 @@ public class SchemaFileTest {
   public void essentialTestSchemaFile() throws IOException, MetadataException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
-    sf.updateStorageGroupNode(newSGNode);
+    sf.updateDatabaseNode(newSGNode);
 
     IMNode root = virtualTriangleMTree(5, "root.test");
     IMNode int0 = root.getChild("int0");
@@ -159,7 +159,7 @@ public class SchemaFileTest {
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
     IStorageGroupMNode sgNode = new StorageGroupEntityMNode(null, "sg", 11_111L);
-    sf.updateStorageGroupNode(sgNode);
+    sf.updateDatabaseNode(sgNode);
 
     IMNode root = getVerticalTree(100, "VT");
     Iterator<IMNode> ite = getTreeBFT(root);

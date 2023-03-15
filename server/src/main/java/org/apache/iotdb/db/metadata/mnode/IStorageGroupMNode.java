@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 /** This interface defines a StorageGroupMNode's operation interfaces. */
 public interface IStorageGroupMNode extends IMNode {
@@ -33,7 +33,7 @@ public interface IStorageGroupMNode extends IMNode {
 
   void setTimePartitionInterval(long timePartitionInterval);
 
-  void setStorageGroupSchema(TStorageGroupSchema schema);
+  void setStorageGroupSchema(TDatabaseSchema schema);
 
-  TStorageGroupSchema getStorageGroupSchema();
+  TDatabaseSchema getStorageGroupSchema();
 }

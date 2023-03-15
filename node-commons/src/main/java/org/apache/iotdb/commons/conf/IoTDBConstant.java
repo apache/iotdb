@@ -159,6 +159,7 @@ public class IoTDBConstant {
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
@@ -223,6 +224,7 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";

@@ -27,7 +27,7 @@ Below are usage scenarios of key-value pair:
 
 - Attributes fields of trigger. See the attributes after `With` clause in the example below:
 
-```SQL
+```sql
 # 以字符串形式表示键值对
 CREATE TRIGGER `alert-listener-sg1d1s1`
 AFTER INSERT
@@ -109,7 +109,7 @@ SHOW timeseries root.ln.** WHRER unit = c
 
 - Attributes fields of Pipe and PipeSink.
 
-```SQL
+```sql
 # PipeSink example 
 CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
 

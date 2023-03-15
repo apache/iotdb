@@ -52,12 +52,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
 
@@ -233,12 +228,27 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     return this;
   }
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
     return this;
   }
 }

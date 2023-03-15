@@ -37,13 +37,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -302,6 +303,8 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
             Ordering.ASC);
@@ -340,6 +343,8 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
             Ordering.ASC);
@@ -402,6 +407,8 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
             Ordering.ASC);
@@ -482,11 +489,15 @@ public class AggregationDistributionTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
             Ordering.ASC);
@@ -544,11 +555,15 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
             Ordering.ASC);
@@ -619,11 +634,15 @@ public class AggregationDistributionTest {
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
             Ordering.ASC);
@@ -734,7 +753,7 @@ public class AggregationDistributionTest {
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof VerticallyConcatNode);
+    assertTrue(f2Root instanceof HorizontallyConcatNode);
     assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
     assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
   }
@@ -757,13 +776,13 @@ public class AggregationDistributionTest {
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f3Root =
         plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof MergeSortNode);
-    assertTrue(f2Root instanceof VerticallyConcatNode);
-    assertTrue(f3Root instanceof DeviceViewNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof VerticallyConcatNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().get(0).getChildren().size());
+    assertTrue(f1Root instanceof DeviceViewNode);
+    assertTrue(f2Root instanceof HorizontallyConcatNode);
+    assertTrue(f3Root instanceof HorizontallyConcatNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof SeriesSourceNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
+    assertTrue(f1Root.getChildren().get(1) instanceof ExchangeNode);
+    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -777,13 +796,13 @@ public class AggregationDistributionTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan = planner.planFragments();
-    assertEquals(3, plan.getInstances().size());
+    assertEquals(2, plan.getInstances().size());
     PlanNode f1Root =
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof VerticallyConcatNode);
+    assertTrue(f2Root instanceof HorizontallyConcatNode);
     assertEquals(2, f1Root.getChildren().size());
   }
 
@@ -878,7 +897,7 @@ public class AggregationDistributionTest {
         fragmentInstance ->
             assertTrue(
                 fragmentInstance.getFragment().getPlanNodeTree().getChildren().get(0)
-                    instanceof VerticallyConcatNode));
+                    instanceof HorizontallyConcatNode));
 
     Map<String, AggregationStep> expectedStep = new HashMap<>();
     expectedStep.put("root.sg.d22.s1", AggregationStep.SINGLE);

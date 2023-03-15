@@ -85,12 +85,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    setProperty("max_deduplicated_path_num", String.valueOf(maxQueryDeduplicatedPathNum));
-    return this;
-  }
-
-  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -147,7 +141,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     setProperty("config_node_ratis_rpc_leader_election_timeout_max_ms", String.valueOf(maxMs));
     return this;
   }
@@ -318,6 +312,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
@@ -326,6 +326,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    setProperty("write_memory_proportion", writeMemoryProportion);
     return this;
   }
 }

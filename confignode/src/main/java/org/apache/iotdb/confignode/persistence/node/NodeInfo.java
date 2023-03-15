@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -30,7 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -170,9 +171,8 @@ public class NodeInfo implements SnapshotProcessor {
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      registeredDataNodes
-          .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
-          .setLocation(updateDataNodePlan.getDataNodeLocation());
+      TDataNodeConfiguration newConfiguration = updateDataNodePlan.getDataNodeConfiguration();
+      registeredDataNodes.replace(newConfiguration.getLocation().getDataNodeId(), newConfiguration);
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

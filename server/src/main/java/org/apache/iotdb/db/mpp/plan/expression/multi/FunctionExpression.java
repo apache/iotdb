@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -50,13 +51,7 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
-  /**
-   * true: aggregation function<br>
-   * false: time series generating function
-   */
-  private Boolean isBuiltInAggregationFunctionExpressionCache;
-
-  private Boolean isBuiltInScalarFunctionCache;
+  private FunctionType functionType;
 
   private final String functionName;
   private final LinkedHashMap<String, String> functionAttributes;
@@ -104,21 +99,30 @@ public class FunctionExpression extends Expression {
     return visitor.visitFunctionExpression(this, context);
   }
 
+  private void initializeFunctionType() {
+    final String functionName = this.functionName.toLowerCase();
+    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.AGGREGATION_FUNCTION;
+    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
+    } else {
+      functionType = FunctionType.UDF;
+    }
+  }
+
   @Override
   public boolean isBuiltInAggregationFunctionExpression() {
-    if (isBuiltInAggregationFunctionExpressionCache == null) {
-      isBuiltInAggregationFunctionExpressionCache =
-          BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
+    if (functionType == null) {
+      initializeFunctionType();
     }
-    return isBuiltInAggregationFunctionExpressionCache;
+    return functionType == FunctionType.AGGREGATION_FUNCTION;
   }
 
   public Boolean isBuiltInScalarFunction() {
-    if (isBuiltInScalarFunctionCache == null) {
-      isBuiltInScalarFunctionCache =
-          BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
+    if (functionType == null) {
+      initializeFunctionType();
     }
-    return isBuiltInScalarFunctionCache;
+    return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
   }
 
   @Override
@@ -259,31 +263,42 @@ public class FunctionExpression extends Expression {
         }
       }
       if (!functionAttributes.isEmpty()) {
-        if (!expressions.isEmpty()) {
-          builder.append(", ");
-        }
-        Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
-        Entry<String, String> entry = iterator.next();
-        builder
-            .append("\"")
-            .append(entry.getKey())
-            .append("\"=\"")
-            .append(entry.getValue())
-            .append("\"");
-        while (iterator.hasNext()) {
-          entry = iterator.next();
-          builder
-              .append(", ")
-              .append("\"")
-              .append(entry.getKey())
-              .append("\"=\"")
-              .append(entry.getValue())
-              .append("\"");
+        // Some builtin-scalar function may have different header.
+        if (BuiltinScalarFunction.contains(functionName)) {
+          BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+              .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+        } else {
+          appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
         }
       }
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  public static void appendAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    if (hasExpression) {
+      builder.append(", ");
+    }
+    Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
+    Entry<String, String> entry = iterator.next();
+    builder
+        .append("\"")
+        .append(entry.getKey())
+        .append("\"=\"")
+        .append(entry.getValue())
+        .append("\"");
+    while (iterator.hasNext()) {
+      entry = iterator.next();
+      builder
+          .append(", ")
+          .append("\"")
+          .append(entry.getKey())
+          .append("\"=\"")
+          .append(entry.getValue())
+          .append("\"");
+    }
   }
 
   @Override

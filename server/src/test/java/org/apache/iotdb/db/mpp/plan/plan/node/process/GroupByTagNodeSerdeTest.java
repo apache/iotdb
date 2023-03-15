@@ -60,6 +60,8 @@ public class GroupByTagNodeSerdeTest {
             TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            1,
+            Collections.emptyMap(),
             new FunctionExpression(
                 "max_time",
                 new LinkedHashMap<>(),
@@ -70,6 +72,8 @@ public class GroupByTagNodeSerdeTest {
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            1,
+            Collections.emptyMap(),
             new FunctionExpression(
                 "avg",
                 new LinkedHashMap<>(),
@@ -88,7 +92,7 @@ public class GroupByTagNodeSerdeTest {
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
         new HashMap<>();
     tagValuesToAggregationDescriptors.put(
-        Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, s1Avg));
+        Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, null, s1Avg));
     GroupByTagNode expectedNode =
         new GroupByTagNode(
             new PlanNodeId("TestGroupByTagNode"),

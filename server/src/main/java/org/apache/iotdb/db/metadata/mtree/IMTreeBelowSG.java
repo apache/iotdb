@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.util.List;
@@ -90,8 +89,7 @@ public interface IMTreeBelowSG {
    *
    * @param path Format: root.node(.node)+
    */
-  Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
-      throws MetadataException;
+  IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException;
 
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 

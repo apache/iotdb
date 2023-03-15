@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -75,6 +77,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTe
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang3.Validate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -111,6 +115,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getSourceExpressions(),
               analysis.getGlobalTimeFilter(),
               analysis.getMergeOrderParameter())
+          .planOffset(queryStatement.getRowOffset())
+          .planLimit(queryStatement.getRowLimit())
           .getRoot();
     }
 
@@ -215,8 +221,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       // aggregation query
       boolean isRawDataSource =
           analysis.hasValueFilter()
+              || analysis.hasGroupByParameter()
               || needTransform(sourceTransformExpressions)
-              || analysis.hasGroupByParameter();
+              || cannotUseStatistics(aggregationExpressions);
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -305,6 +312,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   private boolean needTransform(Set<Expression> expressions) {
     for (Expression expression : expressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean cannotUseStatistics(Set<Expression> expressions) {
+    for (Expression expression : expressions) {
+      Validate.isTrue(
+          expression instanceof FunctionExpression,
+          String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+      if (!BuiltinAggregationFunction.canUseStatistics(
+          ((FunctionExpression) expression).getFunctionName())) {
         return true;
       }
     }
@@ -448,8 +468,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
             && !showTimeSeriesStatement.isOrderByHeat();
 
-    int limit = showTimeSeriesStatement.getLimit();
-    int offset = showTimeSeriesStatement.getOffset();
+    long limit = showTimeSeriesStatement.getLimit();
+    long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;
       offset = 0;
@@ -505,8 +525,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
 
-    int limit = showDevicesStatement.getLimit();
-    int offset = showDevicesStatement.getOffset();
+    long limit = showDevicesStatement.getLimit();
+    long offset = showDevicesStatement.getOffset();
     if (!canPushDownOffsetLimit) {
       limit = showDevicesStatement.getLimit() + showDevicesStatement.getOffset();
       offset = 0;

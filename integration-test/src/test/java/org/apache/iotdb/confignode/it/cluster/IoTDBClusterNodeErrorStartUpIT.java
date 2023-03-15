@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -229,52 +230,6 @@ public class IoTDBClusterNodeErrorStartUpIT {
           dataNodeRestartResp.getStatus().getCode());
       Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("whose nodeId="));
 
-      /* Restart an alive Node */
-
-      int registeredConfigNodeId = -1;
-      TShowClusterResp showClusterResp = client.showCluster();
-      for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
-        if (configNodeLocation.getConsensusEndPoint().getPort()
-            == registeredConfigNodeWrapper.getConsensusPort()) {
-          registeredConfigNodeId = configNodeLocation.getConfigNodeId();
-          break;
-        }
-      }
-      Assert.assertNotEquals(-1, registeredConfigNodeId);
-      configNodeRestartReq =
-          ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              TEST_CLUSTER_NAME, registeredConfigNodeId, registeredConfigNodeWrapper);
-      configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(
-          configNodeRestartStatus
-              .getMessage()
-              .contains("exists an alive Node with the same nodeId"));
-
-      int registeredDataNodeId = -1;
-      showClusterResp = client.showCluster();
-      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
-        if (dataNodeLocation.getInternalEndPoint().getPort()
-            == registeredDataNodeWrapper.getInternalPort()) {
-          registeredDataNodeId = dataNodeLocation.getDataNodeId();
-          break;
-        }
-      }
-      Assert.assertNotEquals(-1, registeredDataNodeId);
-      dataNodeRestartReq =
-          ConfigNodeTestUtils.generateTDataNodeRestartReq(
-              TEST_CLUSTER_NAME, registeredDataNodeId, registeredDataNodeWrapper);
-      dataNodeRestartResp = client.restartDataNode(dataNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(),
-          dataNodeRestartResp.getStatus().getCode());
-      Assert.assertTrue(
-          dataNodeRestartResp
-              .getStatus()
-              .getMessage()
-              .contains("exists an alive Node with the same nodeId"));
-
       // Shutdown and check
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
@@ -286,7 +241,17 @@ public class IoTDBClusterNodeErrorStartUpIT {
               Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
 
       /* Restart and updatePeer */
-      // TODO: @Itami-sho, enable this test and delete it
+      // TODO: Delete this IT after enable modify internal TEndPoints
+      int registeredConfigNodeId = -1;
+      TShowClusterResp showClusterResp = client.showCluster();
+      for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
+        if (configNodeLocation.getConsensusEndPoint().getPort()
+            == registeredConfigNodeWrapper.getConsensusPort()) {
+          registeredConfigNodeId = configNodeLocation.getConfigNodeId();
+          break;
+        }
+      }
+      Assert.assertNotEquals(-1, registeredConfigNodeId);
       int originPort = registeredConfigNodeWrapper.getConsensusPort();
       registeredConfigNodeWrapper.setConsensusPort(-12345);
       configNodeRestartReq =
@@ -295,9 +260,19 @@ public class IoTDBClusterNodeErrorStartUpIT {
       configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("have been changed"));
+      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("the internal TEndPoints"));
       registeredConfigNodeWrapper.setConsensusPort(originPort);
 
+      int registeredDataNodeId = -1;
+      showClusterResp = client.showCluster();
+      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+        if (dataNodeLocation.getInternalEndPoint().getPort()
+            == registeredDataNodeWrapper.getInternalPort()) {
+          registeredDataNodeId = dataNodeLocation.getDataNodeId();
+          break;
+        }
+      }
+      Assert.assertNotEquals(-1, registeredDataNodeId);
       originPort = registeredDataNodeWrapper.getInternalPort();
       registeredDataNodeWrapper.setInternalPort(-12345);
       dataNodeRestartReq =
@@ -307,7 +282,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(),
           dataNodeRestartResp.getStatus().getCode());
-      Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("have been changed"));
+      Assert.assertTrue(
+          dataNodeRestartResp.getStatus().getMessage().contains("the internal TEndPoints"));
       registeredDataNodeWrapper.setInternalPort(originPort);
 
       // Restart and check

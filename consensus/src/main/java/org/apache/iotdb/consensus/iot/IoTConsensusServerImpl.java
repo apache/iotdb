@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -92,9 +93,8 @@ public class IoTConsensusServerImpl {
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
-
+  private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
-
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
@@ -108,7 +108,6 @@ public class IoTConsensusServerImpl {
   private final ConsensusReqReader reader;
   private volatile boolean active;
   private String newSnapshotDirName;
-  private static final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
@@ -165,10 +164,10 @@ public class IoTConsensusServerImpl {
    * performed.
    */
   public TSStatus write(IConsensusRequest request) {
-    long consensusWriteStartTime = System.currentTimeMillis();
+    long consensusWriteStartTime = System.nanoTime();
     stateMachineLock.lock();
     try {
-      long getStateMachineLockTime = System.currentTimeMillis();
+      long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -200,9 +199,7 @@ public class IoTConsensusServerImpl {
           Thread.currentThread().interrupt();
         }
       }
-      long writeToStateMachineStartTime = System.currentTimeMillis();
-      IndexedConsensusRequest indexedConsensusRequest =
-          buildIndexedConsensusRequestForLocalRequest(request);
+      long writeToStateMachineStartTime = System.nanoTime();
       // statistic the time of checking write block
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -215,6 +212,8 @@ public class IoTConsensusServerImpl {
               Tag.REGION.toString(),
               this.consensusGroupId)
           .update(writeToStateMachineStartTime - getStateMachineLockTime);
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
@@ -222,10 +221,19 @@ public class IoTConsensusServerImpl {
             getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
-      // TODO wal and memtable
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
+      long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(planNode);
-      long writeToStateMachineEndTime = System.currentTimeMillis();
+      MetricService.getInstance()
+          .timer(
+              System.nanoTime() - startWriteTime,
+              TimeUnit.NANOSECONDS,
+              Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.STAGE.toString(),
+              PerformanceOverviewMetrics.ENGINE);
+
+      long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -260,7 +268,7 @@ public class IoTConsensusServerImpl {
                 "offerRequestToQueue",
                 Tag.REGION.toString(),
                 this.consensusGroupId)
-            .update(System.currentTimeMillis() - writeToStateMachineEndTime);
+            .update(System.nanoTime() - writeToStateMachineEndTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -279,7 +287,7 @@ public class IoTConsensusServerImpl {
               "consensusWrite",
               Tag.REGION.toString(),
               this.consensusGroupId)
-          .update(System.currentTimeMillis() - consensusWriteStartTime);
+          .update(System.nanoTime() - consensusWriteStartTime);
       return result;
     } finally {
       stateMachineLock.unlock();
@@ -381,9 +389,9 @@ public class IoTConsensusServerImpl {
     }
     for (File file : versionFiles) {
       snapShotIndex =
-          Long.max(
+          Math.max(
               snapShotIndex,
-              Long.parseLong(snapshotIndexPatten.matcher(file.getName()).replaceAll("")));
+              Long.parseLong(SNAPSHOT_INDEX_PATTEN.matcher(file.getName()).replaceAll("")));
     }
     return snapShotIndex;
   }
@@ -722,8 +730,21 @@ public class IoTConsensusServerImpl {
     return searchIndex.get();
   }
 
+  public long getSyncLag() {
+    long safeIndex = getCurrentSafelyDeletedSearchIndex();
+    return getSearchIndex() - safeIndex;
+  }
+
   public IoTConsensusConfig getConfig() {
     return config;
+  }
+
+  public long getLogEntriesFromWAL() {
+    return logDispatcher.getLogEntriesFromWAL();
+  }
+
+  public long getLogEntriesFromQueue() {
+    return logDispatcher.getLogEntriesFromQueue();
   }
 
   public boolean needBlockWrite() {
@@ -887,6 +908,7 @@ public class IoTConsensusServerImpl {
                     request.getStartSyncIndex(),
                     nextSyncIndex);
                 requestCache.remove(request);
+                nextSyncIndex = Math.max(nextSyncIndex, request.getEndSyncIndex() + 1);
                 break;
               }
             }

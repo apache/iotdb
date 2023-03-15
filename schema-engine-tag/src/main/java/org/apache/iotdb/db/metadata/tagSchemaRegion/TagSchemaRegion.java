@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
@@ -152,6 +154,16 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override
   public void forceMlog() {
     // no need to record mlog
+  }
+
+  @Override
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    throw new UnsupportedOperationException();
   }
 
   @Override

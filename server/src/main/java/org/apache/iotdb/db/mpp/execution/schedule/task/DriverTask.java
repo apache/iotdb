@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTa
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
@@ -57,6 +58,8 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
+
+  private SettableFuture<Void> blockedDependencyDriver = null;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -135,6 +138,19 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public void submitDependencyDriver() {
+    if (blockedDependencyDriver != null) {
+      this.blockedDependencyDriver.set(null);
+    }
+  }
+
+  public SettableFuture<Void> getBlockedDependencyDriver() {
+    if (blockedDependencyDriver == null) {
+      blockedDependencyDriver = SettableFuture.create();
+    }
+    return blockedDependencyDriver;
   }
 
   public Priority getPriority() {
@@ -248,8 +264,13 @@ public class DriverTask implements IDIndexedAccessible {
     public void failed(Throwable t) {}
 
     @Override
-    public ISinkHandle getSinkHandle() {
+    public ISink getSink() {
       return null;
+    }
+
+    @Override
+    public int getDependencyDriverIndex() {
+      return -1;
     }
   }
 }

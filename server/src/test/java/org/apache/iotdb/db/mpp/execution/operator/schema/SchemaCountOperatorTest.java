@@ -73,7 +73,7 @@ public class SchemaCountOperatorTest {
           driverContext.addOperatorContext(
               1, planNodeId, SchemaCountOperator.class.getSimpleName());
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ISchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
 
       List<ISchemaInfo> schemaInfoList = new ArrayList<>(10);
@@ -133,7 +133,7 @@ public class SchemaCountOperatorTest {
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
           new CountGroupByLevelScanOperator<>(
               planNodeId,

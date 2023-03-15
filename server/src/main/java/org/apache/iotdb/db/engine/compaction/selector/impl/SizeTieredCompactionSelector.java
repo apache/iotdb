@@ -105,6 +105,7 @@ public class SizeTieredCompactionSelector
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level) {
+        // meet files of another level
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           shouldContinueToSearch = false;
@@ -205,8 +206,10 @@ public class SizeTieredCompactionSelector
         TsFileNameGenerator.TsFileName fileNameOfO2 =
             TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
+          // the higher the inner compaction count, the higher the priority is
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
+        // the larger the version number, the higher the priority is
         return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
       } catch (IOException e) {
         return 0;

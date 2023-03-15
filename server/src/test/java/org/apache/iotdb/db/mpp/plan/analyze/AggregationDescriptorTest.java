@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
@@ -98,6 +97,8 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+            2,
+            Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
@@ -106,6 +107,8 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+            2,
+            Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
@@ -114,6 +117,8 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+            2,
+            Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
@@ -122,6 +127,8 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+            2,
+            Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
   }
 
@@ -195,50 +202,6 @@ public class AggregationDescriptorTest {
         expectedInputColumnNames,
         groupByLevelDescriptorList.stream()
             .map(CrossSeriesAggregationDescriptor::getInputColumnNamesList)
-            .collect(Collectors.toList()));
-  }
-
-  @Test
-  public void testGroupByLevelInputColumnCandidate() {
-    List<Map<String, Expression>> expectedMapList =
-        Arrays.asList(
-            new HashMap<String, Expression>() {
-              {
-                put("count(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("count(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-                put("count(root.sg.*.s1)", new TimeSeriesOperand(pathMap.get("root.sg.*.s1")));
-              }
-            },
-            new HashMap<String, Expression>() {
-              {
-                put("avg(root.sg.*.s1)", new TimeSeriesOperand(pathMap.get("root.sg.*.s1")));
-                put("count(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("count(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-                put("sum(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("sum(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-              }
-            },
-            new HashMap<String, Expression>() {
-              {
-                put("count(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("count(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-                put("count(root.sg.*.s1)", new TimeSeriesOperand(pathMap.get("root.sg.*.s1")));
-              }
-            },
-            new HashMap<String, Expression>() {
-              {
-                put("count(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("count(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-                put("count(root.sg.*.s1)", new TimeSeriesOperand(pathMap.get("root.sg.*.s1")));
-                put("sum(root.sg.d1.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")));
-                put("sum(root.sg.d2.s1)", new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")));
-                put("sum(root.sg.*.s1)", new TimeSeriesOperand(pathMap.get("root.sg.*.s1")));
-              }
-            });
-    Assert.assertEquals(
-        expectedMapList,
-        groupByLevelDescriptorList.stream()
-            .map(CrossSeriesAggregationDescriptor::getInputColumnCandidateMap)
             .collect(Collectors.toList()));
   }
 }

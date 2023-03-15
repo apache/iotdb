@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -36,34 +38,33 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -72,10 +73,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -86,16 +88,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -105,6 +109,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -131,27 +136,25 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
@@ -166,6 +169,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -209,7 +213,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
-    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
+    LOGGER.info("Execute RegisterDataNodeRequest {} with result {}", req, resp);
 
     return resp;
   }
@@ -219,7 +223,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
-    LOGGER.info("Execute RestartDatanodeRequest {} with result {}", req, resp);
+    LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
 
     return resp;
   }
@@ -237,15 +241,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) {
-    LOGGER.info("ConfigNode RPC Service start to update DataNode, req: {}", req);
-    UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(req.getDataNodeLocation());
-    TDataNodeRegisterResp resp =
-        ((DataNodeRegisterResp) configManager.updateDataNode(updateDataNodePlan))
-            .convertToRpcDataNodeRegisterResp();
-    LOGGER.info(
-        "ConfigNode RPC Service finished to update DataNode, req: {}, result: {}", req, resp);
-    return resp;
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    return configManager.reportDataNodeShutdown(dataNodeLocation);
   }
 
   @Override
@@ -275,94 +272,137 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
 
     // Set default configurations if necessary
-    if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
-    } else if (storageGroupSchema.getTTL() <= 0) {
+    if (!databaseSchema.isSetTTL()) {
+      databaseSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    } else if (databaseSchema.getTTL() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to create database. The TTL should be positive.");
     }
 
-    if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
-      storageGroupSchema.setSchemaReplicationFactor(
-          CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
-    } else if (storageGroupSchema.getSchemaReplicationFactor() <= 0) {
+    if (!databaseSchema.isSetSchemaReplicationFactor()) {
+      databaseSchema.setSchemaReplicationFactor(CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
+    } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The schemaReplicationFactor should be positive.");
     }
 
-    if (!storageGroupSchema.isSetDataReplicationFactor()) {
-      storageGroupSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
-    } else if (storageGroupSchema.getDataReplicationFactor() <= 0) {
+    if (!databaseSchema.isSetDataReplicationFactor()) {
+      databaseSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
+    } else if (databaseSchema.getDataReplicationFactor() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The dataReplicationFactor should be positive.");
     }
 
-    if (!storageGroupSchema.isSetTimePartitionInterval()) {
-      storageGroupSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
-    } else if (storageGroupSchema.getTimePartitionInterval() <= 0) {
+    if (!databaseSchema.isSetTimePartitionInterval()) {
+      databaseSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
+    } else if (databaseSchema.getTimePartitionInterval() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The timePartitionInterval should be positive.");
     }
 
-    if (!storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
-      storageGroupSchema.setMinSchemaRegionGroupNum(
+    if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
+      databaseSchema.setMinSchemaRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupNumPerDatabase());
-    } else if (storageGroupSchema.getMinSchemaRegionGroupNum() <= 0) {
+    } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The schemaRegionGroupNum should be positive.");
     }
 
-    if (!storageGroupSchema.isSetMinDataRegionGroupNum()) {
-      storageGroupSchema.setMinDataRegionGroupNum(
+    if (!databaseSchema.isSetMinDataRegionGroupNum()) {
+      databaseSchema.setMinDataRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultDataRegionGroupNumPerDatabase());
-    } else if (storageGroupSchema.getMinDataRegionGroupNum() <= 0) {
+    } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetStorageGroupRequest {} with result {}", req, errorResp);
+      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
     // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    storageGroupSchema.setMaxSchemaRegionGroupNum(storageGroupSchema.getMinSchemaRegionGroupNum());
-    storageGroupSchema.setMaxDataRegionGroupNum(storageGroupSchema.getMinDataRegionGroupNum());
+    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
+    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
-    SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
-    TSStatus resp = configManager.setStorageGroup(setReq);
+    DatabaseSchemaPlan setPlan =
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
+    TSStatus resp = configManager.setDatabase(setPlan);
 
-    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
-    LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+    // Print log to record the ConfigNode that performs the set SetDatabaseRequest
+    LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
 
     return resp;
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) {
-    String prefixPath = tDeleteReq.getPrefixPath();
-    return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
+  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) {
+    TSStatus errorResp = null;
+
+    // TODO: Support alter the following fields
+    if (databaseSchema.isSetTTL()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+    }
+    if (databaseSchema.isSetSchemaReplicationFactor()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER SchemaReplicationFactor yet.");
+    }
+    if (databaseSchema.isSetDataReplicationFactor()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
+    }
+    if (databaseSchema.isSetTimePartitionInterval()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
+    }
+
+    if (errorResp != null) {
+      LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);
+      return errorResp;
+    }
+
+    DatabaseSchemaPlan alterPlan =
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
+    TSStatus resp = configManager.alterDatabase(alterPlan);
+
+    // Print log to record the ConfigNode that performs the set SetDatabaseRequest
+    LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
+
+    return resp;
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) {
+  public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
+    String prefixPath = tDeleteReq.getPrefixPath();
+    return configManager.deleteDatabases(Collections.singletonList(prefixPath));
+  }
+
+  @Override
+  public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
-    return configManager.deleteStorageGroups(prefixList);
+    return configManager.deleteDatabases(prefixList);
   }
 
   @Override
@@ -373,43 +413,39 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
     return configManager.setSchemaReplicationFactor(
-        new SetSchemaReplicationFactorPlan(
-            req.getStorageGroup(), req.getSchemaReplicationFactor()));
+        new SetSchemaReplicationFactorPlan(req.getDatabase(), req.getSchemaReplicationFactor()));
   }
 
   @Override
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
     return configManager.setDataReplicationFactor(
-        new SetDataReplicationFactorPlan(req.getStorageGroup(), req.getDataReplicationFactor()));
+        new SetDataReplicationFactorPlan(req.getDatabase(), req.getDataReplicationFactor()));
   }
 
   @Override
   public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
     return configManager.setTimePartitionInterval(
-        new SetTimePartitionIntervalPlan(req.getStorageGroup(), req.getTimePartitionInterval()));
+        new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern) {
-    CountStorageGroupResp countStorageGroupResp =
-        (CountStorageGroupResp)
-            configManager.countMatchedStorageGroups(
-                new CountStorageGroupPlan(storageGroupPathPattern));
+  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern) {
+    CountDatabaseResp countDatabaseResp =
+        (CountDatabaseResp)
+            configManager.countMatchedDatabases(new CountDatabasePlan(storageGroupPathPattern));
 
-    TCountStorageGroupResp resp = new TCountStorageGroupResp();
-    countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
+    TCountDatabaseResp resp = new TCountDatabaseResp();
+    countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
     return resp;
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(
-      List<String> storageGroupPathPattern) {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp)
-            configManager.getMatchedStorageGroupSchemas(
-                new GetStorageGroupPlan(storageGroupPathPattern));
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern) {
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp)
+            configManager.getMatchedDatabaseSchemas(new GetDatabasePlan(storageGroupPathPattern));
 
-    return storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp();
+    return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
   }
 
   @Override
@@ -582,17 +618,24 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         .setMessage("remove ConsensusGroup success.");
   }
 
-  /** stop config node */
+  @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
+    return configManager.reportConfigNodeShutdown(configNodeLocation);
+  }
+
+  /** Stop ConfigNode */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             () -> {
               try {
-                ConfigNode.getInstance().stop();
-              } catch (IOException e) {
-                LOGGER.error("Meet error when stop ConfigNode!", e);
+                // Sleep 1s before stop itself
+                TimeUnit.SECONDS.sleep(1);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn(e.getMessage());
               } finally {
-                System.exit(0);
+                ConfigNode.getInstance().stop();
               }
             })
         .start();
@@ -651,6 +694,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus createPipePlugin(TCreatePipePluginReq req) {
+    return configManager.createPipePlugin(req);
+  }
+
+  @Override
+  public TSStatus dropPipePlugin(TDropPipePluginReq req) {
+    return configManager.dropPipePlugin(req.getPluginName());
+  }
+
+  @Override
+  public TGetPipePluginTableResp getPipePluginTable() {
+    return configManager.getPipePluginTable();
+  }
+
+  @Override
   public TSStatus merge() throws TException {
     return configManager.merge();
   }
@@ -659,7 +717,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus flush(TFlushReq req) throws TException {
     if (req.storageGroups != null) {
       List<PartialPath> noExistSg =
-          configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+          configManager
+              .getPartitionManager()
+              .filterUnExistDatabases(PartialPath.fromStringList(req.storageGroups));
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
@@ -733,8 +793,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern) {
-    return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
+  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) {
+    return configManager.showDatabase(new GetDatabasePlan(storageGroupPathPattern));
   }
 
   @Override
@@ -768,12 +828,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     return configManager.unsetSchemaTemplate(req);
   }
 
   @Override
-  public TSStatus dropSchemaTemplate(String req) throws TException {
+  public TSStatus dropSchemaTemplate(String req) {
     return configManager.dropSchemaTemplate(req);
   }
 
@@ -845,15 +905,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
     long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
     GetTimeSlotListPlan plan =
-        new GetTimeSlotListPlan(req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime);
+        new GetTimeSlotListPlan(req.getDatabase(), req.getSeriesSlotId(), startTime, endTime);
     return configManager.getTimeSlotList(plan);
   }
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
-    TConsensusGroupType type =
-        req.isSetType() ? req.getType() : TConsensusGroupType.ConfigNodeRegion;
-    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getStorageGroup(), type);
+    TConsensusGroupType type = req.isSetType() ? req.getType() : TConsensusGroupType.ConfigRegion;
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), type);
     return configManager.getSeriesSlotList(plan);
   }
 
@@ -879,31 +938,31 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.createModel(req);
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.dropModel(req);
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.showModel(req);
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.showTrail(req);
   }
 
   @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.updateModelInfo(req);
+  }
+
+  @Override
+  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+    return configManager.updateModelState(req);
   }
 }

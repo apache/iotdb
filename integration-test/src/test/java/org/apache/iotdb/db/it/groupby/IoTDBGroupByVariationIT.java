@@ -242,7 +242,7 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoringNull=true)";
+        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoreNull=true)";
     normalTest(res, sql);
   }
 
@@ -313,7 +313,7 @@ public class IoTDBGroupByVariationIT {
     normalTestWithEndTime(res, sql);
   }
 
-  private void normalTestWithoutIgnoringNull(String[][] res, String sql) {
+  private void normalTestWithoutIgnoreNull(String[][] res, String sql) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -346,7 +346,7 @@ public class IoTDBGroupByVariationIT {
   }
 
   @Test
-  public void groupByVariationTestWithoutIgnoringNull() {
+  public void groupByVariationTestWithoutIgnoreNull() {
 
     String[][] res =
         new String[][] {
@@ -362,12 +362,12 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoringNull=false)";
-    normalTestWithoutIgnoringNull(res, sql);
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoreNull=false)";
+    normalTestWithoutIgnoreNull(res, sql);
   }
 
   @Test
-  public void groupByVariationEqualTestWithoutIgnoringNull() {
+  public void groupByVariationEqualTestWithoutIgnoreNull() {
 
     String[][] res =
         new String[][] {
@@ -388,8 +388,8 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(status,ignoringNull=false)";
-    normalTestWithoutIgnoringNull(res, sql);
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(status,ignoreNull=false)";
+    normalTestWithoutIgnoreNull(res, sql);
   }
 
   private void errorTest(String sql, String error) {
@@ -537,5 +537,42 @@ public class IoTDBGroupByVariationIT {
     String sql =
         "select __endTime,count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,0.8) having count(status)>=5";
     normalTestWithEndTime(res, sql);
+  }
+
+  @Test
+  public void groupByVariationWithDoubleTest4() {
+    String[][] res =
+        new String[][] {
+          {"1", "35.7"},
+          {"5", "36.8"},
+          {"50", "37.9"},
+          {"530", "36.8"},
+          {"590", "37.9"},
+          {"620", "39.2"},
+          {"1500", "9.8"}
+        };
+    String sql =
+        "select first_value(temperature) from root.ln.wf01.wt01 group by variation(temperature,1)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,first_value(root.ln.wf01.wt01.temperature)");
+        int count = 0;
+        while (resultSet.next()) {
+          String actualTime = resultSet.getString(1);
+          double actualFirst = resultSet.getDouble(2);
+
+          assertEquals(res[count][0], actualTime);
+          assertEquals(Double.parseDouble(res[count][1]), actualFirst, 0.00001);
+          count++;
+        }
+        assertEquals(res.length, count);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

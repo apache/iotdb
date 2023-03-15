@@ -49,10 +49,12 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONDITION
     | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
@@ -130,6 +132,8 @@ keyWords
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
+    | PIPEPLUGIN
+    | PIPEPLUGINS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
@@ -149,12 +153,14 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
     | RUNNING
     | SCHEMA
     | SELECT
     | SERIESSLOTID
+    | SESSION
     | SET
     | SETTLE
     | SGLEVEL

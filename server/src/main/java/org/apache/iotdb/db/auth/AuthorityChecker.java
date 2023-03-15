@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -48,7 +49,9 @@ public class AuthorityChecker {
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
-  private AuthorityChecker() {}
+  private AuthorityChecker() {
+    // empty constructor
+  }
 
   /**
    * check permission(datanode to confignode).
@@ -103,6 +106,7 @@ public class AuthorityChecker {
 
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+    long startTime = System.nanoTime();
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
@@ -117,6 +121,8 @@ public class AuthorityChecker {
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      PerformanceOverviewMetricsManager.recordAuthCost(System.nanoTime() - startTime);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -159,7 +165,7 @@ public class AuthorityChecker {
         return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
-      case SET_STORAGE_GROUP:
+      case STORAGE_GROUP_SCHEMA:
       case TTL:
         return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
@@ -231,6 +237,22 @@ public class AuthorityChecker {
         return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       case SHOW_CONTINUOUS_QUERIES:
         return PrivilegeType.SHOW_CONTINUOUS_QUERIES.ordinal();
+      case CREATE_PIPEPLUGIN:
+        return PrivilegeType.CREATE_PIPEPLUGIN.ordinal();
+      case DROP_PIPEPLUGIN:
+        return PrivilegeType.DROP_PIPEPLUGIN.ordinal();
+      case SHOW_PIPEPLUGINS:
+        return PrivilegeType.SHOW_PIPEPLUGINS.ordinal();
+      case CREATE_PIPE:
+        return PrivilegeType.CREATE_PIPE.ordinal();
+      case START_PIPE:
+        return PrivilegeType.START_PIPE.ordinal();
+      case STOP_PIPE:
+        return PrivilegeType.STOP_PIPE.ordinal();
+      case DROP_PIPE:
+        return PrivilegeType.DROP_PIPE.ordinal();
+      case SHOW_PIPES:
+        return PrivilegeType.SHOW_PIPES.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

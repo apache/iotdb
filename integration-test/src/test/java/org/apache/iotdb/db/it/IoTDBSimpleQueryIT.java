@@ -41,6 +41,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -122,24 +123,25 @@ public class IoTDBSimpleQueryIT {
           "create timeseries root.turbine.d2.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
       statement.execute("insert into root.turbine.d1(timestamp,s1,s2) values(1,1,2)");
 
-      String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
+      List<String> expected = Arrays.asList("root.turbine.d1.s1", "root.turbine.d1.s2");
+      List<String> actual = new ArrayList<>();
 
-      int count = 0;
       try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
         while (resultSet.next()) {
-          String path = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
-          assertEquals(results[count], path);
-          count++;
+          actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
       }
 
-      assertEquals(2, count);
+      assertEquals(expected, actual);
 
+      actual.clear();
       try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
         while (resultSet.next()) {
-          count++;
+          actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
         }
       }
+
+      assertEquals(Collections.emptyList(), actual);
 
     } catch (Exception e) {
       e.printStackTrace();

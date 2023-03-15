@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -48,6 +49,7 @@ import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -88,17 +90,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/**
- * A multi-raft consensus implementation based on Ratis, currently still under development.
- *
- * <p>See jira [IOTDB-2674](https://issues.apache.org/jira/browse/IOTDB-2674) for more details.
- */
+/** A multi-raft consensus implementation based on Apache Ratis. */
 class RatisConsensus implements IConsensus {
 
   private final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  // the unique net communication endpoint
+  /** the unique net communication endpoint */
   private final RaftPeer myself;
+
   private final RaftServer server;
 
   private final RaftProperties properties = new RaftProperties();
@@ -114,7 +113,7 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
-  // TODO make it configurable
+  /** TODO make it configurable */
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final ExecutorService addExecutor;
@@ -123,6 +122,8 @@ class RatisConsensus implements IConsensus {
   private final RatisConfig config;
 
   private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
+
+  private final RatisMetricSet ratisMetricSet;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -140,6 +141,8 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
+
+    this.ratisMetricSet = new RatisMetricSet(config.getConsensusGroupType());
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
@@ -161,6 +164,7 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public void start() throws IOException {
+    MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.start();
     startSnapshotGuardian();
   }
@@ -179,6 +183,7 @@ class RatisConsensus implements IConsensus {
       clientManager.close();
       server.close();
     }
+    MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
   }
 
   private boolean shouldRetry(RaftClientReply reply) {
@@ -686,16 +691,14 @@ class RatisConsensus implements IConsensus {
 
   private void triggerSnapshotByCustomize() {
 
-    Iterable<RaftGroupId> groupIds = server.getGroupIds();
-
-    for (RaftGroupId raftGroupId : groupIds) {
-      File currentDir = null;
+    for (RaftGroupId raftGroupId : server.getGroupIds()) {
+      File currentDir;
 
       try {
         currentDir =
             server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
       } catch (IOException e) {
-        logger.warn("Get division failed: ", e);
+        logger.warn("{}: get division {} failed: ", this, raftGroupId, e);
         continue;
       }
 
@@ -709,7 +712,10 @@ class RatisConsensus implements IConsensus {
         if (consensusGenericResponse.isSuccess()) {
           logger.info("Raft group {} took snapshot successfully", raftGroupId);
         } else {
-          logger.warn("Raft group {} failed to take snapshot", raftGroupId);
+          logger.warn(
+              "Raft group {} failed to take snapshot due to {}",
+              raftGroupId,
+              consensusGenericResponse.getException());
         }
       }
     }

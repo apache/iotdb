@@ -72,8 +72,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
       PartialPath partialPath,
       String key,
       String value,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean orderByHeat,
       boolean isContains,
       boolean isPrefixPath,
@@ -132,8 +132,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     }
     String key = ReadWriteIOUtils.readString(byteBuffer);
     String value = ReadWriteIOUtils.readString(byteBuffer);
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    long limit = ReadWriteIOUtils.readLong(byteBuffer);
+    long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isContains = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);

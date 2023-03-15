@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -38,10 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -113,8 +112,7 @@ public class IoTDBPartitionGetterIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set StorageGroups */
       for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        TSStatus status = client.setStorageGroup(setReq);
+        TSStatus status = client.setDatabase(new TDatabaseSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
@@ -328,10 +326,10 @@ public class IoTDBPartitionGetterIT {
 
         // Check the number of DataRegionGroup.
         // And this number should be greater than or equal to leastDataRegionGroupNum
-        TShowStorageGroupResp showStorageGroupResp =
-            client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
+        TShowDatabaseResp showStorageGroupResp =
+            client.showDatabase(Arrays.asList(storageGroup.split("\\.")));
         Assert.assertTrue(
-            showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
+            showStorageGroupResp.getDatabaseInfoMap().get(storageGroup).getDataRegionNum()
                 >= leastDataRegionGroupNum);
       }
     }
@@ -372,7 +370,7 @@ public class IoTDBPartitionGetterIT {
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
 
       // Get RegionId with wrong RegionType
-      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
@@ -407,7 +405,7 @@ public class IoTDBPartitionGetterIT {
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
       TSchemaPartitionTableResp schemaPartitionTableResp =
           client.getSchemaPartitionTable(schemaPartitionReq);
-      getRegionIdReq.setStorageGroup(sg0);
+      getRegionIdReq.setDatabase(sg0);
       getRegionIdReq.setSeriesSlotId(
           new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
               .get(0));
@@ -417,7 +415,7 @@ public class IoTDBPartitionGetterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
-      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
@@ -463,7 +461,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
-      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(

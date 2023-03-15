@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -26,6 +27,7 @@ import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -102,5 +104,42 @@ public class CompressTest {
     byte[] uncompressed = unCompressor.uncompress(bytes);
     String result = new String(uncompressed, StandardCharsets.UTF_8);
     assertEquals(inputString, result);
+  }
+
+  @Test
+  public void zstdCompressorTest1() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.ZstdCompressor();
+    IUnCompressor unCompressor = new IUnCompressor.ZstdUnCompressor();
+    byte[] compressed = compressor.compress(out.getBuf());
+    byte[] uncompressed = new byte[out.size()];
+    unCompressor.uncompress(compressed, 0, compressed.length, uncompressed, 0);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
+
+  @Test
+  public void zstdCompressorTest2() throws IOException {
+    byte[] input = inputString.getBytes();
+    ICompressor compressor = new ICompressor.ZstdCompressor();
+    IUnCompressor unCompressor = new IUnCompressor.ZstdUnCompressor();
+    ByteBuffer data = ByteBuffer.allocateDirect(input.length);
+    data.put(input);
+    data.position(0);
+    ByteBuffer compressed =
+        ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.length));
+    int compressedSize = compressor.compress(data, compressed);
+    byte[] compressedData = new byte[compressedSize];
+    compressed.position(0);
+    ByteBuffer compressedDataBuffer = ByteBuffer.allocateDirect(compressedSize);
+    compressed.get(compressedData, 0, compressedSize);
+    compressedDataBuffer.put(compressedData);
+    compressedDataBuffer.position(0);
+
+    ByteBuffer uncompressed = ByteBuffer.allocateDirect(input.length);
+    int uncompressedSize = unCompressor.uncompress(compressedDataBuffer, uncompressed);
+    uncompressed.position(0);
+    assertEquals(inputString, ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressed));
   }
 }

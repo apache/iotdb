@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -114,6 +116,7 @@ public class AsyncDataNodeClientPool {
         clientHandler.getCountDownLatch().await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+        Thread.currentThread().interrupt();
       }
 
       // Check if there is a DataNode that fails to execute the request, and retry if there exists
@@ -143,6 +146,12 @@ public class AsyncDataNodeClientPool {
         case CREATE_DATA_REGION:
           client.createDataRegion(
               (TCreateDataRegionReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case DELETE_REGION:
+          client.deleteRegion(
+              (TConsensusGroupId) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
@@ -346,7 +355,7 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Always call this interface when a DataNode is restarted or removed
+   * Always call this interface when a DataNode is restarted or removed.
    *
    * @param endPoint The specific DataNode
    */

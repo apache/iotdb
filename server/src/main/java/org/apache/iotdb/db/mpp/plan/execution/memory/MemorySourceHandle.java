@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;

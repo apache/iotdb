@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -47,21 +48,22 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
-import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -256,14 +258,15 @@ public class NodeManager {
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+    int dataNodeId = nodeInfo.generateNextNodeId();
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
     // Register new DataNode
-    registerDataNodePlan
-        .getDataNodeConfiguration()
-        .getLocation()
-        .setDataNodeId(nodeInfo.generateNextNodeId());
+    registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
     getConsensusManager().write(registerDataNodePlan);
+
+    // Bind DataNode metrics
+    PartitionMetrics.bindDataNodePartitionMetrics(configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();
@@ -276,8 +279,16 @@ public class NodeManager {
     return resp;
   }
 
-  public TDataNodeRestartResp restartDataNode(TDataNodeLocation dataNodeLocation) {
-    // TODO: @Itami-Sho update peer if necessary
+  public TDataNodeRestartResp updateDataNodeIfNecessary(
+      TDataNodeConfiguration dataNodeConfiguration) {
+    TDataNodeConfiguration recordConfiguration =
+        getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
+    if (!recordConfiguration.equals(dataNodeConfiguration)) {
+      // Update DataNodeConfiguration when modified during restart
+      UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      getConsensusManager().write(updateDataNodePlan);
+    }
+
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setConfigNodeList(getRegisteredConfigNodes());
@@ -332,48 +343,6 @@ public class NodeManager {
     LOGGER.info(
         "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
         removeDataNodePlan);
-    return dataSet;
-  }
-
-  /**
-   * Update the specified DataNode‘s location
-   *
-   * @param updateDataNodePlan UpdateDataNodePlan
-   * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
-   *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
-   *     failed.
-   */
-  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
-    LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
-
-    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
-    TSStatus status;
-    // check if node is already exist
-    boolean found = false;
-    List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
-    for (TDataNodeConfiguration configuration : configurationList) {
-      if (configuration.getLocation().getDataNodeId()
-          == updateDataNodePlan.getDataNodeLocation().getDataNodeId()) {
-        found = true;
-        break;
-      }
-    }
-    if (found) {
-      getConsensusManager().write(updateDataNodePlan);
-      status =
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              .setMessage("updateDataNode(nodeId=%d) success.");
-    } else {
-      status =
-          new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
-              .setMessage(
-                  String.format(
-                      "The specified DataNode(nodeId=%d) doesn't exist",
-                      updateDataNodePlan.getDataNodeLocation().getDataNodeId()));
-    }
-    dataSet.setStatus(status);
-    dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
-    dataSet.setConfigNodeList(getRegisteredConfigNodes());
     return dataSet;
   }
 
@@ -911,10 +880,10 @@ public class NodeManager {
    * @param dataNodeId The index of the specified DataNode
    * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
    */
-  public long getFreeDiskSpace(int dataNodeId) {
+  public double getFreeDiskSpace(int dataNodeId) {
     DataNodeHeartbeatCache dataNodeHeartbeatCache =
         (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
-    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
+    return dataNodeHeartbeatCache == null ? 0d : dataNodeHeartbeatCache.getFreeDiskSpace();
   }
 
   /**
