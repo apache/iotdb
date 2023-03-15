@@ -982,7 +982,7 @@ functionName
 scalarFunctionExpression
     : CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
     | REPLACE LR_BRACKET text=expression COMMA from=STRING_LITERAL COMMA to=STRING_LITERAL RR_BRACKET
-    | ROUND LR_BRACKET text=expression (COMMA places=INTEGER_LITERAL)? RR_BRACKET
+    | ROUND LR_BRACKET input=expression (COMMA places=INTEGER_LITERAL)? RR_BRACKET
     ;
 
 

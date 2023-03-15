@@ -2376,7 +2376,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRoundFunction(
       IoTDBSqlParser.ScalarFunctionExpressionContext roundClause, boolean canUseFullPath) {
     FunctionExpression functionExpression = new FunctionExpression(ROUND_FUNCTION);
-    functionExpression.addExpression(parseExpression(roundClause.text, canUseFullPath));
+    functionExpression.addExpression(parseExpression(roundClause.input, canUseFullPath));
     if (roundClause.places != null) {
       functionExpression.addAttribute(
           ROUND_PLACES, parseStringLiteral(roundClause.places.getText()));
