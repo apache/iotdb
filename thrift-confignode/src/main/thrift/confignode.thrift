@@ -869,7 +869,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the SchemaPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new SchemaRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
@@ -899,7 +899,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the DataPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new DataRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 

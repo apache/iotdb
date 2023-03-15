@@ -17,45 +17,54 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
+package org.apache.iotdb.confignode.consensus.request.write.database;
 
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
+public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
+  private String storageGroup;
+  private PreDeleteType preDeleteType;
 
-  private TDatabaseSchema schema;
-
-  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
-    super(planType);
-    this.schema = new TDatabaseSchema();
+  public PreDeleteDatabasePlan() {
+    super(ConfigPhysicalPlanType.PreDeleteDatabase);
   }
 
-  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TDatabaseSchema schema) {
-    this(planType);
-    this.schema = schema;
+  public PreDeleteDatabasePlan(String storageGroup, PreDeleteType preDeleteType) {
+    this();
+    this.storageGroup = storageGroup;
+    this.preDeleteType = preDeleteType;
   }
 
-  public TDatabaseSchema getSchema() {
-    return schema;
+  public String getStorageGroup() {
+    return storageGroup;
+  }
+
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
+  }
+
+  public PreDeleteType getPreDeleteType() {
+    return preDeleteType;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, stream);
+    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.write(preDeleteType.getType());
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    schema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
+    this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
   }
 
   @Override
@@ -66,12 +75,30 @@ public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
-    return schema.equals(that.schema);
+    if (!super.equals(o)) {
+      return false;
+    }
+    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
+    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(schema);
+    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
+  }
+
+  public enum PreDeleteType {
+    EXECUTE((byte) 0),
+    ROLLBACK((byte) 1);
+
+    private final byte type;
+
+    PreDeleteType(byte type) {
+      this.type = type;
+    }
+
+    public byte getType() {
+      return type;
+    }
   }
 }

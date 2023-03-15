@@ -16,76 +16,62 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+package org.apache.iotdb.confignode.consensus.request.write.database;
+
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
-public class SetTTLPlan extends ConfigPhysicalPlan {
+public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
 
-  private String[] databasePathPattern;
+  private TDatabaseSchema schema;
 
-  private long TTL;
-
-  public SetTTLPlan() {
-    super(ConfigPhysicalPlanType.SetTTL);
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
+    super(planType);
+    this.schema = new TDatabaseSchema();
   }
 
-  public SetTTLPlan(List<String> databasePathPattern, long TTL) {
-    this();
-    this.databasePathPattern = databasePathPattern.toArray(new String[0]);
-    this.TTL = TTL;
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TDatabaseSchema schema) {
+    this(planType);
+    this.schema = schema;
   }
 
-  public String[] getDatabasePathPattern() {
-    return databasePathPattern;
-  }
-
-  public long getTTL() {
-    return TTL;
+  public TDatabaseSchema getSchema() {
+    return schema;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-
-    stream.writeInt(databasePathPattern.length);
-    for (String node : databasePathPattern) {
-      BasicStructureSerDeUtil.write(node, stream);
-    }
-    stream.writeLong(TTL);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(schema, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-
-    int length = buffer.getInt();
-    databasePathPattern = new String[length];
-    for (int i = 0; i < length; i++) {
-      databasePathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
-    }
-    TTL = buffer.getLong();
+    schema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL
-        && Arrays.equals(this.databasePathPattern, setTTLPlan.databasePathPattern);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
+    return schema.equals(that.schema);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(databasePathPattern, TTL);
+    return Objects.hash(schema);
   }
 }

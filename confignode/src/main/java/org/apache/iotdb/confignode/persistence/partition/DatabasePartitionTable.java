@@ -59,7 +59,8 @@ import java.util.stream.Stream;
 public class DatabasePartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePartitionTable.class);
 
-  private volatile boolean isPredeleted = false;
+  // Is the Database pre-deleted
+  private volatile boolean preDeleted = false;
   // The name of database
   private String databaseName;
 
@@ -79,12 +80,12 @@ public class DatabasePartitionTable {
     this.dataPartitionTable = new DataPartitionTable();
   }
 
-  public boolean isPredeleted() {
-    return isPredeleted;
+  public boolean isNotPreDeleted() {
+    return !preDeleted;
   }
 
-  public void setPredeleted(boolean predeleted) {
-    isPredeleted = predeleted;
+  public void setPreDeleted(boolean preDeleted) {
+    this.preDeleted = preDeleted;
   }
 
   /**
@@ -371,7 +372,7 @@ public class DatabasePartitionTable {
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
-    ReadWriteIOUtils.write(isPredeleted, outputStream);
+    ReadWriteIOUtils.write(preDeleted, outputStream);
     ReadWriteIOUtils.write(databaseName, outputStream);
 
     ReadWriteIOUtils.write(regionGroupMap.size(), outputStream);
@@ -386,7 +387,7 @@ public class DatabasePartitionTable {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
-    isPredeleted = ReadWriteIOUtils.readBool(inputStream);
+    preDeleted = ReadWriteIOUtils.readBool(inputStream);
     databaseName = ReadWriteIOUtils.readString(inputStream);
 
     int length = ReadWriteIOUtils.readInt(inputStream);

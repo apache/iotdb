@@ -30,16 +30,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar.DiffF
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
-import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
-
-public class DiffHelper implements BuiltInScalarFunctionHelper {
-
-  @Override
-  public void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
-      throws SemanticException {
-    checkFunctionExpressionInputSize(
-        functionExpression.getExpressionString(), functionExpression.getExpressions().size(), 1);
-  }
+public class DiffFunctionHelper implements BuiltInScalarFunctionHelper {
 
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
