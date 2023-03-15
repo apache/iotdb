@@ -108,6 +108,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   private final IMNode rootNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private final int levelOfSG;
+  private final CachedSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
@@ -119,6 +120,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
+    this.regionStatistics = regionStatistics;
     store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
@@ -145,21 +147,28 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       PartialPath storageGroupPath,
       CachedMTreeStore store,
       Consumer<IMeasurementMNode> measurementProcess,
-      Function<IMeasurementMNode, Map<String, String>> tagGetter)
+      Consumer<IEntityMNode> deviceProcess,
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException {
     this.store = store;
+    this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
 
     // recover measurement
-    try (MeasurementCollector<?> collector =
-        new MeasurementCollector<Void>(
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
           @Override
-          protected Void collectMeasurement(IMeasurementMNode node) {
-            measurementProcess.accept(node);
+          protected Void collectMNode(IMNode node) {
+            if (node.isMeasurement()) {
+              measurementProcess.accept(node.getAsMeasurementMNode());
+            } else if (node.isEntity()) {
+              deviceProcess.accept(node.getAsEntityMNode());
+            }
             return null;
           }
         }) {
@@ -189,6 +198,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IEntityMNode> deviceProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback)
       throws IOException, MetadataException {
@@ -197,7 +207,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         CachedMTreeStore.loadFromSnapshot(
             snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
-        tagGetter);
+        deviceProcess,
+        tagGetter,
+        regionStatistics);
   }
 
   // endregion
@@ -837,6 +849,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       entityMNode.setSchemaTemplateId(template.getId());
 
       store.updateMNode(entityMNode);
+      regionStatistics.activateTemplate(template.getId());
     } finally {
       unPinPath(cur);
     }
@@ -902,6 +915,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
+                regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
                 node.deactivateTemplate();
                 store.updateMNode(node);
               }

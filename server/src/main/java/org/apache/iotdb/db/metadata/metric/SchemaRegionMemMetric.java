@@ -29,6 +29,8 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   private static final String MEM_USAGE = "schema_region_mem_usage";
   private static final String SERIES_CNT = "schema_region_series_cnt";
+  private static final String TEMPLATE_CNT = "activated_template_cnt";
+  private static final String TEMPLATE_SERIES_CNT = "template_series_num";
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final String regionTagValue;
@@ -56,6 +58,24 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         MemSchemaRegionStatistics::getSeriesNumber,
         Tag.NAME.toString(),
         SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_REGION.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
+        MemSchemaRegionStatistics::getTemplateActivatedNumber,
+        Tag.NAME.toString(),
+        TEMPLATE_CNT,
+        Tag.REGION.toString(),
+        regionTagValue);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_REGION.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
+        MemSchemaRegionStatistics::getTemplateSeriesNumber,
+        Tag.NAME.toString(),
+        TEMPLATE_SERIES_CNT,
         Tag.REGION.toString(),
         regionTagValue);
   }

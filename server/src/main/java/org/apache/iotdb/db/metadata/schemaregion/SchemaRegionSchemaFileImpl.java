@@ -516,6 +516,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
+              deviceMNode -> {
+                if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
+                  regionStatistics.deactivateTemplate(deviceMNode.getSchemaTemplateId());
+                }
+              },
               tagManager::readTags,
               this::flushCallback);
       logger.info(

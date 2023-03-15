@@ -476,6 +476,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
+              deviceMNode -> {
+                if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
+                  regionStatistics.deactivateTemplate(deviceMNode.getSchemaTemplateId());
+                }
+              },
               tagManager::readTags);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
