@@ -36,7 +36,6 @@ import java.util.Map;
 
 public class RatisMetricSet implements IMetricSet {
   private MetricRegistries manager;
-  private final String consensusGroupType;
   private static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
   private static final String RATIS_CONSENSUS_WRITE = Metric.RATIS_CONSENSUS_WRITE.toString();
   private static final String RATIS_CONSENSUS_READ = Metric.RATIS_CONSENSUS_READ.toString();
@@ -105,17 +104,9 @@ public class RatisMetricSet implements IMetricSet {
     }
   }
 
-  public RatisMetricSet(TConsensusGroupType consensusGroupType) {
-    super();
-    this.consensusGroupType = consensusGroupType.toString();
-  }
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
     manager = MetricRegistries.global();
-    if (manager instanceof MetricRegistryManager) {
-      ((MetricRegistryManager) manager).setConsensusGroupType(consensusGroupType);
-    }
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.getOrCreateTimer(
           metricInfo.getName(), MetricLevel.CORE, metricInfo.getTagsInArray());
