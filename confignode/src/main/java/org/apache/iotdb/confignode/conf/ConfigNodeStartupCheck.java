@@ -61,32 +61,39 @@ public class ConfigNodeStartupCheck {
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
-          "the config_node_consensus_protocol_class is "
-              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+          "the config_node_consensus_protocol_class is set to" + ConsensusFactory.SIMPLE_CONSENSUS);
     }
 
-    // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
-    // the data replication factor must be 1
-    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && CONF.getDataReplicationFactor() != 1) {
-      throw new ConfigurationException(
-          "data_replication_factor",
-          String.valueOf(CONF.getDataReplicationFactor()),
-          String.valueOf(1),
-          "the data_region_consensus_protocol_class is "
-              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+    // The replication factor should be positive
+    if (CONF.getSchemaReplicationFactor() <= 0) {
+      throw new ConfigurationException("The schema_replication_factor should be positive");
+    }
+    if (CONF.getDataReplicationFactor() <= 0) {
+      throw new ConfigurationException("The data_replication_factor should be positive");
     }
 
-    // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
-    // the schema replication factor must be 1
-    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && CONF.getSchemaReplicationFactor() != 1) {
+    // When the schema_replication_factor is greater than 1
+    // the schema_region_consensus_protocol can't be set to SIMPLE_CONSENSUS
+    if (CONF.getSchemaReplicationFactor() > 1
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "schema_replication_factor",
-          String.valueOf(CONF.getSchemaReplicationFactor()),
-          String.valueOf(1),
-          "the schema_region_consensus_protocol_class is "
-              + "set to org.apache.iotdb.consensus.simple.SimpleConsensus");
+          "schema_region_consensus_protocol_class",
+          CONF.getSchemaRegionConsensusProtocolClass(),
+          ConsensusFactory.RATIS_CONSENSUS,
+          ConsensusFactory.SIMPLE_CONSENSUS
+              + "available only when schema_replication_factor is set to 1");
+    }
+
+    // When the data_replication_factor is greater than 1
+    // the data_region_consensus_protocol can't be set to SIMPLE_CONSENSUS
+    if (CONF.getDataReplicationFactor() > 1
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "data_region_consensus_protocol_class",
+          CONF.getDataRegionConsensusProtocolClass(),
+          ConsensusFactory.IOT_CONSENSUS + "or" + ConsensusFactory.RATIS_CONSENSUS,
+          ConsensusFactory.SIMPLE_CONSENSUS
+              + "available only when data_replication_factor is set to 1");
     }
 
     // When the schema region consensus protocol is set to IoTConsensus,
