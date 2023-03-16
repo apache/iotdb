@@ -128,7 +128,8 @@ public class DataNode implements DataNodeMBean {
   private final TriggerInformationUpdater triggerInformationUpdater =
       new TriggerInformationUpdater();
 
-  private static final String REGISTER_INTERRUPTION = "Unexpected interruption when waiting to register to the cluster";
+  private static final String REGISTER_INTERRUPTION =
+      "Unexpected interruption when waiting to register to the cluster";
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -177,10 +178,10 @@ public class DataNode implements DataNodeMBean {
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
-      logger.info("IoTDB configuration: {}" ,config.getConfigMessage());
+      logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
-    } catch (StartupException |  IOException e) {
+    } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
       if (isFirstStart) {
         // Delete the system.properties file when first start failed.
@@ -457,7 +458,7 @@ public class DataNode implements DataNodeMBean {
     try {
       processPid();
       setUp();
-    } catch ( StartupException e) {
+    } catch (StartupException e) {
       logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
