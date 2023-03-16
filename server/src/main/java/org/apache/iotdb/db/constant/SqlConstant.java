@@ -70,6 +70,10 @@ public class SqlConstant {
   public static final String REPLACE_FROM = "FROM";
   public static final String REPLACE_TO = "TO";
 
+  public static final String SUBSTR_FUNCTION = "SUBSTR";
+  public static final String SUBSTR_START = "startPosition";
+  public static final String SUBSTR_END = "endPosition";
+
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
   }

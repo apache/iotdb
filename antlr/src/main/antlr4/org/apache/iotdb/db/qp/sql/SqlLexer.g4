@@ -646,6 +646,10 @@ STOP
     : S T O P
     ;
 
+SUBSTR
+    : S U B S T R
+    ;
+
 SYSTEM
     : S Y S T E M
     ;

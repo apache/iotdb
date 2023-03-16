@@ -175,6 +175,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTR
     | SYSTEM
     | TAGS
     | TASK
