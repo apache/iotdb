@@ -294,15 +294,21 @@ public class QueryStatement extends Statement {
   }
 
   private boolean isGroupByVariation() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
   }
 
-  private boolean isGroupBySeries() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
+  private boolean isGroupByCondition() {
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
+  }
+
+  private boolean isGroupByCount() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
   }
 
   public boolean hasGroupByExpression() {
-    return isGroupByVariation() || isGroupBySeries();
+    return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
 
   public boolean isAlignByTime() {
@@ -502,6 +508,9 @@ public class QueryStatement extends Statement {
       }
       if (isOrderByTime()) {
         throw new SemanticException("Sorting by time is not yet supported in last queries.");
+      }
+      if (seriesLimit != 0 || seriesOffset != 0) {
+        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
       }
     }
 

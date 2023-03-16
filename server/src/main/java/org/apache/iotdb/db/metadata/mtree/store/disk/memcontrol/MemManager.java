@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 
 import java.util.List;
@@ -29,46 +29,44 @@ public class MemManager {
 
   private final CachedSchemaRegionStatistics regionStatistics;
 
-  private final CachedMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
-
   public MemManager(CachedSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
   }
 
-  public void requestPinnedMemResource(IMNode node) {
-    int size = estimator.estimateSize(node);
+  public void requestPinnedMemResource(ICachedMNode node) {
+    int size = node.estimateSize();
     regionStatistics.requestMemory(size);
     regionStatistics.updatePinnedMemorySize(size);
     regionStatistics.updatePinnedMNodeNum(1);
   }
 
-  public void upgradeMemResource(IMNode node) {
-    int size = estimator.estimateSize(node);
+  public void upgradeMemResource(ICachedMNode node) {
+    int size = node.estimateSize();
     regionStatistics.updatePinnedMemorySize(size);
     regionStatistics.updatePinnedMNodeNum(1);
     regionStatistics.updateUnpinnedMemorySize(-size);
     regionStatistics.updateUnpinnedMNodeNum(-1);
   }
 
-  public void releasePinnedMemResource(IMNode node) {
-    int size = estimator.estimateSize(node);
+  public void releasePinnedMemResource(ICachedMNode node) {
+    int size = node.estimateSize();
     regionStatistics.updateUnpinnedMemorySize(size);
     regionStatistics.updateUnpinnedMNodeNum(1);
     regionStatistics.updatePinnedMemorySize(-size);
     regionStatistics.updatePinnedMNodeNum(-1);
   }
 
-  public void releaseMemResource(IMNode node) {
-    int size = estimator.estimateSize(node);
+  public void releaseMemResource(ICachedMNode node) {
+    int size = node.estimateSize();
     regionStatistics.updateUnpinnedMemorySize(-size);
     regionStatistics.updateUnpinnedMNodeNum(-1);
     regionStatistics.releaseMemory(size);
   }
 
-  public void releaseMemResource(List<IMNode> evictedNodes) {
+  public void releaseMemResource(List<ICachedMNode> evictedNodes) {
     int size = 0;
-    for (IMNode node : evictedNodes) {
-      size += estimator.estimateSize(node);
+    for (ICachedMNode node : evictedNodes) {
+      size += node.estimateSize();
     }
     regionStatistics.updateUnpinnedMNodeNum(-evictedNodes.size());
     regionStatistics.updateUnpinnedMemorySize(-size);

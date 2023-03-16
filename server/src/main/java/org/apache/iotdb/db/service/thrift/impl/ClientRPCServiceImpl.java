@@ -55,7 +55,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -880,7 +880,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
-      DeleteStorageGroupStatement statement = StatementGenerator.createStatement(storageGroups);
+      DeleteDatabaseStatement statement = StatementGenerator.createStatement(storageGroups);
 
       if (enableAuditLog) {
         AuditLogger.log(String.format("delete databases: %s", storageGroups), statement);

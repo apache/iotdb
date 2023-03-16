@@ -92,6 +92,8 @@ OR, |, ||
 
 ## 内置函数列表
 
+列表中的函数无须注册即可在 IoTDB 中使用，数据函数质量库中的函数需要参考注册步骤进行注册后才能使用。
+
 ### 聚合函数
 
 | 函数名      | 功能描述                                                     | 允许的输入类型           | 输出类型       |
@@ -161,10 +163,6 @@ OR, |, ||
 | LOWER | TEXT | 无 | TEXT | 将字符串转化为小写 |
 | TRIM | TEXT | 无 | TEXT | 移除字符串前后的空格 |
 | STRCMP | TEXT | 无 | TEXT | 用于比较两个输入序列，如果值相同返回 `0` , 序列1的值小于序列2的值返回一个`负数`，序列1的值大于序列2的值返回一个`正数` |
-| STRREPLACE | TEXT | `target`: 需要替换的字符子串 <br/> `replace`: 替换后的字符串 <br/> `limit`: 替换次数，大于等于 -1 的整数，默认为 -1 表示所有匹配的子串都会被替换 <br/>`offset`: 需要跳过的匹配次数，即前`offset`次匹配到的字符子串并不会被替换，默认为 0 <br/>`reverse`: 是否需要反向计数，默认为 false 即按照从左向右的次序 | TEXT | 将字符串中的子串替换为指定的字符串|
-| REGEXMATCH | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `group`: 输出的匹配组序号，根据 java.util.regex 规定，第 0 组为整个正则表达式，此后的组按照左括号出现的顺序依次编号 | TEXT | 用于正则表达式匹配文本中的具体内容并返回 |
-| REGEXREPLACE | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `replace`: 替换后的字符串，支持 Java 正则表达式中的后向引用 <br/> `limit`: 替换次数，大于等于 -1 的整数，默认为 -1 表示所有匹配的子串都会被替换 <br/> `offset`: 需要跳过的匹配次数，即前`offset`次匹配到的字符子串并不会被替换，默认为 0 <br/> `reverse`: 是否需要反向计数，默认为 false 即按照从左向右的次序 | TEXT | 用于将文本中符合正则表达式的匹配结果替换为指定的字符串 |
-| REGEXSPLIT | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `index`: 输出结果在切分后数组中的序号 | TEXT | 用于使用给定的正则表达式切分文本，并返回指定的项 |
 
 详细说明及示例见文档 [字符串处理函数](./String.md)。
 
@@ -199,10 +197,10 @@ OR, |, ||
 
 | 函数名               | 输入序列类型                               | 属性参数                                           | 输出序列类型 | 功能描述                                                             |
 |-------------------|--------------------------------------|------------------------------------------------|-------|------------------------------------------------------------------|
-| ZERO_DURATION     | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值0</br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续为0(false)的开始时间与持续时间，持续时间t(单位ms)满足`t >= min && t <= max`  |
-| NON_ZERO_DURATION | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值0</br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续不为0(false)的开始时间与持续时间，持续时间t(单位ms)满足`t >= min && t <= max` |               |
-| ZERO_COUNT        | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值1</br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续为0(false)的开始时间与其后数据点的个数，数据点个数n满足`n >= min && n <= max`   |               |
-| NON_ZERO_COUNT    | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值1</br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续不为0(false)的开始时间与其后数据点的个数，数据点个数n满足`n >= min && n <= max`  |               |
+| ZERO_DURATION     | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值0<br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续为0(false)的开始时间与持续时间，持续时间t(单位ms)满足`t >= min && t <= max`  |
+| NON_ZERO_DURATION | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值0<br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续不为0(false)的开始时间与持续时间，持续时间t(单位ms)满足`t >= min && t <= max` |               |
+| ZERO_COUNT        | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值1<br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续为0(false)的开始时间与其后数据点的个数，数据点个数n满足`n >= min && n <= max`   |               |
+| NON_ZERO_COUNT    | INT32/ INT64/ FLOAT/ DOUBLE/ BOOLEAN | `min`:可选，默认值1<br>`max`:可选，默认值`Long.MAX_VALUE` | Long  | 返回时间序列连续不为0(false)的开始时间与其后数据点的个数，数据点个数n满足`n >= min && n <= max`  |               |
 
 详细说明及示例见文档 [区间查询函数](./Continuous-Interval.md)。
 
@@ -228,9 +226,9 @@ OR, |, ||
 | 函数名      | 可接收的输入序列类型                     | 必要的属性参数                               | 输出序列类型     | 功能类型                                             |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | EQUAL_SIZE_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | 降采样比例 `proportion`，取值范围为`(0, 1]`，默认为`0.1`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶随机采样                |
-| EQUAL_SIZE_BUCKET_AGG_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`</br>`type`:取值类型有`avg`, `max`, `min`, `sum`, `extreme`, `variance`, 默认为`avg`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶聚合采样                |
+| EQUAL_SIZE_BUCKET_AGG_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`<br>`type`:取值类型有`avg`, `max`, `min`, `sum`, `extreme`, `variance`, 默认为`avg`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶聚合采样                |
 | EQUAL_SIZE_BUCKET_M4_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶M4采样                |
-| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`</br>`type`取值为`avg`或`stendis`或`cos`或`prenextdis`，默认为`avg`</br>`number`取值应大于0，默认`3`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例和桶内采样个数的等分桶离群值采样                |
+| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`<br>`type`取值为`avg`或`stendis`或`cos`或`prenextdis`，默认为`avg`<br>`number`取值应大于0，默认`3`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例和桶内采样个数的等分桶离群值采样                |
 | M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`displayWindowBegin`和`displayWindowEnd`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
 
 ## 数据质量函数库

@@ -34,12 +34,12 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -72,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -273,14 +275,14 @@ public interface IManager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan);
+  DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
+  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
 
   /**
    * Set Database
@@ -302,7 +304,7 @@ public interface IManager {
    * @param deletedPaths List<StringPattern>
    * @return status
    */
-  TSStatus deleteStorageGroups(List<String> deletedPaths);
+  TSStatus deleteDatabases(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition
@@ -417,6 +419,18 @@ public interface IManager {
   /** Get Trigger jar */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req);
 
+  /** Create pipe plugin */
+  TSStatus createPipePlugin(TCreatePipePluginReq req);
+
+  /** Drop pipe plugin */
+  TSStatus dropPipePlugin(String pluginName);
+
+  /** Show pipe plugins */
+  TGetPipePluginTableResp getPipePluginTable();
+
+  /** Get pipe plugin jar */
+  TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
+
   /** Merge on all DataNodes */
   TSStatus merge();
 
@@ -463,7 +477,7 @@ public interface IManager {
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
    */
-  TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan);
+  TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan);
 
   /**
    * create schema template

@@ -47,7 +47,7 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 
 ` may be written as `` in quoted  identifiers. See the example below:
 
-```SQL
+```sql
 # create template t1't"t
 create schema template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)

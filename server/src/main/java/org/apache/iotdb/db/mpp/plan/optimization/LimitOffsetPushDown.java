@@ -59,7 +59,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       return plan;
     }
     QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-    if (queryStatement.isAggregationQuery()
+    if (queryStatement.isLastQuery()
+        || queryStatement.isAggregationQuery()
         || (!queryStatement.hasLimit() && !queryStatement.hasOffset())) {
       return plan;
     }

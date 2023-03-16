@@ -49,6 +49,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
@@ -131,6 +132,8 @@ keyWords
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
+    | PIPEPLUGIN
+    | PIPEPLUGINS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
@@ -150,6 +153,7 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
     | RUNNING

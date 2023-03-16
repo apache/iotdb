@@ -57,23 +57,9 @@ public class CompactionScheduler {
       return;
     }
     try {
-      tryToSubmitCrossSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager);
-      tryToSubmitInnerSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager,
-          true);
-      tryToSubmitInnerSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager,
-          false);
+      tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
+      tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true);
+      tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
@@ -81,18 +67,17 @@ public class CompactionScheduler {
   }
 
   public static void tryToSubmitInnerSpaceCompactionTask(
-      String storageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager,
-      boolean sequence)
+      TsFileManager tsFileManager, long timePartition, boolean sequence)
       throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
       return;
     }
 
-    ICompactionSelector innerSpaceCompactionSelector = null;
+    String storageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
+
+    ICompactionSelector innerSpaceCompactionSelector;
     if (sequence) {
       innerSpaceCompactionSelector =
           config
@@ -134,14 +119,12 @@ public class CompactionScheduler {
   }
 
   private static void tryToSubmitCrossSpaceCompactionTask(
-      String logicalStorageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager)
-      throws InterruptedException {
+      TsFileManager tsFileManager, long timePartition) throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return;
     }
+    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()

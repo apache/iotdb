@@ -100,7 +100,7 @@ public class Utils {
             Mockito.eq(planNodeId),
             Mockito.anyLong());
     Mockito.when(
-            mockMemoryPool.tryReserve(
+            mockMemoryPool.tryReserveForTest(
                 Mockito.eq(queryId),
                 Mockito.eq(fragmentInstanceId),
                 Mockito.eq(planNodeId),
@@ -130,7 +130,7 @@ public class Utils {
                 Mockito.anyLong()))
         .thenReturn(new Pair<>(immediateFuture(null), true));
     Mockito.when(
-            mockMemoryPool.tryReserve(
+            mockMemoryPool.tryReserveForTest(
                 Mockito.anyString(),
                 Mockito.anyString(),
                 Mockito.anyString(),

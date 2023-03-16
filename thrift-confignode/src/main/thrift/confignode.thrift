@@ -435,6 +435,25 @@ struct TGetDataNodeLocationsResp {
   2: required list<common.TDataNodeLocation> dataNodeLocationList
 }
 
+// Pipe Plugin
+struct TCreatePipePluginReq {
+  1: required string pluginName
+  2: required string className
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
+}
+
+struct TDropPipePluginReq {
+  1: required string pluginName
+}
+
+// Get PipePlugin table from config node
+struct TGetPipePluginTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allPipePluginMeta
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -566,13 +585,13 @@ struct TRecordPipeMessageReq{
 }
 
 struct TShowPipeInfo {
-  1: required i64 createTime
-  2: required string pipeName
-  3: required string role
-  4: required string remote
-  5: required string status
-  6: required string attributes
-  7: required string message
+  1: required string id
+  2: required i64 creationTime
+  3: required string state
+  4: required string pipeCollector
+  5: required string pipeProcessor
+  6: required string pipeConnector
+  7: required string exceptionMessage
 }
 
 struct TGetAllPipeInfoResp{
@@ -582,9 +601,9 @@ struct TGetAllPipeInfoResp{
 
 struct TCreatePipeReq {
     1: required string pipeName
-    2: required string pipeSinkName
-    3: required i64 startTime
-    4: optional map<string, string> attributes
+    2: optional map<string, string> collectorAttributes
+    3: optional map<string, string> processorAttributes
+    4: required map<string, string> connectorAttributes
 }
 
 struct TPipeSinkInfo {
@@ -608,6 +627,7 @@ struct TGetPipeSinkResp {
 
 struct TShowPipeReq {
   1: optional string pipeName
+  2: optional bool whereClause
 }
 
 struct TShowPipeResp {
@@ -849,7 +869,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the SchemaPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new SchemaRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
@@ -879,7 +899,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the DataPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new DataRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
@@ -1054,6 +1074,31 @@ service IConfigNodeRPCService {
      * Return the trigger jar list of the trigger name list
      */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
+
+  // ======================================================
+  // Pipe Plugin
+  // ======================================================
+
+  /**
+   * Create a pipe plugin on the specified DataNode
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus createPipePlugin(TCreatePipePluginReq req)
+
+  /**
+   * Remove a pipe plugin on the DataNodes
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus dropPipePlugin(TDropPipePluginReq req)
+
+  /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTable();
 
   // ======================================================
   // Maintenance Tools

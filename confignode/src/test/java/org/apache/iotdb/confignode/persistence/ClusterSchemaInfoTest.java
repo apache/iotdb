@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -43,7 +43,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -144,21 +143,11 @@ public class ClusterSchemaInfoTest {
   }
 
   private Template newSchemaTemplate(String name) throws IllegalPathException {
-    List<List<String>> measurements =
-        Arrays.asList(
-            Collections.singletonList(name + "_" + "temperature"),
-            Collections.singletonList(name + "_" + "status"));
-    List<List<TSDataType>> dataTypes =
-        Arrays.asList(
-            Collections.singletonList(TSDataType.FLOAT),
-            Collections.singletonList(TSDataType.BOOLEAN));
-    List<List<TSEncoding>> encodings =
-        Arrays.asList(
-            Collections.singletonList(TSEncoding.RLE), Collections.singletonList(TSEncoding.PLAIN));
-    List<List<CompressionType>> compressors =
-        Arrays.asList(
-            Collections.singletonList(CompressionType.SNAPPY),
-            Collections.singletonList(CompressionType.SNAPPY));
+    List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
   }
 }

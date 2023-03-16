@@ -999,7 +999,10 @@ class Session(object):
                 values_tobe_packed.append(bytes([TSDataType.DOUBLE.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.TEXT.value:
-                value_bytes = bytes(value, "utf-8")
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
                 format_str_list.append("c")
                 format_str_list.append("i")
                 format_str_list.append(str(len(value_bytes)))
@@ -1051,7 +1054,9 @@ class Session(object):
             return 0
 
         logger.error("error status is %s", status)
-        return -1
+        raise RuntimeError(
+            "execution of statement fails because: " + status.message
+        )
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
@@ -1255,7 +1260,7 @@ class Session(object):
                     return None
             else:
                 raise RuntimeError(
-                    "execution of statement fails because: {}", status.message
+                    "execution of statement fails because: " + status.message
                 )
         except TTransport.TException as e:
             raise RuntimeError("execution of statement fails because: ", e)

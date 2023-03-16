@@ -51,7 +51,7 @@ public class ConfigNodeConfig {
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties
-  private int configNodeRegionId = 0;
+  private int configRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
@@ -167,6 +167,13 @@ public class ConfigNodeConfig {
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
+  /** External lib directory for pipe, stores user-uploaded JAR files */
+  private String pipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded pipe JAR files */
+  private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
@@ -305,6 +312,8 @@ public class ConfigNodeConfig {
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
+    pipeDir = addHomeDir(pipeDir);
+    pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -380,12 +389,12 @@ public class ConfigNodeConfig {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public int getConfigNodeRegionId() {
-    return configNodeRegionId;
+  public int getConfigRegionId() {
+    return configRegionId;
   }
 
-  public void setConfigNodeRegionId(int configNodeRegionId) {
-    this.configNodeRegionId = configNodeRegionId;
+  public void setConfigRegionId(int configRegionId) {
+    this.configRegionId = configRegionId;
   }
 
   public int getSeriesSlotNum() {
@@ -618,6 +627,23 @@ public class ConfigNodeConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getPipeDir() {
+    return pipeDir;
+  }
+
+  public void setPipeDir(String pipeDir) {
+    this.pipeDir = pipeDir;
+    updatePipeTemporaryLibDir();
+  }
+
+  public String getPipeTemporaryLibDir() {
+    return pipeTemporaryLibDir;
+  }
+
+  public void updatePipeTemporaryLibDir() {
+    this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public int getSchemaReplicationFactor() {

@@ -274,7 +274,7 @@ Different configuration parameters take effect in the following three ways:
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a database can be inserted concurrently <br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -487,7 +487,7 @@ Different configuration parameters take effect in the following three ways:
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 |:-----------:|:---------------------------------------------|
-| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+| Description | The read consistency level, <br>1. strong(Default, read from the leader replica) <br>2. weak(Read from a random replica) |
 |    Type     | string                                          |
 |   Default   | strong                                           |
 |  Effective  | After restarting system                      |
@@ -516,6 +516,15 @@ Different configuration parameters take effect in the following three ways:
 |Description| Whether to enable LAST cache. |
 |Type| Boolean |
 |Default| true |
+|Effective|After restarting system|
+
+* max\_deduplicated\_path\_num
+
+|Name| max\_deduplicated\_path\_num |
+|:---:|:---|
+|Description| allowed max numbers of deduplicated path in one query. |
+|Type| Int32 |
+|Default| 1000 |
 |Effective|After restarting system|
 
 * mpp\_data\_exchange\_core\_pool\_size
@@ -1203,12 +1212,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                            |
+|:-----------:|:------------------------------------------------------|
+| Description | Data compression method                               |
+|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4", "ZSTD" |
+|   Default   | SNAPPY                                                |
+|  Effective  | hot-load                                              |
 
 * bloomFilterErrorRate
 
