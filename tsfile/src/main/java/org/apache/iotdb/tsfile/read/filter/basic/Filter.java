@@ -38,6 +38,14 @@ public interface Filter {
    */
   boolean satisfy(Statistics statistics);
 
+  default boolean allSatisfy(Statistics statistics) {
+    return true;
+  }
+
+  default boolean allNotSatisfy(Statistics statistics) {
+    return false;
+  }
+
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.
    *

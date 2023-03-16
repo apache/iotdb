@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -170,6 +171,30 @@ public class GroupByLevelController {
       groupedPath.setMeasurementAlias(rawPath.getMeasurementAlias());
     }
     return groupedPath;
+  }
+
+  public static PartialPath groupPathByLevel(
+      PartialPath rawDevicePath, String measurement, int[] levels) {
+    String[] nodes = Arrays.copyOf(rawDevicePath.getNodes(), rawDevicePath.getNodes().length + 1);
+    nodes[nodes.length - 1] = measurement;
+
+    Set<Integer> levelSet = new HashSet<>();
+    for (int level : levels) {
+      levelSet.add(level);
+    }
+
+    List<String> transformedNodes = new ArrayList<>(nodes.length);
+
+    transformedNodes.add(nodes[0]);
+    for (int k = 1; k < nodes.length - 1; k++) {
+      if (levelSet.contains(k)) {
+        transformedNodes.add(nodes[k]);
+      } else {
+        transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+      }
+    }
+    transformedNodes.add(nodes[nodes.length - 1]);
+    return new PartialPath(transformedNodes.toArray(new String[0]));
   }
 
   public Map<Expression, Set<Expression>> getGroupedExpressionToRawExpressionsMap() {
