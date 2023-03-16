@@ -69,7 +69,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
 
-  private static final int START_RETRY_NUM = 6;
+  private static final int START_RETRY_NUM = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -199,7 +199,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
       TConfigNodeRestartReq configNodeRestartReq =
           ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              ERROR_CLUSTER_NAME, -1, registeredConfigNodeWrapper);
+              ERROR_CLUSTER_NAME, 1, registeredConfigNodeWrapper);
       TSStatus configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
@@ -312,23 +312,25 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().generateRandomDataNodeWrapper();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // set ConfigNode port repeat
       TShowClusterResp showClusterResp = client.showCluster();
       int beforeStartConfigNodes = showClusterResp.getConfigNodeListSize();
+      int beforeStartDataNodes = showClusterResp.getDataNodeListSize();
+      // set ConfigNode port repeat
       portConflictConfigNodeWrapper.setConsensusPort(portConflictConfigNodeWrapper.getPort());
       portConflictConfigNodeWrapper.changeConfig(
           (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
           (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
           null);
       portConflictConfigNodeWrapper.start();
+      int afterStartConfigNodes;
       for (int i = 0; i < START_RETRY_NUM; ++i) {
         showClusterResp = client.showCluster();
         Thread.sleep(1000);
+        afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
+        Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
       }
-      int afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
-      Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
+
       // set datanode port repeat
-      int beforeStartDataNodes = showClusterResp.getDataNodeListSize();
       portConflictDataNodeWrapper.setMppDataExchangePort(
           portConflictDataNodeWrapper.getDataRegionConsensusPort());
       portConflictDataNodeWrapper.changeConfig(
@@ -336,12 +338,13 @@ public class IoTDBClusterNodeErrorStartUpIT {
           (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
           null);
       portConflictDataNodeWrapper.start();
+      int afterStartDataNodes;
       for (int i = 0; i < START_RETRY_NUM; ++i) {
         showClusterResp = client.showCluster();
         Thread.sleep(1000);
+        afterStartDataNodes = showClusterResp.getDataNodeListSize();
+        Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
       }
-      int afterStartDataNodes = showClusterResp.getDataNodeListSize();
-      Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
     }
   }
 }

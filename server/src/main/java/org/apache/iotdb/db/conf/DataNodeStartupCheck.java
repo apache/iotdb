@@ -27,13 +27,15 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Set;
 
-/** DataNodeStartCheck checks the parameters in iotdb-datanode.properties when start and restart */
-public class DataNodeStartCheck extends StartupChecks {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartCheck.class);
+/**
+ * DataNodeStartupCheck checks the parameters in iotdb-datanode.properties when start and restart
+ */
+public class DataNodeStartupCheck extends StartupChecks {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartupCheck.class);
   private final IoTDBConfig config;
   private static final int DATANODE_PORTS = 6;
 
-  public DataNodeStartCheck(String nodeRole, IoTDBConfig config) {
+  public DataNodeStartupCheck(String nodeRole, IoTDBConfig config) {
     super(nodeRole);
     this.config = config;
   }

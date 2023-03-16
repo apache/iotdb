@@ -53,7 +53,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.DataNodeStartCheck;
+import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -212,7 +212,7 @@ public class DataNode implements DataNodeMBean {
     thisNode.setPort(config.getInternalPort());
 
     // Startup checks
-    DataNodeStartCheck checks = new DataNodeStartCheck(IoTDBConstant.DN_ROLE, config);
+    DataNodeStartupCheck checks = new DataNodeStartupCheck(IoTDBConstant.DN_ROLE, config);
     checks.startUpCheck();
     return isFirstStart;
   }
