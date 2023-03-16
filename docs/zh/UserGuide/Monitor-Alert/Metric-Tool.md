@@ -264,7 +264,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ratis_log_worker      | writelogExecutionTime      | Timer | 一个 Raft 日志写入操作完成执行的时间                   |
 | ratis_log_worker      | flushTime                  | Timer | 刷新日志的时间                                         |
 | ratis_log_worker      | closedSegmentsSizeInBytes  | Gauge | 关闭的 Raft 日志段的总大小                             |
-| ratis_log_worker      | openSegmentsSizeInBytes    | Gauge | 打开的 Raft 日志段的总大小                             |
+| ratis_log_worker      | openSegmentSizeInBytes     | Gauge | 打开的 Raft 日志段的总大小                             |
 
 #### 4.2.3. IoT共识协议统计
 
