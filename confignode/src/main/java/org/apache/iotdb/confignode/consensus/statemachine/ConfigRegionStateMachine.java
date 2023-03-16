@@ -364,7 +364,11 @@ public class ConfigRegionStateMachine
   private void createLogFile(int endIndex) {
     simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
     try {
-      simpleLogFile.createNewFile();
+      if (!simpleLogFile.createNewFile()) {
+        LOGGER.warn(
+            "ConfigNode SimpleConsensusFile has existed，filePath:{}",
+            simpleLogFile.getAbsolutePath());
+      }
       simpleLogWriter = new LogWriter(simpleLogFile, false);
       LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", simpleLogFile.getAbsolutePath());
     } catch (Exception e) {
