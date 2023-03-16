@@ -58,14 +58,14 @@ public class IoTDBModeIT {
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(1, 1, 1, true, 1, 1, \"1\")",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(2, 2, 2, false, 2, 2, \"2\")",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(3, 2, 2, false, 2, 2, \"2\")",
-        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(100000000, 1, 1, true, 1, 1, \"1\")",
-        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(100000001, 1, 1, true, 1, 1, \"1\")",
+        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(10000000000, 1, 1, true, 1, 1, \"1\")",
+        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(10000000001, 1, 1, true, 1, 1, \"1\")",
         "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(1, 1, 1, true, 1, 1, \"1\")",
         "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(2, 1, 1, true, 1, 1, \"1\")",
-        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(100000000, 2, 2, false, 2, 2, \"2\")",
-        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(100000001, 2, 2, false, 2, 2, \"2\")",
-        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(100000002, 2, 2, false, 2, 2, \"2\")",
-        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(100000003, 2, 2, false, 2, 2, \"2\")",
+        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000000, 2, 2, false, 2, 2, \"2\")",
+        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000001, 2, 2, false, 2, 2, \"2\")",
+        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000002, 2, 2, false, 2, 2, \"2\")",
+        "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000003, 2, 2, false, 2, 2, \"2\")",
         "flush"
       };
 

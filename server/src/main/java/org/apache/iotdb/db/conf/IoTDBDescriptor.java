@@ -569,6 +569,15 @@ public class IoTDBDescriptor {
       conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
     }
 
+    conf.setModeMapSizeThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+
+    if (conf.getModeMapSizeThreshold() <= 0) {
+      conf.setModeMapSizeThreshold(10000);
+    }
+
     conf.setMaxAllowedConcurrentQueries(
         Integer.parseInt(
             properties.getProperty(

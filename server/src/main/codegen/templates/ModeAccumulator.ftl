@@ -25,6 +25,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -51,7 +52,7 @@ public class ${className} implements Accumulator {
   private final Map<${type.javaBoxName}, Long> countMap = new HashMap<>();
 
   <#if type.dataType != "boolean">
-  private final int MAP_SIZE_THRESHOLD = 10000;
+  private final int MAP_SIZE_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
 
   </#if>
   @Override

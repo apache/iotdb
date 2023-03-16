@@ -318,6 +318,8 @@ public class IoTDBConfig {
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+  private int modeMapSizeThreshold = 10000;
+
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
 
@@ -3626,5 +3628,13 @@ public class IoTDBConfig {
 
   public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
     this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
+  }
+
+  public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
+    this.modeMapSizeThreshold = modeMapSizeThreshold;
+  }
+
+  public int getModeMapSizeThreshold() {
+    return modeMapSizeThreshold;
   }
 }
