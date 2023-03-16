@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -32,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -85,6 +87,38 @@ public class AsyncPlanNodeSender {
         pendingNumber.wait();
       }
     }
+  }
+
+  public List<TSStatus> getFailureStatusList() {
+    List<TSStatus> failureStatusList = new ArrayList<>();
+    TSStatus status;
+    for (Map.Entry<Integer, TSendPlanNodeResp> entry : instanceId2RespMap.entrySet()) {
+      status = entry.getValue().getStatus();
+      if (!entry.getValue().accepted) {
+        if (status == null) {
+          logger.warn(
+              "dispatch write failed. message: {}, node {}",
+              entry.getValue().message,
+              instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
+          failureStatusList.add(
+              RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage()));
+        } else {
+          logger.warn(
+              "dispatch write failed. status: {}, code: {}, message: {}, node {}",
+              entry.getValue().status,
+              TSStatusCode.representOf(status.code),
+              entry.getValue().message,
+              instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
+          failureStatusList.add(status);
+        }
+      } else {
+        // some expected and accepted status except SUCCESS_STATUS need to be returned
+        if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failureStatusList.add(status);
+        }
+      }
+    }
+    return failureStatusList;
   }
 
   public Future<FragInstanceDispatchResult> getResult() {

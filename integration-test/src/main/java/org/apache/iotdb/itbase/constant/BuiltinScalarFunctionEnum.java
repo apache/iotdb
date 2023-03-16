@@ -22,6 +22,8 @@ package org.apache.iotdb.itbase.constant;
 public enum BuiltinScalarFunctionEnum {
   DIFF("diff"),
   CAST("cast"),
+  REPLACE("replace"),
+  ROUND("round");
   ;
 
   private final String functionName;

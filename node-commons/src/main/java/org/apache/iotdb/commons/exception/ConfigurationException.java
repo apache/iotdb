@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ConfigurationException extends IoTDBException {
@@ -26,37 +27,35 @@ public class ConfigurationException extends IoTDBException {
   private String correctValue;
 
   /**
+   * Notice: The error reason should always be set for ease of use.
+   *
    * @param parameter The error parameter
    * @param badValue The bad value
    * @param correctValue The correct value (if it could be listed)
+   * @param reason The reason why lead to the exception
    */
-  public ConfigurationException(String parameter, String badValue, String correctValue) {
+  public ConfigurationException(
+      String parameter, String badValue, String correctValue, String reason) {
     super(
         String.format(
-            "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
+            "Parameter %s can not be %s, please set to: %s. Because %s",
+            parameter, badValue, correctValue, reason),
         TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     this.parameter = parameter;
     this.correctValue = correctValue;
   }
 
-  /**
-   * @param parameter The error parameter
-   * @param badValue The bad value
-   */
-  public ConfigurationException(String parameter, String badValue) {
-    super(
-        String.format("Parameter %s can not be %s", parameter, badValue),
-        TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
+  /** Notice: The error reason should always be set for ease of use. */
+  public ConfigurationException(String reason) {
+    super(reason, TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
   }
 
-  public ConfigurationException(String errorStr) {
-    super(errorStr, TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
-  }
-
+  @TestOnly
   public String getParameter() {
     return parameter;
   }
 
+  @TestOnly
   public String getCorrectValue() {
     return correctValue;
   }

@@ -115,6 +115,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getSourceExpressions(),
               analysis.getGlobalTimeFilter(),
               analysis.getMergeOrderParameter())
+          .planOffset(queryStatement.getRowOffset())
+          .planLimit(queryStatement.getRowLimit())
           .getRoot();
     }
 

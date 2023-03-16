@@ -498,6 +498,7 @@ groupByAttributeClause
     | VARIATION LR_BRACKET expression (COMMA delta=number)? (COMMA attributePair)? RR_BRACKET
     | CONDITION LR_BRACKET expression (COMMA expression)? (COMMA attributePair)? RR_BRACKET
     | SESSION LR_BRACKET timeInterval=DURATION_LITERAL RR_BRACKET
+    | COUNT LR_BRACKET expression COMMA countNumber=INTEGER_LITERAL (COMMA attributePair)? RR_BRACKET
     ;
 
 number
@@ -960,7 +961,7 @@ expression
     | constant
     | time=(TIME | TIMESTAMP)
     | fullPathInExpression
-    | CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
+    | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
@@ -978,6 +979,13 @@ functionName
     : identifier
     | COUNT
     ;
+
+scalarFunctionExpression
+    : CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
+    | REPLACE LR_BRACKET text=expression COMMA from=STRING_LITERAL COMMA to=STRING_LITERAL RR_BRACKET
+    | ROUND LR_BRACKET input=expression (COMMA places=constant)? RR_BRACKET
+    ;
+
 
 containsExpression
     : name=attributeKey OPERATOR_CONTAINS value=attributeValue

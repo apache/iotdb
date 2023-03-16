@@ -153,8 +153,10 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
+    | ROUND
     | RUNNING
     | SCHEMA
     | SELECT

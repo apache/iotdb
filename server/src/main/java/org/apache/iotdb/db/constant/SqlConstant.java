@@ -54,15 +54,21 @@ public class SqlConstant {
   public static final String AVG = "avg";
   public static final String SUM = "sum";
   public static final String COUNT_IF = "count_if";
+  public static final String TIME_DURATION = "time_duration";
+  public static final String MODE = "mode";
 
   // names of scalar functions
   public static final String DIFF = "diff";
 
   public static final String LAST = "last";
-  public static final String TIME_DURATION = "time_duration";
 
   public static final String CAST_FUNCTION = "CAST";
   public static final String CAST_TYPE = "type";
+  public static final String ROUND_FUNCTION = "ROUND";
+  public static final String ROUND_PLACES = "PLACES";
+  public static final String REPLACE_FUNCTION = "REPLACE";
+  public static final String REPLACE_FROM = "FROM";
+  public static final String REPLACE_TO = "TO";
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;

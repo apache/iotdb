@@ -166,6 +166,7 @@
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.8</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
+        <zstd-jni.version>1.5.4-2</zstd-jni.version>
         <netty.version>4.1.82.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -186,7 +187,7 @@
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
-        <swagger.core.version>1.5.24</swagger.core.version>
+        <swagger.core.version>1.6.2</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.0</openapi.generator.version>
         <!-- cli -->
@@ -512,6 +513,11 @@
                 <version>${snappy.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.github.luben</groupId>
+                <artifactId>zstd-jni</artifactId>
+                <version>${zstd-jni.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.thrift</groupId>
                 <artifactId>libthrift</artifactId>
                 <version>${thrift.version}</version>
@@ -791,6 +797,7 @@
                             <exclude>**/.eslintignore</exclude>
                             <exclude>**/palette.styl</exclude>
                             <exclude>**/RightMenu.vue</exclude>
+                            <exclude>**/pnpm-lock.yaml</exclude>
                         </excludes>
                     </configuration>
                 </plugin>

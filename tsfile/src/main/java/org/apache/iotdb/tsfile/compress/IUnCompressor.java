@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.compress;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
+import com.github.luben.zstd.Zstd;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4SafeDecompressor;
@@ -54,6 +55,8 @@ public interface IUnCompressor {
         return new LZ4UnCompressor();
       case GZIP:
         return new GZIPUnCompressor();
+      case ZSTD:
+        return new ZstdUnCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -310,6 +313,47 @@ public interface IUnCompressor {
     @Override
     public CompressionType getCodecName() {
       return CompressionType.GZIP;
+    }
+  }
+
+  class ZstdUnCompressor implements IUnCompressor {
+
+    @Override
+    public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
+      return (int) Zstd.decompressedSize(array, offset, length);
+    }
+
+    @Override
+    public int getUncompressedLength(ByteBuffer buffer) throws IOException {
+      return (int) Zstd.decompressedSize(buffer);
+    }
+
+    @Override
+    public byte[] uncompress(byte[] byteArray) throws IOException {
+      return Zstd.decompress(byteArray, getUncompressedLength(byteArray, 0, byteArray.length));
+    }
+
+    @Override
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
+      return (int)
+          Zstd.decompressByteArray(
+              output, outOffset, output.length, byteArray, offset, byteArray.length);
+    }
+
+    /**
+     * @param compressed MUST be DirectByteBuffer for Zstd.
+     * @param uncompressed MUST be DirectByteBuffer for Zstd.
+     * @return byte length of compressed data.
+     */
+    @Override
+    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+      return Zstd.decompress(uncompressed, compressed);
+    }
+
+    @Override
+    public CompressionType getCodecName() {
+      return CompressionType.ZSTD;
     }
   }
 }

@@ -150,7 +150,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteStorageGroups(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
+  public TSStatus deleteDatabases(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
     List<Long> procedureIds = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteDatabaseProcedure deleteDatabaseProcedure =

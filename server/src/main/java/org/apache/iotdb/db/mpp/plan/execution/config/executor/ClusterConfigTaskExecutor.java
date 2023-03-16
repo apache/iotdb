@@ -91,7 +91,7 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
@@ -112,13 +112,13 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathS
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -127,8 +127,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -214,17 +214,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TDatabaseSchema storageGroupSchema =
-        DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
+    TDatabaseSchema databaseSchema =
+        DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.setDatabase(storageGroupSchema);
+      TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getStorageGroupPath(),
+            databaseSchemaStatement.getDatabasePath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -241,17 +241,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TDatabaseSchema storageGroupSchema =
-        DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
+    TDatabaseSchema databaseSchema =
+        DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.alterDatabase(storageGroupSchema);
+      TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getStorageGroupPath(),
+            databaseSchemaStatement.getDatabasePath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -264,18 +264,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showStorageGroup(
-      ShowStorageGroupStatement showStorageGroupStatement) {
+  public SettableFuture<ConfigTaskResult> showDatabase(
+      ShowDatabaseStatement showDatabaseStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    List<String> storageGroupPathPattern =
-        Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
+    List<String> databasePathPattern =
+        Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TShowDatabaseResp resp = client.showDatabase(storageGroupPathPattern);
+      TShowDatabaseResp resp = client.showDatabase(databasePathPattern);
       // build TSBlock
-      showStorageGroupStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
+      showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -283,18 +283,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> countStorageGroup(
-      CountStorageGroupStatement countStorageGroupStatement) {
+  public SettableFuture<ConfigTaskResult> countDatabase(
+      CountDatabaseStatement countDatabaseStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    int storageGroupNum;
-    List<String> storageGroupPathPattern =
-        Arrays.asList(countStorageGroupStatement.getPathPattern().getNodes());
+    int databaseNum;
+    List<String> databasePathPattern =
+        Arrays.asList(countDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
-      storageGroupNum = resp.getCount();
+      TCountDatabaseResp resp = client.countMatchedDatabases(databasePathPattern);
+      databaseNum = resp.getCount();
       // build TSBlock
-      CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
+      CountDatabaseTask.buildTSBlock(databaseNum, future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -302,17 +302,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> deleteStorageGroup(
-      DeleteStorageGroupStatement deleteStorageGroupStatement) {
+  public SettableFuture<ConfigTaskResult> deleteDatabase(
+      DeleteDatabaseStatement deleteDatabaseStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteDatabasesReq req = new TDeleteDatabasesReq(deleteStorageGroupStatement.getPrefixPath());
+    TDeleteDatabasesReq req = new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
-            deleteStorageGroupStatement.getPrefixPath(),
+            deleteDatabaseStatement.getPrefixPath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
@@ -828,9 +828,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<String> storageGroupPathPattern =
-        Arrays.asList(setTTLStatement.getStorageGroupPath().getNodes());
-    TSetTTLReq setTTLReq = new TSetTTLReq(storageGroupPathPattern, setTTLStatement.getTTL());
+    List<String> databasePathPattern = Arrays.asList(setTTLStatement.getDatabasePath().getNodes());
+    TSetTTLReq setTTLReq = new TSetTTLReq(databasePathPattern, setTTLStatement.getTTL());
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -840,7 +839,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
-            setTTLStatement.getStorageGroupPath(),
+            setTTLStatement.getDatabasePath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
@@ -1069,23 +1068,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();
-    Map<String, Long> storageGroupToTTL = new HashMap<>();
+    List<PartialPath> databasePaths = showTTLStatement.getPaths();
+    Map<String, Long> databaseToTTL = new HashMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       if (showTTLStatement.isAll()) {
         List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
         TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(allStorageGroupPathPattern);
         for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-          storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
+          databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
         }
       } else {
-        for (PartialPath storageGroupPath : storageGroupPaths) {
-          List<String> storageGroupPathPattern = Arrays.asList(storageGroupPath.getNodes());
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(storageGroupPathPattern);
+        for (PartialPath databasePath : databasePaths) {
+          List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
+          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(databasePathPattern);
           for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-            if (!storageGroupToTTL.containsKey(entry.getKey())) {
-              storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
+            if (!databaseToTTL.containsKey(entry.getKey())) {
+              databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
             }
           }
         }
@@ -1094,7 +1093,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     // build TSBlock
-    ShowTTLTask.buildTSBlock(storageGroupToTTL, future);
+    ShowTTLTask.buildTSBlock(databaseToTTL, future);
     return future;
   }
 
