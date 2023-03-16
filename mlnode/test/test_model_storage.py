@@ -15,20 +15,62 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import os.path
 
-import torchvision
+
+import os
+import time
+import torch.nn as nn
+from iotdb.mlnode.config import config
 from iotdb.mlnode.model_storage import model_storage
 
 
-def test_save_model():
-    model = torchvision.models.resnet50()
-    model_config = {
-        'model_name': 'resnet50',
-        'task': 'cv',
-        'input_len': 1
-    }
-    res = model_storage.save_model(model, model_config, model_id='resnet50', trial_id='0')
-    print(res)
-    # assert os.path.exists(os.path.join(model_storage.__model_dir, 'model_id'))
+class TestModel(nn.Module):
+    def __init__(self):
+        super(TestModel, self).__init__()
+        self.layer = nn.Identity()
 
+    def forward(self, x):
+        return self.layer(x)
+
+
+model = TestModel()
+model_config = {
+    'input_len': 1,
+    'input_vars': 1,
+    'id': time.time()
+}
+
+
+def test_save_model():
+    trial_id = 'tid_0'
+    model_id = 'mid_test_model_save'
+    res = model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
+    assert os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id}.pt'))
+
+
+def test_load_model():
+    trial_id = 'tid_0'
+    model_id = 'mid_test_model_load'
+    model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
+    model_loaded, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
+    assert model_config == model_config_loaded
+
+
+def test_delete_model():
+    trial_id1 = 'tid_1'
+    trial_id2 = 'tid_2'
+    model_id = 'mid_test_model_delete'
+    model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id1)
+    model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id2)
+    model_storage.delete_model(model_id=model_id)
+    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id1}.pt'))
+    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id2}.pt'))
+    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id))
+
+
+def test_delete_trial():
+    trial_id = 'tid_0'
+    model_id = 'mid_test_model_delete'
+    model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
+    model_storage.delete_model(model_id=model_id)
+    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id}.pt'))
