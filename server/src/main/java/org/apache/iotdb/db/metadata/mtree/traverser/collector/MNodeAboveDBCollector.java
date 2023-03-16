@@ -20,25 +20,25 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public abstract class MNodeAboveDBCollector<T> extends MNodeCollector<T> {
+public abstract class MNodeAboveDBCollector<T, N extends IMNode<N>> extends MNodeCollector<T, N> {
 
   protected Set<PartialPath> involvedDatabaseMNodes = new HashSet<>();
 
   protected MNodeAboveDBCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
+    if (node.isDatabase()) {
       involvedDatabaseMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;
     } else {
@@ -47,8 +47,8 @@ public abstract class MNodeAboveDBCollector<T> extends MNodeCollector<T> {
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
+    if (node.isDatabase()) {
       involvedDatabaseMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;
     } else {

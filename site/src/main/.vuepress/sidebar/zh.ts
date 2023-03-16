@@ -268,6 +268,7 @@ export const zhSidebar = sidebar({
         { text: 'Flink-IoTDB', link: 'Flink-IoTDB' },
         { text: 'Flink-TsFile', link: 'Flink-TsFile' },
         { text: 'NiFi-IoTDB', link: 'NiFi-IoTDB' },
+        { text: 'Workbench', link: 'Workbench' },
       ],
     },
     {
