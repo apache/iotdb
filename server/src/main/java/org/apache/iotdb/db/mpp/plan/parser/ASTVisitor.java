@@ -72,6 +72,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByConditionComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByCountComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
@@ -1010,6 +1011,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
               parseGroupByClause(groupByAttribute, WindowType.SESSION_WINDOW));
+        } else if (groupByAttribute.COUNT() != null) {
+          if (groupByKeys.contains("COMMON")) {
+            throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
+          }
+
+          groupByKeys.add("COMMON");
+          queryStatement.setGroupByComponent(
+              parseGroupByClause(groupByAttribute, WindowType.COUNT_WINDOW));
+
         } else {
           throw new SemanticException("Unknown GROUP BY type.");
         }
@@ -1259,6 +1269,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (windowType == WindowType.SESSION_WINDOW) {
       long interval = DateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
       return new GroupBySessionComponent(interval);
+    } else if (windowType == WindowType.COUNT_WINDOW) {
+      ExpressionContext countExpressionContext = expressions.get(0);
+      long countNumber = Long.parseLong(ctx.countNumber.getText());
+      GroupByCountComponent groupByCountComponent = new GroupByCountComponent(countNumber);
+      groupByCountComponent.setControlColumnExpression(
+          parseExpression(countExpressionContext, true));
+      groupByCountComponent.setIgnoringNull(ignoringNull);
+      return groupByCountComponent;
     } else {
       throw new SemanticException("Unsupported window type");
     }

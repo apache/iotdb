@@ -40,6 +40,8 @@ public class WindowManagerFactory {
             windowParameter.isNeedOutputEndTime(),
             ((SessionWindowParameter) windowParameter).getTimeInterval(),
             ascending);
+      case COUNT_WINDOW:
+        return new CountWindowManager((CountWindowParameter) windowParameter);
       default:
         throw new IllegalArgumentException(
             "Not support this type of aggregation window :"

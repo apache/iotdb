@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,23 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-public enum WindowType {
-  TIME_WINDOW((byte) 0),
-  VARIATION_WINDOW((byte) 1),
-  CONDITION_WINDOW((byte) 2),
-  SESSION_WINDOW((byte) 3),
-  COUNT_WINDOW((byte) 4);
+public class CountWindowParameter extends WindowParameter {
+  private final long countNumber;
+  private final int controlColumnIndex;
+  private final boolean ignoreNull;
 
-  private final byte type;
-
-  WindowType(byte type) {
-    this.type = type;
+  public CountWindowParameter(
+      long countNumber, int controlColumnIndex, boolean needOutputEndTime, boolean ignoreNull) {
+    super(needOutputEndTime);
+    this.windowType = WindowType.COUNT_WINDOW;
+    this.countNumber = countNumber;
+    this.controlColumnIndex = controlColumnIndex;
+    this.ignoreNull = ignoreNull;
   }
 
-  public byte getType() {
-    return type;
+  public int getControlColumnIndex() {
+    return controlColumnIndex;
+  }
+
+  public long getCountNumber() {
+    return countNumber;
+  }
+
+  public boolean isIgnoreNull() {
+    return ignoreNull;
   }
 }

@@ -498,6 +498,7 @@ groupByAttributeClause
     | VARIATION LR_BRACKET expression (COMMA delta=number)? (COMMA attributePair)? RR_BRACKET
     | CONDITION LR_BRACKET expression (COMMA expression)? (COMMA attributePair)? RR_BRACKET
     | SESSION LR_BRACKET timeInterval=DURATION_LITERAL RR_BRACKET
+    | COUNT LR_BRACKET expression COMMA countNumber=INTEGER_LITERAL (COMMA attributePair)? RR_BRACKET
     ;
 
 number

@@ -124,6 +124,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.window.ConditionWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.CountWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.VariationWindowParameter;
@@ -190,6 +191,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregatio
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByCountParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -1501,6 +1503,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 new SessionWindowParameter(
                     ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
                     node.isOutputEndTime());
+            break;
+          case COUNT_WINDOW:
+            Expression groupByCountExpression = node.getGroupByExpression();
+            if (groupByCountExpression == null) {
+              throw new IllegalArgumentException("groupByCountExpression can't be null");
+            }
+            windowParameter =
+                new CountWindowParameter(
+                    ((GroupByCountParameter) groupByParameter).getCountNumber(),
+                    layout
+                        .get(groupByCountExpression.getExpressionString())
+                        .get(0)
+                        .getValueColumnIndex(),
+                    node.isOutputEndTime(),
+                    ((GroupByCountParameter) groupByParameter).isIgnoreNull());
             break;
           default:
             throw new IllegalArgumentException("Unsupported window type");
