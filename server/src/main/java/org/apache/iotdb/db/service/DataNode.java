@@ -168,11 +168,11 @@ public class DataNode implements DataNodeMBean {
       // Active DataNode
       active();
 
-      // Setup rpc service
-      setUpRPCService();
-
       // Setup metric service
       setUpMetricService();
+
+      // Setup rpc service
+      setUpRPCService();
 
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
@@ -555,6 +555,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void setUpMetricService() throws StartupException {
+    MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(config.getDataNodeId());
     registerManager.register(MetricService.getInstance());
 
     // init metric service
