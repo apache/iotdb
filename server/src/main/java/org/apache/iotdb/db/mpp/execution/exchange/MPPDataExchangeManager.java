@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
@@ -159,6 +160,35 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
         QUERY_METRICS.recordDataBlockNum(
             ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER, e.getEndSequenceId() - e.getStartSequenceId());
+      }
+    }
+
+    @Override
+    public void onCloseSinkChannelEvent(TCloseSinkChannelEvent e) throws TException {
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(
+              createFullId(
+                  e.sourceFragmentInstanceId.queryId,
+                  e.sourceFragmentInstanceId.fragmentId,
+                  e.sourceFragmentInstanceId.instanceId))) {
+        LOGGER.debug(
+            "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex());
+        if (!shuffleSinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
+          LOGGER.debug(
+              "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
+              e.getSourceFragmentInstanceId());
+          return;
+        }
+        shuffleSinkHandles.get(e.getSourceFragmentInstanceId()).getChannel(e.getIndex()).close();
+      } catch (Throwable t) {
+        LOGGER.warn(
+            "Close channel of ShuffleSinkHandle {}, index {} failed.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex(),
+            t);
+        throw t;
       }
     }
 
