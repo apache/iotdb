@@ -251,19 +251,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.2. Ratis共识协议统计
 
-| Metric                | Tags                          | Type  | Description                                            |
-| --------------------- | ----------------------------- | ----- | ------------------------------------------------------ |
-| ratis_consensus_write | stage="writeLocally"          | Timer | 本地写入阶段的时间                                     |
-| ratis_consensus_write | stage="writeRemotely"         | Timer | 远程写入阶段的时间                                     |
-| ratis_consensus_write | stage="writeStateMachine"     | Timer | 写入状态机阶段的时间                                   |
-| ratis_log_worker      | Append Log                    | Timer | 领导者追加日志条目的总时间                             |
-| ratis_server          | Send Append Entries           | Timer | 跟随者追加日志条目的总时间                             |
-| ratis_log_worker      | queueingDelay                 | Timer | 一个 Raft 日志操作被请求后进入队列的时间，等待队列未满 |
-| ratis_log_worker      | enqueuedTime                  | Timer | 一个 Raft 日志操作在队列中的时间                       |
-| ratis_log_worker      | writelogExecutionTime         | Timer | 一个 Raft 日志写入操作完成执行的时间                   |
-| ratis_log_worker      | flushTime                     | Timer | 刷新日志的时间                                         |
-| ratis_log_worker      | closedSegmentsSizeInBytes     | Gauge | 关闭的 Raft 日志段的总大小                             |
-| ratis_server          | numPendingRequestMegaByteSize | Gauge | 队列中未决客户端请求的总大小                           |
+| Metric                | Tags                       | Type  | Description                                            |
+| --------------------- | -------------------------- | ----- | ------------------------------------------------------ |
+| ratis_consensus_write | stage="writeLocally"       | Timer | 本地写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeRemotely"      | Timer | 远程写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeStateMachine"  | Timer | 写入状态机阶段的时间                                   |
+| ratis_server          | clientWriteRequest         | Timer | 处理来自客户端写请求的时间                             |
+| ratis_server          | followerAppendEntryLatency | Timer | 跟随者追加日志条目的总时间                             |
+| ratis_log_worker      | appendEntryLatency         | Timer | 领导者追加日志条目的总时间                             |
+| ratis_log_worker      | queueingDelay              | Timer | 一个 Raft 日志操作被请求后进入队列的时间，等待队列未满 |
+| ratis_log_worker      | enqueuedTime               | Timer | 一个 Raft 日志操作在队列中的时间                       |
+| ratis_log_worker      | writelogExecutionTime      | Timer | 一个 Raft 日志写入操作完成执行的时间                   |
+| ratis_log_worker      | flushTime                  | Timer | 刷新日志的时间                                         |
+| ratis_log_worker      | closedSegmentsSizeInBytes  | Gauge | 关闭的 Raft 日志段的总大小                             |
+| ratis_log_worker      | openSegmentsSizeInBytes    | Gauge | 打开的 Raft 日志段的总大小                             |
 
 #### 4.2.3. IoT共识协议统计
 
