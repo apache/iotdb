@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-public class FileScanUtil {
+public class FileAggregationScanUtil {
 
   private final Map<PartialPath, List<Aggregator>> pathToAggregatorsMap;
 
@@ -43,7 +43,7 @@ public class FileScanUtil {
           Comparator.comparingLong(ChunkMetadata::getVersion)
               .thenComparingLong(ChunkMetadata::getOffsetOfChunkHeader));
 
-  public FileScanUtil(
+  public FileAggregationScanUtil(
       Map<PartialPath, List<Aggregator>> pathToAggregatorsMap, QueryDataSource dataSource) {
     this.pathToAggregatorsMap = pathToAggregatorsMap;
     this.fileResourceMaterializer = new TsFileResourceMaterializer(dataSource);
