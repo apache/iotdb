@@ -74,7 +74,7 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   }
 
   public ModelTask getModelTask() {
-    return ModelTask.valueOf(attributes.get("model_task"));
+    return ModelTask.valueOf(attributes.get("model_task").toUpperCase());
   }
 
   public String getModelType() {
