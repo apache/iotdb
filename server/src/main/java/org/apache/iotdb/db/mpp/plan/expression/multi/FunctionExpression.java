@@ -263,7 +263,7 @@ public class FunctionExpression extends Expression {
         }
       }
       if (!functionAttributes.isEmpty()) {
-        // Some builtin-scalar function may have different header.
+        // Some built-in scalar functions may have different header.
         if (BuiltinScalarFunction.contains(functionName)) {
           BuiltInScalarFunctionHelperFactory.createHelper(functionName)
               .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);

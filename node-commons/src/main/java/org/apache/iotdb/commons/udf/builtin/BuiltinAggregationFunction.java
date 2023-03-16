@@ -36,7 +36,8 @@ public enum BuiltinAggregationFunction {
   AVG("avg"),
   SUM("sum"),
   COUNT_IF("count_if"),
-  TIME_DURATION("time_duration");
+  TIME_DURATION("time_duration"),
+  MODE("mode");
 
   private final String functionName;
 
@@ -75,6 +76,7 @@ public enum BuiltinAggregationFunction {
       case "time_duration":
         return true;
       case "count_if":
+      case "mode":
         return false;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + name);
@@ -98,6 +100,7 @@ public enum BuiltinAggregationFunction {
       case "avg":
       case "sum":
       case "time_duration":
+      case "mode":
         return true;
       case "count_if":
         return false;
