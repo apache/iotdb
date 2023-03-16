@@ -150,8 +150,15 @@ public class ${className} implements Accumulator {
   private void deserializeAndMergeCountMap(Binary partialResult) {
     InputStream stream = new ByteArrayInputStream(partialResult.getValues());
     try {
-      for (int i = 0; i < ReadWriteIOUtils.readInt(stream); i++) {
-        countMap.put(ReadWriteIOUtils.read${type.dataType?cap_first}(stream), ReadWriteIOUtils.readLong(stream));
+      int size = ReadWriteIOUtils.readInt(stream);
+      for (int i = 0; i < size; i++) {
+        countMap.compute(ReadWriteIOUtils.read${type.dataType?cap_first}(stream), (k, v) -> {
+          try {
+            return v == null ? ReadWriteIOUtils.readLong(stream) : v + ReadWriteIOUtils.readLong(stream);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        });
         <#if type.dataType != "boolean">
 
         if (countMap.size() > MAP_SIZE_THRESHOLD) {
