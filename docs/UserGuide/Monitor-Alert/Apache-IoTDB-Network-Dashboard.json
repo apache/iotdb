@@ -415,8 +415,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -497,7 +496,7 @@
         "description": "",
         "hide": 0,
         "includeAll": false,
-        "multi": false,
+        "multi": true,
         "name": "iface",
         "options": [],
         "query": {
@@ -529,6 +528,6 @@
   "timezone": "",
   "title": "Apache IoTDB Network Dashboard",
   "uid": "AXEPYc-Vz",
-  "version": 19,
+  "version": 2,
   "weekStart": ""
 }
