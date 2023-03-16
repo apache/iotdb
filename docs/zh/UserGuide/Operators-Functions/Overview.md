@@ -112,28 +112,28 @@ OR, |, ||
 
 ### 数学函数 
 
-| 函数名  | 输入序列类型                   | 输出序列类型             | Java 标准库中的对应实现                                      |
-| ------- | ------------------------------ | ------------------------ | ------------------------------------------------------------ |
-| SIN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sin(double)                                             |
-| COS     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#cos(double)                                             |
-| TAN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#tan(double)                                             |
-| ASIN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#asin(double)                                            |
-| ACOS    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#acos(double)                                            |
-| ATAN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#atan(double)                                            |
-| SINH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sinh(double)                                            |
-| COSH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#cosh(double)                                            |
-| TANH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#tanh(double)                                            |
-| DEGREES | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toDegrees(double)                                       |
-| RADIANS | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toRadians(double)                                       |
-| ABS     | INT32 / INT64 / FLOAT / DOUBLE | 与输入序列的实际类型一致 | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
-| SIGN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#signum(double)                                          |
-| CEIL    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#ceil(double)                                            |
-| FLOOR   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#floor(double)                                           |
-| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#rint(double)                                            |
-| EXP     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#exp(double)                                             |
-| LN      | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log(double)                                             |
-| LOG10   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log10(double)                                           |
-| SQRT    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sqrt(double)                                            |
+| 函数名  | 输入序列类型                   | 输出序列类型             | 必要属性参数                                       | Java 标准库中的对应实现                                                    |
+| ------- | ------------------------------ | ------------------------ |----------------------------------------------|-------------------------------------------------------------------|
+| SIN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sin(double)                                                  |
+| COS     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#cos(double)                                                  |
+| TAN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#tan(double)                                                  |
+| ASIN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#asin(double)                                                 |
+| ACOS    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#acos(double)                                                 |
+| ATAN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#atan(double)                                                 |
+| SINH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sinh(double)                                                 |
+| COSH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#cosh(double)                                                 |
+| TANH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#tanh(double)                                                 |
+| DEGREES | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#toDegrees(double)                                            |
+| RADIANS | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#toRadians(double)                                            |
+| ABS     | INT32 / INT64 / FLOAT / DOUBLE | 与输入序列的实际类型一致 |                                              | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
+| SIGN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#signum(double)                                               |
+| CEIL    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#ceil(double)                                                 |
+| FLOOR   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#floor(double)                                                |
+| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | `places`:四舍五入有效位数，正数为小数点后面的有效位数，负数为整数位的有效位数 | Math#rint(Math#pow(10,places))/Math#pow(10,places)                         |
+| EXP     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#exp(double)                                                  |
+| LN      | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#log(double)                                                  |
+| LOG10   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#log10(double)                                                |
+| SQRT    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sqrt(double)                                                 |
 
 
 详细说明及示例见文档 [算数运算符和函数](./Mathematical.md)。

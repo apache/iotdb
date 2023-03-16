@@ -67,28 +67,28 @@ It costs 0.014s
 
 Currently, IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
 
-| Function Name | Allowed Input Series Data Types | Output Series Data Type       | Corresponding Implementation in the Java Standard Library    |
-| ------------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
-| SIN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sin(double)                                             |
-| COS           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#cos(double)                                             |
-| TAN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#tan(double)                                             |
-| ASIN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#asin(double)                                            |
-| ACOS          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#acos(double)                                            |
-| ATAN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#atan(double)                                            |
-| SINH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sinh(double)                                            |
-| COSH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#cosh(double)                                            |
-| TANH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#tanh(double)                                            |
-| DEGREES       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toDegrees(double)                                       |
-| RADIANS       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toRadians(double)                                       |
-| ABS           | INT32 / INT64 / FLOAT / DOUBLE  | Same type as the input series | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
-| SIGN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#signum(double)                                          |
-| CEIL          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#ceil(double)                                            |
-| FLOOR         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#floor(double)                                           |
-| ROUND         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#rint(double)                                            |
-| EXP           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#exp(double)                                             |
-| LN            | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#log(double)                                             |
-| LOG10         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#log10(double)                                           |
-| SQRT          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sqrt(double)                                            |
+| Function Name | Allowed Input Series Data Types | Output Series Data Type       |Necessary attribute parameter     | Corresponding Implementation in the Java Standard Library    |
+| ------------- | ------------------------------- | ----------------------------- |-----| ------------------------------------------------------------ |
+| SIN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#sin(double)                                             |
+| COS           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#cos(double)                                             |
+| TAN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#tan(double)                                             |
+| ASIN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#asin(double)                                            |
+| ACOS          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#acos(double)                                            |
+| ATAN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#atan(double)                                            |
+| SINH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#sinh(double)                                            |
+| COSH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#cosh(double)                                            |
+| TANH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#tanh(double)                                            |
+| DEGREES       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#toDegrees(double)                                       |
+| RADIANS       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#toRadians(double)                                       |
+| ABS           | INT32 / INT64 / FLOAT / DOUBLE  | Same type as the input series |     | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
+| SIGN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#signum(double)                                          |
+| CEIL          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#ceil(double)                                            |
+| FLOOR         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#floor(double)                                           |
+| ROUND         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |'places' : Round the significant number, positive number is the significant number after the decimal point, negative number is the significant number of whole number     | Math#rint(Math#pow(10,places))/Math#pow(10,places)                                            |
+| EXP           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#exp(double)                                             |
+| LN            | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#log(double)                                             |
+| LOG10         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#log10(double)                                           |
+| SQRT          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        |     | Math#sqrt(double)                                            |
 
 Example:
 
@@ -110,4 +110,25 @@ Result:
 +-----------------------------+-------------------+-------------------+--------------------+-------------------+
 Total line number = 5
 It costs 0.008s
+```
+
+### ROUND
+Example:
+```sql
+select s4,round(s4),round(s4,2),round(s4,-1) from root.sg1.d1 
+```
+
+```sql
++-----------------------------+-------------+--------------------+----------------------+-----------------------+
+|                         Time|root.db.d1.s4|ROUND(root.db.d1.s4)|ROUND(root.db.d1.s4,2)|ROUND(root.db.d1.s4,-1)|
++-----------------------------+-------------+--------------------+----------------------+-----------------------+
+|1970-01-01T08:00:00.001+08:00|    101.14345|               101.0|                101.14|                  100.0|
+|1970-01-01T08:00:00.002+08:00|    20.144346|                20.0|                 20.14|                   20.0|
+|1970-01-01T08:00:00.003+08:00|    20.614372|                21.0|                 20.61|                   20.0|
+|1970-01-01T08:00:00.005+08:00|    20.814346|                21.0|                 20.81|                   20.0|
+|1970-01-01T08:00:00.006+08:00|     60.71443|                61.0|                 60.71|                   60.0|
+|2023-03-13T16:16:19.764+08:00|    10.143425|                10.0|                 10.14|                   10.0|
++-----------------------------+-------------+--------------------+----------------------+-----------------------+
+Total line number = 6
+It costs 0.059s
 ```
