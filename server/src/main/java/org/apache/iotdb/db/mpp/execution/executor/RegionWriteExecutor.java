@@ -161,7 +161,9 @@ public class RegionWriteExecutor {
             writeResponse.getException());
         response.setAccepted(false);
         response.setMessage(writeResponse.getException().toString());
-        response.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage()));
       }
       return response;
     }
