@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 
-import com.google.common.util.concurrent.RateLimiter;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
@@ -42,6 +41,8 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.ArrayList;
