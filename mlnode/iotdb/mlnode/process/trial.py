@@ -21,7 +21,10 @@ import os
 import time
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader
+import torch.nn as nn
+
+from torch.utils.data import Dataset, DataLoader
+
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.client import DataNodeClient
 from iotdb.mlnode.algorithm.utils.metric import *
@@ -80,7 +83,7 @@ def parse_trial_config(**kwargs):
 
 
 class BasicTrial(object):
-    def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
+    def __init__(self, trial_configs: dict, model: nn.Module, model_configs: dict, dataset: Dataset, **kwargs):
         trial_configs = parse_trial_config(**trial_configs) # TODO: remove all configs
         self.model_id = trial_configs['model_id']
         self.trial_id = trial_configs['trial_id']
@@ -132,7 +135,7 @@ class ForecastingTrainingTrial(BasicTrial):
         )
         return train_loader
 
-    def train(self, model, optimizer, criterion, dataloader, epoch):
+    def _train(self, model, optimizer, criterion, dataloader, epoch):
         model.train()
         train_loss = []
         epoch_time = time.time()
@@ -166,7 +169,7 @@ class ForecastingTrainingTrial(BasicTrial):
               .format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
 
-    def validate(self, model, criterion, dataloader, epoch):
+    def _validate(self, model, criterion, dataloader, epoch):
         model.eval()
         val_loss = []
         metrics_dict = {name: [] for name in self.metric_names}
@@ -213,9 +216,9 @@ class ForecastingTrainingTrial(BasicTrial):
                                      lr=self.learning_rate)
         print("Start training...")
         for epoch in range(self.epochs):
-            train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch)
+            train_loss = self._train(self.model, optimizer, criterion, self.dataloader, epoch)
             # TODO: add validation methods
-            val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
+            val_loss = self._validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
                 # TODO: generate trial id
