@@ -265,7 +265,9 @@ class IoTDBRpcDataSet(object):
                 result[column_name].append(data_array)
 
         for k, v in result.items():
-            if v[0].dtype == "Int32":
+            if v is None or len(v) < 1 or v[0] is None:
+                result[k] = []
+            elif v[0].dtype == "Int32":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
             elif v[0].dtype == "Int64":
                 result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
