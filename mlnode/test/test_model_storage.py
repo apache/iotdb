@@ -15,4 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os.path
+
+import torchvision
+from iotdb.mlnode.model_storage import model_storage
+
+
+def test_save_model():
+    model = torchvision.models.resnet50()
+    model_config = {
+        'model_name': 'resnet50',
+        'task': 'cv',
+        'input_len': 1
+    }
+    res = model_storage.save_model(model, model_config, model_id='resnet50', trial_id='0')
+    print(res)
+    # assert os.path.exists(os.path.join(model_storage.__model_dir, 'model_id'))
 

@@ -23,91 +23,91 @@ import torch
 import shutil
 import torch.nn as nn
 from pylru import lrucache
-from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
-                                   MLNODE_MODEL_STORAGE_CACHESIZE)
+from iotdb.mlnode.exception import ModelNotExistError
+from iotdb.mlnode.config import config
 
 
 # TODO: Add permission check firstly
 # TODO: Consider concurrency, maybe
-class ModelStorager(object):
+class ModelStorage(object):
     def __init__(self,
-                 root_path: str = 'ml_models',
-                 cache_size: int = 30):
-        current_path = os.getcwd()
-        self.root_path = os.path.join(current_path, root_path)
-        if not os.path.exists(self.root_path):
-            os.mkdir(self.root_path)
-        self._loaded_model_cache = lrucache(cache_size)
+                 root_path: str,
+                 cache_size: int):
+        self.__model_dir = os.path.join(os.getcwd(), root_path)
+        if not os.path.exists(self.__model_dir):
+            os.mkdir(self.__model_dir)
+        self.__model_cache = lrucache(cache_size)
 
     def save_model(self,
                    model: nn.Module,
                    model_config: dict,
                    model_id: str,
-                   trial_id: str):
+                   trial_id: str) -> bool:
         """
         Return: True if successfully saved
+
+        Note: model config for time series should contain 'input_len' and 'input_vars'
         """
-        fold_path = os.path.join(self.root_path, f'{model_id}')
+        fold_path = os.path.join(self.__model_dir, f'{model_id}')
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
-        torch.jit.save(torch.jit.trace(model, sample_input),
-                       os.path.join(fold_path, f'{trial_id}.pt'),
-                       _extra_files={'model_config': json.dumps(model_config)})
-        return os.path.exists(os.path.join(fold_path, f'{trial_id}.pt'))
+        try:
+            torch.jit.save(torch.jit.trace(model, sample_input),
+                           os.path.join(fold_path, f'{trial_id}.pt'),
+                           _extra_files={'model_config': json.dumps(model_config)})
+        except PermissionError:
+            return False
+        return True
 
-    def load_model(self, model_id: str, trial_id: str):
-        file_path = os.path.join(self.root_path, f'{model_id}', f'{trial_id}.pt')
-        if model_id in self._loaded_model_cache:
-            return self._loaded_model_cache[file_path]
+    def load_model(self, model_id: str, trial_id: str) -> (torch.jit.ScriptModule, dict):
+        """
+        Return:
+            jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
+            model_config: a dict contains model attributes
+        """
+        file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
+        if model_id in self.__model_cache:
+            return self.__model_cache[file_path]
         else:
             if not os.path.exists(file_path):
-                raise RuntimeError('Model path (%s) is not found' % file_path)
+                raise ModelNotExistError(file_path)
             else:
                 tmp_dict = {'model_config': ''}
                 jit_model = torch.jit.load(file_path, _extra_files=tmp_dict)
                 model_config = json.loads(tmp_dict['model_config'])
-                self._loaded_model_cache[file_path] = jit_model, model_config
+                self.__model_cache[file_path] = jit_model, model_config
                 return jit_model, model_config
 
     def _remove_from_cache(self, key: str):
-        if key in self._loaded_model_cache:
-            del self._loaded_model_cache[key]
+        if key in self.__model_cache:
+            del self.__model_cache[key]
 
-    def delete_trial(self, model_id: str, trial_id: str):
+    def delete_trial(self, model_id: str, trial_id: str) -> bool:
         """
         Return: True if successfully deleted
         """
-        file_path = os.path.join(self.root_path, f'{model_id}', f'{trial_id}.pt')
+        file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
         self._remove_from_cache(file_path)
         if os.path.exists(file_path):
             os.remove(file_path)
         return not os.path.exists(file_path)
 
-    def delete_model(self, model_id: str):
+    def delete_model(self, model_id: str) -> bool:
         """
         Return: True if successfully deleted
         """
-        folder_path = os.path.join(self.root_path, f'{model_id}')
+        folder_path = os.path.join(self.__model_dir, f'{model_id}')
         if os.path.exists(folder_path):
             for file_name in os.listdir(folder_path):
                 self._remove_from_cache(os.path.join(folder_path, file_name))
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
-    def delete_by_path(self, model_path: str):  # TODO: for test only, remove this when thrift has redefined
-        """
-        Return: True if successfully deleted
-        """
-        file_path = os.path.join(self.root_path, model_path)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        return not os.path.exists(file_path)
-
     def send_model(self):  # TODO: inference on db in future
         pass
 
 
 # initialize a singleton
-modelStorager = ModelStorager(root_path=MLNODE_MODEL_STORAGE_DIR,
-                              cache_size=MLNODE_MODEL_STORAGE_CACHESIZE)
+model_storage = ModelStorage(root_path=config.get_mn_model_storage_dir(),
+                             cache_size=config.get_mn_model_storage_cachesize())
