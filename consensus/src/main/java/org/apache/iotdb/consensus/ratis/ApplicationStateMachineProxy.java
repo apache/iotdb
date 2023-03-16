@@ -71,7 +71,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
-    this.consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
+    consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
     applicationStateMachine.start();
   }
 
