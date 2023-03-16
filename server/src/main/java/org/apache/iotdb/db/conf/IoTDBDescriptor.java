@@ -189,7 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getClusterName(), conf.getDataNodeId(), NodeType.DATANODE);
+            .updateRpcInstance(conf.getClusterName(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
