@@ -478,7 +478,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               },
               deviceMNode -> {
                 if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
-                  regionStatistics.deactivateTemplate(deviceMNode.getSchemaTemplateId());
+                  regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
               },
               tagManager::readTags);
