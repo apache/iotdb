@@ -255,6 +255,11 @@ public class SinkChannel implements ISinkChannel {
   }
 
   @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
   public synchronized boolean isAborted() {
     return aborted;
   }

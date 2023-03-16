@@ -61,11 +61,14 @@ public class ShuffleHelperOperator implements Operator {
   @Override
   public boolean hasNext() {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
-    if (children.get(currentIndex).hasNext()) {
+    boolean currentChannelClosed = sinkHandle.isChannelClosed(currentIndex);
+    if (!currentChannelClosed && children.get(currentIndex).hasNext()) {
       return true;
     }
-    // current channel have no more data
-    sinkHandle.setNoMoreTsBlocksOfOneChannel(currentIndex);
+    // current channel has no more data
+    if (!currentChannelClosed) {
+      sinkHandle.setNoMoreTsBlocksOfOneChannel(currentIndex);
+    }
     unfinishedChildren.remove(currentIndex);
     currentIndex = (currentIndex + 1) % children.size();
     downStreamChannelIndex.setCurrentIndex(currentIndex);

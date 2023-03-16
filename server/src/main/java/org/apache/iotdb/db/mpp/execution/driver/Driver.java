@@ -190,7 +190,11 @@ public abstract class Driver implements IDriver {
   private boolean isFinishedInternal() {
     checkLockHeld("Lock must be held to call isFinishedInternal");
 
-    boolean finished = state.get() != State.ALIVE || driverContext.isDone() || root.isFinished();
+    boolean finished =
+        state.get() != State.ALIVE
+            || driverContext.isDone()
+            || root.isFinished()
+            || sink.isClosed();
     if (finished) {
       state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
     }

@@ -61,7 +61,11 @@ public class IdentitySinkOperator implements Operator {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
     // current channel have no more data
     sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
+    // increment the index, skip the closed channels
     currentIndex++;
+    while (currentIndex < children.size() && sinkHandle.isChannelClosed(currentIndex)) {
+      currentIndex++;
+    }
     if (currentIndex >= children.size()) {
       isFinished = true;
       return false;
