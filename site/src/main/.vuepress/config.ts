@@ -58,7 +58,7 @@ export default defineUserConfig({
     ),
     '@theme-hope/modules/info/utils/index': path.resolve(
       dirname,
-      './utils/index.ts',
+      './utils/index',
     ),
   },
   plugins: [
