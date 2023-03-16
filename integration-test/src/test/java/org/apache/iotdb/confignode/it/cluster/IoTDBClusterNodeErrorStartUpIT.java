@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.exception.ConfigurationException;
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -304,8 +302,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @Test
   public void testIllegalNodeStartUp()
-      throws StartupException, ConfigurationException, IOException, ClientManagerException,
-          InterruptedException, TException {
+      throws IOException, ClientManagerException, InterruptedException, TException {
     ConfigNodeWrapper portConflictConfigNodeWrapper =
         EnvFactory.getEnv().generateRandomConfigNodeWrapper();
     DataNodeWrapper portConflictDataNodeWrapper =
@@ -325,9 +322,9 @@ public class IoTDBClusterNodeErrorStartUpIT {
       int afterStartConfigNodes;
       for (int i = 0; i < START_RETRY_NUM; ++i) {
         showClusterResp = client.showCluster();
-        Thread.sleep(1000);
         afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
         Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
+        Thread.sleep(1000);
       }
 
       // set datanode port repeat
@@ -341,9 +338,9 @@ public class IoTDBClusterNodeErrorStartUpIT {
       int afterStartDataNodes;
       for (int i = 0; i < START_RETRY_NUM; ++i) {
         showClusterResp = client.showCluster();
-        Thread.sleep(1000);
         afterStartDataNodes = showClusterResp.getDataNodeListSize();
         Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
+        Thread.sleep(1000);
       }
     }
   }
