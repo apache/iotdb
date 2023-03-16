@@ -96,11 +96,6 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   @Override
-  public int getTemplateActivatedNumber() {
-    return templateUsage.size();
-  }
-
-  @Override
   public long getTemplateSeriesNumber() {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
     return templateUsage.entrySet().stream()

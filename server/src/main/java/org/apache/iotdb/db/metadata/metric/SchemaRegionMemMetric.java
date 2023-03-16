@@ -30,7 +30,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
   private static final String MEM_USAGE = "schema_region_mem_usage";
   private static final String SERIES_CNT = "schema_region_series_cnt";
   private static final String TEMPLATE_CNT = "activated_template_cnt";
-  private static final String TEMPLATE_SERIES_CNT = "template_series_num";
+  private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final String regionTagValue;
@@ -94,6 +94,20 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
         SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
+        TEMPLATE_CNT,
+        Tag.REGION.toString(),
+        regionTagValue);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
+        TEMPLATE_SERIES_CNT,
         Tag.REGION.toString(),
         regionTagValue);
   }
