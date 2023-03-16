@@ -90,7 +90,7 @@ public class ConsensusManager {
                   ConsensusConfig.newBuilder()
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
-                      .setStorageDir("target" + java.io.File.separator + "simple")
+                      .setStorageDir(CONF.getConsensusDir())
                       .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
                       .build(),
                   gid -> stateMachine)
