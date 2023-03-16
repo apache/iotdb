@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -62,10 +61,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final IStateMachine.RetryPolicy retryPolicy;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
-  private final TConsensusGroupType consensusGroupType;
+  private final String consensusGroupType;
 
-  public ApplicationStateMachineProxy(
-      IStateMachine stateMachine, RaftGroupId id, TConsensusGroupType consensusGroupType) {
+  public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
     groupId = id;
     retryPolicy =
@@ -73,7 +71,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
-    this.consensusGroupType = consensusGroupType;
+    this.consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
     applicationStateMachine.start();
   }
 

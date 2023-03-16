@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.consensus.ratis.Utils;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -36,8 +36,6 @@ import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.Timer;
 import org.apache.ratis.metrics.MetricRegistryInfo;
 import org.apache.ratis.metrics.RatisMetricRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTDBMetricRegistry.class);
   private final AbstractMetricService metricService;
   private final MetricRegistryInfo info;
   private final String prefix;
@@ -55,8 +52,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
   private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
-  private static final String DATA_REGION_GROUP = "@group-0001";
-  private static final String SCHEMA_REGION_GROUP = "@group-0002";
   /** Time taken to flush log. */
   public static final String RAFT_LOG_FLUSH_TIME = "flushTime";
   /** Size of SegmentedRaftLogCache::closedSegments in bytes */
@@ -97,19 +92,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
     this.info = info;
     this.metricService = service;
-    String consensusGroupType;
-    if (info.getPrefix().contains(DATA_REGION_GROUP)) {
-      consensusGroupType = TConsensusGroupType.DataRegion.toString();
-    } else if (info.getPrefix().contains(SCHEMA_REGION_GROUP)) {
-      consensusGroupType = TConsensusGroupType.SchemaRegion.toString();
-    } else {
-      consensusGroupType = TConsensusGroupType.ConfigRegion.toString();
-    }
-    logger.info(
-        "RaftGroupMemberId: {}, TConsensusGroupType: {}", info.getPrefix(), consensusGroupType);
     prefix =
         MetricRegistry.name(
-            consensusGroupType, info.getApplicationName(), info.getMetricsComponentName());
+            Utils.getConsensusGroupTypeFromPrefix(info.getPrefix()),
+            info.getApplicationName(),
+            info.getMetricsComponentName());
   }
 
   private String getMetricName(String name) {
