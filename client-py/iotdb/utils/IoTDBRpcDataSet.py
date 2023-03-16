@@ -265,7 +265,14 @@ class IoTDBRpcDataSet(object):
                 result[column_name].append(data_array)
 
         for k, v in result.items():
-            result[k] = np.concatenate(v, axis=0)
+            if v[0].dtype == "Int32":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
+            elif v[0].dtype == "Int64":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
+            elif v[0].dtype == "boolean":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+            else:
+                result[k] = np.concatenate(v, axis=0)
 
         df = pd.DataFrame(result)
         return df
