@@ -16,11 +16,3 @@
 # under the License.
 #
 
-MLNODE_CONF_DIRECTORY_NAME = "resources/conf"
-MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
-MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
-
-MLNODE_MODEL_STORAGE_DIR = "ml_models"
-MLNODE_MODEL_STORAGE_CACHESIZE = 30
-
-MLNODE_REQUEST_TEMPLATE = "resources/template"
