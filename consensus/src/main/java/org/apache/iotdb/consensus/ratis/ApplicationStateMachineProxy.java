@@ -146,18 +146,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         IConsensusRequest deserializedRequest =
             applicationStateMachine.deserializeRequest(applicationRequest);
 
-        long startWriteTime = System.nanoTime();
         TSStatus result = applicationStateMachine.write(deserializedRequest);
-        if (isLeader) {
-          MetricService.getInstance()
-              .timer(
-                  System.nanoTime() - startWriteTime,
-                  TimeUnit.NANOSECONDS,
-                  Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
-                  MetricLevel.IMPORTANT,
-                  Tag.STAGE.toString(),
-                  PerformanceOverviewMetrics.ENGINE);
-        }
 
         if (firstTry) {
           finalStatus = result;
@@ -185,10 +174,20 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         }
       }
     } while (shouldRetry);
-    // statistic the time of write stateMachine
-    RatisMetricsManager.getInstance()
-        .recordWriteStateMachineCost(
-            System.nanoTime() - writeToStateMachineStartTime, consensusGroupType);
+    if (isLeader) {
+      MetricService.getInstance()
+          .timer(
+              System.nanoTime() - writeToStateMachineStartTime,
+              TimeUnit.NANOSECONDS,
+              Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.STAGE.toString(),
+              PerformanceOverviewMetrics.ENGINE);
+      // statistic the time of write stateMachine
+      RatisMetricsManager.getInstance()
+          .recordWriteStateMachineCost(
+              System.nanoTime() - writeToStateMachineStartTime, consensusGroupType);
+    }
     return CompletableFuture.completedFuture(ret);
   }
 
