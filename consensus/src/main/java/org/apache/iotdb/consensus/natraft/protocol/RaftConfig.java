@@ -1,38 +1,41 @@
 /*
 
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
 
 
- */
+*/
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
-import java.util.Properties;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RPCConfig;
 import org.apache.iotdb.consensus.natraft.protocol.consistency.ConsistencyLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
-import java.util.concurrent.TimeUnit;
+import java.util.Properties;
 
 public class RaftConfig {
 
+  private static final Logger logger = LoggerFactory.getLogger(RaftConfig.class);
   private boolean enableWeakAcceptance = false;
   private int maxNumOfLogsInMem = 10000;
   private int minNumOfLogsInMem = 1000;
@@ -44,7 +47,6 @@ public class RaftConfig {
   private int uncommittedRaftLogNumForRejectThreshold = 10000;
   private int heartbeatIntervalMs = 1000;
   private int electionTimeoutMs = 20_000;
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
   private boolean enableUsePersistLogOnDiskToCatchUp;
   private long writeOperationTimeoutMS = 20_000L;
   private int logNumInBatch = 100;
@@ -171,17 +173,12 @@ public class RaftConfig {
     return rpcConfig.getRpcMaxConcurrentClientNum();
   }
 
-
   public int getMaxIdleClientPerNode() {
     return rpcConfig.getRpcMinConcurrentClientNum();
   }
 
   public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
-  }
-
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
+    return rpcConfig.getConnectionTimeoutInMs();
   }
 
   public boolean isEnableUsePersistLogOnDiskToCatchUp() {
@@ -385,13 +382,8 @@ public class RaftConfig {
     this.dispatchingCompressionType = dispatchingCompressionType;
   }
 
-
   public void loadProperties(Properties properties) {
-
-    this.setConnectionTimeoutInMS(
-        Integer.parseInt(
-            properties.getProperty(
-                "connection_timeout_ms", String.valueOf(this.getConnectionTimeoutInMS()))));
+    logger.debug("Loading properties: {}", properties);
 
     this.setHeartbeatIntervalMs(
         Integer.parseInt(
@@ -416,13 +408,12 @@ public class RaftConfig {
     this.setWriteOperationTimeoutMS(
         Integer.parseInt(
             properties.getProperty(
-                "write_operation_timeout_ms",
-                String.valueOf(this.getWriteOperationTimeoutMS()))));
+                "write_operation_timeout_ms", String.valueOf(this.getWriteOperationTimeoutMS()))));
 
-    this.setSyncLeaderMaxWaitMs(Integer.parseInt(
-        properties.getProperty(
-            "sync_leader_max_wait",
-            String.valueOf(this.getSyncLeaderMaxWaitMs()))));
+    this.setSyncLeaderMaxWaitMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "sync_leader_max_wait", String.valueOf(this.getSyncLeaderMaxWaitMs()))));
 
     this.setMinNumOfLogsInMem(
         Integer.parseInt(
@@ -442,7 +433,8 @@ public class RaftConfig {
     this.setMaxWaitingTimeWhenInsertBlocked(
         Long.parseLong(
             properties.getProperty(
-                "max_insert_block_time_ms", String.valueOf(this.getMaxWaitingTimeWhenInsertBlocked()))));
+                "max_insert_block_time_ms",
+                String.valueOf(this.getMaxWaitingTimeWhenInsertBlocked()))));
 
     this.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(
@@ -468,8 +460,7 @@ public class RaftConfig {
 
     this.setLogNumInBatch(
         Integer.parseInt(
-            properties.getProperty(
-                "log_batch_num", String.valueOf(this.getLogNumInBatch()))));
+            properties.getProperty("log_batch_num", String.valueOf(this.getLogNumInBatch()))));
 
     this.setMaxRaftLogIndexSizeInMemory(
         Integer.parseInt(
@@ -520,8 +511,7 @@ public class RaftConfig {
     this.setUseFollowerSlidingWindow(
         Boolean.parseBoolean(
             properties.getProperty(
-                "use_follower_sliding_window",
-                String.valueOf(this.isUseFollowerSlidingWindow()))));
+                "use_follower_sliding_window", String.valueOf(this.isUseFollowerSlidingWindow()))));
 
     this.setEnableWeakAcceptance(
         Boolean.parseBoolean(
@@ -566,12 +556,14 @@ public class RaftConfig {
     this.setEnableCompressedDispatching(
         Boolean.parseBoolean(
             properties.getProperty(
-                "use_compressed_dispatching", String.valueOf(this.isEnableCompressedDispatching()))));
+                "use_compressed_dispatching",
+                String.valueOf(this.isEnableCompressedDispatching()))));
 
     this.setDispatchingCompressionType(
-        CompressionType.valueOf(CompressionType.class, properties.getProperty(
-            "default_boolean_encoding", this.getDispatchingCompressionType().toString()))
-    );
+        CompressionType.valueOf(
+            CompressionType.class,
+            properties.getProperty(
+                "default_boolean_encoding", this.getDispatchingCompressionType().toString())));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

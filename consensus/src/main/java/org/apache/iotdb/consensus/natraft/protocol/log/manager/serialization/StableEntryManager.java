@@ -31,7 +31,8 @@ public interface StableEntryManager {
 
   List<Entry> getAllEntriesAfterCommittedIndex();
 
-  void append(List<Entry> entries, long maxHaveAppliedCommitIndex) throws IOException;
+  void append(List<Entry> entries, long commitIndex, long maxHaveAppliedCommitIndex)
+      throws IOException;
 
   void flushLogBuffer();
 

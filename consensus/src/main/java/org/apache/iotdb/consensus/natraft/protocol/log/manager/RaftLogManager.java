@@ -402,6 +402,13 @@ public abstract class RaftLogManager {
       }
       entries.addAll(appendingEntries);
     }
+    if (config.isEnableRaftLogPersistence()) {
+      try {
+        getStableEntryManager().append(appendingEntries, commitIndex, appliedIndex);
+      } catch (IOException e) {
+        logger.error("Cannot persist entries", e);
+      }
+    }
 
     Object logUpdateCondition =
         getLogUpdateCondition(entries.get(entries.size() - 1).getCurrLogIndex());
@@ -574,31 +581,17 @@ public abstract class RaftLogManager {
     }
   }
 
-  private void commitEntries(List<Entry> entries) throws LogExecutionException {
-    try {
-      // Operations here are so simple that the execution could be thought
-      // success or fail together approximately.
-      Entry lastLog = entries.get(entries.size() - 1);
-      commitIndex = lastLog.getCurrLogIndex();
+  private void commitEntries(List<Entry> entries) {
+    // Operations here are so simple that the execution could be thought
+    // success or fail together approximately.
+    Entry lastLog = entries.get(entries.size() - 1);
+    commitIndex = lastLog.getCurrLogIndex();
 
-      if (config.isEnableRaftLogPersistence()) {
-        // Cluster could continue provide service when exception is thrown here
-        getStableEntryManager().append(entries, appliedIndex);
+    for (Entry entry : entries) {
+      if (entry.createTime != 0) {
+        entry.committedTime = System.nanoTime();
+        Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.add(entry.committedTime - entry.createTime);
       }
-      for (Entry entry : entries) {
-        if (entry.createTime != 0) {
-          entry.committedTime = System.nanoTime();
-          Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.add(
-              entry.committedTime - entry.createTime);
-        }
-      }
-    } catch (IOException e) {
-      // The exception will block the raft service continue accept log.
-      // TODO: Notify user that the persisted logs before these entries(include) are corrupted.
-      // TODO: An idea is that we can degrade the service by disable raft log persistent for
-      // TODO: the group. It needs fine-grained control for the config of Raft log persistence.
-      logger.error("{}: persistent raft log error:", name, e);
-      throw new LogExecutionException(e);
     }
   }
 

@@ -84,7 +84,7 @@ public class IoTDBDescriptor {
       logger.info("Will reload properties from {} ", loader.getClass().getName());
       Properties properties = loader.loadProperties();
       loadProperties(properties);
-      conf.setCustomizedProperties(loader.getCustomizedProperties());
+      conf.getCustomizedProperties().putAll(loader.getCustomizedProperties());
       TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -985,6 +985,7 @@ public class IoTDBDescriptor {
     conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
+    conf.getCustomizedProperties().putAll(properties);
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1454,8 +1455,6 @@ public class IoTDBDescriptor {
       if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
         WALManager.getInstance().rebootWALDeleteThread();
       }
-
-      conf.getCustomizedProperties().putAll(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }

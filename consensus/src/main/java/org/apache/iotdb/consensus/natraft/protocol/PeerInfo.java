@@ -20,35 +20,24 @@
 package org.apache.iotdb.consensus.natraft.protocol;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PeerInfo {
-  private long nextIndex;
-  private long matchIndex;
+  private AtomicLong matchIndex;
   private AtomicInteger inconsistentHeartbeatNum = new AtomicInteger();
   // lastLogIndex from the last heartbeat
   private long lastHeartBeatIndex;
 
-  public PeerInfo(long nextIndex) {
-    this.nextIndex = nextIndex;
-    this.matchIndex = -1;
+  public PeerInfo() {
+    this.matchIndex = new AtomicLong(-1);
   }
 
-  public synchronized long getNextIndex() {
-    return nextIndex;
+  public long getMatchIndex() {
+    return matchIndex.get();
   }
 
-  public synchronized void setNextIndex(long nextIndex) {
-    this.nextIndex = nextIndex;
-  }
-
-  public synchronized long getMatchIndex() {
-    return matchIndex;
-  }
-
-  public synchronized void setMatchIndex(long matchIndex) {
-    this.matchIndex = matchIndex;
-    this.setNextIndex(Math.max(nextIndex, matchIndex + 1));
-    this.notifyAll();
+  public void setMatchIndex(long matchIndex) {
+    this.matchIndex.set(matchIndex);
   }
 
   public int incInconsistentHeartbeatNum() {

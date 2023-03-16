@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import java.util.Properties;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -30,6 +29,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.util.Properties;
 
 public class ConfigNodeConfig {
 

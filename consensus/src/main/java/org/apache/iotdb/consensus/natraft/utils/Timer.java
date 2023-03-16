@@ -292,7 +292,7 @@ public class Timer {
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     LOG_DISPATCHER_FROM_CREATE_TO_APPLIED(
         LOG_DISPATCHER,
-        "from create to OK",
+        "from create to applied",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

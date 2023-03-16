@@ -359,7 +359,7 @@ public class RaftMember {
   public void initPeerMap() {
     status.peerMap = new ConcurrentHashMap<>();
     for (Peer peer : allNodes) {
-      status.peerMap.computeIfAbsent(peer, k -> new PeerInfo(logManager.getLastLogIndex()));
+      status.peerMap.computeIfAbsent(peer, k -> new PeerInfo());
     }
   }
 

@@ -250,13 +250,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @Override
-  public void append(List<Entry> entries, long maxHaveAppliedCommitIndex) throws IOException {
+  public void append(List<Entry> entries, long commitIndex, long maxHaveAppliedCommitIndex)
+      throws IOException {
     lock.lock();
     try {
       putLogs(entries);
       Entry entry = entries.get(entries.size() - 1);
-      meta.setCommitLogIndex(entry.getCurrLogIndex());
-      meta.setCommitLogTerm(entry.getCurrLogTerm());
+      meta.setCommitLogIndex(commitIndex);
       meta.setLastLogIndex(entry.getCurrLogIndex());
       meta.setLastLogTerm(entry.getCurrLogTerm());
       meta.setLastAppliedIndex(maxHaveAppliedCommitIndex);

@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 public class AsyncLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncLogApplier.class);
-  private static final int CONCURRENT_CONSUMER_NUM = 4;
+  private static final int CONCURRENT_CONSUMER_NUM = 16;
   private LogApplier embeddedApplier;
   private DataLogConsumer[] consumers;
   private ExecutorService consumerPool;

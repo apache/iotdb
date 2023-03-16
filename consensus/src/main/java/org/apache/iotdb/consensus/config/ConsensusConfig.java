@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.consensus.config;
 
-import java.util.Properties;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.Optional;
+import java.util.Properties;
 
 public class ConsensusConfig {
 

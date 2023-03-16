@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 
 public class LogManagerMeta {
 
-  private long commitLogTerm = -1;
   private long commitLogIndex = -1;
   private long lastLogIndex = -1;
   private long lastLogTerm = -1;
@@ -36,7 +35,6 @@ public class LogManagerMeta {
 
   public static LogManagerMeta deserialize(ByteBuffer buffer) {
     LogManagerMeta res = new LogManagerMeta();
-    res.commitLogTerm = ReadWriteIOUtils.readLong(buffer);
     res.commitLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogTerm = ReadWriteIOUtils.readLong(buffer);
@@ -57,7 +55,6 @@ public class LogManagerMeta {
   public ByteBuffer serialize() {
     // 5 is the number of attributes in class LogManagerMeta
     ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 6);
-    byteBuffer.putLong(commitLogTerm);
     byteBuffer.putLong(commitLogIndex);
     byteBuffer.putLong(lastLogIndex);
     byteBuffer.putLong(lastLogTerm);
@@ -71,8 +68,6 @@ public class LogManagerMeta {
   @Override
   public String toString() {
     return "LogManagerMeta{"
-        + " commitLogTerm="
-        + commitLogTerm
         + ", commitLogIndex="
         + commitLogIndex
         + ", lastLogIndex="
@@ -100,10 +95,6 @@ public class LogManagerMeta {
     this.lastLogTerm = lastLogTerm;
   }
 
-  public void setCommitLogTerm(long commitLogTerm) {
-    this.commitLogTerm = commitLogTerm;
-  }
-
   public long getLastAppliedIndex() {
     return lastAppliedIndex;
   }
@@ -114,10 +105,6 @@ public class LogManagerMeta {
 
   public long getLastAppliedTerm() {
     return lastAppliedTerm;
-  }
-
-  public void setLastAppliedTerm(long lastAppliedTerm) {
-    this.lastAppliedTerm = lastAppliedTerm;
   }
 
   @Override
@@ -136,7 +123,6 @@ public class LogManagerMeta {
         .append(commitLogIndex, that.commitLogIndex)
         .append(lastLogIndex, that.lastLogIndex)
         .append(lastLogTerm, that.lastLogTerm)
-        .append(commitLogTerm, that.commitLogTerm)
         .append(lastAppliedIndex, that.lastAppliedIndex)
         .append(lastAppliedTerm, that.lastAppliedTerm)
         .isEquals();
@@ -148,7 +134,6 @@ public class LogManagerMeta {
         .append(commitLogIndex)
         .append(lastLogIndex)
         .append(lastLogTerm)
-        .append(commitLogTerm)
         .append(lastAppliedIndex)
         .toHashCode();
   }
