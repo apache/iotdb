@@ -72,14 +72,14 @@ public class IoTDBRoundFunctionIT {
 
   @Test
   public void testRound() {
-    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s1)"};
+    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s1)"};
     String[] intRetArray =
         new String[] {
           "1,2.0,", "2,2.0,", "3,2.0,", "4,2.0,", "5,2.0,", "6,2.0,", "1678695379764,2.0,",
         };
     resultSetEqualTest("select round(s1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s2)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s2)"};
     intRetArray =
         new String[] {
           "1,3.0,",
@@ -92,14 +92,14 @@ public class IoTDBRoundFunctionIT {
         };
     resultSetEqualTest("select round(s2) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3)"};
     intRetArray =
         new String[] {
           "1,0.0,", "2,10.0,", "3,120.0,", "4,101.0,", "5,90.0,", "1678695379764,121.0,",
         };
     resultSetEqualTest("select round(s3) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s4)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s4)"};
     intRetArray =
         new String[] {
           "1,101.0,", "2,20.0,", "3,21.0,", "5,21.0,", "6,61.0,", "1678695379764,10.0,",
@@ -109,14 +109,14 @@ public class IoTDBRoundFunctionIT {
 
   @Test
   public void testRoundWithPlaces() {
-    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s1, 1)"};
+    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s1,1)"};
     String[] intRetArray =
         new String[] {
           "1,2.0,", "2,2.0,", "3,2.0,", "4,2.0,", "5,2.0,", "6,2.0,", "1678695379764,2.0,",
         };
     resultSetEqualTest("select round(s1,1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s2, 1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s2,1)"};
     intRetArray =
         new String[] {
           "1,3.0,",
@@ -129,21 +129,21 @@ public class IoTDBRoundFunctionIT {
         };
     resultSetEqualTest("select round(s2,1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3, 1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3,1)"};
     intRetArray =
         new String[] {
           "1,0.1,", "2,10.1,", "3,120.2,", "4,101.1,", "5,90.1,", "1678695379764,120.5,",
         };
     resultSetEqualTest("select round(s3,1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3, 2)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3,2)"};
     intRetArray =
         new String[] {
           "1,0.11,", "2,10.11,", "3,120.16,", "4,101.13,", "5,90.12,", "1678695379764,120.51,",
         };
     resultSetEqualTest("select round(s3,2) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3, 3)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3,3)"};
     intRetArray =
         new String[] {
           "1,0.112,",
@@ -155,7 +155,7 @@ public class IoTDBRoundFunctionIT {
         };
     resultSetEqualTest("select round(s3,3) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3, 4)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3,4)"};
     intRetArray =
         new String[] {
           "1,0.1123,",
@@ -167,7 +167,7 @@ public class IoTDBRoundFunctionIT {
         };
     resultSetEqualTest("select round(s3,4) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s4, 5)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s4,5)"};
     intRetArray =
         new String[] {
           "1,101.14345,",
@@ -179,7 +179,7 @@ public class IoTDBRoundFunctionIT {
         };
     resultSetEqualTest("select round(s4,5) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s4, 1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s4,1)"};
     intRetArray =
         new String[] {
           "1,101.1,", "2,20.1,", "3,20.6,", "5,20.8,", "6,60.7,", "1678695379764,10.1,",
@@ -189,34 +189,34 @@ public class IoTDBRoundFunctionIT {
 
   @Test
   public void testRoundWithNegativePlaces() {
-    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s1, -1)"};
+    String[] intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s1,-1)"};
     String[] intRetArray =
         new String[] {
-          "1,2.0,", "2,2.0,", "3,2.0,", "4,2.0,", "5,2.0,", "6,2.0,", "1678695379764,2.0,",
+          "1,0.0,", "2,0.0,", "3,0.0,", "4,0.0,", "5,0.0,", "6,0.0,", "1678695379764,0.0,",
         };
     resultSetEqualTest("select round(s1,-1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s2, -1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s2,-1)"};
     intRetArray =
         new String[] {
-          "1,3.0,",
-          "2,4.0,",
-          "3,555.0,",
-          "4,1.2341234E7,",
-          "5,55678.0,",
-          "6,12355.0,",
-          "1678695379764,12345.0,",
+          "1,0.0,",
+          "2,0.0,",
+          "3,560.0,",
+          "4,1.234123E7,",
+          "5,55680.0,",
+          "6,12360.0,",
+          "1678695379764,12340.0,",
         };
     resultSetEqualTest("select round(s2,-1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s3, -1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s3,-1)"};
     intRetArray =
         new String[] {
           "1,0.0,", "2,10.0,", "3,120.0,", "4,100.0,", "5,90.0,", "1678695379764,120.0,",
         };
     resultSetEqualTest("select round(s3,-1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {TIMESTAMP_STR, "round(root.db.d1.s4, -1)"};
+    intExpectedHeader = new String[] {TIMESTAMP_STR, "ROUND(root.db.d1.s4,-1)"};
     intRetArray =
         new String[] {
           "1,100.0,", "2,20.0,", "3,20.0,", "5,20.0,", "6,60.0,", "1678695379764,10.0,",
@@ -227,7 +227,7 @@ public class IoTDBRoundFunctionIT {
   @Test
   public void testWithUDF() {
     String[] intExpectedHeader =
-        new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s2, 1)"};
+        new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s2,1)"};
     String[] intRetArray =
         new String[] {
           "1,3,3.0,",
@@ -239,9 +239,9 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,12345.0,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s2,1) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s2,1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s3, 1)"};
+    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s3,1)"};
     intRetArray =
         new String[] {
           "1,3,0.1,",
@@ -253,9 +253,9 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,120.5,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s3,1) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s3,1) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s3, 2)"};
+    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s3,2)"};
     intRetArray =
         new String[] {
           "1,3,0.11,",
@@ -267,9 +267,9 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,120.51,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s3,2) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s3,2) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s3, 3)"};
+    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s3,3)"};
     intRetArray =
         new String[] {
           "1,3,0.112,",
@@ -281,9 +281,9 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,120.511,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s3,3) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s3,3) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s3, 4)"};
+    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s3,4)"};
     intRetArray =
         new String[] {
           "1,3,0.1123,",
@@ -295,9 +295,9 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,120.5112,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s3,4) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s3,4) from root.**", intExpectedHeader, intRetArray);
 
-    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),round(root.db.d1.s4, 5)"};
+    intExpectedHeader = new String[] {"Time,change_points(root.db.d1.s2),ROUND(root.db.d1.s4,5)"};
     intRetArray =
         new String[] {
           "1,3,101.14345,",
@@ -309,7 +309,7 @@ public class IoTDBRoundFunctionIT {
           "1678695379764,12345,10.14342,",
         };
     resultSetEqualTest(
-        "select change_points(s2),round(s4,5) from root.**", intExpectedHeader, intRetArray);
+        "select change_points(s2),ROUND(s4,5) from root.**", intExpectedHeader, intRetArray);
   }
 
   @Test

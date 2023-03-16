@@ -86,7 +86,7 @@ It costs 0.014s
 | SIGN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#signum(double)                                          |
 | CEIL    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#ceil(double)                                            |
 | FLOOR   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#floor(double)                                           |
-| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#rint(double)                                            |
+| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#rint(Math#pow(10,places))/Math#pow(10,places)                                            |
 | EXP     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#exp(double)                                             |
 | LN      | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log(double)                                             |
 | LOG10   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log10(double)                                           |
