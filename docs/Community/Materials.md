@@ -295,11 +295,11 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 * <span id = "qiaojialin1"> 基于开放数据文件格式的时序数据库. Reporter: JiaLin Qiao. </span>
 
-<iframe src="//player.bilibili.com/player.html?aid=551809671&bvid=BV1yi4y127js&cid=515894957&page=1" scrolling="no" border="0" height="480"frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+<iframe src="//player.bilibili.com/player.html?aid=551809671&bvid=BV1yi4y127js&cid=515894957&page=1" scrolling="no" border="0" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 *<span id = "dashuju"> IoTDB 在 360 的落地实践. Reporter: Jianyun Cheng. </span>
 
-<iframe src="//player.bilibili.com/player.html?aid=594383405&bvid=BV1Pq4y147z4&cid=700109523&page=1" width="640" height="480" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true""> </iframe>
+<iframe src="//player.bilibili.com/player.html?aid=594383405&bvid=BV1Pq4y147z4&cid=700109523&page=1" width="640" height="480" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 
 * <span id = "meetup2020-1"> 2020.11, IoTDB 使用进阶与背后原理介绍. Reporter: Kaifeng Xue. </span>
