@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -254,11 +254,12 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      IStorageGroupMNode storageGroupMNode = root.getDatabaseNodeByDatabasePath(pathList[i]);
+      IDatabaseMNode<IConfigMNode> storageGroupMNode =
+          root.getDatabaseNodeByDatabasePath(pathList[i]);
       storageGroupMNode.setDataTTL(i);
-      storageGroupMNode.setDataReplicationFactor(i);
-      storageGroupMNode.setSchemaReplicationFactor(i);
-      storageGroupMNode.setTimePartitionInterval(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
       root.getNodeWithAutoCreate(pathList[i].concatNode("a")).setSchemaTemplateId(i);
     }
 
@@ -271,7 +272,7 @@ public class ConfigMTreeTest {
 
     for (int i = 0; i < pathList.length; i++) {
       TDatabaseSchema storageGroupSchema =
-          newTree.getDatabaseNodeByDatabasePath(pathList[i]).getStorageGroupSchema();
+          newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
@@ -298,7 +299,7 @@ public class ConfigMTreeTest {
       fail();
     }
 
-    IMNode node = root.getNodeWithAutoCreate(path);
+    IConfigMNode node = root.getNodeWithAutoCreate(path);
     node.setSchemaTemplateId(0);
 
     try {

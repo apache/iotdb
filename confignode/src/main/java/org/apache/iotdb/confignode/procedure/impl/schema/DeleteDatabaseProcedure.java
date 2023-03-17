@@ -274,14 +274,14 @@ public class DeleteDatabaseProcedure
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(deleteDatabaseSchema, stream);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(deleteDatabaseSchema, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(byteBuffer);
+      deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize DeleteStorageGroupProcedure", e);
     }
