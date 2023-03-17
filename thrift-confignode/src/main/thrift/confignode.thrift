@@ -90,6 +90,7 @@ struct TRuntimeConfiguration {
   2: required list<binary> allTriggerInformation
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
+  5: required list<binary> allPipeInformation
 }
 
 struct TDataNodeRegisterReq {

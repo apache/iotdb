@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +93,14 @@ public class PipePluginAgent {
     }
   }
 
+  /**
+   * Register a PipePlugin to the system without any meta checks. The PipePlugin will be loaded by
+   * the PipePluginClassLoader and its instance will be created to ensure that it can be loaded.
+   *
+   * @param pipePluginMeta the meta information of the PipePlugin
+   * @throws PipeManagementException if the PipePlugin can not be loaded or its instance can not be
+   *     created
+   */
   public void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();

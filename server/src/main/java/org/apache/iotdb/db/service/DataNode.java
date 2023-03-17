@@ -317,7 +317,9 @@ public class DataNode implements DataNodeMBean {
    *
    * <p>4. All trigger information
    *
-   * <p>5. All TTL information
+   * <p>5. All Pipe information
+   *
+   * <p>6. All TTL information
    */
   private void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration) {
@@ -337,6 +339,9 @@ public class DataNode implements DataNodeMBean {
 
     /* Store triggerInformationList */
     getTriggerInformationList(runtimeConfiguration.getAllTriggerInformation());
+
+    /* Store pipeInformationList */
+    getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
 
     /* Store ttl information */
     StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
@@ -624,7 +629,8 @@ public class DataNode implements DataNodeMBean {
 
   private void prepareUDFResources() throws StartupException {
     initUDFRelatedInstance();
-    if (resourcesInformationHolder.getUDFInformationList().isEmpty()) {
+    if (resourcesInformationHolder.getUDFInformationList() == null
+        || resourcesInformationHolder.getUDFInformationList().isEmpty()) {
       return;
     }
 
@@ -724,7 +730,8 @@ public class DataNode implements DataNodeMBean {
 
   private void prepareTriggerResources() throws StartupException {
     initTriggerRelatedInstance();
-    if (resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
+    if (resourcesInformationHolder.getTriggerInformationList() == null
+        || resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
       return;
     }
 
@@ -825,19 +832,10 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  private void initPipePluginRelatedInstance() throws StartupException {
-    try {
-      PipePluginExecutableManager.setupAndGetInstance(
-          config.getPipeTemporaryLibDir(), config.getPipeDir());
-      PipePluginClassLoaderManager.setupAndGetInstance(config.getPipeDir());
-    } catch (IOException e) {
-      throw new StartupException(e);
-    }
-  }
-
   private void preparePipePluginResources() throws StartupException {
     initPipePluginRelatedInstance();
-    if (resourcesInformationHolder.getPipePluginMetaList().isEmpty()) {
+    if (resourcesInformationHolder.getPipePluginMetaList() == null
+        || resourcesInformationHolder.getPipePluginMetaList().isEmpty()) {
       return;
     }
 
@@ -862,6 +860,16 @@ public class DataNode implements DataNodeMBean {
         PipePluginAgent.getInstance().doRegister(meta);
       }
     } catch (Exception e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private void initPipePluginRelatedInstance() throws StartupException {
+    try {
+      PipePluginExecutableManager.setupAndGetInstance(
+          config.getPipeTemporaryLibDir(), config.getPipeDir());
+      PipePluginClassLoaderManager.setupAndGetInstance(config.getPipeDir());
+    } catch (IOException e) {
       throw new StartupException(e);
     }
   }
@@ -904,6 +912,16 @@ public class DataNode implements DataNodeMBean {
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
+    }
+  }
+
+  private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
+    if (allPipeInformation != null && !allPipeInformation.isEmpty()) {
+      List<PipePluginMeta> list = new ArrayList<>();
+      for (ByteBuffer pipeInformationByteBuffer : allPipeInformation) {
+        list.add(PipePluginMeta.deserialize(pipeInformationByteBuffer));
+      }
+      resourcesInformationHolder.setPipePluginMetaList(list);
     }
   }
 
