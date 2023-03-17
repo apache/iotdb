@@ -181,11 +181,13 @@ public class PipePluginAgent {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
+  private PipePluginAgent() {}
+
   private static class PipePluginAgentServiceHolder {
     private static final PipePluginAgent INSTANCE = new PipePluginAgent();
   }
 
-  public static PipePluginAgent getInstance() {
+  static PipePluginAgent getInstance() {
     return PipePluginAgentServiceHolder.INSTANCE;
   }
 }
