@@ -79,11 +79,23 @@ public class CreatePipePluginProcedure
       switch (state) {
         case LOCK:
           LOGGER.info("Locking pipe plugin {}", pipePluginMeta.getPluginName());
-          pipePluginInfo.acquirePipePluginInfoLock();
-          pipePluginInfo.validateBeforeCreatingPipePlugin(
-              pipePluginMeta.getPluginName(),
-              pipePluginMeta.getJarName(),
-              pipePluginMeta.getJarMD5());
+
+          try {
+            pipePluginInfo.acquirePipePluginInfoLock();
+            pipePluginInfo.validateBeforeCreatingPipePlugin(
+                pipePluginMeta.getPluginName(),
+                pipePluginMeta.getJarName(),
+                pipePluginMeta.getJarMD5());
+          } catch (PipeManagementException e) {
+            // The pipe plugin has already created, we should end the procedure
+            LOGGER.warn(
+                "Pipe plugin {} is already created, end the procedure ",
+                pipePluginMeta.getPluginName());
+            setFailure(new ProcedureException(e.getMessage()));
+            pipePluginInfo.releasePipePluginInfoLock();
+            return Flow.NO_MORE_STATE;
+          }
+
           setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODE);
           break;
 
@@ -128,12 +140,6 @@ public class CreatePipePluginProcedure
           pipePluginInfo.releasePipePluginInfoLock();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeManagementException e) {
-      // if the pipe plugin is already created, we should end the procedure
-      LOGGER.warn(
-          "Pipe plugin {} is already created, end the procedure ", pipePluginMeta.getPluginName());
-      pipePluginInfo.releasePipePluginInfoLock();
-      return Flow.NO_MORE_STATE;
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("CreatePipePluginProcedure failed in state {}, will rollback", state, e);

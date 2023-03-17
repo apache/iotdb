@@ -70,13 +70,22 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
         case LOCK:
           LOGGER.info("Locking pipe plugin {}", pluginName);
 
-          pipePluginInfo.acquirePipePluginInfoLock();
+          try {
+            pipePluginInfo.acquirePipePluginInfoLock();
 
-          LOGGER.info("Lock pipe plugin {} successfully", pluginName);
-          pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
+            LOGGER.info("Lock pipe plugin {} successfully", pluginName);
+            pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
 
-          env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
-          setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
+            env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+            setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
+          } catch (PipeManagementException e) {
+            // if the pipe plugin is not exist, we should end the procedure
+            LOGGER.warn(e.getMessage());
+            setFailure(new ProcedureException(e.getMessage()));
+            pipePluginInfo.releasePipePluginInfoLock();
+            return Flow.NO_MORE_STATE;
+          }
+          break;
 
         case DROP_ON_DATA_NODES:
           LOGGER.info("Dropping pipe plugin {} on data nodes", pluginName);
@@ -85,10 +94,12 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
                   .getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             setNextState(DropPipePluginState.DROP_ON_CONFIG_NODE);
+
           } else {
             throw new PipeManagementException(
                 String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
           }
+          break;
 
         case DROP_ON_CONFIG_NODE:
           LOGGER.info("Dropping pipe plugin {} on config node", pluginName);
@@ -102,12 +113,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
           pipePluginInfo.releasePipePluginInfoLock();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeManagementException e) {
-      // if the pipe plugin is not exist, we should end the procedure
-      LOGGER.warn(e.getMessage());
-      setFailure(new ProcedureException(e.getMessage()));
-      pipePluginInfo.releasePipePluginInfoLock();
-      return Flow.NO_MORE_STATE;
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.warn("DropPipePluginProcedure failed in state {}, will rollback", state, e);
