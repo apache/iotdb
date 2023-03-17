@@ -96,10 +96,10 @@ public class CreatePipePluginProcedure
             return Flow.NO_MORE_STATE;
           }
 
-          setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODE);
+          setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODES);
           break;
 
-        case CREATE_ON_CONFIG_NODE:
+        case CREATE_ON_CONFIG_NODES:
           ConfigManager configNodeManager = env.getConfigManager();
           LOGGER.info("Creating pipe plugin {} on config node", pipePluginMeta.getPluginName());
 
@@ -166,7 +166,7 @@ public class CreatePipePluginProcedure
   protected void rollbackState(ConfigNodeProcedureEnv env, CreatePipePluginState state)
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
-      case CREATE_ON_CONFIG_NODE:
+      case CREATE_ON_CONFIG_NODES:
         LOGGER.info(
             "Start [CREATE_ON_CONFIG_NODE] rollback of pipe plugin [{}]",
             pipePluginMeta.getPluginName());
@@ -199,7 +199,7 @@ public class CreatePipePluginProcedure
   @Override
   protected boolean isRollbackSupported(CreatePipePluginState state) {
     switch (state) {
-      case CREATE_ON_CONFIG_NODE:
+      case CREATE_ON_CONFIG_NODES:
       case CREATE_ON_DATA_NODES:
         return true;
       default:

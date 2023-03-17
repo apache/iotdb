@@ -22,6 +22,6 @@ package org.apache.iotdb.confignode.procedure.state.pipe;
 public enum DropPipePluginState {
   LOCK,
   DROP_ON_DATA_NODES,
-  DROP_ON_CONFIG_NODE,
+  DROP_ON_CONFIG_NODES,
   UNLOCK
 }
