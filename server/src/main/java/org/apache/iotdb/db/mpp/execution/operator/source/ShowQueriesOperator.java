@@ -68,7 +68,7 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (hasConsumed) {
       return false;
     }

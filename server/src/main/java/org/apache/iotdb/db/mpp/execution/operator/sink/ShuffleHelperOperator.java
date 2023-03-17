@@ -59,14 +59,18 @@ public class ShuffleHelperOperator implements Operator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
     boolean currentChannelClosed = sinkHandle.isChannelClosed(currentIndex);
     if (!currentChannelClosed && children.get(currentIndex).hasNext()) {
       return true;
-    }
-    // current channel has no more data
-    if (!currentChannelClosed) {
+    } else if (currentChannelClosed) {
+      // we close the child directly. The child could be an ExchangeOperator which is the downstream
+      // of an ISinkChannel of a pipeline driver.
+      closeCurrentChild(currentIndex);
+    } else {
+      // current channel has no more data
+      closeCurrentChild(currentIndex);
       sinkHandle.setNoMoreTsBlocksOfOneChannel(currentIndex);
     }
     unfinishedChildren.remove(currentIndex);
@@ -79,6 +83,11 @@ public class ShuffleHelperOperator implements Operator {
     // tryOpenChannel first
     sinkHandle.tryOpenChannel(currentIndex);
     return true;
+  }
+
+  private void closeCurrentChild(int index) throws Exception {
+    children.get(index).close();
+    children.set(index, null);
   }
 
   @Override

@@ -103,7 +103,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return deviceOperator.hasNextWithTimer();
   }
 
@@ -114,7 +114,11 @@ public class SingleDeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNextWithTimer();
+    try {
+      return !this.hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

@@ -71,8 +71,12 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
+    try {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     if (resultTsBlockList != null) {
       currentIndex++;
@@ -87,15 +91,19 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         if (operator.isFinished()) {
           noMoreTsBlocks[i] = true;
         } else {
-          if (operator.hasNextWithTimer()) {
-            TsBlock tsBlock = operator.nextWithTimer();
-            if (null != tsBlock && !tsBlock.isEmpty()) {
-              if (isShowTimeSeriesBlock(tsBlock)) {
-                showTimeSeriesResult.add(tsBlock);
-              } else {
-                lastQueryResult.add(tsBlock);
+          try {
+            if (operator.hasNextWithTimer()) {
+              TsBlock tsBlock = operator.nextWithTimer();
+              if (null != tsBlock && !tsBlock.isEmpty()) {
+                if (isShowTimeSeriesBlock(tsBlock)) {
+                  showTimeSeriesResult.add(tsBlock);
+                } else {
+                  lastQueryResult.add(tsBlock);
+                }
               }
             }
+          } catch (Exception e) {
+            throw new RuntimeException(e);
           }
         }
       }
@@ -187,7 +195,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
@@ -200,7 +208,11 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNextWithTimer();
+    try {
+      return !hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

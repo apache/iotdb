@@ -347,43 +347,47 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(6, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(6, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            // make sure the device column is by asc
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 1500);
   }
@@ -394,43 +398,47 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(6, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          // make sure the device column is by desc
-          assertEquals(checkDevice, 2);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(6, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            // make sure the device column is by desc
+            assertEquals(checkDevice, 2);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 1500);
   }
@@ -441,43 +449,47 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(6, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          // make sure the device column is by desc
-          assertEquals(checkDevice, 2);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(6, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            // make sure the device column is by desc
+            assertEquals(checkDevice, 2);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 1500);
   }
@@ -488,43 +500,47 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(6, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(4).isNull(i));
-          assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertTrue(tsBlock.getColumn(1).isNull(i));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(6, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            // make sure the device column is by asc
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(4).isNull(i));
+            assertTrue(tsBlock.getColumn(5).isNull(i));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertTrue(tsBlock.getColumn(1).isNull(i));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            assertTrue(tsBlock.getColumn(3).isNull(i));
+            assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 1500);
   }
@@ -840,39 +856,43 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 3);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by asc
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 3);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -883,39 +903,43 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by desc
-          assertEquals(checkDevice, 3);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by desc
+            assertEquals(checkDevice, 3);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -926,39 +950,43 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by desc
-          assertEquals(checkDevice, 3);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by desc
+            assertEquals(checkDevice, 3);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -969,39 +997,43 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
-          checkDevice++;
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 3);
-          checkDevice = 0;
-        } else {
-          fail();
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by asc
+            assertEquals(checkDevice, 0);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 1);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 2);
+            checkDevice++;
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertEquals(checkDevice, 3);
+            checkDevice = 0;
+          } else {
+            fail();
+          }
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -1279,48 +1311,52 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by asc
-          assertTrue(checkDevice < 500);
-          checkDevice++;
-          if (checkDevice == 500) {
-            lastTime = -1;
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by asc
+            assertTrue(checkDevice < 500);
+            checkDevice++;
+            if (checkDevice == 500) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 500 && checkDevice < 1000);
+            checkDevice++;
+            if (checkDevice == 1000) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1000 && checkDevice < 1500);
+            checkDevice++;
+            if (checkDevice == 1500) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1500 && checkDevice < 2000);
+            checkDevice++;
+          } else {
+            fail();
           }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 500 && checkDevice < 1000);
-          checkDevice++;
-          if (checkDevice == 1000) {
-            lastTime = -1;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1000 && checkDevice < 1500);
-          checkDevice++;
-          if (checkDevice == 1500) {
-            lastTime = -1;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1500 && checkDevice < 2000);
-          checkDevice++;
-        } else {
-          fail();
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -1331,48 +1367,52 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice < 500);
-          checkDevice++;
-          if (checkDevice == 500) {
-            lastTime = -1;
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice < 500);
+            checkDevice++;
+            if (checkDevice == 500) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 500 && checkDevice < 1000);
+            checkDevice++;
+            if (checkDevice == 1000) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1000 && checkDevice < 1500);
+            checkDevice++;
+            if (checkDevice == 1500) {
+              lastTime = -1;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by desc
+            assertTrue(checkDevice >= 1500 && checkDevice < 2000);
+            checkDevice++;
+          } else {
+            fail();
           }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 500 && checkDevice < 1000);
-          checkDevice++;
-          if (checkDevice == 1000) {
-            lastTime = -1;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1000 && checkDevice < 1500);
-          checkDevice++;
-          if (checkDevice == 1500) {
-            lastTime = -1;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by desc
-          assertTrue(checkDevice >= 1500 && checkDevice < 2000);
-          checkDevice++;
-        } else {
-          fail();
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -1383,48 +1423,52 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by asc
-          assertTrue(checkDevice < 500);
-          checkDevice++;
-          if (checkDevice == 500) {
-            lastTime = Long.MAX_VALUE;
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by asc
+            assertTrue(checkDevice < 500);
+            checkDevice++;
+            if (checkDevice == 500) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 500 && checkDevice < 1000);
+            checkDevice++;
+            if (checkDevice == 1000) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1000 && checkDevice < 1500);
+            checkDevice++;
+            if (checkDevice == 1500) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1500 && checkDevice < 2000);
+            checkDevice++;
+          } else {
+            fail();
           }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 500 && checkDevice < 1000);
-          checkDevice++;
-          if (checkDevice == 1000) {
-            lastTime = Long.MAX_VALUE;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1000 && checkDevice < 1500);
-          checkDevice++;
-          if (checkDevice == 1500) {
-            lastTime = Long.MAX_VALUE;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1500 && checkDevice < 2000);
-          checkDevice++;
-        } else {
-          fail();
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -1435,48 +1479,52 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock tsBlock = mergeSortOperator.next();
-      if (tsBlock == null) continue;
-      assertEquals(3, tsBlock.getValueColumnCount());
-      count += tsBlock.getPositionCount();
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
-        lastTime = tsBlock.getTimeByIndex(i);
-        if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice < 500);
-          checkDevice++;
-          if (checkDevice == 500) {
-            lastTime = Long.MAX_VALUE;
+    try {
+      while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+        TsBlock tsBlock = mergeSortOperator.next();
+        if (tsBlock == null) continue;
+        assertEquals(3, tsBlock.getValueColumnCount());
+        count += tsBlock.getPositionCount();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          assertTrue(tsBlock.getTimeByIndex(i) <= lastTime);
+          lastTime = tsBlock.getTimeByIndex(i);
+          if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice < 500);
+            checkDevice++;
+            if (checkDevice == 500) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 500 && checkDevice < 1000);
+            checkDevice++;
+            if (checkDevice == 1000) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+            assertTrue(checkDevice >= 1000 && checkDevice < 1500);
+            checkDevice++;
+            if (checkDevice == 1500) {
+              lastTime = Long.MAX_VALUE;
+            }
+          } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
+            assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+            assertTrue(tsBlock.getColumn(2).isNull(i));
+            // make sure the device column is by desc
+            assertTrue(checkDevice >= 1500 && checkDevice < 2000);
+            checkDevice++;
+          } else {
+            fail();
           }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 500 && checkDevice < 1000);
-          checkDevice++;
-          if (checkDevice == 1000) {
-            lastTime = Long.MAX_VALUE;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertTrue(checkDevice >= 1000 && checkDevice < 1500);
-          checkDevice++;
-          if (checkDevice == 1500) {
-            lastTime = Long.MAX_VALUE;
-          }
-        } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertTrue(tsBlock.getColumn(2).isNull(i));
-          // make sure the device column is by desc
-          assertTrue(checkDevice >= 1500 && checkDevice < 2000);
-          checkDevice++;
-        } else {
-          fail();
         }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     assertEquals(count, 2000);
   }
@@ -1493,7 +1541,7 @@ public class MergeSortOperatorTest {
   //                        ShowQueriesOperator      ShowQueriesOperator
   // ------------------------------------------------------------------------------------------------
   @Test
-  public void mergeSortWithSortOperatorTest() {
+  public void mergeSortWithSortOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 

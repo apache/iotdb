@@ -80,11 +80,17 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
-      // calculate aggregation result on current time window
-      if (!calculateNextAggregationResult()) {
-        break;
+    try {
+      while (System.nanoTime() - start < maxRuntime
+          && hasNext()
+          && !resultTsBlockBuilder.isFull()) {
+        // calculate aggregation result on current time window
+        if (!calculateNextAggregationResult()) {
+          break;
+        }
       }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
@@ -98,7 +104,11 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   @Override
   public boolean isFinished() {
-    return !this.hasNextWithTimer();
+    try {
+      return !this.hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

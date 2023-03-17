@@ -144,7 +144,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -224,17 +224,21 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         continue;
       }
       if (canCallNext[i]) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = getNextTsBlock(i);
-          canCallNext[i] = false;
-          if (isEmpty(i)) {
-            allReady = false;
+        try {
+          if (children.get(i).hasNextWithTimer()) {
+            inputTsBlocks[i] = getNextTsBlock(i);
+            canCallNext[i] = false;
+            if (isEmpty(i)) {
+              allReady = false;
+            } else {
+              mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
+            }
           } else {
-            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
+            noMoreTsBlocks[i] = true;
+            inputTsBlocks[i] = null;
           }
-        } else {
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
       } else {
         allReady = false;

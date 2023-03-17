@@ -94,7 +94,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
@@ -136,7 +136,11 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNextWithTimer();
+    try {
+      return !this.hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void calculateNextAggregationResult() {

@@ -125,7 +125,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return isReadingMemory || child.hasNextWithTimer();
   }
 

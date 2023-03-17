@@ -113,7 +113,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return timeRangeIterator.hasNextTimeRange();
   }
 
@@ -149,7 +149,11 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = !hasNextWithTimer());
+    try {
+      return finished || (finished = !hasNextWithTimer());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   protected void calculateNextAggregationResult() {

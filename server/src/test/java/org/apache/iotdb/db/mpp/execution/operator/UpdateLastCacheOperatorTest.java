@@ -116,6 +116,8 @@ public class UpdateLastCacheOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -146,6 +148,8 @@ public class UpdateLastCacheOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -176,6 +180,8 @@ public class UpdateLastCacheOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

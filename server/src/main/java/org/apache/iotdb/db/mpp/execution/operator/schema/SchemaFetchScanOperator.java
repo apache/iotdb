@@ -82,8 +82,12 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
+    try {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     isFinished = true;
     try {
@@ -95,7 +99,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isFinished;
   }
 

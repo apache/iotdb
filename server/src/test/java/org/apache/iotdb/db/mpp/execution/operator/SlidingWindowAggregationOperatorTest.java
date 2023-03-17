@@ -147,33 +147,41 @@ public class SlidingWindowAggregationOperatorTest {
     SlidingWindowAggregationOperator slidingWindowAggregationOperator1 =
         initSlidingWindowAggregationOperator(true);
     int count = 0;
-    while (slidingWindowAggregationOperator1.hasNext()) {
-      TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
-      if (resultTsBlock == null) {
-        continue;
+    try {
+      while (slidingWindowAggregationOperator1.hasNext()) {
+        TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
+        if (resultTsBlock == null) {
+          continue;
+        }
+        Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
+        int positionCount = resultTsBlock.getPositionCount();
+        for (int pos = 0; pos < positionCount; pos++) {
+          Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
+          count++;
+        }
       }
-      Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      int positionCount = resultTsBlock.getPositionCount();
-      for (int pos = 0; pos < positionCount; pos++) {
-        Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
-        count++;
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     Assert.assertEquals(retArray.length, count);
 
     SlidingWindowAggregationOperator slidingWindowAggregationOperator2 =
         initSlidingWindowAggregationOperator(false);
-    while (slidingWindowAggregationOperator2.hasNext()) {
-      TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
-      if (resultTsBlock == null) {
-        continue;
+    try {
+      while (slidingWindowAggregationOperator2.hasNext()) {
+        TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
+        if (resultTsBlock == null) {
+          continue;
+        }
+        Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
+        int positionCount = resultTsBlock.getPositionCount();
+        for (int pos = 0; pos < positionCount; pos++) {
+          Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
+          count--;
+        }
       }
-      Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      int positionCount = resultTsBlock.getPositionCount();
-      for (int pos = 0; pos < positionCount; pos++) {
-        Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
-        count--;
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     Assert.assertEquals(0, count);
   }

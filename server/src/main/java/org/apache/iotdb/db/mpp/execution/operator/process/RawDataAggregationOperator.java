@@ -74,13 +74,17 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean hasMoreData() {
-    return !(inputTsBlock == null || inputTsBlock.isEmpty())
-        || child.hasNextWithTimer()
-        || hasCachedDataInAggregator;
+    try {
+      return !(inputTsBlock == null || inputTsBlock.isEmpty())
+          || child.hasNextWithTimer()
+          || hasCachedDataInAggregator;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return windowManager.hasNext(hasMoreData());
   }
 
@@ -92,25 +96,30 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
-      if (child.hasNextWithTimer() && canCallNext) {
-        inputTsBlock = child.nextWithTimer();
-        canCallNext = false;
-        if (needSkip) {
-          break;
+      try {
+        if (child.hasNextWithTimer() && canCallNext) {
+          inputTsBlock = child.nextWithTimer();
+          canCallNext = false;
+          if (needSkip) {
+            break;
+          }
+        } else if (child.hasNextWithTimer()) {
+          // if child still has next but can't be invoked now
+          return false;
+        } else {
+          // If there are no points belong to last time window, the last time window will not
+          // initialize window and aggregators. Specially for time window.
+          if (windowManager.notInitializedLastTimeWindow()) {
+            initWindowAndAggregators();
+          }
+          // If the window is not initialized, it just returns to avoid invoking
+          // updateResultTsBlock()
+          // but if it's skipping the last window, just break and keep skipping.
+          if (needSkip || windowManager.isCurWindowInit()) break;
+          return false;
         }
-      } else if (child.hasNextWithTimer()) {
-        // if child still has next but can't be invoked now
-        return false;
-      } else {
-        // If there are no points belong to last time window, the last time window will not
-        // initialize window and aggregators. Specially for time window.
-        if (windowManager.notInitializedLastTimeWindow()) {
-          initWindowAndAggregators();
-        }
-        // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()
-        // but if it's skipping the last window, just break and keep skipping.
-        if (needSkip || windowManager.isCurWindowInit()) break;
-        return false;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     }
 
@@ -124,8 +133,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     if (windowManager.needSkipInAdvance()) {
       needSkip = true;
       inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
-      if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
-        return canCallNext;
+      try {
+        if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
+          return canCallNext;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       needSkip = false;
     }

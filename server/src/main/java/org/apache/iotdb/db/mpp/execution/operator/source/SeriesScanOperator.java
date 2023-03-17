@@ -139,7 +139,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
       return true;
     }

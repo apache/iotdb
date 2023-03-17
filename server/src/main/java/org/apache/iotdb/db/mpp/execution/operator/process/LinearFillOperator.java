@@ -142,7 +142,7 @@ public class LinearFillOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     // if child.hasNext() return false, it means that there is no more tsBlocks
     noMoreTsBlock = !child.hasNextWithTimer();
     // if there is more tsBlock, we can call child.next() once

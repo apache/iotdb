@@ -46,7 +46,7 @@ import static org.junit.Assert.assertTrue;
 public class FillOperatorTest {
 
   @Test
-  public void batchConstantFillTest() {
+  public void batchConstantFillTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -122,7 +122,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 
@@ -220,7 +220,7 @@ public class FillOperatorTest {
   }
 
   @Test
-  public void batchPreviousFillTest() {
+  public void batchPreviousFillTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -291,7 +291,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 

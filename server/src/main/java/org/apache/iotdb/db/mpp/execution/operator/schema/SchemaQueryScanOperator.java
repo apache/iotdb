@@ -127,8 +127,12 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public TsBlock next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
+    try {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     T element;
@@ -146,7 +150,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
     }
@@ -155,7 +159,11 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public boolean isFinished() {
-    return !hasNextWithTimer();
+    try {
+      return !hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

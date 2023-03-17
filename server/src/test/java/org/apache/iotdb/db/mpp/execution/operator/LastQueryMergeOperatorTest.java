@@ -119,13 +119,17 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index >= 0;
           }
 
           @Override
           public boolean isFinished() {
-            return !hasNext();
+            try {
+              return !hasNext();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
           }
 
           @Override
@@ -183,13 +187,17 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index >= 0;
           }
 
           @Override
           public boolean isFinished() {
-            return !hasNext();
+            try {
+              return !hasNext();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
           }
 
           @Override
@@ -315,13 +323,17 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index < 2;
           }
 
           @Override
           public boolean isFinished() {
-            return !hasNext();
+            try {
+              return !hasNext();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
           }
 
           @Override
@@ -379,13 +391,17 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index < 2;
           }
 
           @Override
           public boolean isFinished() {
-            return !hasNext();
+            try {
+              return !hasNext();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
           }
 
           @Override

@@ -53,7 +53,7 @@ public interface Operator extends AutoCloseable {
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
   TsBlock next();
 
-  default boolean hasNextWithTimer() {
+  default boolean hasNextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
 
@@ -65,7 +65,7 @@ public interface Operator extends AutoCloseable {
   }
 
   /** @return true if the operator has more data, otherwise false */
-  boolean hasNext();
+  boolean hasNext() throws Exception;
 
   /** This method will always be called before releasing the Operator reference. */
   @Override

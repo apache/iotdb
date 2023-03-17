@@ -116,33 +116,39 @@ public class LastQueryMergeOperator implements ProcessOperator {
     // among all the input TsBlock as the current output TsBlock's endTimeSeries.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputIndex[i] = 0;
-          inputTsBlocks[i] = children.get(i).nextWithTimer();
-          if (!empty(i)) {
-            int rowSize = inputTsBlocks[i].getPositionCount();
-            for (int row = 0; row < rowSize; row++) {
-              Binary key = getTimeSeries(inputTsBlocks[i], row);
-              Location location = timeSeriesSelector.get(key);
-              if (location == null
-                  || inputTsBlocks[i].getTimeByIndex(row)
-                      > inputTsBlocks[location.tsBlockIndex].getTimeByIndex(location.rowIndex)) {
-                timeSeriesSelector.put(key, new Location(i, row));
+        try {
+          if (children.get(i).hasNextWithTimer()) {
+            inputIndex[i] = 0;
+            inputTsBlocks[i] = children.get(i).nextWithTimer();
+            if (!empty(i)) {
+              int rowSize = inputTsBlocks[i].getPositionCount();
+              for (int row = 0; row < rowSize; row++) {
+                Binary key = getTimeSeries(inputTsBlocks[i], row);
+                Location location = timeSeriesSelector.get(key);
+                if (location == null
+                    || inputTsBlocks[i].getTimeByIndex(row)
+                        > inputTsBlocks[location.tsBlockIndex].getTimeByIndex(location.rowIndex)) {
+                  timeSeriesSelector.put(key, new Location(i, row));
+                }
               }
+            } else {
+              // child operator has next but return an empty TsBlock which means that it may not
+              // finish calculation in given time slice.
+              // In such case, LastQueryMergeOperator can't go on calculating, so we just return
+              // null.
+              // We can also use the while loop here to continuously call the hasNext() and next()
+              // methods of the child operator until its hasNext() returns false or the next() gets
+              // the data that is not empty, but this will cause the execution time of the while
+              // loop
+              // to be uncontrollable and may exceed all allocated time slice
+              return null;
             }
-          } else {
-            // child operator has next but return an empty TsBlock which means that it may not
-            // finish calculation in given time slice.
-            // In such case, LastQueryMergeOperator can't go on calculating, so we just return null.
-            // We can also use the while loop here to continuously call the hasNext() and next()
-            // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
-            // to be uncontrollable and may exceed all allocated time slice
-            return null;
+          } else { // no more tsBlock
+            noMoreTsBlocks[i] = true;
+            inputTsBlocks[i] = null;
           }
-        } else { // no more tsBlock
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
       }
       // update the currentEndTimeSeries if the TsBlock is not empty
@@ -179,7 +185,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }

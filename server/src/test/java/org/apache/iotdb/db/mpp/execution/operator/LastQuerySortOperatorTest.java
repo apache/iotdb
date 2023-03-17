@@ -212,6 +212,8 @@ public class LastQuerySortOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -346,6 +348,8 @@ public class LastQuerySortOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }

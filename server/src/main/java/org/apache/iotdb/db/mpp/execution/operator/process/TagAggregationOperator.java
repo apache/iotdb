@@ -145,13 +145,17 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
   }
 
   @Override
   public boolean isFinished() {
-    return !this.hasNextWithTimer();
+    try {
+      return !this.hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

@@ -192,7 +192,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return inputOperator.hasNextWithTimer();
   }
 

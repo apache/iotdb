@@ -88,21 +88,25 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
       if (!isEmpty(i)) {
         continue;
       }
-      if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
-        inputTsBlocks[i] = getNextTsBlock(i);
-        canCallNext[i] = false;
-        // child operator has next but return an empty TsBlock which means that it may not
-        // finish calculation in given time slice.
-        // In such case, TimeJoinOperator can't go on calculating, so we just return null.
-        // We can also use the while loop here to continuously call the hasNext() and next()
-        // methods of the child operator until its hasNext() returns false or the next() gets
-        // the data that is not empty, but this will cause the execution time of the while loop
-        // to be uncontrollable and may exceed all allocated time slice
-        if (isEmpty(i)) {
+      try {
+        if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
+          inputTsBlocks[i] = getNextTsBlock(i);
+          canCallNext[i] = false;
+          // child operator has next but return an empty TsBlock which means that it may not
+          // finish calculation in given time slice.
+          // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+          // We can also use the while loop here to continuously call the hasNext() and next()
+          // methods of the child operator until its hasNext() returns false or the next() gets
+          // the data that is not empty, but this will cause the execution time of the while loop
+          // to be uncontrollable and may exceed all allocated time slice
+          if (isEmpty(i)) {
+            allReady = false;
+          }
+        } else {
           allReady = false;
         }
-      } else {
-        allReady = false;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     }
     return allReady;

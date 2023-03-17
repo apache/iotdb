@@ -106,7 +106,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -125,7 +125,12 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
     if (finished) {
       return true;
     }
-    return finished = isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
+    try {
+      return finished =
+          isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

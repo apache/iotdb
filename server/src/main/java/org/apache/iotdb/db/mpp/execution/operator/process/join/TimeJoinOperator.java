@@ -133,27 +133,32 @@ public class TimeJoinOperator extends AbstractOperator {
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputIndex[i] = 0;
-          inputTsBlocks[i] = children.get(i).nextWithTimer();
-          if (!empty(i)) {
-            int rowSize = inputTsBlocks[i].getPositionCount();
-            for (int row = 0; row < rowSize; row++) {
-              timeSelector.add(inputTsBlocks[i].getTimeByIndex(row));
+        try {
+          if (children.get(i).hasNextWithTimer()) {
+            inputIndex[i] = 0;
+            inputTsBlocks[i] = children.get(i).nextWithTimer();
+            if (!empty(i)) {
+              int rowSize = inputTsBlocks[i].getPositionCount();
+              for (int row = 0; row < rowSize; row++) {
+                timeSelector.add(inputTsBlocks[i].getTimeByIndex(row));
+              }
+            } else {
+              // child operator has next but return an empty TsBlock which means that it may not
+              // finish calculation in given time slice.
+              // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+              // We can also use the while loop here to continuously call the hasNext() and next()
+              // methods of the child operator until its hasNext() returns false or the next() gets
+              // the data that is not empty, but this will cause the execution time of the while
+              // loop
+              // to be uncontrollable and may exceed all allocated time slice
+              return null;
             }
-          } else {
-            // child operator has next but return an empty TsBlock which means that it may not
-            // finish calculation in given time slice.
-            // In such case, TimeJoinOperator can't go on calculating, so we just return null.
-            // We can also use the while loop here to continuously call the hasNext() and next()
-            // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
-            // to be uncontrollable and may exceed all allocated time slice
-            return null;
+          } else { // no more tsBlock
+            noMoreTsBlocks[i] = true;
+            inputTsBlocks[i] = null;
           }
-        } else { // no more tsBlock
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
       }
       // update the currentEndTime if the TsBlock is not empty
@@ -198,7 +203,7 @@ public class TimeJoinOperator extends AbstractOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }

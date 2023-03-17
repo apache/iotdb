@@ -198,6 +198,8 @@ public class DeviceViewOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }

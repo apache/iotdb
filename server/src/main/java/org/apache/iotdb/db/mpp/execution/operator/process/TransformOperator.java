@@ -172,7 +172,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public final boolean hasNext() {
+  public final boolean hasNext() throws Exception {
     if (!timeHeap.isEmpty()) {
       return true;
     }
@@ -338,7 +338,12 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     // call hasNext first, or data of inputOperator could be missing
-    boolean flag = !hasNextWithTimer();
+    boolean flag = false;
+    try {
+      flag = !hasNextWithTimer();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     return timeHeap.isEmpty() && (flag || inputOperator.isFinished());
   }
 

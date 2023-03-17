@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.commons.lang3.Validate;
 
 import java.util.List;
 
@@ -54,18 +55,23 @@ public class IdentitySinkOperator implements Operator {
   }
 
   @Override
-  public boolean hasNext() {
-    if (children.get(downStreamChannelIndex.getCurrentIndex()).hasNext()) {
-      return true;
-    }
+  public boolean hasNext() throws Exception {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
-    // current channel have no more data
-    sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
-    // increment the index, skip the closed channels
-    currentIndex++;
-    while (currentIndex < children.size() && sinkHandle.isChannelClosed(currentIndex)) {
-      currentIndex++;
+    boolean currentChannelClosed = sinkHandle.isChannelClosed(currentIndex);
+    if (!currentChannelClosed && children.get(currentIndex).hasNext()) {
+      return true;
+    } else if (currentChannelClosed) {
+      // we close the child directly. The child could be an ExchangeOperator which is the downstream
+      // of an ISinkChannel of a pipeline driver.
+      closeCurrentChild(currentIndex);
+    } else {
+      // current child has no more data
+      closeCurrentChild(currentIndex);
+      sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
     }
+
+    // increment the index
+    currentIndex++;
     if (currentIndex >= children.size()) {
       isFinished = true;
       return false;
@@ -78,6 +84,11 @@ public class IdentitySinkOperator implements Operator {
     // tryOpenChannel first
     sinkHandle.tryOpenChannel(currentIndex);
     return true;
+  }
+
+  private void closeCurrentChild(int index) throws Exception {
+    children.get(index).close();
+    children.set(index, null);
   }
 
   @Override
@@ -106,8 +117,9 @@ public class IdentitySinkOperator implements Operator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
+    for (int i = downStreamChannelIndex.getCurrentIndex(), n = children.size(); i < n; i++) {
+      Validate.notNull(children.get(i));
+      children.get(i).close();
     }
   }
 

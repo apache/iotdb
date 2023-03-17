@@ -94,7 +94,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return child.hasNextWithTimer();
   }
 

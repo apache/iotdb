@@ -74,7 +74,7 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !sourceHandle.isFinished();
   }
 

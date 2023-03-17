@@ -131,7 +131,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !finished;
   }
 
@@ -144,14 +144,18 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
     cachedTsBlock = null;
 
-    if (child.hasNextWithTimer()) {
-      TsBlock inputTsBlock = child.nextWithTimer();
-      processTsBlock(inputTsBlock);
+    try {
+      if (child.hasNextWithTimer()) {
+        TsBlock inputTsBlock = child.nextWithTimer();
+        processTsBlock(inputTsBlock);
 
-      // call child.next only once
-      return null;
-    } else {
-      return tryToReturnResultTsBlock();
+        // call child.next only once
+        return null;
+      } else {
+        return tryToReturnResultTsBlock();
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

@@ -119,8 +119,12 @@ public class AggregationOperatorTest {
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
       blocked.get();
-      if (!aggregationOperator.hasNext()) {
-        break;
+      try {
+        if (!aggregationOperator.hasNext()) {
+          break;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
@@ -160,8 +164,12 @@ public class AggregationOperatorTest {
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
       blocked.get();
-      if (!aggregationOperator.hasNext()) {
-        break;
+      try {
+        if (!aggregationOperator.hasNext()) {
+          break;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
@@ -208,8 +216,12 @@ public class AggregationOperatorTest {
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
       blocked.get();
-      if (!aggregationOperator.hasNext()) {
-        break;
+      try {
+        if (!aggregationOperator.hasNext()) {
+          break;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
@@ -259,8 +271,12 @@ public class AggregationOperatorTest {
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
       blocked.get();
-      if (!aggregationOperator.hasNext()) {
-        break;
+      try {
+        if (!aggregationOperator.hasNext()) {
+          break;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
