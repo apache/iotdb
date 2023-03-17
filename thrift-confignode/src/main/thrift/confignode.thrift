@@ -1100,6 +1100,11 @@ service IConfigNodeRPCService {
    */
   TGetPipePluginTableResp getPipePluginTable();
 
+    /**
+       * Return the pipe plugin jar list of the plugin name list
+       */
+    TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
+
   // ======================================================
   // Maintenance Tools
   // ======================================================

@@ -27,12 +27,16 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipePluginAgent {
@@ -87,13 +91,56 @@ public class PipePluginAgent {
     }
   }
 
+  public boolean isLocalJarConflicted(PipePluginMeta pipePluginMeta)
+      throws PipeManagementException {
+    String pluginName = pipePluginMeta.getPluginName();
+    String existedMd5 = "";
+    String md5FilePath = pluginName.toUpperCase() + ".txt";
+
+    // if meet error when reading md5 from txt, we need to compute it again
+    boolean hasComputed = false;
+    if (PipePluginExecutableManager.getInstance().hasFileUnderTemporaryRoot(md5FilePath)) {
+      try {
+        existedMd5 =
+            PipePluginExecutableManager.getInstance()
+                .readTextFromFileUnderTemporaryRoot(md5FilePath);
+        hasComputed = true;
+      } catch (IOException e) {
+        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+      }
+    }
+    if (!hasComputed) {
+      try {
+        existedMd5 =
+            DigestUtils.md5Hex(
+                Files.newInputStream(
+                    Paths.get(
+                        PipePluginExecutableManager.getInstance().getInstallDir()
+                            + File.separator
+                            + pipePluginMeta.getJarName())));
+        // save the md5 in a txt under pipe temporary lib
+        PipePluginExecutableManager.getInstance()
+            .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
+      } catch (IOException e) {
+        String errorMessage =
+            String.format(
+                "Failed to registered pipe plugin %s, "
+                    + "because error occurred when trying to compute md5 of jar file for pipe plugin %s ",
+                pluginName, pluginName);
+        LOGGER.warn(errorMessage, e);
+        throw new PipeManagementException(errorMessage);
+      }
+    }
+    return !existedMd5.equals(pipePluginMeta.getJarMD5());
+  }
+
   private void saveJarFileIfNeeded(String jarName, ByteBuffer byteBuffer) throws IOException {
     if (byteBuffer != null) {
       PipePluginExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
     }
   }
 
-  private void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
+  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();
 
