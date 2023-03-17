@@ -253,7 +253,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public List<Long> getAllSatisfiedTimePartitions(String deviceId, Filter timeFilter) {
     if (deviceId == null) {
-      return newlyFlushedPartitionLatestFlushedTimeForEachDevice.keySet().stream()
+      return partitionLatestFlushedTimeForEachDevice.keySet().stream()
           .filter(
               stringLongMap -> {
                 long[] startAndEndTime =
@@ -263,7 +263,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
               })
           .collect(Collectors.toList());
     } else {
-      return newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet().stream()
+      return partitionLatestFlushedTimeForEachDevice.entrySet().stream()
           .filter(
               entry -> {
                 long[] startAndEndTime =
