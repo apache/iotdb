@@ -301,17 +301,12 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private boolean currentNull = false;
 
       @Override
-      public YieldableState yield() throws IOException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
 
-        final YieldableState yieldableState;
-        try {
-          yieldableState = canYieldNextRowInObjects();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
+        final YieldableState yieldableState = canYieldNextRowInObjects();
         if (yieldableState != YieldableState.YIELDABLE) {
           return yieldableState;
         }
@@ -389,7 +384,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int beginIndex = -slidingStep;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -522,7 +517,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int nextIndexBegin = 0;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
             final YieldableState yieldableState =
@@ -699,7 +694,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int nextIndexEnd = 1;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (rowRecordList.size() == 0) {
             final YieldableState yieldableState =

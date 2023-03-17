@@ -96,7 +96,7 @@ public class LayerCacheUtils {
   /** @return number of actually collected, which may be less than or equals to rowsNumber */
   public static YieldableState yieldRows(
       IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
-      throws QueryProcessException, IOException {
+      throws Exception {
     int count = 0;
     while (count < rowsNumber) {
       final YieldableState yieldableState = yieldRow(source, target);
@@ -109,14 +109,9 @@ public class LayerCacheUtils {
   }
 
   public static YieldableState yieldRow(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target)
-      throws IOException, QueryProcessException {
-    final YieldableState yieldableState;
-    try {
-      yieldableState = source.canYieldNextRowInObjects();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+      IUDFInputDataSet source, ElasticSerializableRowRecordList target) throws Exception {
+    final YieldableState yieldableState = source.canYieldNextRowInObjects();
+
     if (yieldableState == YieldableState.YIELDABLE) {
       target.put(source.nextRowInObjects());
     }
