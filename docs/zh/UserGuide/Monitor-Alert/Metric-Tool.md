@@ -249,7 +249,24 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region | name="{ip}:{port}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
-#### 4.2.2. IoT共识协议统计
+#### 4.2.2. Ratis共识协议统计
+
+| Metric                | Tags                       | Type  | Description                                            |
+| --------------------- | -------------------------- | ----- | ------------------------------------------------------ |
+| ratis_consensus_write | stage="writeLocally"       | Timer | 本地写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeRemotely"      | Timer | 远程写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeStateMachine"  | Timer | 写入状态机阶段的时间                                   |
+| ratis_server          | clientWriteRequest         | Timer | 处理来自客户端写请求的时间                             |
+| ratis_server          | followerAppendEntryLatency | Timer | 跟随者追加日志条目的总时间                             |
+| ratis_log_worker      | appendEntryLatency         | Timer | 领导者追加日志条目的总时间                             |
+| ratis_log_worker      | queueingDelay              | Timer | 一个 Raft 日志操作被请求后进入队列的时间，等待队列未满 |
+| ratis_log_worker      | enqueuedTime               | Timer | 一个 Raft 日志操作在队列中的时间                       |
+| ratis_log_worker      | writelogExecutionTime      | Timer | 一个 Raft 日志写入操作完成执行的时间                   |
+| ratis_log_worker      | flushTime                  | Timer | 刷新日志的时间                                         |
+| ratis_log_worker      | closedSegmentsSizeInBytes  | Gauge | 关闭的 Raft 日志段的总大小                             |
+| ratis_log_worker      | openSegmentSizeInBytes     | Gauge | 打开的 Raft 日志段的总大小                             |
+
+#### 4.2.3. IoT共识协议统计
 
 | Metric        | Tags                                                                                   | Type      | Description                       |
 | ------------- | -------------------------------------------------------------------------------------- | --------- | --------------------------------- |
@@ -268,7 +285,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | stage         | name="iot_consensus", region="{region}", type="constructBatch"                         | Histogram | 同步线程构造 Batch 耗时           |
 | stage         | name="iot_consensus", region="{region}", type="syncLogTimePerRequest"                  | Histogram | 异步回调流程同步日志耗时          |
 
-#### 4.2.3. 缓存统计
+#### 4.2.4. 缓存统计
 
 | Metric    | Tags                               | Type      | Description                                             |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
@@ -283,17 +300,18 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
 | cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
 
-#### 4.2.4. 内存统计
-| Metric | Tags                             | Type      | Description                                       |
-| ------ | -------------------------------- | --------- | ------------------------------------------------- |
-| mem    | name="database_{name}"           | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
-| mem    | name="chunkMetaData_{name}"      | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"              | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
-| mem    | name="IoTConsensusQueue"         | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte         |
-| mem    | name="IoTConsensusSync"          | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
-| mem    | name="schema_region_total_usage" | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
+#### 4.2.5. 内存统计
 
-#### 4.2.5. 合并统计
+| Metric | Tags                                 | Type      | Description                                       |
+| ------ | ------------------------------------ | --------- | ------------------------------------------------- |
+| mem    | name="database_{name}"               | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{name}"          | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="IoTConsensusQueue"             | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte         |
+| mem    | name="IoTConsensusSync"              | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
+| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
+
+#### 4.2.6. 合并统计
 
 | Metric                | Tags                                                | Type    | Description        |
 | --------------------- | --------------------------------------------------- | ------- | ------------------ |
@@ -303,7 +321,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
-#### 4.2.6. IoTDB 进程统计
+#### 4.2.7. IoTDB 进程统计
 
 | Metric                | Tags           | Type      | Description                          |
 | --------------------- | -------------- | --------- | ------------------------------------ |
@@ -312,20 +330,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
 | process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
-#### 4.2.7. JVM 类加载统计
+#### 4.2.8. JVM 类加载统计
 
 | Metric                       | Tags | Type      | Description         |
 | ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-#### 4.2.8. JVM 编译时间统计
+#### 4.2.9. JVM 编译时间统计
 
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-#### 4.2.9. 查询规划耗时统计
+#### 4.2.10. 查询规划耗时统计
 
 | Metric          | Tags                         | Type  | Description                |
 | --------------- | ---------------------------- | ----- | -------------------------- |
@@ -335,14 +353,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
 | query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
 
-#### 4.2.10. 执行计划分发耗时统计
+#### 4.2.11. 执行计划分发耗时统计
 
 | Metric     | Tags                      | Type  | Description          |
 | ---------- | ------------------------- | ----- | -------------------- |
 | dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
 | dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
 
-#### 4.2.11. 查询资源访问统计
+#### 4.2.12. 查询资源访问统计
 
 | Metric         | Tags                     | Type | Description                |
 | -------------- | ------------------------ | ---- | -------------------------- |
@@ -351,7 +369,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
 | query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
 
-#### 4.2.12. 数据传输模块统计
+#### 4.2.13. 数据传输模块统计
 
 | Metric              | Tags                                                                   | Type      | Description                             |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
@@ -365,7 +383,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
 
-#### 4.2.13. 查询任务调度统计
+#### 4.2.14. 查询任务调度统计
 
 | Metric           | Tags                           | Type      | Description        |
 | ---------------- | ------------------------------ | --------- | ------------------ |
@@ -374,7 +392,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
 
-#### 4.2.14. 查询执行耗时统计
+#### 4.2.15. 查询执行耗时统计
 
 | Metric                   | Tags                                                                                | Type    | Description                                    |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
