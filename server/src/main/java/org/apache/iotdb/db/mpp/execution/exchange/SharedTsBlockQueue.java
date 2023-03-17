@@ -151,7 +151,7 @@ public class SharedTsBlockQueue {
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
-      LOGGER.warn("The queue has been destroyed when calling setNoMoreTsBlocks.");
+      LOGGER.debug("The queue has been destroyed when calling setNoMoreTsBlocks.");
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;

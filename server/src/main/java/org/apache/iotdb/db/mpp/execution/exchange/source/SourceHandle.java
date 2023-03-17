@@ -373,8 +373,8 @@ public class SourceHandle implements ISourceHandle {
           .getQueryPool()
           .clearMemoryReservationMap(
               localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-      executorService.submit(new SendCloseSinkChannelEventTask());
       closed = true;
+      executorService.submit(new SendCloseSinkChannelEventTask());
       currSequenceId = lastSequenceId + 1;
       sourceHandleListener.onFinished(this);
     }
