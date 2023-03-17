@@ -41,8 +41,7 @@ public class PipePluginAgent {
 
   private final ReentrantLock lock = new ReentrantLock();
 
-  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper =
-      new DataNodePipePluginMetaKeeper();
+  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
   /////////////////////////////// Lock ///////////////////////////////
 
@@ -181,13 +180,18 @@ public class PipePluginAgent {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipePluginAgent() {}
-
-  private static class PipePluginAgentServiceHolder {
-    private static final PipePluginAgent INSTANCE = new PipePluginAgent();
+  private PipePluginAgent(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
   }
 
-  static PipePluginAgent getInstance() {
-    return PipePluginAgentServiceHolder.INSTANCE;
+  private static class PipePluginAgentServiceHolder {
+    private static PipePluginAgent instance = null;
+  }
+
+  static PipePluginAgent setupAndGetInstance(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+    if (PipePluginAgentServiceHolder.instance == null) {
+      PipePluginAgentServiceHolder.instance = new PipePluginAgent(pipePluginMetaKeeper);
+    }
+    return PipePluginAgentServiceHolder.instance;
   }
 }

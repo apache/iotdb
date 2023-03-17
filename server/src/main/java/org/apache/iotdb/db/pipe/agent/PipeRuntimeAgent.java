@@ -26,10 +26,13 @@ public class PipeRuntimeAgent {
   private PipeRuntimeAgent() {}
 
   private static class PipeRuntimeAgentHolder {
-    private static final PipeRuntimeAgent INSTANCE = new PipeRuntimeAgent();
+    private static PipeRuntimeAgent INSTANCE = null;
   }
 
-  static PipeRuntimeAgent getInstance() {
-    return PipeRuntimeAgent.PipeRuntimeAgentHolder.INSTANCE;
+  static PipeRuntimeAgent setupAndGetInstance() {
+    if (PipeRuntimeAgentHolder.INSTANCE == null) {
+      PipeRuntimeAgentHolder.INSTANCE = new PipeRuntimeAgent();
+    }
+    return PipeRuntimeAgentHolder.INSTANCE;
   }
 }

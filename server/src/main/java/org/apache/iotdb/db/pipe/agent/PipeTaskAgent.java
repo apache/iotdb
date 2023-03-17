@@ -26,10 +26,13 @@ public class PipeTaskAgent {
   private PipeTaskAgent() {}
 
   private static class PipeTaskAgentHolder {
-    private static final PipeTaskAgent INSTANCE = new PipeTaskAgent();
+    private static PipeTaskAgent instance = null;
   }
 
-  static PipeTaskAgent getInstance() {
-    return PipeTaskAgent.PipeTaskAgentHolder.INSTANCE;
+  static PipeTaskAgent setupAndGetInstance() {
+    if (PipeTaskAgentHolder.instance == null) {
+      PipeTaskAgentHolder.instance = new PipeTaskAgent();
+    }
+    return PipeTaskAgentHolder.instance;
   }
 }

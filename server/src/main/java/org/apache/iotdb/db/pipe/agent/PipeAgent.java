@@ -19,10 +19,28 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
+import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+
+/** PipeAgent is the entry point of the pipe module in DatNode. */
 public class PipeAgent {
 
+  private final PipePluginAgent pipePluginAgent;
+  private final PipeTaskAgent pipeTaskAgent;
+  private final PipeRuntimeAgent pipeRuntimeAgent;
+
   /** Private constructor to prevent users from creating a new instance. */
-  private PipeAgent() {}
+  private PipeAgent() {
+    final DataNodePipePluginMetaKeeper pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
+
+    pipePluginAgent = PipePluginAgent.setupAndGetInstance(pipePluginMetaKeeper);
+    pipeTaskAgent = PipeTaskAgent.setupAndGetInstance();
+    pipeRuntimeAgent = PipeRuntimeAgent.setupAndGetInstance();
+  }
+
+  /** The singleton holder of PipeAgent. */
+  private static class PipeAgentHolder {
+    private static final PipeAgent HANDLE = new PipeAgent();
+  }
 
   /**
    * Get the singleton instance of PipeTaskAgent.
@@ -30,7 +48,7 @@ public class PipeAgent {
    * @return the singleton instance of PipeTaskAgent
    */
   public static PipeTaskAgent task() {
-    return PipeTaskAgent.getInstance();
+    return PipeAgentHolder.HANDLE.pipeTaskAgent;
   }
 
   /**
@@ -39,7 +57,7 @@ public class PipeAgent {
    * @return the singleton instance of PipePluginAgent
    */
   public static PipePluginAgent plugin() {
-    return PipePluginAgent.getInstance();
+    return PipeAgentHolder.HANDLE.pipePluginAgent;
   }
 
   /**
@@ -48,6 +66,6 @@ public class PipeAgent {
    * @return the singleton instance of PipeRuntimeAgent
    */
   public static PipeRuntimeAgent runtime() {
-    return PipeRuntimeAgent.getInstance();
+    return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
   }
 }
