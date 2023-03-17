@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -97,13 +98,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
             req.getStartSequenceId(),
             req.getEndSequenceId());
+        TGetDataBlockResponse resp = new TGetDataBlockResponse(new ArrayList<>());
         if (!shuffleSinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
-          throw new TException(
-              "Source fragment instance not found. Fragment instance ID: "
-                  + req.getSourceFragmentInstanceId()
-                  + ".");
+          return resp;
         }
-        TGetDataBlockResponse resp = new TGetDataBlockResponse();
         // index of the channel must be a SinkChannel
         SinkChannel sinkChannelHandle =
             (SinkChannel)
