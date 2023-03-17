@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.CreatePipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -46,7 +46,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipePluginState> {
+public class CreatePipePluginProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, CreatePipePluginState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipePluginProcedure.class);
 
   private static final int RETRY_THRESHOLD = 5;
@@ -74,8 +75,6 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     PipePluginInfo pipePluginInfo =
         env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
 
-    boolean needToSaveJar =
-        pipePluginInfo.isJarNeededToBeSavedWhenCreatingPipePlugin(pipePluginMeta.getJarName());
     try {
       switch (state) {
         case LOCK:
@@ -92,6 +91,9 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
           ConfigManager configNodeManager = env.getConfigManager();
           LOGGER.info("Creating pipe plugin {} on config node", pipePluginMeta.getPluginName());
 
+          final boolean needToSaveJar =
+              pipePluginInfo.isJarNeededToBeSavedWhenCreatingPipePlugin(
+                  pipePluginMeta.getJarName());
           final CreatePipePluginPlan createPluginPlan =
               new CreatePipePluginPlan(pipePluginMeta, needToSaveJar ? new Binary(jarFile) : null);
 
@@ -108,12 +110,8 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         case CREATE_ON_DATA_NODES:
           LOGGER.info("Creating pipe plugin {} on data nodes", pipePluginMeta.getPluginName());
 
-          needToSaveJar =
-              pipePluginInfo.isJarNeededToBeSavedWhenCreatingPipePlugin(
-                  pipePluginMeta.getJarName());
           if (RpcUtils.squashResponseStatusList(
-                      env.createPipePluginOnDataNodes(
-                          pipePluginMeta, needToSaveJar ? jarFile : null))
+                      env.createPipePluginOnDataNodes(pipePluginMeta, jarFile))
                   .getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             setNextState(CreatePipePluginState.UNLOCK);
@@ -155,7 +153,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         }
       }
     }
-    return Flow.NO_MORE_STATE;
+    return Flow.HAS_MORE_STATE;
   }
 
   @Override

@@ -105,6 +105,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     } catch (PipeManagementException e) {
       // if the pipe plugin is not exist, we should end the procedure
       LOGGER.warn(e.getMessage());
+      setFailure(new ProcedureException(e.getMessage()));
       pipePluginInfo.releasePipePluginInfoLock();
       return Flow.NO_MORE_STATE;
     } catch (Exception e) {
