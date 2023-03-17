@@ -64,7 +64,7 @@ public class NodePathsCountOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     while (!child.isFinished()) {
       // read as much child result as possible
       ListenableFuture<?> blocked = child.isBlocked();

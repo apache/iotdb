@@ -119,7 +119,7 @@ public class TimeJoinOperator extends AbstractOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }

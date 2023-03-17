@@ -131,7 +131,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -344,7 +344,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -557,7 +557,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -770,7 +770,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -937,7 +937,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.FLOAT));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + index);
@@ -1057,7 +1057,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.FLOAT));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + (6 - index));
@@ -1177,7 +1177,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.BOOLEAN));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + index);

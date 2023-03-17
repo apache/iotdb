@@ -66,7 +66,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (isReadingStorageGroupInfo) {
       isReadingStorageGroupInfo = false;
       return generateStorageGroupInfo();

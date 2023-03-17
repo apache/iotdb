@@ -136,7 +136,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {

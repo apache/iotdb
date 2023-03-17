@@ -129,7 +129,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }

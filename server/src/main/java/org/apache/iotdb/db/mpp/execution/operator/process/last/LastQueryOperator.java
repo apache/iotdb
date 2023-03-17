@@ -85,7 +85,7 @@ public class LastQueryOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     // we have consumed up data from children Operator, just return all remaining cached data in
     // tsBlockBuilder

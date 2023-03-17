@@ -91,7 +91,7 @@ public class ShuffleHelperOperator implements Operator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (needToReturnNull) {
       needToReturnNull = false;
       return null;

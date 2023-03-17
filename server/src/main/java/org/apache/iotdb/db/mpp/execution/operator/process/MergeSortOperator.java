@@ -83,7 +83,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long startTime = System.nanoTime();
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);

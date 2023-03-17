@@ -64,7 +64,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock tsBlock = inputOperator.nextWithTimer();
     if (tsBlock == null) {
       return null;

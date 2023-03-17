@@ -80,7 +80,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     try {
       if (!hasNext()) {
         throw new NoSuchElementException();

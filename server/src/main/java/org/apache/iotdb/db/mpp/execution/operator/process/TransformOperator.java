@@ -188,7 +188,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();

@@ -126,7 +126,12 @@ public class AggregationOperatorTest {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      try {
+        resultTsBlock = aggregationOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (resultTsBlock == null) {
         continue;
       }
@@ -171,7 +176,12 @@ public class AggregationOperatorTest {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      try {
+        resultTsBlock = aggregationOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (resultTsBlock == null) {
         continue;
       }
@@ -223,7 +233,12 @@ public class AggregationOperatorTest {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      try {
+        resultTsBlock = aggregationOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (resultTsBlock == null) {
         continue;
       }
@@ -278,7 +293,12 @@ public class AggregationOperatorTest {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      try {
+        resultTsBlock = aggregationOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (resultTsBlock == null) {
         continue;
       }

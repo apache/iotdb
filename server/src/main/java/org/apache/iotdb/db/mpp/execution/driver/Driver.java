@@ -223,7 +223,7 @@ public abstract class Driver implements IDriver {
       List<StackTraceElement> interrupterStack = exclusiveLock.getInterrupterStack();
       if (interrupterStack == null) {
         driverContext.failed(t);
-        throw t;
+        throw new RuntimeException(t);
       }
 
       // Driver thread was interrupted which should only happen if the task is already finished.

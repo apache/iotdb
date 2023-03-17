@@ -104,7 +104,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = timeArray[index].length - 1; i >= 0; i--) {
               LastQueryUtil.appendLastValue(
@@ -172,7 +172,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = timeArray[index].length - 1; i >= 0; i--) {
               LastQueryUtil.appendLastValue(
@@ -249,7 +249,12 @@ public class LastQueryMergeOperatorTest {
     int count = timeArray.length - 1;
     while (!lastQueryMergeOperator.isFinished()) {
       assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-      TsBlock result = lastQueryMergeOperator.next();
+      TsBlock result = null;
+      try {
+        result = lastQueryMergeOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (result == null) {
         continue;
       }
@@ -308,7 +313,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               LastQueryUtil.appendLastValue(
@@ -376,7 +381,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               LastQueryUtil.appendLastValue(
@@ -453,7 +458,12 @@ public class LastQueryMergeOperatorTest {
     int count = 0;
     while (!lastQueryMergeOperator.isFinished()) {
       assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-      TsBlock result = lastQueryMergeOperator.next();
+      TsBlock result = null;
+      try {
+        result = lastQueryMergeOperator.next();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (result == null) {
         continue;
       }

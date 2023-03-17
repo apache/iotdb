@@ -113,7 +113,7 @@ public class DeviceMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // get new input TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
       try {

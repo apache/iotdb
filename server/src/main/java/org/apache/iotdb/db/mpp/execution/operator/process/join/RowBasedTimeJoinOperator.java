@@ -120,7 +120,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -305,7 +305,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     inputIndex[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
   }

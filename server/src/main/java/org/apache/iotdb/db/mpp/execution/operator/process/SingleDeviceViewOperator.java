@@ -81,7 +81,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock tsBlock = deviceOperator.nextWithTimer();
     if (tsBlock == null) {
       return null;

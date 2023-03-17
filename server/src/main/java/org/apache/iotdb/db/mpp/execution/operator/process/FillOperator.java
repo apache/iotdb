@@ -57,7 +57,7 @@ public class FillOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock block = child.nextWithTimer();
     if (block == null) {
       return null;

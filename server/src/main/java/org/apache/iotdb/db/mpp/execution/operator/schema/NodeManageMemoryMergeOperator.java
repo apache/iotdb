@@ -74,7 +74,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (isReadingMemory) {
       isReadingMemory = false;
       return transferToTsBlock(data);

@@ -41,7 +41,7 @@ public class LastCacheScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock res = tsBlock;
     tsBlock = null;
     return res;

@@ -69,7 +69,7 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     return sourceHandle.receive();
   }
 

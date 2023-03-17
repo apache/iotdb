@@ -165,7 +165,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   }
 
   @Override
-  public YieldableState canYieldNextRowInObjects() throws IOException {
+  public YieldableState canYieldNextRowInObjects() throws Exception {
     if (cachedRow != null) {
       return YieldableState.YIELDABLE;
     }
@@ -306,7 +306,12 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           return YieldableState.YIELDABLE;
         }
 
-        final YieldableState yieldableState = canYieldNextRowInObjects();
+        final YieldableState yieldableState;
+        try {
+          yieldableState = canYieldNextRowInObjects();
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
         if (yieldableState != YieldableState.YIELDABLE) {
           return yieldableState;
         }

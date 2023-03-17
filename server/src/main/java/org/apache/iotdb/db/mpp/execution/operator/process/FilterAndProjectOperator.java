@@ -94,7 +94,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock input = inputOperator.nextWithTimer();
     if (input == null) {
       return null;

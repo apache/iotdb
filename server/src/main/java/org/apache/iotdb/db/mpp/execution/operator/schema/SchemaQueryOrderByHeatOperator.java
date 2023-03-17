@@ -70,7 +70,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     try {
       if (!hasNext()) {
         throw new NoSuchElementException();

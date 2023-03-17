@@ -92,7 +92,7 @@ public class IdentitySinkOperator implements Operator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (needToReturnNull) {
       needToReturnNull = false;
       return null;

@@ -104,7 +104,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     // end time series for returned TsBlock this time, it's the min/max end time series among all
     // the children

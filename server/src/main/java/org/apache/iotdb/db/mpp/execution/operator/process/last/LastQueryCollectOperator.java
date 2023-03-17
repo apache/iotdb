@@ -60,7 +60,7 @@ public class LastQueryCollectOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     try {
       if (children.get(currentIndex).hasNextWithTimer()) {
         return children.get(currentIndex).nextWithTimer();

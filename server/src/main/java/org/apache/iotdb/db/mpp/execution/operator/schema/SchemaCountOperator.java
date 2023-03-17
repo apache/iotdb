@@ -69,7 +69,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     try {
       if (!hasNext()) {
         throw new NoSuchElementException();

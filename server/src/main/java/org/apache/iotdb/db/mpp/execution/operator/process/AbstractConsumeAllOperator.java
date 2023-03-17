@@ -124,7 +124,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     }
   }
 
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     return children.get(childIndex).nextWithTimer();
   }
 }

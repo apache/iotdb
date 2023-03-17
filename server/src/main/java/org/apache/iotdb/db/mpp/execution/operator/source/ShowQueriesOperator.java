@@ -60,7 +60,7 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock res = tsBlock;
     hasConsumed = true;
     tsBlock = null;

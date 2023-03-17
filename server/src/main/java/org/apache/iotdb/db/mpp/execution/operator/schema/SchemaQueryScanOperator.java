@@ -126,7 +126,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     try {
       if (!hasNext()) {
         throw new NoSuchElementException();

@@ -134,17 +134,21 @@ public class QueryDataSetInputLayer {
       }
 
       YieldableState yieldableState;
-      while (YieldableState.YIELDABLE.equals(
-          yieldableState = queryDataSet.canYieldNextRowInObjects())) {
-        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
-        rowRecordList.put(rowRecordCandidate);
-        if (rowRecordCandidate[columnIndex] != null
-            || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
-          hasCachedRowRecord = true;
-          cachedRowRecord = rowRecordCandidate;
-          currentRowIndex = rowRecordList.size() - 1;
-          return YieldableState.YIELDABLE;
+      try {
+        while (YieldableState.YIELDABLE.equals(
+            yieldableState = queryDataSet.canYieldNextRowInObjects())) {
+          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
+          rowRecordList.put(rowRecordCandidate);
+          if (rowRecordCandidate[columnIndex] != null
+              || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
+            hasCachedRowRecord = true;
+            cachedRowRecord = rowRecordCandidate;
+            currentRowIndex = rowRecordList.size() - 1;
+            return YieldableState.YIELDABLE;
+          }
         }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
       return yieldableState;
     }
@@ -244,7 +248,12 @@ public class QueryDataSetInputLayer {
         return YieldableState.YIELDABLE;
       }
 
-      final YieldableState yieldableState = queryDataSet.canYieldNextRowInObjects();
+      final YieldableState yieldableState;
+      try {
+        yieldableState = queryDataSet.canYieldNextRowInObjects();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
       if (YieldableState.YIELDABLE == yieldableState) {
         Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);

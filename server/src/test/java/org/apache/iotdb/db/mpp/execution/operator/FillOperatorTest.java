@@ -80,7 +80,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   int delta = index * 10000;
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
@@ -250,7 +250,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   int delta = index * 10000;
                   TsBlockBuilder builder =
                       new TsBlockBuilder(

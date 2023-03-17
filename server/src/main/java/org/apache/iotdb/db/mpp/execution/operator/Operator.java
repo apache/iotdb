@@ -38,7 +38,7 @@ public interface Operator extends AutoCloseable {
     return NOT_BLOCKED;
   }
 
-  default TsBlock nextWithTimer() {
+  default TsBlock nextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
 
@@ -51,7 +51,7 @@ public interface Operator extends AutoCloseable {
   }
 
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
-  TsBlock next();
+  TsBlock next() throws Exception;
 
   default boolean hasNextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
