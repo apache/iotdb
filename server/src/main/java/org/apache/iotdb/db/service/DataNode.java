@@ -876,7 +876,7 @@ public class DataNode implements DataNodeMBean {
       } else {
         try {
           // local jar has conflicts with jar on config node, add current pipePluginMeta to list
-          if (PipePluginAgent.getInstance().isLocalJarConflicted(pipePluginMeta)) {
+          if (!PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
             res.add(pipePluginMeta);
           }
         } catch (PipeManagementException e) {
