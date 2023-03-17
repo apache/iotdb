@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -249,12 +251,29 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public List<Long> getAllSatisfiedTimePartitions(String deviceId) {
-    return deviceId == null
-        ? new ArrayList<>(newlyFlushedPartitionLatestFlushedTimeForEachDevice.keySet())
-        : newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet().stream()
-            .filter(entry -> entry.getValue().containsKey(deviceId))
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toList());
+  public List<Long> getAllSatisfiedTimePartitions(String deviceId, Filter timeFilter) {
+    if (deviceId == null) {
+      return newlyFlushedPartitionLatestFlushedTimeForEachDevice.keySet().stream()
+          .filter(
+              stringLongMap -> {
+                long[] startAndEndTime =
+                    TimePartitionUtils.getStartAndEndTimeForTimePartition(stringLongMap);
+                return (timeFilter == null
+                    || timeFilter.satisfy(startAndEndTime[0], startAndEndTime[1]));
+              })
+          .collect(Collectors.toList());
+    } else {
+      return newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet().stream()
+          .filter(
+              entry -> {
+                long[] startAndEndTime =
+                    TimePartitionUtils.getStartAndEndTimeForTimePartition(entry.getKey());
+                return (timeFilter == null
+                        || timeFilter.satisfy(startAndEndTime[0], startAndEndTime[1]))
+                    && entry.getValue().containsKey(deviceId);
+              })
+          .map(Map.Entry::getKey)
+          .collect(Collectors.toList());
+    }
   }
 }

@@ -38,6 +38,17 @@ public class TimePartitionUtils {
     return timePartitionInterval;
   }
 
+  /**
+   * get start and end time(included) for one time partition
+   *
+   * @param timePartition time partition id
+   * @return long[2] {startTime, endTime(included)}
+   */
+  public static long[] getStartAndEndTimeForTimePartition(long timePartition) {
+    long startTime = timePartition * timePartitionInterval;
+    return new long[] {startTime, startTime + timePartitionInterval - 1};
+  }
+
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
