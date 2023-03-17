@@ -505,6 +505,9 @@ public class QueryStatement extends Statement {
       if (isOrderByTime()) {
         throw new SemanticException("Sorting by time is not yet supported in last queries.");
       }
+      if (seriesLimit != 0 || seriesOffset != 0) {
+        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
+      }
     }
 
     if (!isAlignByDevice() && !isLastQuery()) {

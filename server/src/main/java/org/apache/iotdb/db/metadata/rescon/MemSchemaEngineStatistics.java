@@ -20,10 +20,13 @@ package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record the global statistics of SchemaEngine in Memory mode */
@@ -38,6 +41,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   protected final AtomicLong memoryUsage = new AtomicLong(0);
 
   private final AtomicLong totalSeriesNumber = new AtomicLong(0);
+
+  private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
   private volatile boolean allowToCreateNewSeries = true;
 
@@ -82,12 +87,31 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get();
+    return totalSeriesNumber.get() + getTemplateSeriesNumber();
   }
 
   @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();
+  }
+
+  @Override
+  public long getTemplateSeriesNumber() {
+    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    return templateUsage.entrySet().stream()
+        .mapToLong(
+            i ->
+                (long) clusterTemplateManager.getTemplate(i.getKey()).getMeasurementNumber()
+                    * i.getValue())
+        .sum();
+  }
+
+  public void activateTemplate(int templateId) {
+    templateUsage.compute(templateId, (k, v) -> (v == null) ? 1 : v + 1);
+  }
+
+  public void deactivateTemplate(int templateId, int cnt) {
+    templateUsage.compute(templateId, (k, v) -> (v == null || v <= cnt) ? null : v - cnt);
   }
 
   public void addTimeseries(long addedNum) {

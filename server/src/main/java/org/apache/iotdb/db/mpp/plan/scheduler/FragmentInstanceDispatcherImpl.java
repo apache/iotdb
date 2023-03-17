@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -176,20 +177,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     AsyncPlanNodeSender asyncPlanNodeSender =
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
+
+    List<TSStatus> dataNodeFailureList = new ArrayList<>();
+
     // sync dispatch to local
+    long localScheduleStartTime = System.nanoTime();
     for (FragmentInstance localInstance : localInstances) {
       try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
         dispatchOneInstance(localInstance);
       } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+        dataNodeFailureList.add(e.getFailureStatus());
       } catch (Throwable t) {
         logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+        dataNodeFailureList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
       }
     }
+    PerformanceOverviewMetricsManager.recordScheduleLocalCost(
+        System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
@@ -201,7 +207,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
     }
-    return asyncPlanNodeSender.getResult();
+
+    dataNodeFailureList.addAll(asyncPlanNodeSender.getFailureStatusList());
+
+    if (dataNodeFailureList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    }
+    if (instances.size() == 1) {
+      return immediateFuture(new FragInstanceDispatchResult(dataNodeFailureList.get(0)));
+    } else {
+      List<TSStatus> failureStatusList = new ArrayList<>();
+      for (TSStatus dataNodeFailure : dataNodeFailureList) {
+        if (dataNodeFailure.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          failureStatusList.addAll(dataNodeFailure.getSubStatus());
+        } else {
+          failureStatusList.add(dataNodeFailure);
+        }
+      }
+      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+    }
   }
 
   private void dispatchOneInstance(FragmentInstance instance)

@@ -449,7 +449,10 @@ public class IoTDBStartCheck {
 
   private void throwException(String parameter, Object badValue) throws ConfigurationException {
     throw new ConfigurationException(
-        parameter, String.valueOf(badValue), properties.getProperty(parameter));
+        parameter,
+        String.valueOf(badValue),
+        properties.getProperty(parameter),
+        parameter + "can't be modified after first startup");
   }
 
   // reload properties from system.properties

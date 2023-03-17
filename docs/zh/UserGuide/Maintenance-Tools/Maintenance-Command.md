@@ -99,9 +99,14 @@ session.executeQueryStatement(String sql, long timeout)
 KILL QUERY <queryId>
 ```
 
-通过指定 `queryId` 可以中止指定的查询。
+通过指定 `queryId` 可以中止指定的查询，`queryId`是一个字符串，所以使用时需要添加引号。
 
 为了获取正在执行的查询 id，用户可以使用 [show queries](#show-queries) 命令，该命令将显示所有正在执行的查询列表。
+
+##### 示例
+```sql
+kill query '20221205_114444_00003_5'
+```
 
 #### 终止所有查询
 

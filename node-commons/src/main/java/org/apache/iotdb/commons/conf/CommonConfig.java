@@ -116,6 +116,8 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  private volatile boolean isStopping = false;
+
   private volatile String statusReason = null;
 
   /** Disk Monitor */
@@ -359,5 +361,13 @@ public class CommonConfig {
 
   public void setTargetMLNodeEndPoint(TEndPoint targetMLNodeEndPoint) {
     this.targetMLNodeEndPoint = targetMLNodeEndPoint;
+  }
+
+  public boolean isStopping() {
+    return isStopping;
+  }
+
+  public void setStopping(boolean stopping) {
+    isStopping = stopping;
   }
 }
