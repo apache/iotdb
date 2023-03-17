@@ -60,6 +60,118 @@
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 18,
+      "panels": [],
+      "title": "Disk Status",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 1,
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line+area"
+            }
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "disk_io_busy_percentage{instance=~\"$instance\", disk_id=~\"$disk\"}",
+          "legendFormat": "{{disk_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Disk I/O Busy Rate",
+      "type": "timeseries"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -109,17 +221,17 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "KBs"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 0
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
       },
-      "id": 2,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [
@@ -141,25 +253,195 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(received_bytes{instance=~\"$instance\", iface_name=~\"$iface\"}[1m])",
-          "legendFormat": "{{iface_name}}-{{type}}",
+          "expr": "rate(disk_io_size{instance=~\"$instance\", disk_id=~\"$disk\"}[1m])",
+          "legendFormat": "{{disk_id}}-{{type}}",
           "range": true,
           "refId": "A"
+        }
+      ],
+      "title": "Disk I/O Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "iops"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(transmitted_bytes{instance=~\"$instance\", iface_name=~\"$iface\"}[1m])",
-          "hide": false,
-          "legendFormat": "{{iface_name}}-{{type}}",
+          "expr": "rate(disk_io_ops{instance=~\"$instance\", disk_id=~\"$disk\"}[1m])",
+          "legendFormat": "{{disk_id}}-{{type}}",
           "range": true,
-          "refId": "B"
+          "refId": "A"
         }
       ],
-      "title": "Net Speed",
+      "title": "Disk I/O Ops",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "disk_io_avg_time{instance=~\"$instance\", disk_id=~\"$disk\"}",
+          "legendFormat": "{{disk_id}}-{{type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Disk Per I/O Avg Time",
       "type": "timeseries"
     },
     {
@@ -217,16 +499,16 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
-        "y": 10
+        "y": 17
       },
-      "id": 6,
+      "id": 12,
       "options": {
         "legend": {
           "calcs": [
-            "last"
+            "mean"
           ],
           "displayMode": "table",
           "placement": "right",
@@ -244,25 +526,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "received_bytes{instance=~\"$instance\",iface_name=~\"$iface\"}",
-          "legendFormat": "{{iface_name}}-{{type}}",
+          "expr": "disk_io_avg_size{instance=~\"$instance\", disk_id=~\"$disk\"}",
+          "legendFormat": "{{disk_id}}-{{type}}",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "transmitted_bytes{instance=~\"$instance\",iface_name=~\"$iface\"}",
-          "hide": false,
-          "legendFormat": "{{iface_name}}-{{type}}",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "Receive/Transmit Data Size",
+      "title": "Disk I/O Avg Size",
       "type": "timeseries"
     },
     {
@@ -314,18 +584,17 @@
                 "value": null
               }
             ]
-          },
-          "unit": "pps"
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 19
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
       },
-      "id": 4,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [
@@ -347,26 +616,27 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(received_packets{instance=~\"$instance\", iface_name=~\"$iface\"}[1m])",
-          "legendFormat": "{{iface_name}}-{{type}}",
+          "expr": "disk_io_avg_queue_size{instance=~\"$instance\", disk_id=~\"$disk\"}",
+          "legendFormat": "{{disk_id}}",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(transmitted_packets{instance=~\"$instance\", iface_name=~\"$iface\"}[1m])",
-          "hide": false,
-          "legendFormat": "{{iface_name}}-{{type}}",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "Packet Speed",
+      "title": "Disk I/O Avg Queue Size",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 20,
+      "panels": [],
+      "title": "Process",
+      "type": "row"
     },
     {
       "datasource": {
@@ -381,7 +651,6 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -409,7 +678,6 @@
               "mode": "off"
             }
           },
-          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -418,27 +686,30 @@
                 "color": "green"
               }
             ]
-          }
+          },
+          "unit": "KBs"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
-        "y": 29
+        "y": 26
       },
-      "id": 8,
+      "id": 16,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "asc"
         }
       },
       "targets": [
@@ -448,13 +719,103 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "connection_num{instance=~\"$instance\"}",
-          "legendFormat": "{{job}}-{{instance}}",
+          "expr": "rate(process_io_size{instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{from}}-{{name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Connection Num",
+      "title": "Process I/O Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_io_ops{instance=~\"$instance\"}[1m])",
+          "legendFormat": "{{from}}-{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "I/O System Call Rate",
       "type": "timeseries"
     }
   ],
@@ -471,9 +832,10 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(instance)",
+        "description": "",
         "hide": 0,
         "includeAll": false,
-        "multi": false,
+        "multi": true,
         "name": "instance",
         "options": [],
         "query": {
@@ -492,15 +854,14 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(iface_name)",
-        "description": "",
+        "definition": "label_values(disk_id)",
         "hide": 0,
         "includeAll": false,
         "multi": true,
-        "name": "iface",
+        "name": "disk",
         "options": [],
         "query": {
-          "query": "label_values(iface_name)",
+          "query": "label_values(disk_id)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -512,7 +873,7 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {
@@ -526,8 +887,8 @@
     ]
   },
   "timezone": "",
-  "title": "Apache IoTDB Network Dashboard",
-  "uid": "AXEPYc-Vz",
-  "version": 2,
+  "title": "Apache IoTDB Disk I/O Dashboard",
+  "uid": "TrJ0dsaVk",
+  "version": 15,
   "weekStart": ""
 }
