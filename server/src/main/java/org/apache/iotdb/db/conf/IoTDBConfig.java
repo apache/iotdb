@@ -1425,6 +1425,7 @@ public class IoTDBConfig {
 
   public void setPipeDir(String pipeDir) {
     this.pipeDir = pipeDir;
+    updatePipeTemporaryLibDir();
   }
 
   public String getPipeTemporaryLibDir() {
