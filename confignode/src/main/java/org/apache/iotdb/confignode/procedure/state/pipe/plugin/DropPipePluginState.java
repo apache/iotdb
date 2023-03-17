@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.pipe;
+package org.apache.iotdb.confignode.procedure.state.pipe.plugin;
 
-public enum CreatePipePluginState {
+public enum DropPipePluginState {
   LOCK,
-  CREATE_ON_CONFIG_NODES,
-  CREATE_ON_DATA_NODES,
+  DROP_ON_DATA_NODES,
+  DROP_ON_CONFIG_NODES,
   UNLOCK
 }

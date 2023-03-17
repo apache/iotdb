@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
@@ -25,8 +25,11 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.pipe.DropPipePluginState;
+import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -40,8 +43,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DropPipePluginProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, DropPipePluginState> {
+/**
+ * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
+ * DropPipePluginProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
+ * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
+ * time.
+ */
+public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePluginState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipePluginProcedure.class);
 
@@ -158,12 +166,10 @@ public class DropPipePluginProcedure
         rollbackFromLock(env);
         break;
       case DROP_ON_DATA_NODES:
-        // do nothing but wait for rolling back to the previous state: LOCK
-        // TODO: we should drop the pipe plugin on data nodes
+        rollbackFromDropOnDataNodes(env);
         break;
       case DROP_ON_CONFIG_NODES:
-        // do nothing but wait for rolling back to the previous state: DROP_ON_DATA_NODES
-        // TODO: we should drop the pipe plugin on config nodes
+        rollbackFromDropOnConfigNodes(env);
         break;
     }
   }
@@ -176,6 +182,20 @@ public class DropPipePluginProcedure
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .releasePipePluginInfoLock();
+  }
+
+  private void rollbackFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnDataNodes({})", pluginName);
+
+    // do nothing but wait for rolling back to the previous state: LOCK
+    // TODO: we should drop the pipe plugin on data nodes
+  }
+
+  private void rollbackFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnConfigNodes({})", pluginName);
+
+    // do nothing but wait for rolling back to the previous state: DROP_ON_DATA_NODES
+    // TODO: we should drop the pipe plugin on config nodes
   }
 
   @Override

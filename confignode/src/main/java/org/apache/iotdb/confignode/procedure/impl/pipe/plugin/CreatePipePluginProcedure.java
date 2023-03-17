@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -29,8 +29,11 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.pipe.CreatePipePluginState;
+import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.pipe.plugin.CreatePipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
@@ -46,8 +49,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreatePipePluginProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, CreatePipePluginState> {
+/**
+ * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
+ * CreatePipePluginProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
+ * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
+ * time.
+ */
+public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipePluginState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipePluginProcedure.class);
 
