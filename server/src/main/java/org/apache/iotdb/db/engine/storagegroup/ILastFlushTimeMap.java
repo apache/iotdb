@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.List;
 import java.util.Map;
 
 /** This interface manages last time and flush time for sequence and unsequence determination */
@@ -70,4 +71,6 @@ public interface ILastFlushTimeMap {
   void removePartition(long partitionId);
 
   long getMemSize(long partitionId);
+
+  List<Long> getAllSatisfiedTimePartitions(String deviceId);
 }

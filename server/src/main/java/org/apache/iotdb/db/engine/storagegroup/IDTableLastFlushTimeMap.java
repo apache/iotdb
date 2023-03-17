@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -183,5 +184,10 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
       return memCostForEachPartition.get(partitionId);
     }
     return 0;
+  }
+
+  @Override
+  public List<Long> getAllSatisfiedTimePartitions(String deviceId) {
+    return new ArrayList<>(partitionSet);
   }
 }
