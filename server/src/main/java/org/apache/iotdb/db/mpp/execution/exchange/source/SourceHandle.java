@@ -493,15 +493,18 @@ public class SourceHandle implements ISourceHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
             int tsBlockNum = resp.getTsBlocks().size();
-            if (tsBlockNum == 0 && !closed) {
-              // failed to pull TsBlocks
-              LOGGER.warn(
-                  "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
-                  localFragmentInstanceId,
-                  startSequenceId,
-                  endSequenceId,
-                  remoteFragmentInstanceId,
-                  indexOfUpstreamSinkHandle);
+            if (tsBlockNum == 0) {
+              if (!closed) {
+                // failed to pull TsBlocks
+                LOGGER.warn(
+                    "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
+                    localFragmentInstanceId,
+                    startSequenceId,
+                    endSequenceId,
+                    remoteFragmentInstanceId,
+                    indexOfUpstreamSinkHandle);
+              }
+              return;
             }
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
