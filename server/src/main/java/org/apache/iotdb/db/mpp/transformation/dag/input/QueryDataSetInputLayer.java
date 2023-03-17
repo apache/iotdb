@@ -113,7 +113,7 @@ public class QueryDataSetInputLayer {
     }
 
     @Override
-    public YieldableState yield() throws IOException, QueryProcessException {
+    public YieldableState yield() throws Exception {
       if (hasCachedRowRecord) {
         return YieldableState.YIELDABLE;
       }
@@ -134,21 +134,17 @@ public class QueryDataSetInputLayer {
       }
 
       YieldableState yieldableState;
-      try {
-        while (YieldableState.YIELDABLE.equals(
-            yieldableState = queryDataSet.canYieldNextRowInObjects())) {
-          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
-          rowRecordList.put(rowRecordCandidate);
-          if (rowRecordCandidate[columnIndex] != null
-              || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
-            hasCachedRowRecord = true;
-            cachedRowRecord = rowRecordCandidate;
-            currentRowIndex = rowRecordList.size() - 1;
-            return YieldableState.YIELDABLE;
-          }
+      while (YieldableState.YIELDABLE.equals(
+          yieldableState = queryDataSet.canYieldNextRowInObjects())) {
+        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
+        rowRecordList.put(rowRecordCandidate);
+        if (rowRecordCandidate[columnIndex] != null
+            || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
+          hasCachedRowRecord = true;
+          cachedRowRecord = rowRecordCandidate;
+          currentRowIndex = rowRecordList.size() - 1;
+          return YieldableState.YIELDABLE;
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
       }
       return yieldableState;
     }
@@ -235,7 +231,7 @@ public class QueryDataSetInputLayer {
   private class TimePointReader extends AbstractLayerPointReader {
 
     @Override
-    public YieldableState yield() throws IOException, QueryProcessException {
+    public YieldableState yield() throws Exception {
       if (hasCachedRowRecord) {
         return YieldableState.YIELDABLE;
       }
@@ -248,12 +244,7 @@ public class QueryDataSetInputLayer {
         return YieldableState.YIELDABLE;
       }
 
-      final YieldableState yieldableState;
-      try {
-        yieldableState = queryDataSet.canYieldNextRowInObjects();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      final YieldableState yieldableState = queryDataSet.canYieldNextRowInObjects();
       if (YieldableState.YIELDABLE == yieldableState) {
         Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);

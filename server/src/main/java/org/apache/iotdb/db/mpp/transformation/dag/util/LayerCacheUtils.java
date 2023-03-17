@@ -39,7 +39,7 @@ public class LayerCacheUtils {
       LayerPointReader source,
       ElasticSerializableTVList target,
       int pointNumber)
-      throws QueryProcessException, IOException {
+      throws Exception {
     int count = 0;
     while (count < pointNumber) {
       final YieldableState yieldableState = yieldPoint(dataType, source, target);
@@ -53,7 +53,7 @@ public class LayerCacheUtils {
 
   public static YieldableState yieldPoint(
       TSDataType dataType, LayerPointReader source, ElasticSerializableTVList target)
-      throws IOException, QueryProcessException {
+      throws Exception {
     final YieldableState yieldableState = source.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;

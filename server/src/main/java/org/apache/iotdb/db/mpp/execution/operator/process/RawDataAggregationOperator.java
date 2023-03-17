@@ -125,12 +125,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     if (windowManager.needSkipInAdvance()) {
       needSkip = true;
       inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
-      try {
-        if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
-          return canCallNext;
-        }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
+        return canCallNext;
       }
       needSkip = false;
     }

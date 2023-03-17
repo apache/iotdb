@@ -91,7 +91,7 @@ public class SeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testAggregationWithoutTimeFilter() throws IllegalPathException {
+  public void testAggregationWithoutTimeFilter() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
@@ -104,20 +104,18 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws IllegalPathException {
+  public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
@@ -130,20 +128,18 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilter1() throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilter1() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -158,21 +154,19 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
-        assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
+      assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilter2() throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilter2() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -191,26 +185,23 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
-        assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
-        assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
-        assertEquals(499, resultTsBlock.getColumn(3).getLong(0));
-        assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
-        assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
+      assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
+      assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
+      assertEquals(499, resultTsBlock.getColumn(3).getLong(0));
+      assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
+      assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilterOrderByTimeDesc()
-      throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -229,25 +220,23 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
-        assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
-        assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
-        assertEquals(499, resultTsBlock.getColumn(3).getLong(0));
-        assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
-        assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
+      assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
+      assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
+      assertEquals(499, resultTsBlock.getColumn(3).getLong(0));
+      assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
+      assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithTimeFilter1() throws IllegalPathException {
+  public void testAggregationWithTimeFilter1() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
@@ -261,20 +250,18 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithTimeFilter2() throws IllegalPathException {
+  public void testAggregationWithTimeFilter2() throws Exception {
     Filter timeFilter = TimeFilter.ltEq(379);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
@@ -288,20 +275,18 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithTimeFilter3() throws IllegalPathException {
+  public void testAggregationWithTimeFilter3() throws Exception {
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
@@ -315,20 +300,18 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(resultTsBlock.getColumn(0).getLong(0), 300);
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(resultTsBlock.getColumn(0).getLong(0), 300);
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testMultiAggregationWithTimeFilter() throws IllegalPathException {
+  public void testMultiAggregationWithTimeFilter() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -348,25 +331,23 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        assertEquals(20100, resultTsBlock.getColumn(0).getInt(0));
-        assertEquals(399, resultTsBlock.getColumn(1).getInt(0));
-        assertEquals(100, resultTsBlock.getColumn(2).getLong(0));
-        assertEquals(399, resultTsBlock.getColumn(3).getLong(0));
-        assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
-        assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
-        count++;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      assertEquals(20100, resultTsBlock.getColumn(0).getInt(0));
+      assertEquals(399, resultTsBlock.getColumn(1).getInt(0));
+      assertEquals(100, resultTsBlock.getColumn(2).getLong(0));
+      assertEquals(399, resultTsBlock.getColumn(3).getLong(0));
+      assertEquals(20199, resultTsBlock.getColumn(4).getInt(0));
+      assertEquals(260, resultTsBlock.getColumn(5).getInt(0));
+      count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testGroupByWithoutGlobalTimeFilter() throws IllegalPathException {
+  public void testGroupByWithoutGlobalTimeFilter() throws Exception {
     int[] result = new int[] {100, 100, 100, 99};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
@@ -381,24 +362,22 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupByWithGlobalTimeFilter() throws IllegalPathException {
+  public void testGroupByWithGlobalTimeFilter() throws Exception {
     int[] result = new int[] {0, 80, 100, 80};
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
@@ -414,24 +393,22 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupByWithMultiFunction() throws IllegalPathException {
+  public void testGroupByWithMultiFunction() throws Exception {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
@@ -456,27 +433,25 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
-          assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
-          assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
-          assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupByWithMultiFunctionOrderByTimeDesc() throws IllegalPathException {
+  public void testGroupByWithMultiFunctionOrderByTimeDesc() throws Exception {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
@@ -501,27 +476,25 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[0][3 - count], resultTsBlock.getColumn(0).getInt(pos));
-          assertEquals(result[1][3 - count], resultTsBlock.getColumn(1).getInt(pos));
-          assertEquals(result[2][3 - count], resultTsBlock.getColumn(2).getInt(pos));
-          assertEquals(result[3][3 - count], resultTsBlock.getColumn(3).getInt(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][3 - count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][3 - count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][3 - count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][3 - count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupBySlidingTimeWindow() throws IllegalPathException {
+  public void testGroupBySlidingTimeWindow() throws Exception {
     int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 49};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
@@ -536,24 +509,22 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(result.length, count);
   }
 
   @Test
-  public void testGroupBySlidingTimeWindow2() throws IllegalPathException {
+  public void testGroupBySlidingTimeWindow2() throws Exception {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[] result = new int[] {20, 10, 20, 10, 20, 10, 20, 10, 20, 9};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
@@ -569,24 +540,22 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(timeColumn.length, count);
   }
 
   @Test
-  public void testGroupBySlidingWindowWithMultiFunction() throws IllegalPathException {
+  public void testGroupBySlidingWindowWithMultiFunction() throws Exception {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[][] result =
         new int[][] {
@@ -612,22 +581,20 @@ public class SeriesAggregationScanOperatorTest {
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
-    try {
-      while (seriesAggregationScanOperator.hasNext()) {
-        TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
-          assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
-          assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
-          assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
-          assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
-          count++;
-        }
+
+    while (seriesAggregationScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregationScanOperator.next();
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
+
     assertEquals(timeColumn.length, count);
   }
 

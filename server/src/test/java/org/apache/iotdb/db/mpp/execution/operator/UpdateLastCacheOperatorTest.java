@@ -113,11 +113,9 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -145,11 +143,9 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -177,11 +173,9 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 

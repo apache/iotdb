@@ -184,18 +184,14 @@ public class SchemaCountOperatorTest {
     }
   }
 
-  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) {
+  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) throws Exception {
     List<TsBlock> tsBlocks = new ArrayList<>();
-    try {
-      while (operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null || tsBlock.isEmpty()) {
-          continue;
-        }
-        tsBlocks.add(tsBlock);
+    while (operator.hasNext()) {
+      TsBlock tsBlock = operator.next();
+      if (tsBlock == null || tsBlock.isEmpty()) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      tsBlocks.add(tsBlock);
     }
     return tsBlocks;
   }

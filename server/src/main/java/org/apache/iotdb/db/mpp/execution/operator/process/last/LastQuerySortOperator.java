@@ -187,11 +187,7 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    return !hasNextWithTimer();
   }
 
   @Override

@@ -140,8 +140,7 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  protected YieldableState iterateAllColumnsToNextValid()
-      throws QueryProcessException, IOException {
+  protected YieldableState iterateAllColumnsToNextValid() throws Exception {
     for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
       if (shouldIterateReadersToNextValid[i]) {
         final YieldableState yieldableState = iterateReaderToNextValid(transformers[i]);
@@ -154,8 +153,7 @@ public class TransformOperator implements ProcessOperator {
     return YieldableState.YIELDABLE;
   }
 
-  protected YieldableState iterateReaderToNextValid(LayerPointReader reader)
-      throws QueryProcessException, IOException {
+  protected YieldableState iterateReaderToNextValid(LayerPointReader reader) throws Exception {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
     // If keepNull is false, we must iterate the reader until a non-null row is returned.
@@ -255,7 +253,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
+      throws Exception {
     final YieldableState yieldableState = reader.yield();
 
     if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
@@ -275,7 +273,7 @@ public class TransformOperator implements ProcessOperator {
 
   protected YieldableState collectDataPoint(
       LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
-      throws QueryProcessException, IOException {
+      throws Exception {
     final YieldableState yieldableState = reader.yield();
     if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
       writer.appendNull();

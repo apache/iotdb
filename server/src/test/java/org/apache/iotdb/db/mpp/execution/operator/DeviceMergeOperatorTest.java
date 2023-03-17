@@ -93,7 +93,7 @@ public class DeviceMergeOperatorTest {
    * and the sensor0 column of device1 should be null.
    */
   @Test
-  public void deviceMergeOperatorTest() {
+  public void deviceMergeOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -231,8 +231,6 @@ public class DeviceMergeOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -247,7 +245,7 @@ public class DeviceMergeOperatorTest {
    * and the sensor0 column of device1 should be null.
    */
   @Test
-  public void deviceMergeOperatorTest2() {
+  public void deviceMergeOperatorTest2() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -376,8 +374,6 @@ public class DeviceMergeOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -393,7 +389,7 @@ public class DeviceMergeOperatorTest {
    * and the sensor0 column of device1 should be null.
    */
   @Test
-  public void deviceMergeOperatorTest3() {
+  public void deviceMergeOperatorTest3() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -564,8 +560,6 @@ public class DeviceMergeOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 }

@@ -55,12 +55,8 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
       if (operator.isBlocked() != Operator.NOT_BLOCKED) {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
-      try {
-        if (!operator.hasNextWithTimer()) {
-          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
-        }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      if (!operator.hasNextWithTimer()) {
+        return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
       final TsBlock tsBlock = operator.nextWithTimer();
       if (tsBlock == null) {
@@ -76,13 +72,9 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
       if (operator.isBlocked() != Operator.NOT_BLOCKED) {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
-      try {
-        return operator.hasNextWithTimer()
-            ? YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA
-            : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+      return operator.hasNextWithTimer()
+          ? YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA
+          : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
     }
   }
 

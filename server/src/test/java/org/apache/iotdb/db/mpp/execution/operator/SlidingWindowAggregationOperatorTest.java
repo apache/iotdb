@@ -133,7 +133,7 @@ public class SlidingWindowAggregationOperatorTest {
   }
 
   @Test
-  public void slidingWindowAggregationTest() throws IllegalPathException {
+  public void slidingWindowAggregationTest() throws Exception {
     String[] retArray =
         new String[] {
           "0,100,20049.5,2004950.0,20099,0,99,20000,20099,20000",
@@ -147,42 +147,35 @@ public class SlidingWindowAggregationOperatorTest {
     SlidingWindowAggregationOperator slidingWindowAggregationOperator1 =
         initSlidingWindowAggregationOperator(true);
     int count = 0;
-    try {
-      while (slidingWindowAggregationOperator1.hasNext()) {
-        TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
-        if (resultTsBlock == null) {
-          continue;
-        }
-        Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
-          count++;
-        }
+    while (slidingWindowAggregationOperator1.hasNext()) {
+      TsBlock resultTsBlock = slidingWindowAggregationOperator1.next();
+      if (resultTsBlock == null) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
+        count++;
+      }
     }
     Assert.assertEquals(retArray.length, count);
 
     SlidingWindowAggregationOperator slidingWindowAggregationOperator2 =
         initSlidingWindowAggregationOperator(false);
-    try {
-      while (slidingWindowAggregationOperator2.hasNext()) {
-        TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
-        if (resultTsBlock == null) {
-          continue;
-        }
-        Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-        int positionCount = resultTsBlock.getPositionCount();
-        for (int pos = 0; pos < positionCount; pos++) {
-          Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
-          count--;
-        }
+    while (slidingWindowAggregationOperator2.hasNext()) {
+      TsBlock resultTsBlock = slidingWindowAggregationOperator2.next();
+      if (resultTsBlock == null) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
+        count--;
+      }
     }
+
     Assert.assertEquals(0, count);
   }
 

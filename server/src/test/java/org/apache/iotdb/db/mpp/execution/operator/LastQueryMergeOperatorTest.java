@@ -63,7 +63,7 @@ public class LastQueryMergeOperatorTest {
   }
 
   @Test
-  public void testLastQueryMergeOperatorDesc() {
+  public void testLastQueryMergeOperatorDesc() throws Exception {
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -125,11 +125,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public boolean isFinished() throws Exception {
-            try {
-              return !hasNext();
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
+            return !hasNext();
           }
 
           @Override
@@ -193,11 +189,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public boolean isFinished() throws Exception {
-            try {
-              return !hasNext();
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
+            return !hasNext();
           }
 
           @Override
@@ -247,36 +239,30 @@ public class LastQueryMergeOperatorTest {
         };
 
     int count = timeArray.length - 1;
-    try {
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        TsBlock result = null;
-        try {
-          result = lastQueryMergeOperator.next();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-        if (result == null) {
-          continue;
-        }
-        assertEquals(3, result.getValueColumnCount());
+    while (!lastQueryMergeOperator.isFinished()) {
+      assertTrue(lastQueryMergeOperator.isBlocked().isDone());
+      TsBlock result = null;
+      result = lastQueryMergeOperator.next();
 
-        for (int i = 0; i < result.getPositionCount(); i++) {
-          assertEquals(timeArray[count], result.getTimeByIndex(i));
-          assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
-          assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
-          assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
-          count--;
-        }
+      if (result == null) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      assertEquals(3, result.getValueColumnCount());
+
+      for (int i = 0; i < result.getPositionCount(); i++) {
+        assertEquals(timeArray[count], result.getTimeByIndex(i));
+        assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
+        assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
+        assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
+        count--;
+      }
     }
+
     assertEquals(-1, count);
   }
 
   @Test
-  public void testLastQueryMergeOperatorAsc() {
+  public void testLastQueryMergeOperatorAsc() throws Exception {
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -338,11 +324,8 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public boolean isFinished() throws Exception {
-            try {
-              return !hasNext();
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
+
+            return !hasNext();
           }
 
           @Override
@@ -406,11 +389,8 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public boolean isFinished() throws Exception {
-            try {
-              return !hasNext();
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
+
+            return !hasNext();
           }
 
           @Override
@@ -460,30 +440,22 @@ public class LastQueryMergeOperatorTest {
         };
 
     int count = 0;
-    try {
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        TsBlock result = null;
-        try {
-          result = lastQueryMergeOperator.next();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-        if (result == null) {
-          continue;
-        }
-        assertEquals(3, result.getValueColumnCount());
-
-        for (int i = 0; i < result.getPositionCount(); i++) {
-          assertEquals(timeArray[count], result.getTimeByIndex(i));
-          assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
-          assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
-          assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
-          count++;
-        }
+    while (!lastQueryMergeOperator.isFinished()) {
+      assertTrue(lastQueryMergeOperator.isBlocked().isDone());
+      TsBlock result = null;
+      result = lastQueryMergeOperator.next();
+      if (result == null) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      assertEquals(3, result.getValueColumnCount());
+
+      for (int i = 0; i < result.getPositionCount(); i++) {
+        assertEquals(timeArray[count], result.getTimeByIndex(i));
+        assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
+        assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
+        assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
+        count++;
+      }
     }
 
     assertEquals(timeArray.length, count);
