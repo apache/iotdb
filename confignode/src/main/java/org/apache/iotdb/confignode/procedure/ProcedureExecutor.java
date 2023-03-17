@@ -441,7 +441,6 @@ public class ProcedureExecutor<Env> {
         } else if (proc.getState() == ProcedureState.WAITING_TIMEOUT) {
           LOG.info("Added into timeoutExecutor {}", proc);
         } else if (!suspended) {
-          LOG.info("Completed {}", proc);
           proc.setState(ProcedureState.SUCCESS);
         }
       }
