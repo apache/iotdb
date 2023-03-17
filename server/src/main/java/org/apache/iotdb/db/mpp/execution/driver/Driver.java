@@ -190,7 +190,7 @@ public abstract class Driver implements IDriver {
   private boolean isFinishedInternal() {
     checkLockHeld("Lock must be held to call isFinishedInternal");
 
-    boolean finished = false;
+    boolean finished;
     try {
       finished =
           state.get() != State.ALIVE
