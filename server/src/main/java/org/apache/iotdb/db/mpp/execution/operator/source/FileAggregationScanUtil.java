@@ -166,9 +166,15 @@ public class FileAggregationScanUtil {
     }
   }
 
-  private void updateAggregationResult(PartialPath groupedPath, Statistics statistics) {}
+  private void updateAggregationResult(PartialPath groupedPath, Statistics statistics) {
+    Statistics[] statisticsList = new Statistics[1];
+    statisticsList[0] = statistics;
+    pathToAggregatorMap.get(groupedPath).processStatistics(statisticsList);
+  }
 
-  private void updateAggregationResult(PartialPath groupedPath, TsBlock tsBlock) {}
+  private void updateAggregationResult(PartialPath groupedPath, TsBlock tsBlock) {
+    pathToAggregatorMap.get(groupedPath).processTsBlock(tsBlock, null, tsBlock.getPositionCount());
+  }
 
   private class PartialPathPool {
     Map<String, PartialPath> pool;
