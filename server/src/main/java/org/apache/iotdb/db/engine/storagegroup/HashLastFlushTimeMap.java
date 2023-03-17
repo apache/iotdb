@@ -22,9 +22,11 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
@@ -244,5 +246,15 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       return memCostForEachPartition.get(partitionId);
     }
     return 0;
+  }
+
+  @Override
+  public List<Long> getAllSatisfiedTimePartitions(String deviceId) {
+    return deviceId == null
+        ? new ArrayList<>(newlyFlushedPartitionLatestFlushedTimeForEachDevice.keySet())
+        : newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet().stream()
+            .filter(entry -> entry.getValue().containsKey(deviceId))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
   }
 }

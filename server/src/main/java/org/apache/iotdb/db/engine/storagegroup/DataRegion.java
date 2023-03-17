@@ -1700,9 +1700,10 @@ public class DataRegion implements IDataRegionForQuery {
       List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
       throws QueryProcessException {
     try {
+      List<Long> timePartitions = lastFlushTimeMap.getAllSatisfiedTimePartitions(singleDeviceId);
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
-              tsFileManager.getTsFileList(true),
+              tsFileManager.getTsFileList(timePartitions, true),
               upgradeSeqFileList,
               pathList,
               singleDeviceId,
@@ -1711,7 +1712,7 @@ public class DataRegion implements IDataRegionForQuery {
               true);
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
-              tsFileManager.getTsFileList(false),
+              tsFileManager.getTsFileList(timePartitions, false),
               upgradeUnseqFileList,
               pathList,
               singleDeviceId,
