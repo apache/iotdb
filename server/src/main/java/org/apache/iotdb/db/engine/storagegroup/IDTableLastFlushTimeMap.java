@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -187,7 +188,7 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public List<Long> getAllSatisfiedTimePartitions(String deviceId) {
+  public List<Long> getAllSatisfiedTimePartitions(String deviceId, Filter timeFilter) {
     return new ArrayList<>(partitionSet);
   }
 }

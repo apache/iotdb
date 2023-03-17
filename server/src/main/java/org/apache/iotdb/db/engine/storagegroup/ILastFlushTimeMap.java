@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
 import java.util.List;
 import java.util.Map;
 
@@ -72,5 +74,5 @@ public interface ILastFlushTimeMap {
 
   long getMemSize(long partitionId);
 
-  List<Long> getAllSatisfiedTimePartitions(String deviceId);
+  List<Long> getAllSatisfiedTimePartitions(String deviceId, Filter timeFilter);
 }
