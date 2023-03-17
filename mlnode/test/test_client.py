@@ -16,9 +16,10 @@
 # under the License.
 #
 
-pandas>=1.3.5
-numpy>=1.21.4
-apache-iotdb
-poetry
-torch
-pylru
+
+from iotdb.mlnode.client import client_manager
+
+
+def test_client_manager():
+    assert client_manager.borrow_data_node_client()
+    assert client_manager.borrow_config_node_client()

@@ -17,14 +17,16 @@
 #
 
 
-import os
 import json
-import torch
+import os
 import shutil
+
+import torch
 import torch.nn as nn
 from pylru import lrucache
-from iotdb.mlnode.exception import ModelNotExistError
+
 from iotdb.mlnode.config import config
+from iotdb.mlnode.exception import ModelNotExistError
 
 
 # TODO: Add permission check firstly

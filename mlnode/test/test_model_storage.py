@@ -19,21 +19,23 @@
 
 import os
 import time
+
 import torch.nn as nn
+
 from iotdb.mlnode.config import config
 from iotdb.mlnode.model_storage import model_storage
 
 
-class TestModel(nn.Module):
+class Model(nn.Module):
     def __init__(self):
-        super(TestModel, self).__init__()
+        super(Model, self).__init__()
         self.layer = nn.Identity()
 
     def forward(self, x):
         return self.layer(x)
 
 
-model = TestModel()
+model = Model()
 model_config = {
     'input_len': 1,
     'input_vars': 1,
