@@ -74,12 +74,8 @@ public class SortOperator implements ProcessOperator {
       cachedData.add(new MergeSortKey(tsBlock, i));
     }
     // child has more data, can't calculate
-    try {
-      if (inputOperator.hasNextWithTimer()) {
-        return null;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (inputOperator.hasNextWithTimer()) {
+      return null;
     }
 
     if (cachedData.size() > 1) {
@@ -117,7 +113,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return cachedData == null;
   }
 

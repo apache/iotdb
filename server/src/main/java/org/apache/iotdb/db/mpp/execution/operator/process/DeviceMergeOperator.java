@@ -116,17 +116,13 @@ public class DeviceMergeOperator implements ProcessOperator {
   public TsBlock next() throws Exception {
     // get new input TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
-      try {
-        if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = deviceOperators.get(i).nextWithTimer();
-          if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
-            return null;
-          }
-          deviceOfInputTsBlocks[i] = getDeviceNameFromTsBlock(inputTsBlocks[i]);
-          tryToAddCurDeviceTsBlockList(i);
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNextWithTimer()) {
+        inputTsBlocks[i] = deviceOperators.get(i).nextWithTimer();
+        if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
+          return null;
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+        deviceOfInputTsBlocks[i] = getDeviceNameFromTsBlock(inputTsBlocks[i]);
+        tryToAddCurDeviceTsBlockList(i);
       }
     }
     // move to next device
@@ -228,7 +224,7 @@ public class DeviceMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }

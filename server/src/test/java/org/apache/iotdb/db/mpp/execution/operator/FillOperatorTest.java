@@ -127,7 +127,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -296,7 +296,7 @@ public class FillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 

@@ -77,13 +77,10 @@ public class CountMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    try {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
+
     if (resultTsBlockList != null) {
       currentIndex++;
       return resultTsBlockList.get(currentIndex - 1);
@@ -93,17 +90,13 @@ public class CountMergeOperator implements ProcessOperator {
       if (childrenTsBlocks[i] == null) {
         // when this operator is not blocked, it means all children that have not return TsBlock is
         // not blocked.
-        try {
-          if (children.get(i).hasNextWithTimer()) {
-            TsBlock tsBlock = children.get(i).nextWithTimer();
-            if (tsBlock == null || tsBlock.isEmpty()) {
-              allChildrenReady = false;
-            } else {
-              childrenTsBlocks[i] = tsBlock;
-            }
+        if (children.get(i).hasNextWithTimer()) {
+          TsBlock tsBlock = children.get(i).nextWithTimer();
+          if (tsBlock == null || tsBlock.isEmpty()) {
+            allChildrenReady = false;
+          } else {
+            childrenTsBlocks[i] = tsBlock;
           }
-        } catch (Exception e) {
-          throw new RuntimeException(e);
         }
       }
     }
@@ -135,12 +128,8 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

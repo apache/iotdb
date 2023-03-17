@@ -81,12 +81,8 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   @Override
   public TsBlock next() throws Exception {
-    try {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
     return generateResult();
   }
@@ -144,12 +140,8 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

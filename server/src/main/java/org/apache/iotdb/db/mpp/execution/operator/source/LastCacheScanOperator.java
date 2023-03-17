@@ -53,12 +53,8 @@ public class LastCacheScanOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

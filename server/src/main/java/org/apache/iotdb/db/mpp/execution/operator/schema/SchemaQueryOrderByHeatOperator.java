@@ -71,12 +71,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    try {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
     if (resultTsBlockList != null) {
       currentIndex++;
@@ -91,19 +87,15 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         if (operator.isFinished()) {
           noMoreTsBlocks[i] = true;
         } else {
-          try {
-            if (operator.hasNextWithTimer()) {
-              TsBlock tsBlock = operator.nextWithTimer();
-              if (null != tsBlock && !tsBlock.isEmpty()) {
-                if (isShowTimeSeriesBlock(tsBlock)) {
-                  showTimeSeriesResult.add(tsBlock);
-                } else {
-                  lastQueryResult.add(tsBlock);
-                }
+          if (operator.hasNextWithTimer()) {
+            TsBlock tsBlock = operator.nextWithTimer();
+            if (null != tsBlock && !tsBlock.isEmpty()) {
+              if (isShowTimeSeriesBlock(tsBlock)) {
+                showTimeSeriesResult.add(tsBlock);
+              } else {
+                lastQueryResult.add(tsBlock);
               }
             }
-          } catch (Exception e) {
-            throw new RuntimeException(e);
           }
         }
       }
@@ -207,12 +199,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

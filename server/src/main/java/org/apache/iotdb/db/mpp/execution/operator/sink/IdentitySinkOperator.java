@@ -106,7 +106,7 @@ public class IdentitySinkOperator implements Operator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return isFinished;
   }
 

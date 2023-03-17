@@ -156,7 +156,7 @@ public class LinearFillOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return cachedTsBlock.isEmpty() && child.isFinished();
   }
 

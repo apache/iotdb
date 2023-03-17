@@ -76,7 +76,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   }
 
   @Override
-  protected boolean calculateNextAggregationResult() {
+  protected boolean calculateNextAggregationResult() throws Exception {
     if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
       // move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();
@@ -90,18 +90,14 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     while (!isCalculationDone()) {
       if (inputTsBlock == null) {
         // NOTE: child.next() can only be invoked once
-        try {
-          if (child.hasNextWithTimer() && canCallNext) {
-            inputTsBlock = child.nextWithTimer();
-            canCallNext = false;
-          } else if (child.hasNextWithTimer()) {
-            // if child still has next but can't be invoked now
-            return false;
-          } else {
-            break;
-          }
-        } catch (Exception e) {
-          throw new RuntimeException(e);
+        if (child.hasNextWithTimer() && canCallNext) {
+          inputTsBlock = child.nextWithTimer();
+          canCallNext = false;
+        } else if (child.hasNextWithTimer()) {
+          // if child still has next but can't be invoked now
+          return false;
+        } else {
+          break;
         }
       }
 

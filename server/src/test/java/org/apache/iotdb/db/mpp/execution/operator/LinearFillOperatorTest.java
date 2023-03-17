@@ -160,7 +160,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -373,7 +373,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -586,7 +586,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -799,7 +799,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -960,7 +960,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 
@@ -1080,7 +1080,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 
@@ -1200,7 +1200,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 

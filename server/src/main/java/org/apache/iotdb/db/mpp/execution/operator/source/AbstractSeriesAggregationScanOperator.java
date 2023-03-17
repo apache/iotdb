@@ -148,12 +148,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return finished || (finished = !hasNextWithTimer());
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return finished || (finished = !hasNextWithTimer());
   }
 
   protected void calculateNextAggregationResult() {

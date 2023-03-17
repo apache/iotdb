@@ -77,7 +77,7 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return remainingLimit == 0 || child.isFinished();
   }
 

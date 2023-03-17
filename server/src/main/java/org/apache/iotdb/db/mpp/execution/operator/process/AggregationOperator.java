@@ -135,12 +135,8 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !this.hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !this.hasNextWithTimer();
   }
 
   private void calculateNextAggregationResult() {

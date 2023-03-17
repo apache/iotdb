@@ -72,15 +72,11 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
       return generateStorageGroupInfo();
     }
 
-    try {
-      if (children.get(currentIndex).hasNextWithTimer()) {
-        return children.get(currentIndex).nextWithTimer();
-      } else {
-        currentIndex++;
-        return null;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (children.get(currentIndex).hasNextWithTimer()) {
+      return children.get(currentIndex).nextWithTimer();
+    } else {
+      currentIndex++;
+      return null;
     }
   }
 
@@ -97,12 +93,8 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

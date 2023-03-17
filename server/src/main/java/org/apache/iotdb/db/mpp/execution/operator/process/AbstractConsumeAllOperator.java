@@ -82,31 +82,27 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    * @return true if results of all children are ready. Return false if some children is blocked or
    *     return null.
    */
-  protected boolean prepareInput() {
+  protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!isEmpty(i)) {
         continue;
       }
-      try {
-        if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = getNextTsBlock(i);
-          canCallNext[i] = false;
-          // child operator has next but return an empty TsBlock which means that it may not
-          // finish calculation in given time slice.
-          // In such case, TimeJoinOperator can't go on calculating, so we just return null.
-          // We can also use the while loop here to continuously call the hasNext() and next()
-          // methods of the child operator until its hasNext() returns false or the next() gets
-          // the data that is not empty, but this will cause the execution time of the while loop
-          // to be uncontrollable and may exceed all allocated time slice
-          if (isEmpty(i)) {
-            allReady = false;
-          }
-        } else {
+      if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
+        inputTsBlocks[i] = getNextTsBlock(i);
+        canCallNext[i] = false;
+        // child operator has next but return an empty TsBlock which means that it may not
+        // finish calculation in given time slice.
+        // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+        // We can also use the while loop here to continuously call the hasNext() and next()
+        // methods of the child operator until its hasNext() returns false or the next() gets
+        // the data that is not empty, but this will cause the execution time of the while loop
+        // to be uncontrollable and may exceed all allocated time slice
+        if (isEmpty(i)) {
           allReady = false;
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      } else {
+        allReady = false;
       }
     }
     return allReady;

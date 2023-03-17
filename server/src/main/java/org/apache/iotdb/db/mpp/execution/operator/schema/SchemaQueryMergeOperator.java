@@ -51,15 +51,11 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    try {
-      if (children.get(currentIndex).hasNextWithTimer()) {
-        return children.get(currentIndex).nextWithTimer();
-      } else {
-        currentIndex++;
-        return null;
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (children.get(currentIndex).hasNextWithTimer()) {
+      return children.get(currentIndex).nextWithTimer();
+    } else {
+      currentIndex++;
+      return null;
     }
   }
 
@@ -74,12 +70,8 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

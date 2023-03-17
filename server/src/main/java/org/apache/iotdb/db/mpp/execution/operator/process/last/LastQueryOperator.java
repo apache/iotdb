@@ -104,18 +104,15 @@ public class LastQueryOperator implements ProcessOperator {
     while ((System.nanoTime() - start < maxRuntime)
         && (currentIndex < endIndex)
         && !tsBlockBuilder.isFull()) {
-      try {
-        if (children.get(currentIndex).hasNextWithTimer()) {
-          TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-          if (tsBlock == null) {
-            return null;
-          } else if (!tsBlock.isEmpty()) {
-            LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
-          }
+      if (children.get(currentIndex).hasNextWithTimer()) {
+        TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
+        if (tsBlock == null) {
+          return null;
+        } else if (!tsBlock.isEmpty()) {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
       }
+
       currentIndex++;
     }
 
@@ -130,7 +127,7 @@ public class LastQueryOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     try {
       return !hasNextWithTimer();
     } catch (Exception e) {

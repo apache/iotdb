@@ -86,12 +86,8 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    try {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
     if (resultTsBlockList != null) {
       currentIndex++;
@@ -103,18 +99,14 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
       if (childrenHasNext[i]) {
         // when this operator is not blocked, it means all children that have remaining TsBlock is
         // not blocked.
-        try {
-          if (children.get(i).hasNextWithTimer()) {
-            allChildrenConsumed = false;
-            TsBlock tsBlock = children.get(i).nextWithTimer();
-            if (tsBlock != null && !tsBlock.isEmpty()) {
-              consumeChildrenTsBlock(tsBlock);
-            }
-          } else {
-            childrenHasNext[i] = false;
+        if (children.get(i).hasNextWithTimer()) {
+          allChildrenConsumed = false;
+          TsBlock tsBlock = children.get(i).nextWithTimer();
+          if (tsBlock != null && !tsBlock.isEmpty()) {
+            consumeChildrenTsBlock(tsBlock);
           }
-        } catch (Exception e) {
-          throw new RuntimeException(e);
+        } else {
+          childrenHasNext[i] = false;
         }
       }
     }
@@ -159,12 +151,8 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !hasNextWithTimer();
   }
 
   @Override

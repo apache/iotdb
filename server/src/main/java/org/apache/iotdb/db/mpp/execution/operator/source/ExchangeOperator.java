@@ -79,7 +79,7 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return sourceHandle.isFinished();
   }
 

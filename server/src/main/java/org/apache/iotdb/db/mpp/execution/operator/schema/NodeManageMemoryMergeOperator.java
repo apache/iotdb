@@ -135,7 +135,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !isReadingMemory && child.isFinished();
   }
 

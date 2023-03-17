@@ -71,18 +71,14 @@ public class NodePathsCountOperator implements ProcessOperator {
       if (!blocked.isDone()) {
         return null;
       }
-      try {
-        if (child.hasNextWithTimer()) {
-          TsBlock tsBlock = child.nextWithTimer();
-          if (null != tsBlock && !tsBlock.isEmpty()) {
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              String path = tsBlock.getColumn(0).getBinary(i).toString();
-              nodePaths.add(path);
-            }
+      if (child.hasNextWithTimer()) {
+        TsBlock tsBlock = child.nextWithTimer();
+        if (null != tsBlock && !tsBlock.isEmpty()) {
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            String path = tsBlock.getColumn(0).getBinary(i).toString();
+            nodePaths.add(path);
           }
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
       }
     }
     isFinished = true;
@@ -110,7 +106,7 @@ public class NodePathsCountOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return isFinished;
   }
 

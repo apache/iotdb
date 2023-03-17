@@ -145,17 +145,14 @@ public class LastQuerySortOperator implements ProcessOperator {
                 && previousTsBlockIndex < previousTsBlock.getPositionCount()))
         && !tsBlockBuilder.isFull()) {
       if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
-        try {
-          if (children.get(currentIndex).hasNextWithTimer()) {
-            previousTsBlock = children.get(currentIndex).nextWithTimer();
-            previousTsBlockIndex = 0;
-            if (previousTsBlock == null) {
-              return null;
-            }
+        if (children.get(currentIndex).hasNextWithTimer()) {
+          previousTsBlock = children.get(currentIndex).nextWithTimer();
+          previousTsBlockIndex = 0;
+          if (previousTsBlock == null) {
+            return null;
           }
-        } catch (Exception e) {
-          throw new RuntimeException(e);
         }
+
         currentIndex++;
       }
       if (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
@@ -189,7 +186,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     try {
       return !hasNextWithTimer();
     } catch (Exception e) {

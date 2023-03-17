@@ -113,12 +113,8 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    try {
-      return !this.hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public boolean isFinished() throws Exception {
+    return !this.hasNextWithTimer();
   }
 
   @Override

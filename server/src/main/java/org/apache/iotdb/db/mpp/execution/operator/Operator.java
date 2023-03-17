@@ -74,7 +74,7 @@ public interface Operator extends AutoCloseable {
   /**
    * Is this operator completely finished processing and no more output TsBlock will be produced.
    */
-  boolean isFinished();
+  boolean isFinished() throws Exception;
 
   /**
    * We should also consider the memory used by its children operator, so the calculation logic may

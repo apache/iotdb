@@ -121,16 +121,11 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
-    try {
-      return finished =
-          isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    return finished = isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
   }
 
   @Override
