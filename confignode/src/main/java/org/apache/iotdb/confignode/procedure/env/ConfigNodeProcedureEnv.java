@@ -644,9 +644,8 @@ public class ConfigNodeProcedureEnv {
 
   public List<TSStatus> dropPipePluginOnDataNodes(
       String pipePluginName, boolean needToDeleteJarFile) {
-    NodeManager nodeManager = configManager.getNodeManager();
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        nodeManager.getRegisteredDataNodeLocations();
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TDropPipePluginInstanceReq request =
         new TDropPipePluginInstanceReq(pipePluginName, needToDeleteJarFile);
 

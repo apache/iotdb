@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
@@ -40,9 +40,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePluginState> {
+public class DropPipePluginProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, DropPipePluginState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipePluginProcedure.class);
+
   private static final int RETRY_THRESHOLD = 5;
 
   private String pluginName;
@@ -62,56 +64,17 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     if (pluginName == null) {
       return Flow.NO_MORE_STATE;
     }
-    PipePluginInfo pipePluginInfo =
-        env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
 
     try {
       switch (state) {
         case LOCK:
-          LOGGER.info("Locking pipe plugin {}", pluginName);
-
-          try {
-            pipePluginInfo.acquirePipePluginInfoLock();
-
-            LOGGER.info("Lock pipe plugin {} successfully", pluginName);
-            pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
-
-            env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
-            setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
-          } catch (PipeManagementException e) {
-            // if the pipe plugin is not exist, we should end the procedure
-            LOGGER.warn(e.getMessage());
-            setFailure(new ProcedureException(e.getMessage()));
-            pipePluginInfo.releasePipePluginInfoLock();
-            return Flow.NO_MORE_STATE;
-          }
-          break;
-
+          return executeFromLock(env);
         case DROP_ON_DATA_NODES:
-          LOGGER.info("Dropping pipe plugin {} on data nodes", pluginName);
-
-          if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, false))
-                  .getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            setNextState(DropPipePluginState.DROP_ON_CONFIG_NODE);
-
-          } else {
-            throw new PipeManagementException(
-                String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
-          }
-          break;
-
-        case DROP_ON_CONFIG_NODE:
-          LOGGER.info("Dropping pipe plugin {} on config node", pluginName);
-
-          env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
-          setNextState(DropPipePluginState.UNLOCK);
-          break;
-
+          return executeFromDropOnDataNodes(env);
+        case DROP_ON_CONFIG_NODES:
+          return executeFromDropOnConfigNodes(env);
         case UNLOCK:
-          LOGGER.info("Unlocking pipe plugin {}", pluginName);
-          pipePluginInfo.releasePipePluginInfoLock();
-          return Flow.NO_MORE_STATE;
+          return executeFromUnlock(env);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -129,23 +92,102 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     return Flow.HAS_MORE_STATE;
   }
 
+  private Flow executeFromLock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: executeFromLock({})", pluginName);
+    final PipePluginInfo pipePluginInfo =
+        env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
+
+    pipePluginInfo.acquirePipePluginInfoLock();
+
+    try {
+      pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
+    } catch (PipeManagementException e) {
+      // if the pipe plugin is not exist, we should end the procedure
+      LOGGER.warn(e.getMessage());
+      setFailure(new ProcedureException(e.getMessage()));
+      pipePluginInfo.releasePipePluginInfoLock();
+      return Flow.NO_MORE_STATE;
+    }
+
+    env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+
+    setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
+    return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow executeFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: executeFromDropOnDataNodes({})", pluginName);
+
+    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, false))
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(DropPipePluginState.DROP_ON_CONFIG_NODES);
+      return Flow.HAS_MORE_STATE;
+    }
+
+    throw new PipeManagementException(
+        String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
+  }
+
+  private Flow executeFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: executeFromDropOnConfigNodes({})", pluginName);
+
+    env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+
+    setNextState(DropPipePluginState.UNLOCK);
+    return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow executeFromUnlock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: executeFromUnlock({})", pluginName);
+
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipePluginCoordinator()
+        .getPipePluginInfo()
+        .releasePipePluginInfoLock();
+
+    return Flow.NO_MORE_STATE;
+  }
+
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, DropPipePluginState state)
       throws IOException, InterruptedException, ProcedureException {
-    if (state == DropPipePluginState.LOCK) {
-      LOGGER.info("Start [LOCK] rollback of pipe plugin [{}]", pluginName);
-
-      env.getConfigManager()
-          .getPipeManager()
-          .getPipePluginCoordinator()
-          .getPipePluginInfo()
-          .releasePipePluginInfoLock();
+    switch (state) {
+      case LOCK:
+        rollbackFromLock(env);
+        break;
+      case DROP_ON_DATA_NODES:
+        // do nothing but wait for rolling back to the previous state: LOCK
+        // TODO: we should drop the pipe plugin on data nodes
+        break;
+      case DROP_ON_CONFIG_NODES:
+        // do nothing but wait for rolling back to the previous state: DROP_ON_DATA_NODES
+        // TODO: we should drop the pipe plugin on config nodes
+        break;
     }
+  }
+
+  private void rollbackFromLock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipePluginProcedure: rollbackFromLock({})", pluginName);
+
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipePluginCoordinator()
+        .getPipePluginInfo()
+        .releasePipePluginInfoLock();
   }
 
   @Override
   protected boolean isRollbackSupported(DropPipePluginState state) {
-    return state == DropPipePluginState.LOCK;
+    switch (state) {
+      case LOCK:
+      case DROP_ON_DATA_NODES:
+      case DROP_ON_CONFIG_NODES:
+        return true;
+      default:
+        return false;
+    }
   }
 
   @Override
@@ -179,10 +221,10 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   @Override
   public boolean equals(Object that) {
     if (that instanceof DropPipePluginProcedure) {
-      DropPipePluginProcedure thatProcedure = (DropPipePluginProcedure) that;
+      final DropPipePluginProcedure thatProcedure = (DropPipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getState() == this.getState()
-          && (thatProcedure.pluginName).equals(this.pluginName);
+          && thatProcedure.getState() == getState()
+          && (thatProcedure.pluginName).equals(pluginName);
     }
     return false;
   }

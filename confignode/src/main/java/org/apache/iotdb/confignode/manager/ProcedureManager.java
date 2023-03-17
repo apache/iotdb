@@ -583,7 +583,9 @@ public class ProcedureManager {
     final CreatePipePluginProcedure createPipePluginProcedure =
         new CreatePipePluginProcedure(pipePluginMeta, jarFile);
     try {
-      if (new UpdateProcedurePlan(createPipePluginProcedure).getSerializedSize() > planSizeLimit) {
+      if (jarFile != null
+          && new UpdateProcedurePlan(createPipePluginProcedure).getSerializedSize()
+              > planSizeLimit) {
         return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
             .setMessage(
                 String.format(

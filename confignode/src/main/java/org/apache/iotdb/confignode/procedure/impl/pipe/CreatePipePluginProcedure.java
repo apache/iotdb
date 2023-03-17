@@ -48,6 +48,7 @@ import java.nio.ByteBuffer;
 
 public class CreatePipePluginProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, CreatePipePluginState> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipePluginProcedure.class);
 
   private static final int RETRY_THRESHOLD = 5;
@@ -72,73 +73,16 @@ public class CreatePipePluginProcedure
       return Flow.NO_MORE_STATE;
     }
 
-    PipePluginInfo pipePluginInfo =
-        env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
-
     try {
       switch (state) {
         case LOCK:
-          LOGGER.info("Locking pipe plugin {}", pipePluginMeta.getPluginName());
-
-          try {
-            pipePluginInfo.acquirePipePluginInfoLock();
-            pipePluginInfo.validateBeforeCreatingPipePlugin(
-                pipePluginMeta.getPluginName(),
-                pipePluginMeta.getJarName(),
-                pipePluginMeta.getJarMD5());
-          } catch (PipeManagementException e) {
-            // The pipe plugin has already created, we should end the procedure
-            LOGGER.warn(
-                "Pipe plugin {} is already created, end the procedure ",
-                pipePluginMeta.getPluginName());
-            setFailure(new ProcedureException(e.getMessage()));
-            pipePluginInfo.releasePipePluginInfoLock();
-            return Flow.NO_MORE_STATE;
-          }
-
-          setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODES);
-          break;
-
+          return executeFromLock(env);
         case CREATE_ON_CONFIG_NODES:
-          ConfigManager configNodeManager = env.getConfigManager();
-          LOGGER.info("Creating pipe plugin {} on config node", pipePluginMeta.getPluginName());
-
-          final boolean needToSaveJar =
-              pipePluginInfo.isJarNeededToBeSavedWhenCreatingPipePlugin(
-                  pipePluginMeta.getJarName());
-          final CreatePipePluginPlan createPluginPlan =
-              new CreatePipePluginPlan(pipePluginMeta, needToSaveJar ? new Binary(jarFile) : null);
-
-          ConsensusWriteResponse response =
-              configNodeManager.getConsensusManager().write(createPluginPlan);
-
-          if (!response.isSuccessful()) {
-            throw new PipeManagementException(response.getErrorMessage());
-          }
-
-          setNextState(CreatePipePluginState.CREATE_ON_DATA_NODES);
-          break;
-
+          return executeFromCreateOnConfigNodes(env);
         case CREATE_ON_DATA_NODES:
-          LOGGER.info("Creating pipe plugin {} on data nodes", pipePluginMeta.getPluginName());
-
-          if (RpcUtils.squashResponseStatusList(
-                      env.createPipePluginOnDataNodes(pipePluginMeta, jarFile))
-                  .getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            setNextState(CreatePipePluginState.UNLOCK);
-          } else {
-            throw new PipeManagementException(
-                String.format(
-                    "Failed to create pipe plugin instance [%s] on data nodes",
-                    pipePluginMeta.getPluginName()));
-          }
-          break;
-
+          return executeFromCreateOnDataNodes(env);
         case UNLOCK:
-          LOGGER.info("Unlocking pipe plugin {}", pipePluginMeta.getPluginName());
-          pipePluginInfo.releasePipePluginInfoLock();
-          return Flow.NO_MORE_STATE;
+          return executeFromUnlock(env);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -162,43 +106,142 @@ public class CreatePipePluginProcedure
     return Flow.HAS_MORE_STATE;
   }
 
+  private Flow executeFromLock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreatePipePluginProcedure: executeFromLock({})", pipePluginMeta.getPluginName());
+    final PipePluginInfo pipePluginInfo =
+        env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
+
+    pipePluginInfo.acquirePipePluginInfoLock();
+
+    try {
+      pipePluginInfo.validateBeforeCreatingPipePlugin(
+          pipePluginMeta.getPluginName(), pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
+    } catch (PipeManagementException e) {
+      // The pipe plugin has already created, we should end the procedure
+      LOGGER.warn(
+          "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
+          pipePluginMeta.getPluginName(),
+          pipePluginMeta.getPluginName());
+      setFailure(new ProcedureException(e.getMessage()));
+      pipePluginInfo.releasePipePluginInfoLock();
+      return Flow.NO_MORE_STATE;
+    }
+
+    setNextState(CreatePipePluginState.CREATE_ON_CONFIG_NODES);
+    return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow executeFromCreateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipePluginProcedure: executeFromCreateOnConfigNodes({})",
+        pipePluginMeta.getPluginName());
+
+    final ConfigManager configNodeManager = env.getConfigManager();
+
+    final boolean needToSaveJar =
+        configNodeManager
+            .getPipeManager()
+            .getPipePluginCoordinator()
+            .getPipePluginInfo()
+            .isJarNeededToBeSavedWhenCreatingPipePlugin(pipePluginMeta.getJarName());
+    final CreatePipePluginPlan createPluginPlan =
+        new CreatePipePluginPlan(pipePluginMeta, needToSaveJar ? new Binary(jarFile) : null);
+
+    final ConsensusWriteResponse response =
+        configNodeManager.getConsensusManager().write(createPluginPlan);
+    if (!response.isSuccessful()) {
+      throw new PipeManagementException(response.getErrorMessage());
+    }
+
+    setNextState(CreatePipePluginState.CREATE_ON_DATA_NODES);
+    return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow executeFromCreateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+    LOGGER.info(
+        "CreatePipePluginProcedure: executeFromCreateOnDataNodes({})",
+        pipePluginMeta.getPluginName());
+
+    if (RpcUtils.squashResponseStatusList(env.createPipePluginOnDataNodes(pipePluginMeta, jarFile))
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(CreatePipePluginState.UNLOCK);
+      return Flow.HAS_MORE_STATE;
+    }
+
+    throw new PipeManagementException(
+        String.format(
+            "Failed to create pipe plugin instance [%s] on data nodes",
+            pipePluginMeta.getPluginName()));
+  }
+
+  private Flow executeFromUnlock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreatePipePluginProcedure: executeFromUnlock({})", pipePluginMeta.getPluginName());
+
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipePluginCoordinator()
+        .getPipePluginInfo()
+        .releasePipePluginInfoLock();
+
+    return Flow.NO_MORE_STATE;
+  }
+
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, CreatePipePluginState state)
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
+      case LOCK:
+        rollbackFromLock(env);
+        break;
       case CREATE_ON_CONFIG_NODES:
-        LOGGER.info(
-            "Start [CREATE_ON_CONFIG_NODE] rollback of pipe plugin [{}]",
-            pipePluginMeta.getPluginName());
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+        rollbackFromCreateOnConfigNodes(env);
         break;
-
       case CREATE_ON_DATA_NODES:
-        LOGGER.info(
-            "Start [CREATE_ON_DATA_NODES] rollback of pipe plugin [{}]",
-            pipePluginMeta.getPluginName());
-
-        if (RpcUtils.squashResponseStatusList(
-                    env.dropPipePluginOnDataNodes(pipePluginMeta.getPluginName(), false))
-                .getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new ProcedureException(
-              String.format(
-                  "Failed to rollback pipe plugin [%s] on data nodes",
-                  pipePluginMeta.getPluginName()));
-        }
+        rollbackFromCreateOnDataNodes(env);
         break;
+    }
+  }
 
-      default:
-        break;
+  private void rollbackFromLock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreatePipePluginProcedure: rollbackFromLock({})", pipePluginMeta.getPluginName());
+
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipePluginCoordinator()
+        .getPipePluginInfo()
+        .releasePipePluginInfoLock();
+  }
+
+  private void rollbackFromCreateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipePluginProcedure: rollbackFromCreateOnConfigNodes({})",
+        pipePluginMeta.getPluginName());
+
+    env.getConfigManager()
+        .getConsensusManager()
+        .write(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+  }
+
+  private void rollbackFromCreateOnDataNodes(ConfigNodeProcedureEnv env) throws ProcedureException {
+    LOGGER.info(
+        "CreatePipePluginProcedure: rollbackFromCreateOnDataNodes({})",
+        pipePluginMeta.getPluginName());
+
+    if (RpcUtils.squashResponseStatusList(
+                env.dropPipePluginOnDataNodes(pipePluginMeta.getPluginName(), false))
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(
+          String.format(
+              "Failed to rollback pipe plugin [%s] on data nodes", pipePluginMeta.getPluginName()));
     }
   }
 
   @Override
   protected boolean isRollbackSupported(CreatePipePluginState state) {
     switch (state) {
+      case LOCK:
       case CREATE_ON_CONFIG_NODES:
       case CREATE_ON_DATA_NODES:
         return true;
@@ -220,11 +263,6 @@ public class CreatePipePluginProcedure
   @Override
   protected CreatePipePluginState getInitialState() {
     return CreatePipePluginState.LOCK;
-  }
-
-  @TestOnly
-  public byte[] getJarFile() {
-    return jarFile;
   }
 
   @Override
@@ -251,5 +289,10 @@ public class CreatePipePluginProcedure
           && thatProcedure.pipePluginMeta.equals(pipePluginMeta);
     }
     return false;
+  }
+
+  @TestOnly
+  public byte[] getJarFile() {
+    return jarFile;
   }
 }
