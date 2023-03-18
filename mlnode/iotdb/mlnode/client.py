@@ -52,7 +52,7 @@ class ClientManager(object):
                               port=self.data_node_address.port)
 
     def borrow_config_node_client(self):
-        return DataNodeClient(host=self.config_node_address.ip,
+        return ConfigNodeClient(host=self.config_node_address.ip,
                               port=self.config_node_address.port)
 
 
