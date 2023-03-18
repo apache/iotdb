@@ -167,7 +167,7 @@ Result:
 
 SQL:
 ```sql
-select time_duration(s1) from root.db.d1.s1
+select time_duration(s1) from root.db.d1
 ```
 
 Result:
