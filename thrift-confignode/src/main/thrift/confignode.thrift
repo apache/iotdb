@@ -90,6 +90,7 @@ struct TRuntimeConfiguration {
   2: required list<binary> allTriggerInformation
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
+  5: required list<binary> allPipeInformation
 }
 
 struct TDataNodeRegisterReq {
@@ -1099,6 +1100,11 @@ service IConfigNodeRPCService {
    * Return the pipe plugin table
    */
   TGetPipePluginTableResp getPipePluginTable();
+
+  /**
+   * Return the pipe plugin jar list of the plugin name list
+   */
+  TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
 
   // ======================================================
   // Maintenance Tools

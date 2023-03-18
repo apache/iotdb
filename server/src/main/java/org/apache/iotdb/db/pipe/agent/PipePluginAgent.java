@@ -93,7 +93,15 @@ public class PipePluginAgent {
     }
   }
 
-  private void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
+  /**
+   * Register a PipePlugin to the system without any meta checks. The PipePlugin will be loaded by
+   * the PipePluginClassLoader and its instance will be created to ensure that it can be loaded.
+   *
+   * @param pipePluginMeta the meta information of the PipePlugin
+   * @throws PipeManagementException if the PipePlugin can not be loaded or its instance can not be
+   *     created
+   */
+  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();
 
