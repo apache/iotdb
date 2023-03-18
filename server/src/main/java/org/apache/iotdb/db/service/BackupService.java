@@ -71,7 +71,11 @@ public class BackupService implements IService {
   }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    if (backupThreadPool != null) {
+      backupThreadPool.shutdownNow();
+    }
+  }
 
   public AtomicInteger getBackupByCopyCount() {
     return backupByCopyCount;
