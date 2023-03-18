@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisMetricsManager {
   private final MetricService metricService = MetricService.getInstance();
+
   /** Record the time cost in write locally stage. */
   public void recordWriteLocallyCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
@@ -50,6 +51,7 @@ public class RatisMetricsManager {
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_REMOTELY);
   }
+
   /** Record the time cost in submit read request stage. */
   public void recordReadRequestCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
