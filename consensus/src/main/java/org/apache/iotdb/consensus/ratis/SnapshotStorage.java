@@ -191,16 +191,4 @@ public class SnapshotStorage implements StateMachineStorage {
   String getSnapshotTmpId(String snapshotMetadata) {
     return TMP_PREFIX + snapshotMetadata;
   }
-
-  @Override
-  public File getSnapshotDir() {
-    return applicationStateMachine.getSnapshotRoot();
-  }
-
-  @Override
-  public File getTmpDir() {
-    return getSnapshotDir() == null
-        ? null
-        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
-  }
 }
