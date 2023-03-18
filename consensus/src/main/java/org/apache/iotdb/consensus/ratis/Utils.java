@@ -177,7 +177,7 @@ public class Utils {
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }
 
-  public static String getConsensusGroupTypeFromPrefix(String prefix) {
+  public static TConsensusGroupType getConsensusGroupTypeFromPrefix(String prefix) {
     TConsensusGroupType consensusGroupType;
     if (prefix.contains(DATA_REGION_GROUP)) {
       consensusGroupType = TConsensusGroupType.DataRegion;
@@ -186,7 +186,7 @@ public class Utils {
     } else {
       consensusGroupType = TConsensusGroupType.ConfigRegion;
     }
-    return consensusGroupType.toString();
+    return consensusGroupType;
   }
 
   public static void initRatisConfig(RaftProperties properties, RatisConfig config) {

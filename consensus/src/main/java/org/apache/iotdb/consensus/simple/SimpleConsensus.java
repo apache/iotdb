@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.simple;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
@@ -127,16 +128,21 @@ class SimpleConsensus implements IConsensus {
       status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
-      long startWriteTime = System.nanoTime();
-      status = impl.write(request);
-      MetricService.getInstance()
-          .timer(
-              System.nanoTime() - startWriteTime,
-              TimeUnit.NANOSECONDS,
-              Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.STAGE.toString(),
-              PerformanceOverviewMetrics.ENGINE);
+      if (groupId instanceof DataRegionId) {
+        long startWriteTime = System.nanoTime();
+        status = impl.write(request);
+        // only record time cost for data region in Performance Overview Dashboard
+        MetricService.getInstance()
+            .timer(
+                System.nanoTime() - startWriteTime,
+                TimeUnit.NANOSECONDS,
+                Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.STAGE.toString(),
+                PerformanceOverviewMetrics.ENGINE);
+      } else {
+        status = impl.write(request);
+      }
     }
     return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
