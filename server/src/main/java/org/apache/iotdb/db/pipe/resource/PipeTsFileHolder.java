@@ -17,22 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent;
+package org.apache.iotdb.db.pipe.resource;
 
-public class PipeRuntimeAgent {
-
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipeRuntimeAgent() {}
-
-  private static class PipeRuntimeAgentHolder {
-    private static PipeRuntimeAgent INSTANCE = null;
-  }
-
-  static PipeRuntimeAgent setupAndGetInstance() {
-    if (PipeRuntimeAgentHolder.INSTANCE == null) {
-      PipeRuntimeAgentHolder.INSTANCE = new PipeRuntimeAgent();
-    }
-    return PipeRuntimeAgentHolder.INSTANCE;
-  }
-}
+public class PipeTsFileHolder {}

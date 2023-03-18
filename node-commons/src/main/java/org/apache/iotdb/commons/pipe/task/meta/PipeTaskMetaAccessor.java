@@ -17,22 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent;
+package org.apache.iotdb.commons.pipe.task.meta;
 
-public class PipeTaskAgent {
-
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipeTaskAgent() {}
-
-  private static class PipeTaskAgentHolder {
-    private static PipeTaskAgent instance = null;
-  }
-
-  static PipeTaskAgent setupAndGetInstance() {
-    if (PipeTaskAgentHolder.instance == null) {
-      PipeTaskAgentHolder.instance = new PipeTaskAgent();
-    }
-    return PipeTaskAgentHolder.instance;
-  }
-}
+public class PipeTaskMetaAccessor {}

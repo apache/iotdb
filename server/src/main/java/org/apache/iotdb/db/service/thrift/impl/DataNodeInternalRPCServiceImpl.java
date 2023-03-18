@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.*;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -113,6 +112,8 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1068,7 +1069,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (configNodeLocations != null) {
       ConfigNodeInfo.getInstance()
           .updateConfigNodeList(
-              configNodeLocations.parallelStream()
+              configNodeLocations
+                  .parallelStream()
                   .map(TConfigNodeLocation::getInternalEndPoint)
                   .collect(Collectors.toList()));
     }

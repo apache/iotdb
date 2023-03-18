@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent;
+package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
@@ -188,7 +188,8 @@ public class PipePluginAgent {
     private static PipePluginAgent instance = null;
   }
 
-  static PipePluginAgent setupAndGetInstance(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  public static PipePluginAgent setupAndGetInstance(
+      DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     if (PipePluginAgentServiceHolder.instance == null) {
       PipePluginAgentServiceHolder.instance = new PipePluginAgent(pipePluginMetaKeeper);
     }
