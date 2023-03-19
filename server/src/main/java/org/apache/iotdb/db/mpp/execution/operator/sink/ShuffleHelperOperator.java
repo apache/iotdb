@@ -101,7 +101,16 @@ public class ShuffleHelperOperator implements Operator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return children.get(downStreamChannelIndex.getCurrentIndex()).isBlocked();
+    int steps = 0;
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // skip closed children
+    while (children.get(currentIndex) == null && steps < children.size()) {
+      currentIndex = (currentIndex + 1) % children.size();
+      steps++;
+    }
+    downStreamChannelIndex.setCurrentIndex(currentIndex);
+    Operator child = children.get(currentIndex);
+    return child == null ? NOT_BLOCKED : child.isBlocked();
   }
 
   @Override
@@ -117,7 +126,9 @@ public class ShuffleHelperOperator implements Operator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
   }
 
