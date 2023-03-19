@@ -41,19 +41,19 @@ public class LastCacheScanOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock res = tsBlock;
     tsBlock = null;
     return res;
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return tsBlock != null && !tsBlock.isEmpty();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

@@ -45,7 +45,7 @@ public abstract class UnaryTransformer extends Transformer {
   }
 
   @Override
-  public YieldableState yieldValue() throws IOException, QueryProcessException {
+  public YieldableState yieldValue() throws Exception {
     final YieldableState yieldableState = layerPointReader.yield();
     if (!YieldableState.YIELDABLE.equals(yieldableState)) {
       return yieldableState;

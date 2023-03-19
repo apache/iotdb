@@ -50,7 +50,7 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
   }
 
   @Override
-  public YieldableState canYieldNextRowInObjects() {
+  public YieldableState canYieldNextRowInObjects() throws Exception {
     if (tsBlockRowIterator == null) {
       if (operator.isBlocked() != Operator.NOT_BLOCKED) {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
