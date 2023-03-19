@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent;
+package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
@@ -41,8 +41,7 @@ public class PipePluginAgent {
 
   private final ReentrantLock lock = new ReentrantLock();
 
-  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper =
-      new DataNodePipePluginMetaKeeper();
+  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
   /////////////////////////////// Lock ///////////////////////////////
 
@@ -189,11 +188,19 @@ public class PipePluginAgent {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private static class PipePluginAgentServiceHolder {
-    private static final PipePluginAgent INSTANCE = new PipePluginAgent();
+  private PipePluginAgent(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
   }
 
-  public static PipePluginAgent getInstance() {
-    return PipePluginAgentServiceHolder.INSTANCE;
+  private static class PipePluginAgentServiceHolder {
+    private static PipePluginAgent instance = null;
+  }
+
+  public static PipePluginAgent setupAndGetInstance(
+      DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+    if (PipePluginAgentServiceHolder.instance == null) {
+      PipePluginAgentServiceHolder.instance = new PipePluginAgent(pipePluginMetaKeeper);
+    }
+    return PipePluginAgentServiceHolder.instance;
   }
 }
