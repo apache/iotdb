@@ -45,14 +45,14 @@ public class UDTFContext {
   }
 
   public void finalizeUDFExecutors(long queryId) {
-    // close and delete UDF temp files
-    TemporaryQueryDataFileService.getInstance().deregister(queryId);
     try {
       for (UDTFExecutor executor : expressionName2Executor.values()) {
         executor.beforeDestroy();
       }
     } finally {
       UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
+      // close and delete UDF temp files
+      TemporaryQueryDataFileService.getInstance().deregister(queryId);
     }
   }
 
