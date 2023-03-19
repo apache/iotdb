@@ -69,7 +69,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -94,12 +94,12 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isFinished;
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return isFinished;
   }
 

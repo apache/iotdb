@@ -38,7 +38,7 @@ public interface Operator extends AutoCloseable {
     return NOT_BLOCKED;
   }
 
-  default TsBlock nextWithTimer() {
+  default TsBlock nextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
 
@@ -51,9 +51,9 @@ public interface Operator extends AutoCloseable {
   }
 
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
-  TsBlock next();
+  TsBlock next() throws Exception;
 
-  default boolean hasNextWithTimer() {
+  default boolean hasNextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
 
@@ -65,7 +65,7 @@ public interface Operator extends AutoCloseable {
   }
 
   /** @return true if the operator has more data, otherwise false */
-  boolean hasNext();
+  boolean hasNext() throws Exception;
 
   /** This method will always be called before releasing the Operator reference. */
   @Override
@@ -74,7 +74,7 @@ public interface Operator extends AutoCloseable {
   /**
    * Is this operator completely finished processing and no more output TsBlock will be produced.
    */
-  boolean isFinished();
+  boolean isFinished() throws Exception;
 
   /**
    * We should also consider the memory used by its children operator, so the calculation logic may

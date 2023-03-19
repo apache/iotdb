@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -82,7 +83,11 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
+    // start stopwatch
+    long startTime = System.nanoTime();
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
     // 1. fill consumed up TsBlock
     if (!prepareInput()) {
       return null;
@@ -135,7 +140,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -155,7 +160,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
@@ -208,7 +213,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
    *     some children is blocked or return null.
    */
   @Override
-  protected boolean prepareInput() {
+  protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (noMoreTsBlocks[i] || !isEmpty(i)) {
