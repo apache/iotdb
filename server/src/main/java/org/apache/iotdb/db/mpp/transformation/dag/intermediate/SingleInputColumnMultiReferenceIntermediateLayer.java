@@ -90,7 +90,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       }
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -192,7 +192,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private int currentRowIndex = -1;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -273,7 +273,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private int beginIndex = -slidingStep;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -402,7 +402,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private boolean hasAtLeastOneRow;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
@@ -583,7 +583,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private int nextIndexEnd = 1;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
@@ -701,7 +701,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private ValueRecorder valueRecorder = new ValueRecorder();
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
