@@ -93,7 +93,10 @@ public class TsFileManager {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Long timePartition : timePartitions) {
-        allResources.addAll(chosenMap.get(timePartition).getArrayList());
+        TsFileResourceList tsFileResourceList = chosenMap.get(timePartition);
+        if (tsFileResourceList != null) {
+          allResources.addAll(tsFileResourceList.getArrayList());
+        }
       }
       return allResources;
     } finally {
