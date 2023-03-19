@@ -82,7 +82,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    * @return true if results of all children are ready. Return false if some children is blocked or
    *     return null.
    */
-  protected boolean prepareInput() {
+  protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!isEmpty(i)) {
@@ -120,7 +120,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     }
   }
 
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     return children.get(childIndex).nextWithTimer();
   }
 }

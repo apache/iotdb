@@ -26,12 +26,14 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 
@@ -45,6 +47,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private final boolean[] hasSetNoMoreTsBlocks;
 
   private final boolean[] channelOpened;
+
+  private final Set<Integer> closedChannel = Sets.newConcurrentHashSet();
 
   private final DownStreamChannelIndex downStreamChannelIndex;
 
@@ -142,6 +146,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
+  public boolean isClosed() {
+    return closedChannel.size() == downStreamChannelList.size();
+  }
+
+  @Override
   public synchronized boolean isAborted() {
     return aborted;
   }
@@ -235,6 +244,19 @@ public class ShuffleSinkHandle implements ISinkHandle {
     }
   }
 
+  @Override
+  public boolean isChannelClosed(int index) {
+    if (closedChannel.contains(index)) {
+      return true;
+    } else {
+      if (downStreamChannelList.get(index).isClosed()) {
+        closedChannel.add(index);
+        return true;
+      }
+      return false;
+    }
+  }
+
   // region ============ Shuffle Related ============
   public enum ShuffleStrategyEnum {
     PLAIN,
@@ -281,7 +303,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
     private boolean satisfy(int channelIndex) {
       // downStreamChannel is always an ISinkChannel
       ISinkChannel channel = downStreamChannelList.get(channelIndex);
-      if (channel.isNoMoreTsBlocks()) {
+      if (channel.isNoMoreTsBlocks() || channel.isClosed()) {
         return false;
       }
       return channel.getBufferRetainedSizeInBytes() <= channelMemoryThreshold
