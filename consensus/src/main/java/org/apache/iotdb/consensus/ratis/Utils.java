@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -47,6 +48,8 @@ import java.util.stream.Collectors;
 public class Utils {
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
+  private static final String DATA_REGION_GROUP = "group-0001";
+  private static final String SCHEMA_REGION_GROUP = "group-0002";
 
   private Utils() {}
 
@@ -172,6 +175,18 @@ public class Utils {
   public static TermIndex getTermIndexFromMetadataString(String metadata) {
     String[] items = metadata.split("_");
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
+  }
+
+  public static String getConsensusGroupTypeFromPrefix(String prefix) {
+    TConsensusGroupType consensusGroupType;
+    if (prefix.contains(DATA_REGION_GROUP)) {
+      consensusGroupType = TConsensusGroupType.DataRegion;
+    } else if (prefix.contains(SCHEMA_REGION_GROUP)) {
+      consensusGroupType = TConsensusGroupType.SchemaRegion;
+    } else {
+      consensusGroupType = TConsensusGroupType.ConfigRegion;
+    }
+    return consensusGroupType.toString();
   }
 
   public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
