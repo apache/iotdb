@@ -28,12 +28,10 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -54,6 +52,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -64,7 +63,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
@@ -130,6 +128,9 @@ public class DataNode implements DataNodeMBean {
   private final TriggerInformationUpdater triggerInformationUpdater =
       new TriggerInformationUpdater();
 
+  private static final String REGISTER_INTERRUPTION =
+      "Unexpected interruption when waiting to register to the cluster";
+
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
@@ -141,7 +142,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
-    logger.info("IoTDB-DataNode environment variables: " + IoTDBConfig.getEnvironmentVariables());
+    logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -177,10 +178,10 @@ public class DataNode implements DataNodeMBean {
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
-      logger.info("IoTDB configuration: " + config.getConfigMessage());
+      logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
-    } catch (StartupException | ConfigurationException | IOException e) {
+    } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
       if (isFirstStart) {
         // Delete the system.properties file when first start failed.
@@ -192,7 +193,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   /** Prepare cluster IoTDB-DataNode */
-  private boolean prepareDataNode() throws StartupException, ConfigurationException, IOException {
+  private boolean prepareDataNode() throws StartupException, IOException {
     // Set cluster mode
     config.setClusterMode(true);
 
@@ -212,9 +213,8 @@ public class DataNode implements DataNodeMBean {
     thisNode.setPort(config.getInternalPort());
 
     // Startup checks
-    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
-    checks.verify();
-
+    DataNodeStartupCheck checks = new DataNodeStartupCheck(IoTDBConstant.DN_ROLE, config);
+    checks.startUpCheck();
     return isFirstStart;
   }
 
@@ -254,8 +254,8 @@ public class DataNode implements DataNodeMBean {
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to register to the cluster", e);
-        break;
+        logger.warn(REGISTER_INTERRUPTION, e);
+        retry = -1;
       }
     }
     if (configurationResp == null) {
@@ -364,8 +364,8 @@ public class DataNode implements DataNodeMBean {
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to register to the cluster", e);
-        break;
+        logger.warn(REGISTER_INTERRUPTION, e);
+        retry = -1;
       }
     }
     if (dataNodeRegisterResp == null) {
@@ -424,8 +424,8 @@ public class DataNode implements DataNodeMBean {
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to register to the cluster", e);
-        break;
+        logger.warn(REGISTER_INTERRUPTION, e);
+        retry = -1;
       }
     }
     if (dataNodeRestartResp == null) {
@@ -458,7 +458,7 @@ public class DataNode implements DataNodeMBean {
     try {
       processPid();
       setUp();
-    } catch (StartupException | QueryProcessException e) {
+    } catch (StartupException e) {
       logger.error("Meet error while starting up.", e);
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
@@ -479,7 +479,7 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  private void setUp() throws StartupException, QueryProcessException {
+  private void setUp() throws StartupException {
     logger.info("Setting up IoTDB DataNode...");
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -859,7 +859,6 @@ public class DataNode implements DataNodeMBean {
   private void deactivate() {
     logger.info("Deactivating IoTDB DataNode...");
     stopTriggerRelatedServices();
-    // stopThreadPools();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB DataNode is deactivated.");
