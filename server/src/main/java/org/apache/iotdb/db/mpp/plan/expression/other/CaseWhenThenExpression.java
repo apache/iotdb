@@ -45,11 +45,7 @@ public class CaseWhenThenExpression extends Expression {
   public CaseWhenThenExpression(
       List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
     this.whenThenExpressions = whenThenExpressions;
-    if (elseExpression != null) {
-      this.elseExpression = elseExpression;
-    } else {
-      this.elseExpression = new NullOperand();
-    }
+    this.elseExpression = elseExpression;
   }
 
   public CaseWhenThenExpression(ByteBuffer byteBuffer) {

@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -2374,7 +2375,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         context.whenThenExpression()) {
       whenThenList.add(parseWhenThenExpression(whenThenExpressionContext, canUseFullPath));
     }
-    Expression elseExpression = null;
+    Expression elseExpression = new NullOperand();
     if (context.elseExpression != null) {
       elseExpression = parseExpression(context.elseExpression, canUseFullPath);
     }
@@ -2383,7 +2384,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private CaseWhenThenExpression parseCaseWhenThenExpression2(
       IoTDBSqlParser.CaseWhenThenExpression2Context context, boolean canUseFullPath) {
-    return null;
+    Expression caseExpression = parseExpression(context.caseExpression, canUseFullPath);
+    List<WhenThenExpression> whenThenList = new ArrayList<>();
+    for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
+            context.whenThenExpression()) {
+      Expression when = parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath);
+      Expression then = parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath);
+      Expression comparison = new EqualToExpression(caseExpression, when);
+      whenThenList.add(new WhenThenExpression(comparison, then));
+    }
+    Expression elseExpression = new NullOperand();
+    if (context.elseExpression != null) {
+      elseExpression = parseExpression(context.elseExpression, canUseFullPath);
+    }
+    return new CaseWhenThenExpression(whenThenList, elseExpression);
   }
 
   private WhenThenExpression parseWhenThenExpression(
