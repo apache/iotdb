@@ -109,6 +109,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
+    if (queryStatement.isGroupByLevel()) {
+      return planBuilder
+          .planFileAggregation(
+              analysis.getSourceExpressions(),
+              analysis.getAggregationExpressions(),
+              analysis.getLevels())
+          .getRoot();
+    }
+
     if (queryStatement.isLastQuery()) {
       return planBuilder
           .planLast(

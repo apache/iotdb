@@ -151,4 +151,56 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   private void updateArraysDataSize() {
     arraysRetainedSizeInBytes = sizeOf(valueIsNull) + sizeOf(values);
   }
+
+  @Override
+  public ColumnBuilder writeInt(int value) {
+    if (values.length <= positionCount) {
+      growCapacity();
+    }
+
+    values[positionCount] = Binary.valueOf(String.valueOf(value));
+
+    hasNonNullValue = true;
+    positionCount++;
+    return this;
+  }
+
+  @Override
+  public ColumnBuilder writeLong(long value) {
+    if (values.length <= positionCount) {
+      growCapacity();
+    }
+
+    values[positionCount] = Binary.valueOf(String.valueOf(value));
+
+    hasNonNullValue = true;
+    positionCount++;
+    return this;
+  }
+
+  @Override
+  public ColumnBuilder writeFloat(float value) {
+    if (values.length <= positionCount) {
+      growCapacity();
+    }
+
+    values[positionCount] = Binary.valueOf(String.valueOf(value));
+
+    hasNonNullValue = true;
+    positionCount++;
+    return this;
+  }
+
+  @Override
+  public ColumnBuilder writeDouble(double value) {
+    if (values.length <= positionCount) {
+      growCapacity();
+    }
+
+    values[positionCount] = Binary.valueOf(String.valueOf(value));
+
+    hasNonNullValue = true;
+    positionCount++;
+    return this;
+  }
 }

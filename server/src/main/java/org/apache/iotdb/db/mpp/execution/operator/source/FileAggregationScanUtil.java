@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.plan.analyze.GroupByLevelController;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.materializer.TsFileResourceMaterializer;
@@ -37,8 +37,11 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,9 +52,13 @@ import java.util.Map;
 
 public class FileAggregationScanUtil {
 
+  private final PartialPath pathPattern;
+
+  private final AggregationDescriptor aggregationDescriptor;
+
   private final Map<PartialPath, Aggregator> pathToAggregatorMap;
 
-  private final TsFileResourceMaterializer fileResourceMaterializer;
+  private TsFileResourceMaterializer fileResourceMaterializer;
 
   private final Map<PartialPath, List<IChunkMetadata>> chunkMetadataMap;
 
@@ -62,16 +69,21 @@ public class FileAggregationScanUtil {
   private final SeriesScanOptions scanOptions;
 
   public FileAggregationScanUtil(
-      Map<PartialPath, Aggregator> pathToAggregatorMap,
-      QueryDataSource dataSource,
+      PartialPath pathPattern,
+      AggregationDescriptor aggregationDescriptor,
       int[] levels,
       SeriesScanOptions scanOptions) {
-    this.pathToAggregatorMap = pathToAggregatorMap;
-    this.fileResourceMaterializer = new TsFileResourceMaterializer(dataSource);
+    this.pathPattern = pathPattern;
+    this.aggregationDescriptor = aggregationDescriptor;
+    this.pathToAggregatorMap = new HashMap<>();
     this.chunkMetadataMap = new HashMap<>();
     this.partialPathPool = new PartialPathPool();
     this.levels = levels;
     this.scanOptions = scanOptions;
+  }
+
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    this.fileResourceMaterializer = new TsFileResourceMaterializer(dataSource);
   }
 
   public boolean hasNextFile() {
@@ -79,6 +91,8 @@ public class FileAggregationScanUtil {
   }
 
   public void consume() throws IOException {
+    pathToAggregatorMap.clear();
+
     TsFileResource nextFile = fileResourceMaterializer.next();
     TsFileSequenceReader reader =
         FileReaderManager.getInstance().get(nextFile.getTsFilePath(), nextFile.isClosed());
@@ -97,6 +111,28 @@ public class FileAggregationScanUtil {
         unpackChunkMetadata(device, chunkMetadata);
       }
     }
+  }
+
+  public TsBlock getAggregationResult(TsBlockBuilder builder) {
+    for (Map.Entry<PartialPath, Aggregator> entry : pathToAggregatorMap.entrySet()) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getValueColumnBuilders()[0].writeBinary(
+          Binary.valueOf(
+              String.format(
+                  "%s(%s)",
+                  aggregationDescriptor.getAggregationFuncName(), entry.getKey().toString())));
+
+      Aggregator aggregator = entry.getValue();
+      ColumnBuilder[] columnBuilders = new ColumnBuilder[1];
+      columnBuilders[0] = builder.getValueColumnBuilders()[1];
+      aggregator.outputResult(columnBuilders);
+
+      builder.getValueColumnBuilders()[2].writeBinary(
+          Binary.valueOf(aggregator.getOutputType()[0].toString()));
+
+      builder.declarePosition();
+    }
+    return builder.build();
   }
 
   private void unpackChunkMetadata(PartialPath devicePath, IChunkMetadata chunkMetadata)
@@ -123,6 +159,11 @@ public class FileAggregationScanUtil {
 
   private void consumeTimeseriesMetadata(
       PartialPath devicePath, TimeseriesMetadata timeseriesMetadata) {
+    PartialPath fullPath = devicePath.concatNode(timeseriesMetadata.getMeasurementId());
+    if (!pathPattern.matchFullPath(fullPath)) {
+      return;
+    }
+
     PartialPath groupedPath =
         partialPathPool.getGroupedPath(devicePath, timeseriesMetadata.getMeasurementId());
     if (pathToAggregatorMap.containsKey(groupedPath)) {
@@ -130,12 +171,13 @@ public class FileAggregationScanUtil {
           groupedPath,
           new Aggregator(
               AccumulatorFactory.createAccumulator(
-                  TAggregationType.COUNT,
+                  TAggregationType.valueOf(
+                      aggregationDescriptor.getAggregationFuncName().toUpperCase()),
                   timeseriesMetadata.getTSDataType(),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
-              AggregationStep.SINGLE));
+              aggregationDescriptor.getStep()));
     }
 
     Filter queryFilter = scanOptions.getQueryFilter();

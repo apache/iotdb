@@ -73,6 +73,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.FileAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
@@ -1190,6 +1191,30 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planFileAggregation(
+      Set<Expression> sourceExpressions, Set<Expression> aggregationExpressions, int[] levels) {
+    PartialPath pathPattern =
+        ((TimeSeriesOperand) (new ArrayList<>(sourceExpressions).get(0))).getPath();
+    FunctionExpression functionExpression =
+        (FunctionExpression) (new ArrayList<>(aggregationExpressions).get(0));
+    AggregationDescriptor aggregationDescriptor =
+        new AggregationDescriptor(
+            functionExpression.getFunctionName(),
+            AggregationStep.SINGLE,
+            Collections.emptyList(),
+            Collections.emptyMap());
+    this.root =
+        new FileAggregationScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, aggregationDescriptor, levels);
+
+    ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     return this;
   }
 }

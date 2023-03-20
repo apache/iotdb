@@ -120,6 +120,7 @@ import org.apache.iotdb.db.mpp.execution.operator.sink.ShuffleHelperOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.FileAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
@@ -182,6 +183,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.FileAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -485,6 +487,30 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
+  }
+
+  @Override
+  public Operator visitFileAggregationScan(
+      FileAggregationScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                FileAggregationScanOperator.class.getSimpleName());
+    FileAggregationScanOperator fileAggregationScanOperator =
+        new FileAggregationScanOperator(
+            operatorContext,
+            node.getPlanNodeId(),
+            node.getPathPattern(),
+            node.getAggregationDescriptor(),
+            node.getLevels());
+
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(fileAggregationScanOperator);
+    context.getDriverContext().setInputDriver(true);
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return fileAggregationScanOperator;
   }
 
   @Override

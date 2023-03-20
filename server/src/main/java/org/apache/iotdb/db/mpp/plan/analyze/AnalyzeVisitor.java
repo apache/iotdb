@@ -229,6 +229,44 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // check for semantic errors
       queryStatement.semanticCheck();
 
+      if (queryStatement.isGroupByLevel()) {
+        analysis.setLevels(queryStatement.getGroupByLevelComponent().getLevels());
+
+        PartialPath pathPrefix = queryStatement.getFromComponent().getPrefixPaths().get(0);
+        FunctionExpression aggregationMeasurementExpression =
+            (FunctionExpression)
+                queryStatement.getSelectComponent().getResultColumns().get(0).getExpression();
+        TimeSeriesOperand sourceMeasurementExpression =
+            (TimeSeriesOperand) aggregationMeasurementExpression.getExpressions().get(0);
+
+        Set<Expression> sourceExpressions = new HashSet<>();
+        TimeSeriesOperand sourceExpression =
+            new TimeSeriesOperand(pathPrefix.concatPath(sourceMeasurementExpression.getPath()));
+        sourceExpressions.add(sourceExpression);
+        analysis.setSourceExpressions(sourceExpressions);
+
+        Set<Expression> aggregationExpressions = new HashSet<>();
+        FunctionExpression aggregationExpression =
+            new FunctionExpression(
+                aggregationMeasurementExpression.getFunctionName(),
+                aggregationMeasurementExpression.getFunctionAttributes(),
+                Collections.singletonList(sourceExpression));
+        aggregationExpressions.add(aggregationExpression);
+        analysis.setAggregationExpressions(aggregationExpressions);
+
+        analysis.setRespDatasetHeader(
+            new DatasetHeader(ColumnHeaderConstant.lastQueryColumnHeaders, true));
+
+        Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+        sgNameToQueryParamsMap.put(
+            "root.iov",
+            Collections.singletonList(
+                new DataPartitionQueryParam("root.iov.**", Collections.emptyList(), true, true)));
+        analysis.setDataPartitionInfo(partitionFetcher.getDataPartition(sgNameToQueryParamsMap));
+
+        return analysis;
+      }
+
       // concat path and construct path pattern tree
       PathPatternTree patternTree = new PathPatternTree();
       queryStatement =

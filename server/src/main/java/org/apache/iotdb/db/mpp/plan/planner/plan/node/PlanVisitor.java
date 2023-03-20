@@ -77,6 +77,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.FileAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -122,6 +123,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+    return visitSourceNode(node, context);
+  }
+
+  public R visitFileAggregationScan(FileAggregationScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 

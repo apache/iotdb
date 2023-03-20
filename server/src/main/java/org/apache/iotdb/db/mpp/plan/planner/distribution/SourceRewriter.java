@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.FileAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
@@ -442,6 +443,29 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
     return processSeriesAggregationSource(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitFileAggregationScan(
+      FileAggregationScanNode node, DistributionPlanContext context) {
+    List<TRegionReplicaSet> dataDistribution =
+        analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+    if (dataDistribution.size() == 1) {
+      node.setRegionReplicaSet(dataDistribution.get(0));
+      return Collections.singletonList(node);
+    }
+
+    LastQueryCollectNode lastQueryCollectNode =
+        new LastQueryCollectNode(context.queryContext.getQueryId().genPlanNodeId());
+
+    for (TRegionReplicaSet dataRegion : dataDistribution) {
+      FileAggregationScanNode split = (FileAggregationScanNode) node.clone();
+      split.setAggregationDescriptor(node.getAggregationDescriptor());
+      split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+      split.setRegionReplicaSet(dataRegion);
+      lastQueryCollectNode.addChild(split);
+    }
+    return Collections.singletonList(lastQueryCollectNode);
   }
 
   private List<PlanNode> processSeriesAggregationSource(

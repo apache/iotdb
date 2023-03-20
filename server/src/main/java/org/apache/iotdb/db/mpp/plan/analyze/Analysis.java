@@ -83,6 +83,8 @@ public class Analysis {
   // Query Analysis (used in ALIGN BY TIME)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  private int[] levels;
+
   // map from device name to series/aggregation under this device
   private Set<Expression> sourceExpressions;
 
@@ -585,5 +587,13 @@ public class Analysis {
 
   public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
     return expressionTypes;
+  }
+
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public int[] getLevels() {
+    return levels;
   }
 }
