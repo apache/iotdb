@@ -2387,7 +2387,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Expression caseExpression = parseExpression(context.caseExpression, canUseFullPath);
     List<WhenThenExpression> whenThenList = new ArrayList<>();
     for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
-            context.whenThenExpression()) {
+        context.whenThenExpression()) {
       Expression when = parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath);
       Expression then = parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath);
       Expression comparison = new EqualToExpression(caseExpression, when);

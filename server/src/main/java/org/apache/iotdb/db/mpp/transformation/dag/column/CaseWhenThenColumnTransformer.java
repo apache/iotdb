@@ -34,68 +34,64 @@ import java.util.List;
 
 public class CaseWhenThenColumnTransformer extends ColumnTransformer {
 
-    List<WhenThenColumnTransformer> whenThenTransformers;
+  List<WhenThenColumnTransformer> whenThenTransformers;
 
-    ColumnTransformer elseTransformer;
+  ColumnTransformer elseTransformer;
 
-    public CaseWhenThenColumnTransformer(Type returnType, List<WhenThenColumnTransformer> whenThenTransformers, ColumnTransformer elseTransformer) {
-        super(returnType);
-        this.whenThenTransformers = whenThenTransformers;
-        this.elseTransformer = elseTransformer;
+  public CaseWhenThenColumnTransformer(
+      Type returnType,
+      List<WhenThenColumnTransformer> whenThenTransformers,
+      ColumnTransformer elseTransformer) {
+    super(returnType);
+    this.whenThenTransformers = whenThenTransformers;
+    this.elseTransformer = elseTransformer;
+  }
+
+  private void writeToColumnBuilder(
+      ColumnTransformer childTransformer, Column column, int index, ColumnBuilder builder) {
+    if (returnType instanceof BooleanType) {
+      builder.writeBoolean(childTransformer.getType().getBoolean(column, index));
+    } else if (returnType instanceof IntType) {
+      builder.writeInt(childTransformer.getType().getInt(column, index));
+    } else if (returnType instanceof LongType) {
+      builder.writeLong(childTransformer.getType().getLong(column, index));
+    } else if (returnType instanceof FloatType) {
+      builder.writeFloat(childTransformer.getType().getFloat(column, index));
+    } else if (returnType instanceof DoubleType) {
+      builder.writeDouble(childTransformer.getType().getDouble(column, index));
+    } else if (returnType instanceof BinaryType) {
+      builder.writeBinary(childTransformer.getType().getBinary(column, index));
+    } else {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
+  }
 
-    private void writeToColumnBuilder(ColumnTransformer childTransformer, Column column, int index, ColumnBuilder builder) {
-        if (returnType instanceof BooleanType) {
-            builder.writeBoolean(childTransformer.getType().getBoolean(column, index));
+  /*
+  whenThen[0] -> column[0] -> {xx, null, yy, ...}
+  whenThen[1] -> column[1] -> {null, zz, cc, ...}
+  ...
+
+   */
+  @Override
+  protected void evaluate() {
+    whenThenTransformers.forEach(ColumnTransformer::tryEvaluate);
+    elseTransformer.tryEvaluate();
+    int positionCount = whenThenTransformers.get(0).getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    //        List<Object> resultList = new ArrayList<>(positionCount);
+    //        for
+    for (int i = 0; i < positionCount; i++) {
+      for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
+        Column whenThenColumn = whenThenTransformer.getColumn();
+        if (!whenThenColumn.isNull(i)) {
+          writeToColumnBuilder(whenThenTransformer, whenThenColumn, i, builder);
+          break;
         }
-        else if (returnType instanceof IntType) {
-            builder.writeInt(childTransformer.getType().getInt(column, index));
-        }
-        else if (returnType instanceof LongType) {
-            builder.writeLong(childTransformer.getType().getLong(column, index));
-        }
-        else if (returnType instanceof FloatType) {
-            builder.writeFloat(childTransformer.getType().getFloat(column, index));
-        }
-        else if (returnType instanceof DoubleType) {
-            builder.writeDouble(childTransformer.getType().getDouble(column, index));
-        }
-        else if (returnType instanceof BinaryType) {
-            builder.writeBinary(childTransformer.getType().getBinary(column, index));
-        }
-        else {
-            throw new UnsupportedOperationException("Unsupported Type");
-        }
+      }
     }
+    initializeColumnCache(builder.build());
+  }
 
-    /*
-    whenThen[0] -> column[0] -> {xx, null, yy, ...}
-    whenThen[1] -> column[1] -> {null, zz, cc, ...}
-    ...
-
-     */
-    @Override
-    protected void evaluate() {
-        whenThenTransformers.forEach(ColumnTransformer::tryEvaluate);
-        elseTransformer.tryEvaluate();
-        int positionCount = whenThenTransformers.get(0).getColumnCachePositionCount();
-        ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-//        List<Object> resultList = new ArrayList<>(positionCount);
-//        for
-        for (int i = 0; i < positionCount; i++) {
-            for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
-                Column whenThenColumn = whenThenTransformer.getColumn();
-                if (!whenThenColumn.isNull(i)) {
-                    writeToColumnBuilder(whenThenTransformer, whenThenColumn, i, builder);
-                    break;
-                }
-            }
-        }
-        initializeColumnCache(builder.build());
-    }
-
-    @Override
-    protected void checkType() {
-
-    }
+  @Override
+  protected void checkType() {}
 }

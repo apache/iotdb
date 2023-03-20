@@ -343,13 +343,14 @@ public class ColumnTransformerVisitor
   }
 
   @Override
-  public ColumnTransformer visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, ColumnTransformerVisitorContext context) {
+  public ColumnTransformer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, ColumnTransformerVisitorContext context) {
     if (!context.cache.containsKey(caseWhenThenExpression)) {
       if (context.hasSeen.containsKey(caseWhenThenExpression)) {
         IdentityColumnTransformer identity =
-                new IdentityColumnTransformer(
-                        TypeFactory.getType(context.getType(caseWhenThenExpression)),
-                        context.originSize + context.commonTransformerList.size());
+            new IdentityColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                context.originSize + context.commonTransformerList.size());
         ColumnTransformer columnTransformer = context.hasSeen.get(caseWhenThenExpression);
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
@@ -358,18 +359,19 @@ public class ColumnTransformerVisitor
         context.cache.put(caseWhenThenExpression, identity);
       } else {
         List<WhenThenColumnTransformer> whenThenColumnTransformers = new ArrayList<>();
-        for (WhenThenExpression whenThenExpression : caseWhenThenExpression.getWhenThenExpressions()) {
-          whenThenColumnTransformers.add((WhenThenColumnTransformer) this.process(whenThenExpression, context));
+        for (WhenThenExpression whenThenExpression :
+            caseWhenThenExpression.getWhenThenExpressions()) {
+          whenThenColumnTransformers.add(
+              (WhenThenColumnTransformer) this.process(whenThenExpression, context));
         }
-        ColumnTransformer elseColumnTransformer = this.process(caseWhenThenExpression.getElseExpression(), context);
+        ColumnTransformer elseColumnTransformer =
+            this.process(caseWhenThenExpression.getElseExpression(), context);
         context.cache.put(
-                caseWhenThenExpression,
-                new CaseWhenThenColumnTransformer(
-                        TypeFactory.getType(context.getType(caseWhenThenExpression)),
-                        whenThenColumnTransformers,
-                        elseColumnTransformer
-                )
-        );
+            caseWhenThenExpression,
+            new CaseWhenThenColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                whenThenColumnTransformers,
+                elseColumnTransformer));
       }
     }
 

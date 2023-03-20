@@ -23,18 +23,18 @@ import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
@@ -69,7 +69,8 @@ public abstract class CartesianProductVisitor<C>
   }
 
   @Override
-  public List<Expression> visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
+  public List<Expression> visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
     List<List<Expression>> cartesianResults = new ArrayList<>();
     cartesianProduct(childResultsList, cartesianResults, 0, new ArrayList<>());
@@ -78,5 +79,10 @@ public abstract class CartesianProductVisitor<C>
       result.add(reconstructCaseWHenThenExpression(cartesianResult));
     }
     return result;
+  }
+
+  @Override
+  public List<Expression> visitNullOperand(NullOperand nullOperand, C context) {
+    return Collections.singletonList(nullOperand);
   }
 }

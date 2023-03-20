@@ -26,41 +26,42 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public class WhenThenColumnTransformer extends BinaryColumnTransformer {
-    protected WhenThenColumnTransformer(Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
-        super(returnType, leftTransformer, rightTransformer);
-    }
+  protected WhenThenColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
+  }
 
-    public ColumnTransformer getWhen() {
-        return leftTransformer;
-    }
+  public ColumnTransformer getWhen() {
+    return leftTransformer;
+  }
 
-    public ColumnTransformer getThen() {
-        return rightTransformer;
-    }
+  public ColumnTransformer getThen() {
+    return rightTransformer;
+  }
 
-    @Override
-    protected void checkType() {
-        if (getWhen().typeNotEquals(TypeEnum.BOOLEAN)) {
-            throw new UnsupportedOperationException("Unsupported Type, WHEN expression must return boolean");
+  @Override
+  protected void checkType() {
+    if (getWhen().typeNotEquals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException(
+          "Unsupported Type, WHEN expression must return boolean");
+    }
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        boolean whenResult = getWhen().getType().getBoolean(leftColumn, i);
+        if (whenResult) {
+          Type rightType = getThen().getType();
+          builder.writeObject(rightType.getObject(rightColumn, i)); // which type should I write?
+        } else {
+          builder.appendNull();
         }
+      } else {
+        builder.appendNull();
+      }
     }
-
-    @Override
-    protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
-        for (int i = 0; i < positionCount; i++) {
-            if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-                boolean whenResult = getWhen().getType().getBoolean(leftColumn, i);
-                if (whenResult) {
-                    Type rightType = getThen().getType();
-                    builder.writeObject(rightType.getObject(rightColumn, i)); // which type should I write?
-                }
-                else {
-                    builder.appendNull();
-                }
-            }
-            else {
-                builder.appendNull();
-            }
-        }
-    }
+  }
 }

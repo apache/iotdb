@@ -65,7 +65,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -107,7 +106,9 @@ public class ExpressionAnalyzer {
         throw new SemanticException(
             "the suffix paths can only be measurement or one-level wildcard");
       }
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+    } else if (expression instanceof TimestampOperand
+        || expression instanceof ConstantOperand
+        || expression instanceof NullOperand) {
       // do nothing
     } else {
       throw new IllegalArgumentException(
@@ -115,12 +116,6 @@ public class ExpressionAnalyzer {
     }
   }
 
-  /**
-   * Identify the expression is a valid built-in aggregation function.
-   *
-   * @param expression expression to be checked
-   * @return true if this expression is valid
-   */
   public static ResultColumn.ColumnType identifyOutputColumnType(
       Expression expression, boolean isRoot) {
     if (expression instanceof TernaryExpression) {
@@ -224,24 +219,25 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof CaseWhenThenExpression) {
       // first, get all subexpression's type
       CaseWhenThenExpression caseExpression = (CaseWhenThenExpression) expression;
-      List<ResultColumn.ColumnType> typeList = caseExpression.getExpressions()
-              .stream()
+      List<ResultColumn.ColumnType> typeList =
+          caseExpression.getExpressions().stream()
               .map(e -> identifyOutputColumnType(e, false))
               .collect(Collectors.toList());
       // if at least one subexpression is RAW, I'm RAW too
-      boolean rawFlag = typeList.stream().anyMatch(
-              columnType -> columnType == ResultColumn.ColumnType.RAW);
+      boolean rawFlag =
+          typeList.stream().anyMatch(columnType -> columnType == ResultColumn.ColumnType.RAW);
       // if at least one subexpression is AGGREGATION, I'm AGGREGATION too
-      boolean aggregationFlag = typeList.stream().anyMatch(
-              columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
+      boolean aggregationFlag =
+          typeList.stream()
+              .anyMatch(columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
       // not allow RAW && AGGREGATION
       if (rawFlag && aggregationFlag) {
         throw new SemanticException(
-                "Raw data and aggregation result hybrid calculation is not supported.");
+            "Raw data and aggregation result hybrid calculation is not supported.");
       }
       // not allow all const
-      boolean allConst = typeList.stream().allMatch(
-              columnType -> columnType == ResultColumn.ColumnType.CONSTANT);
+      boolean allConst =
+          typeList.stream().allMatch(columnType -> columnType == ResultColumn.ColumnType.CONSTANT);
       if (allConst) {
         throw new SemanticException("Constant column is not supported.");
       }
@@ -253,7 +249,7 @@ public class ExpressionAnalyzer {
       throw new IllegalArgumentException("shouldn't attach here");
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
       return ResultColumn.ColumnType.RAW;
-    } else if (expression instanceof ConstantOperand) {
+    } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {
       return ResultColumn.ColumnType.CONSTANT;
     } else {
       throw new IllegalArgumentException(
@@ -336,12 +332,13 @@ public class ExpressionAnalyzer {
       }
       return actualPaths;
     } else if (expression instanceof CaseWhenThenExpression) {
-      return expression.getExpressions()
-              .stream()
-              .map(expression1 -> concatExpressionWithSuffixPaths(expression1, prefixPaths))
-              .flatMap(Collection::stream)
-              .collect(Collectors.toList());
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return expression.getExpressions().stream()
+          .map(expression1 -> concatExpressionWithSuffixPaths(expression1, prefixPaths))
+          .flatMap(Collection::stream)
+          .collect(Collectors.toList());
+    } else if (expression instanceof TimestampOperand
+        || expression instanceof ConstantOperand
+        || expression instanceof NullOperand) {
       return new ArrayList<>();
     } else {
       throw new IllegalArgumentException(
@@ -389,10 +386,14 @@ public class ExpressionAnalyzer {
         patternTree.appendPathPattern(concatPath);
       }
     } else if (predicate instanceof CaseWhenThenExpression) {
-      predicate.getExpressions().forEach(
-              expression -> constructPatternTreeFromExpression(expression, prefixPaths, patternTree)
-      );
-    } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
+      predicate
+          .getExpressions()
+          .forEach(
+              expression ->
+                  constructPatternTreeFromExpression(expression, prefixPaths, patternTree));
+    } else if (predicate instanceof TimestampOperand
+        || predicate instanceof ConstantOperand
+        || predicate instanceof NullOperand) {
       // do nothing
     } else {
       throw new IllegalArgumentException(
@@ -612,11 +613,15 @@ public class ExpressionAnalyzer {
       }
       return timeFilterExist;
     } else if (predicate instanceof CaseWhenThenExpression) {
-      return predicate.getExpressions()
-              .stream()
-              .map(ExpressionAnalyzer::checkIfTimeFilterExist)
-              .reduce(Boolean::logicalOr).get();
-    } else if (predicate instanceof TimeSeriesOperand || predicate instanceof ConstantOperand) {
+      for (Expression childExpression : predicate.getExpressions()) {
+        if (checkIfTimeFilterExist(childExpression)) {
+          return true;
+        }
+      }
+      return false;
+    } else if (predicate instanceof TimeSeriesOperand
+        || predicate instanceof ConstantOperand
+        || predicate instanceof NullOperand) {
       return false;
     } else if (predicate instanceof TimestampOperand) {
       return true;
@@ -822,13 +827,12 @@ public class ExpressionAnalyzer {
 
   public static boolean checkHasWildCard(Expression expression) {
     if (expression instanceof TernaryExpression
-            || expression instanceof BinaryExpression
-            || expression instanceof UnaryExpression
-            || expression instanceof FunctionExpression
-            || expression instanceof CaseWhenThenExpression
-    ) {
+        || expression instanceof BinaryExpression
+        || expression instanceof UnaryExpression
+        || expression instanceof FunctionExpression
+        || expression instanceof CaseWhenThenExpression) {
       for (Expression child : expression.getExpressions()) {
-        if(checkHasWildCard(child)) {
+        if (checkHasWildCard(child)) {
           return true;
         }
       }
@@ -839,7 +843,7 @@ public class ExpressionAnalyzer {
       return false;
     } else {
       throw new IllegalArgumentException(
-              "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 }

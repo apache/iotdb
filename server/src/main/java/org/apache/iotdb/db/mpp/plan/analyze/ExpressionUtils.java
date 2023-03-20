@@ -101,9 +101,10 @@ public class ExpressionUtils {
   }
 
   /**
-   * The implmentation of reconstructCaseWhenThenExpressions().
-   * Recursively choosing WhenThenExpression, put them into chosen list.
-   * While choosing is done, build a CaseExpression, and return it.
+   * The implmentation of reconstructCaseWhenThenExpressions(). Recursively choosing
+   * WhenThenExpression, put them into chosen list. While choosing is done, build a CaseExpression,
+   * and return it.
+   *
    * @param childWhenThenExpressions Children of original CaseExpression
    * @param elseExpressions Children of original CaseExpression
    * @param chosenWhenThenExpressions chosen
@@ -111,9 +112,10 @@ public class ExpressionUtils {
    * @return result
    */
   private static List<Expression> reconstructCaseWhenThenExpressionsImplement(
-          List<List<WhenThenExpression>> childWhenThenExpressions, List<Expression> elseExpressions,
-          List<WhenThenExpression> chosenWhenThenExpressions, int index
-  ) {
+      List<List<WhenThenExpression>> childWhenThenExpressions,
+      List<Expression> elseExpressions,
+      List<WhenThenExpression> chosenWhenThenExpressions,
+      int index) {
     List<Expression> result = new ArrayList<>();
     if (index == childWhenThenExpressions.size()) { // recursive end
       for (Expression elseExpression : elseExpressions) {
@@ -123,31 +125,31 @@ public class ExpressionUtils {
     }
     for (WhenThenExpression whenThenExpression : childWhenThenExpressions.get(index)) {
       chosenWhenThenExpressions.add(whenThenExpression); // add to tail
-      result.addAll(reconstructCaseWhenThenExpressionsImplement(
-              childWhenThenExpressions, elseExpressions,
-              chosenWhenThenExpressions, index+1 // recursive
-      ));
+      result.addAll(
+          reconstructCaseWhenThenExpressionsImplement(
+              childWhenThenExpressions,
+              elseExpressions,
+              chosenWhenThenExpressions,
+              index + 1 // recursive
+              ));
       chosenWhenThenExpressions.remove(index); // remove tail
     }
     return result;
   }
 
   public static List<Expression> reconstructCaseWhenThenExpressions(
-          List<List<WhenThenExpression>> childWhenThenExpressions, List<Expression> elseExpressions
-  ) {
+      List<List<WhenThenExpression>> childWhenThenExpressions, List<Expression> elseExpressions) {
     return reconstructCaseWhenThenExpressionsImplement(
-            childWhenThenExpressions, elseExpressions, new ArrayList<>(), 0
-    );
+        childWhenThenExpressions, elseExpressions, new ArrayList<>(), 0);
   }
 
   public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
     return new CaseWhenThenExpression(
-            childExpressions // transform to List<WhenThenExpression>
-                    .subList(0, childExpressions.size()-1)
-                    .stream().map(expression -> (WhenThenExpression)expression)
-                    .collect(Collectors.toList()),
-            childExpressions.get(childExpressions.size()-1)
-    );
+        childExpressions // transform to List<WhenThenExpression>
+            .subList(0, childExpressions.size() - 1).stream()
+            .map(expression -> (WhenThenExpression) expression)
+            .collect(Collectors.toList()),
+        childExpressions.get(childExpressions.size() - 1));
   }
 
   public static Expression reconstructUnaryExpression(
@@ -274,12 +276,12 @@ public class ExpressionUtils {
 
   /**
    * Make cartesian product.
+   *
    * @param dimensionValue source data
    * @param resultList final results
-   * @param layer the depth of recursive, dimensionValue[layer] will be processed this time,
-   *              should always be 0 while call from outside
-   * @param currentList intermediate result,
-   *                    should always be empty while call from outside
+   * @param layer the depth of recursive, dimensionValue[layer] will be processed this time, should
+   *     always be 0 while call from outside
+   * @param currentList intermediate result, should always be empty while call from outside
    * @param <T> any type
    */
   public static <T> void cartesianProduct(

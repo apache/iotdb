@@ -59,7 +59,8 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   }
 
   @Override
-  public Expression visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
+  public Expression visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<Expression> childResults = getResultsFromChild(caseWhenThenExpression, context);
     return reconstructCaseWHenThenExpression(childResults);
   }

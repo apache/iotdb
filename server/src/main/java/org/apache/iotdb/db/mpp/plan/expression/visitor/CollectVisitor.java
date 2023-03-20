@@ -51,7 +51,8 @@ public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expre
   }
 
   @Override
-  public List<Expression> visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, Void context) {
+  public List<Expression> visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, Void context) {
     return mergeList(getResultsFromChild(caseWhenThenExpression, null));
   }
 
