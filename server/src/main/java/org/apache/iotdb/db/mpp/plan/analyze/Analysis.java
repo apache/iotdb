@@ -227,6 +227,10 @@ public class Analysis {
     return dataPartition.getDataRegionReplicaSet(deviceName, null);
   }
 
+  public List<TRegionReplicaSet> getPartitionInfo() {
+    return dataPartition.getAllDataRegionReplicaSet();
+  }
+
   public Statement getStatement() {
     return statement;
   }

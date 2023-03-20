@@ -82,6 +82,22 @@ public class DataPartition extends Partition {
         .collect(Collectors.toList());
   }
 
+  public List<TRegionReplicaSet> getAllDataRegionReplicaSet() {
+    List<TRegionReplicaSet> regionReplicaSet = new ArrayList<>();
+    dataPartitionMap
+        .values()
+        .forEach(
+            tSeriesPartitionSlotMapMap -> {
+              tSeriesPartitionSlotMapMap
+                  .values()
+                  .forEach(
+                      tTimePartitionSlotListMap -> {
+                        tTimePartitionSlotListMap.values().forEach(regionReplicaSet::addAll);
+                      });
+            });
+    return regionReplicaSet;
+  }
+
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
       String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
     // A list of data region replica sets will store data in a same time partition.

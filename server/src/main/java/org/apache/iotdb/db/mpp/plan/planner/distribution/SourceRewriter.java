@@ -448,8 +448,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitFileAggregationScan(
       FileAggregationScanNode node, DistributionPlanContext context) {
-    List<TRegionReplicaSet> dataDistribution =
-        analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+    List<TRegionReplicaSet> dataDistribution = analysis.getPartitionInfo();
     if (dataDistribution.size() == 1) {
       node.setRegionReplicaSet(dataDistribution.get(0));
       return Collections.singletonList(node);

@@ -50,6 +50,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+
 public class FileAggregationScanUtil {
 
   private final PartialPath pathPattern;
@@ -68,6 +70,8 @@ public class FileAggregationScanUtil {
 
   private final SeriesScanOptions scanOptions;
 
+  private boolean isCountStar;
+
   public FileAggregationScanUtil(
       PartialPath pathPattern,
       AggregationDescriptor aggregationDescriptor,
@@ -80,9 +84,13 @@ public class FileAggregationScanUtil {
     this.partialPathPool = new PartialPathPool();
     this.levels = levels;
     this.scanOptions = scanOptions;
+    this.isCountStar =
+        pathPattern.getMeasurement().equals(ONE_LEVEL_PATH_WILDCARD)
+            && aggregationDescriptor.getAggregationType() == TAggregationType.COUNT;
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
+    dataSource.constructOrderIndexes();
     this.fileResourceMaterializer = new TsFileResourceMaterializer(dataSource);
   }
 
@@ -166,7 +174,7 @@ public class FileAggregationScanUtil {
 
     PartialPath groupedPath =
         partialPathPool.getGroupedPath(devicePath, timeseriesMetadata.getMeasurementId());
-    if (pathToAggregatorMap.containsKey(groupedPath)) {
+    if (!pathToAggregatorMap.containsKey(groupedPath)) {
       pathToAggregatorMap.put(
           groupedPath,
           new Aggregator(
@@ -248,7 +256,7 @@ public class FileAggregationScanUtil {
         return rawPathToGroupedPathMap.get(rawPathStr);
       }
       PartialPath groupedPath =
-          GroupByLevelController.groupPathByLevel(devicePath, measurementId, levels);
+          GroupByLevelController.groupPathByLevel(devicePath, measurementId, levels, isCountStar);
       rawPathToGroupedPathMap.put(rawPathStr, groupedPath);
       return groupedPath;
     }

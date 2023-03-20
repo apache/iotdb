@@ -42,7 +42,7 @@ public class TsFileResourceMaterializer {
 
   public TsFileResource next() {
     if (tsFileResourceSource.hasNextSeqResource(curSeqFileIndex, true)) {
-      TsFileResource nextFile = tsFileResourceSource.getSeqResourceByIndex(curUnSeqFileIndex);
+      TsFileResource nextFile = tsFileResourceSource.getSeqResourceByIndex(curSeqFileIndex);
       curSeqFileIndex++;
       return nextFile;
     } else if (tsFileResourceSource.hasNextUnseqResource(curUnSeqFileIndex)) {

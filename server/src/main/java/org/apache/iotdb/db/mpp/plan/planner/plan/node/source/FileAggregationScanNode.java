@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -45,6 +46,9 @@ public class FileAggregationScanNode extends SeriesSourceNode {
 
   private final int[] levels;
 
+  // The id of DataRegion where the node will run
+  private TRegionReplicaSet regionReplicaSet;
+
   public FileAggregationScanNode(
       PlanNodeId id,
       PartialPath pathPattern,
@@ -54,6 +58,16 @@ public class FileAggregationScanNode extends SeriesSourceNode {
     this.pathPattern = pathPattern;
     this.aggregationDescriptor = aggregationDescriptor;
     this.levels = levels;
+  }
+
+  public FileAggregationScanNode(
+      PlanNodeId id,
+      PartialPath pathPattern,
+      AggregationDescriptor aggregationDescriptor,
+      int[] levels,
+      TRegionReplicaSet regionReplicaSet) {
+    this(id, pathPattern, aggregationDescriptor, levels);
+    this.regionReplicaSet = regionReplicaSet;
   }
 
   public PartialPath getPathPattern() {
@@ -83,11 +97,13 @@ public class FileAggregationScanNode extends SeriesSourceNode {
   }
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {}
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
   }
 
   @Override
@@ -114,7 +130,11 @@ public class FileAggregationScanNode extends SeriesSourceNode {
   @Override
   public PlanNode clone() {
     return new FileAggregationScanNode(
-        getPlanNodeId(), getPathPattern(), getAggregationDescriptor(), getLevels());
+        getPlanNodeId(),
+        getPathPattern(),
+        getAggregationDescriptor(),
+        getLevels(),
+        getRegionReplicaSet());
   }
 
   @Override
@@ -154,5 +174,10 @@ public class FileAggregationScanNode extends SeriesSourceNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new FileAggregationScanNode(planNodeId, pathPattern, aggregationDescriptor, levels);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitFileAggregationScan(this, context);
   }
 }

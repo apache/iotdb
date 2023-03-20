@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.FileAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -186,6 +187,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processNoChildSourceNode(node, context);
   }
 
+  @Override
+  public PlanNode visitFileAggregationScan(FileAggregationScanNode node, NodeGroupContext context) {
+    return processNoChildSourceNode(node, context);
+  }
+
   private PlanNode processNoChildSourceNode(SourceNode node, NodeGroupContext context) {
     context.putNodeDistribution(
         node.getPlanNodeId(),
@@ -276,11 +282,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
     List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren()
-        .forEach(
-            child -> {
-              visitedChildren.add(visit(child, context));
-            });
+    node.getChildren().forEach(child -> visitedChildren.add(visit(child, context)));
 
     TRegionReplicaSet dataRegion;
     NodeDistributionType distributionType;

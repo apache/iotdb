@@ -230,6 +230,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       queryStatement.semanticCheck();
 
       if (queryStatement.isGroupByLevel()) {
+        analysis.setStatement(queryStatement);
+
         analysis.setLevels(queryStatement.getGroupByLevelComponent().getLevels());
 
         PartialPath pathPrefix = queryStatement.getFromComponent().getPrefixPaths().get(0);
@@ -258,10 +260,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             new DatasetHeader(ColumnHeaderConstant.lastQueryColumnHeaders, true));
 
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-        sgNameToQueryParamsMap.put(
-            "root.iov",
-            Collections.singletonList(
-                new DataPartitionQueryParam("root.iov.**", Collections.emptyList(), true, true)));
+        sgNameToQueryParamsMap.put("root.iov", Collections.emptyList());
         analysis.setDataPartitionInfo(partitionFetcher.getDataPartition(sgNameToQueryParamsMap));
 
         return analysis;

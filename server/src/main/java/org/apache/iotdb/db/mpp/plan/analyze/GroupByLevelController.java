@@ -174,7 +174,7 @@ public class GroupByLevelController {
   }
 
   public static PartialPath groupPathByLevel(
-      PartialPath rawDevicePath, String measurement, int[] levels) {
+      PartialPath rawDevicePath, String measurement, int[] levels, boolean isCountStar) {
     String[] nodes = Arrays.copyOf(rawDevicePath.getNodes(), rawDevicePath.getNodes().length + 1);
     nodes[nodes.length - 1] = measurement;
 
@@ -193,7 +193,11 @@ public class GroupByLevelController {
         transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
-    transformedNodes.add(nodes[nodes.length - 1]);
+    if (isCountStar) {
+      transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+    } else {
+      transformedNodes.add(nodes[nodes.length - 1]);
+    }
     return new PartialPath(transformedNodes.toArray(new String[0]));
   }
 

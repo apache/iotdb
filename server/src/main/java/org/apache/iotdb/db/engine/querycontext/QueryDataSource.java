@@ -121,4 +121,12 @@ public class QueryDataSource {
     }
     this.unSeqFileOrderIndex = unSeqFileOrderIndex;
   }
+
+  public void constructOrderIndexes() {
+    int[] unSeqFileOrderIndex = new int[unseqResources.size()];
+    for (int i = 0; i < unseqResources.size(); i++) {
+      unSeqFileOrderIndex[i] = i;
+    }
+    this.unSeqFileOrderIndex = unSeqFileOrderIndex;
+  }
 }
