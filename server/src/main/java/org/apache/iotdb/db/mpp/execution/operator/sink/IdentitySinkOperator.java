@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
 
 import java.util.List;
 
@@ -118,8 +117,10 @@ public class IdentitySinkOperator implements Operator {
   @Override
   public void close() throws Exception {
     for (int i = downStreamChannelIndex.getCurrentIndex(), n = children.size(); i < n; i++) {
-      Validate.notNull(children.get(i));
-      children.get(i).close();
+      Operator currentChild = children.get(i);
+      if (currentChild != null) {
+        currentChild.close();
+      }
     }
   }
 
