@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
@@ -125,8 +126,7 @@ class RatisConsensus implements IConsensus {
   private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
 
   private final RatisMetricSet ratisMetricSet;
-
-  private String consensusGroupType = null;
+  private TConsensusGroupType consensusGroupType = null;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
