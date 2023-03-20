@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -147,6 +148,16 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
 
+      if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+        response.setAccepted(false);
+        response.setMessage("Fail to do non-query operations because system is read-only.");
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SYSTEM_READ_ONLY,
+                "Fail to do non-query operations because system is read-only."));
+        return response;
+      }
+
       ConsensusWriteResponse writeResponse =
           executePlanNodeInConsensusLayer(context.getRegionId(), node);
       // TODO need consider more status
@@ -161,7 +172,9 @@ public class RegionWriteExecutor {
             writeResponse.getException());
         response.setAccepted(false);
         response.setMessage(writeResponse.getException().toString());
-        response.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage()));
       }
       return response;
     }
