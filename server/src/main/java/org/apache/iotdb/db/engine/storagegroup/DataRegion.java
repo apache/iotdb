@@ -878,7 +878,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    if (isLatestPartition && isSeq) {
+    if (isSeq) {
       lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
       for (TsFileResource tsFileResource : resourceList) {
         updateLastFlushTime(tsFileResource, true);
