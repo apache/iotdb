@@ -62,8 +62,10 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -219,6 +221,36 @@ public class ExpressionAnalyzer {
         }
         return checkedType;
       }
+    } else if (expression instanceof CaseWhenThenExpression) {
+      // first, get all subexpression's type
+      CaseWhenThenExpression caseExpression = (CaseWhenThenExpression) expression;
+      List<ResultColumn.ColumnType> typeList = caseExpression.getExpressions()
+              .stream()
+              .map(e -> identifyOutputColumnType(e, false))
+              .collect(Collectors.toList());
+      // if at least one subexpression is RAW, I'm RAW too
+      boolean rawFlag = typeList.stream().anyMatch(
+              columnType -> columnType == ResultColumn.ColumnType.RAW);
+      // if at least one subexpression is AGGREGATION, I'm AGGREGATION too
+      boolean aggregationFlag = typeList.stream().anyMatch(
+              columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
+      // not allow RAW && AGGREGATION
+      if (rawFlag && aggregationFlag) {
+        throw new SemanticException(
+                "Raw data and aggregation result hybrid calculation is not supported.");
+      }
+      // not allow all const
+      boolean allConst = typeList.stream().allMatch(
+              columnType -> columnType == ResultColumn.ColumnType.CONSTANT);
+      if (allConst) {
+        throw new SemanticException("Constant column is not supported.");
+      }
+      for (ResultColumn.ColumnType type : typeList) {
+        if (type != ResultColumn.ColumnType.CONSTANT) {
+          return type;
+        }
+      }
+      throw new IllegalArgumentException("shouldn't attach here");
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
       return ResultColumn.ColumnType.RAW;
     } else if (expression instanceof ConstantOperand) {
@@ -303,6 +335,12 @@ public class ExpressionAnalyzer {
         }
       }
       return actualPaths;
+    } else if (expression instanceof CaseWhenThenExpression) {
+      return expression.getExpressions()
+              .stream()
+              .map(expression1 -> concatExpressionWithSuffixPaths(expression1, prefixPaths))
+              .flatMap(Collection::stream)
+              .collect(Collectors.toList());
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return new ArrayList<>();
     } else {
@@ -350,6 +388,10 @@ public class ExpressionAnalyzer {
         PartialPath concatPath = prefixPath.concatPath(rawPath);
         patternTree.appendPathPattern(concatPath);
       }
+    } else if (predicate instanceof CaseWhenThenExpression) {
+      predicate.getExpressions().forEach(
+              expression -> constructPatternTreeFromExpression(expression, prefixPaths, patternTree)
+      );
     } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
       // do nothing
     } else {
@@ -569,6 +611,11 @@ public class ExpressionAnalyzer {
         timeFilterExist = timeFilterExist || checkIfTimeFilterExist(childExpression);
       }
       return timeFilterExist;
+    } else if (predicate instanceof CaseWhenThenExpression) {
+      return predicate.getExpressions()
+              .stream()
+              .map(ExpressionAnalyzer::checkIfTimeFilterExist)
+              .reduce(Boolean::logicalOr).get();
     } else if (predicate instanceof TimeSeriesOperand || predicate instanceof ConstantOperand) {
       return false;
     } else if (predicate instanceof TimestampOperand) {
@@ -624,6 +671,8 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof ConstantOperand) {
       return false;
     } else if (expression instanceof NullOperand) {
+      return true;
+    } else if (expression instanceof CaseWhenThenExpression) {
       return true;
     } else {
       throw new IllegalArgumentException(
@@ -715,6 +764,13 @@ public class ExpressionAnalyzer {
         }
       }
       return false;
+    } else if (expression instanceof CaseWhenThenExpression) {
+      for (Expression subexpression : expression.getExpressions()) {
+        if (isDeviceViewNeedSpecialProcess(subexpression)) {
+          return true;
+        }
+      }
+      return false;
     } else if (expression instanceof LeafOperand) {
       return false;
     } else {
@@ -745,6 +801,13 @@ public class ExpressionAnalyzer {
       List<Expression> inputExpressions = functionExpression.getExpressions();
       for (Expression inputExpression : inputExpressions) {
         if (!checkIsScalarExpression(inputExpression, analysis)) {
+          return false;
+        }
+      }
+      return true;
+    } else if (expression instanceof CaseWhenThenExpression) {
+      for (Expression subexpression : expression.getExpressions()) {
+        if (!checkIsScalarExpression(subexpression, analysis)) {
           return false;
         }
       }

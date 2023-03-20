@@ -29,8 +29,11 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
@@ -68,16 +71,12 @@ public abstract class CartesianProductVisitor<C>
   @Override
   public List<Expression> visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
-    int len = childResultsList.size();
-    List<List<WhenThenExpression>> whenThenLists = new ArrayList<>();
-    for (List<Expression> list : childResultsList.subList(0, len-1)) {
-      List<WhenThenExpression> newList = new ArrayList<>();
-      for (Expression expression : list) {
-        newList.add((WhenThenExpression) expression);
-      }
-      whenThenLists.add(newList);
+    List<List<Expression>> cartesianResults = new ArrayList<>();
+    cartesianProduct(childResultsList, cartesianResults, 0, new ArrayList<>());
+    List<Expression> result = new ArrayList<>();
+    for (List<Expression> cartesianResult : cartesianResults) {
+      result.add(reconstructCaseWHenThenExpression(cartesianResult));
     }
-    List<Expression> elseLists = childResultsList.get(len-1);
-    return reconstructCaseWhenThenExpressions(whenThenLists, elseLists);
+    return result;
   }
 }

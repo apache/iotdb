@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExpressionUtils {
   public static List<Expression> reconstructTimeSeriesOperands(
@@ -136,6 +137,16 @@ public class ExpressionUtils {
   ) {
     return reconstructCaseWhenThenExpressionsImplement(
             childWhenThenExpressions, elseExpressions, new ArrayList<>(), 0
+    );
+  }
+
+  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
+    return new CaseWhenThenExpression(
+            childExpressions // transform to List<WhenThenExpression>
+                    .subList(0, childExpressions.size()-1)
+                    .stream().map(expression -> (WhenThenExpression)expression)
+                    .collect(Collectors.toList()),
+            childExpressions.get(childExpressions.size()-1)
     );
   }
 
@@ -261,6 +272,16 @@ public class ExpressionUtils {
     }
   }
 
+  /**
+   * Make cartesian product.
+   * @param dimensionValue source data
+   * @param resultList final results
+   * @param layer the depth of recursive, dimensionValue[layer] will be processed this time,
+   *              should always be 0 while call from outside
+   * @param currentList intermediate result,
+   *                    should always be empty while call from outside
+   * @param <T> any type
+   */
   public static <T> void cartesianProduct(
       List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
     if (layer < dimensionValue.size() - 1) {
