@@ -259,7 +259,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
                 long[] startAndEndTime =
                     TimePartitionUtils.getStartAndEndTimeForTimePartition(stringLongMap);
                 return (timeFilter == null
-                    || timeFilter.satisfy(startAndEndTime[0], startAndEndTime[1]));
+                    || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]));
               })
           .collect(Collectors.toList());
     } else {
@@ -269,7 +269,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
                 long[] startAndEndTime =
                     TimePartitionUtils.getStartAndEndTimeForTimePartition(entry.getKey());
                 return (timeFilter == null
-                        || timeFilter.satisfy(startAndEndTime[0], startAndEndTime[1]))
+                        || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]))
                     && entry.getValue().containsKey(deviceId);
               })
           .map(Map.Entry::getKey)
