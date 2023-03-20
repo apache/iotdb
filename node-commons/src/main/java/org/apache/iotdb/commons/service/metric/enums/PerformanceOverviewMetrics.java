@@ -261,29 +261,37 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   private Timer memtableTimer;
   private Timer lastCacheTimer;
 
+  /** Record the time cost of lock in engine. */
   public void recordScheduleLockCost(long costTimeInNanos) {
     lockTimer.updateNanos(costTimeInNanos);
   }
 
+  /** Record the time cost of create memtable block in engine. */
   public void recordCreateMemtableBlockCost(long costTimeInNanos) {
     createMemtableBlockTimer.updateNanos(costTimeInNanos);
   }
 
+  /** Record the time cost of memory block in engine. */
   public void recordScheduleMemoryBlockCost(long costTimeInNanos) {
     memoryBlockTimer.updateNanos(costTimeInNanos);
   }
 
+  /** Record the time cost of wal in engine. */
   public void recordScheduleWalCost(long costTimeInNanos) {
     walTimer.updateNanos(costTimeInNanos);
   }
 
+  /** Record the time cost of memtable in engine. */
   public void recordScheduleMemTableCost(long costTimeInNanos) {
     memtableTimer.updateNanos(costTimeInNanos);
   }
 
+  /** Record the time cost of update last cache in engine. */
   public void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
     lastCacheTimer.updateNanos(costTimeInNanos);
   }
+
+  // endregion
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
