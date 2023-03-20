@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.service.metric.enums;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -69,11 +70,11 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricType.TIMER, PERFORMANCE_OVERVIEW_DETAIL, Tag.STAGE.toString(), SCHEDULER));
   }
 
-  private Timer authTimer;
-  private Timer parseTimer;
-  private Timer analyzeTimer;
-  private Timer planTimer;
-  private Timer scheduleTimer;
+  private Timer authTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer parseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer analyzeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer planTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer scheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost in authority stage. */
   public void recordAuthCost(long costTimeInNanos) {
@@ -126,8 +127,8 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             REMOTE_SCHEDULE));
   }
 
-  private Timer localScheduleTimer;
-  private Timer remoteScheduleTimer;
+  private Timer localScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer remoteScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost of local schedule. */
   public void recordScheduleLocalCost(long costTimeInNanos) {
@@ -166,9 +167,9 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricType.TIMER, PERFORMANCE_OVERVIEW_LOCAL_DETAIL, Tag.STAGE.toString(), STORAGE));
   }
 
-  private Timer schemaValidateTimer;
-  private Timer triggerTimer;
-  private Timer storageTimer;
+  private Timer schemaValidateTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer triggerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer storageTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost of schema validate stage in local schedule. */
   public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
@@ -199,7 +200,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricType.TIMER, PERFORMANCE_OVERVIEW_STORAGE_DETAIL, Tag.STAGE.toString(), ENGINE));
   }
 
-  private Timer engineTimer;
+  private Timer engineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public void recordEngineCost(long costTimeInNanos) {
     engineTimer.updateNanos(costTimeInNanos);
@@ -254,12 +255,12 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             LAST_CACHE));
   }
 
-  private Timer lockTimer;
-  private Timer createMemtableBlockTimer;
-  private Timer memoryBlockTimer;
-  private Timer walTimer;
-  private Timer memtableTimer;
-  private Timer lastCacheTimer;
+  private Timer lockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer createMemtableBlockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer memoryBlockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer walTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer memtableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer lastCacheTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost of lock in engine. */
   public void recordScheduleLockCost(long costTimeInNanos) {
