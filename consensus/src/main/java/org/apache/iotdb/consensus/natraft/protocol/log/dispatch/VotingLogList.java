@@ -48,11 +48,11 @@ public class VotingLogList {
 
   private boolean tryCommit(VotingEntry entry) {
     RaftLogManager logManager = member.getLogManager();
-
-    if (computeNewCommitIndex(entry)
-        && logManager != null
-        && newCommitIndex.get() > logManager.getCommitLogIndex()) {
+    boolean commitIndexUpdated = computeNewCommitIndex(entry);
+    if (commitIndexUpdated && newCommitIndex.get() > logManager.getCommitLogIndex()) {
       try {
+        Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_BEFORE_COMMIT.add(
+            System.nanoTime() - entry.getEntry().createTime);
         logManager.commitTo(newCommitIndex.get());
       } catch (LogExecutionException e) {
         logger.error("Fail to commit {}", newCommitIndex, e);

@@ -1222,7 +1222,7 @@ public class RaftMember {
       e.setCurrLogIndex(lastIndex + 1);
       e.setPrevTerm(lastTerm);
 
-      logManager.append(Collections.singletonList(e));
+      logManager.append(Collections.singletonList(e), true);
       votingEntry = LogUtils.buildVotingLog(e, this);
 
       setNewNodes(newNodes);

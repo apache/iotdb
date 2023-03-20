@@ -70,7 +70,7 @@ public class SynchronousSequencer implements LogSequencer {
           e.createTime = System.nanoTime();
 
           // logDispatcher will serialize log, and set log size, and we will use the size after it
-          logManager.append(Collections.singletonList(e));
+          logManager.append(Collections.singletonList(e), true);
 
           votingEntry = LogUtils.buildVotingLog(e, member);
 

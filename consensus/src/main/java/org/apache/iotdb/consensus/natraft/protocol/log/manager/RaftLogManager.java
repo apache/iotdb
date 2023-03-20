@@ -360,7 +360,7 @@ public abstract class RaftLogManager {
 
         } else {
           long offset = lastIndex + 1;
-          append(entries.subList((int) (ci - offset), entries.size()));
+          append(entries.subList((int) (ci - offset), entries.size()), false);
         }
         return newLastIndex;
       }
@@ -377,7 +377,7 @@ public abstract class RaftLogManager {
    * @param appendingEntries appendingEntries
    * @return the newly generated lastIndex
    */
-  public long append(List<Entry> appendingEntries) {
+  public long append(List<Entry> appendingEntries, boolean isLeader) {
     if (entries.isEmpty()) {
       return getLastLogIndex();
     }
@@ -410,11 +410,16 @@ public abstract class RaftLogManager {
       }
     }
 
-    Object logUpdateCondition =
-        getLogUpdateCondition(entries.get(entries.size() - 1).getCurrLogIndex());
-    synchronized (logUpdateCondition) {
-      logUpdateCondition.notifyAll();
+    if (!isLeader) {
+      // log update condition is to inform follower appending threads that the log is updated, and
+      // the leader does not concern it
+      Object logUpdateCondition =
+          getLogUpdateCondition(entries.get(entries.size() - 1).getCurrLogIndex());
+      synchronized (logUpdateCondition) {
+        logUpdateCondition.notifyAll();
+      }
     }
+
     return getLastLogIndex();
   }
 
@@ -425,7 +430,7 @@ public abstract class RaftLogManager {
    * @param term the entry's term which index is leaderCommit in leader's log module
    * @return true or false
    */
-  public synchronized boolean maybeCommit(long leaderCommit, long term) {
+  public boolean maybeCommit(long leaderCommit, long term) {
     if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
       try {
         commitTo(leaderCommit);
@@ -615,7 +620,12 @@ public abstract class RaftLogManager {
         return;
       }
 
-      removedCommitted(entries);
+      for (Entry entry : entries) {
+        if (entry.createTime != 0) {
+          Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_READY_COMMIT.add(
+              System.nanoTime() - entry.createTime);
+        }
+      }
       checkCompaction(entries);
       commitEntries(entries);
       applyEntries(entries);

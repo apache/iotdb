@@ -21,13 +21,15 @@ package org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.HardState;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.SyncLogDequeSerializer.VersionController.SimpleFileVersionController;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -73,7 +75,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private List<File> logDataFileList;
 
   /** the log index files */
-  private List<File> logIndexFileList;
+  private List<IndexFileDescriptor> logIndexFileList;
 
   private LogParser parser = LogParser.getINSTANCE();
   private File metaFile;
@@ -109,7 +111,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    *
    * <p>for log index file: ${startLogIndex}-${endLogIndex}-{version}-idx
    */
-  private static final int FILE_NAME_PART_LENGTH = 4;
+  static final int FILE_NAME_PART_LENGTH = 4;
 
   private int maxRaftLogIndexSizeInMemory;
 
@@ -130,11 +132,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   private long firstLogIndex = 0;
 
+  private long lastLogIndex = 0;
+
   /**
-   * the offset of the log's index, for example, the first value is the offset of index
-   * ${firstLogIndex}, the second value is the offset of index ${firstLogIndex+1}
+   * the index and file offset of the log, for example, the first pair is the offset of index
+   * ${firstLogIndex}, the second pair is the offset of index ${firstLogIndex+1}
    */
-  private List<Long> logIndexOffsetList;
+  private List<Pair<Long, Long>> logIndexOffsetList;
 
   private static final int LOG_DELETE_CHECK_INTERVAL_SECOND = 5;
 
@@ -143,6 +147,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private volatile boolean isClosed = false;
   private RaftConfig config;
+  private ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
+  private IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.SNAPPY);
 
   private void initCommonProperties() {
     logDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
@@ -175,18 +181,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             LOG_DELETE_CHECK_INTERVAL_SECOND,
             LOG_DELETE_CHECK_INTERVAL_SECOND,
             TimeUnit.SECONDS);
-  }
-
-  /**
-   * for log tools
-   *
-   * @param logPath log dir path
-   */
-  public SyncLogDequeSerializer(String logPath, RaftConfig config) {
-    this.config = config;
-    logDir = logPath + File.separator;
-    initCommonProperties();
-    initMetaAndLogFiles();
   }
 
   /**
@@ -286,24 +280,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logDataBuffer.mark();
       logIndexBuffer.mark();
       ByteBuffer logData = log.serialize();
-      int size = logData.remaining() + Integer.BYTES;
       try {
-        logDataBuffer.putInt(logData.remaining());
         logDataBuffer.put(logData);
-        logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
-        logIndexOffsetList.add(offsetOfTheCurrentLogDataOutputStream);
-        offsetOfTheCurrentLogDataOutputStream += size;
+        lastLogIndex = log.getCurrLogIndex();
       } catch (BufferOverflowException e) {
-        logger.info("Raft log buffer overflow!");
+        logger.debug("Raft log buffer overflow!");
         logDataBuffer.reset();
         logIndexBuffer.reset();
         flushLogBuffer();
         checkCloseCurrentFile(log.getCurrLogIndex() - 1);
-        logDataBuffer.putInt(logData.capacity());
         logDataBuffer.put(logData);
-        logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
-        logIndexOffsetList.add(offsetOfTheCurrentLogDataOutputStream);
-        offsetOfTheCurrentLogDataOutputStream += size;
+        lastLogIndex = log.getCurrLogIndex();
       }
     }
   }
@@ -350,26 +337,28 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     if (currentLogIndexOutputStream != null) {
       currentLogIndexOutputStream.close();
-      logger.info("{}: Closed a log index file {}", this, getCurrentLogIndexFile());
+      logger.info("{}: Closed a log index file {}", this, getCurrentLogIndexFileDescriptor());
       currentLogIndexOutputStream = null;
 
-      File currentLogIndexFile = getCurrentLogIndexFile();
+      IndexFileDescriptor currentLogIndexFile = getCurrentLogIndexFileDescriptor();
       String newIndexFileName =
           currentLogIndexFile
+              .file
               .getName()
               .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(commitIndex));
       File newCurrentLogIndexFile =
           SystemFileFactory.INSTANCE.getFile(
-              currentLogIndexFile.getParent() + File.separator + newIndexFileName);
-      if (!currentLogIndexFile.renameTo(newCurrentLogIndexFile)) {
-        logger.error("rename log index file={} failed", currentLogIndexFile.getAbsoluteFile());
+              currentLogIndexFile.file.getParent() + File.separator + newIndexFileName);
+      if (!currentLogIndexFile.file.renameTo(newCurrentLogIndexFile)) {
+        logger.error("rename log index file={} failed", currentLogIndexFile.file.getAbsoluteFile());
       }
       logger.debug(
           "rename index file={} to file={}",
-          currentLogIndexFile.getAbsoluteFile(),
+          currentLogIndexFile.file.getAbsoluteFile(),
           newCurrentLogIndexFile.getAbsoluteFile());
 
-      logIndexFileList.set(logIndexFileList.size() - 1, newCurrentLogIndexFile);
+      logIndexFileList.get(logIndexFileList.size() - 1).file = newCurrentLogIndexFile;
+      logIndexFileList.get(logIndexFileList.size() - 1).endIndex = commitIndex;
     }
 
     offsetOfTheCurrentLogDataOutputStream = 0;
@@ -386,10 +375,19 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       try {
         checkStream();
         // 1. write to the log data file
-        ReadWriteIOUtils.writeWithoutSize(
-            logDataBuffer, 0, logDataBuffer.position(), currentLogDataOutputStream);
+        byte[] compressed =
+            compressor.compress(
+                logDataBuffer.array(),
+                logDataBuffer.arrayOffset() + logDataBuffer.position(),
+                logDataBuffer.remaining());
+        ReadWriteIOUtils.write(compressed.length, currentLogDataOutputStream);
+        currentLogDataOutputStream.write(compressed);
+        logIndexOffsetList.add(new Pair<>(lastLogIndex, offsetOfTheCurrentLogDataOutputStream));
+        logIndexBuffer.putLong(lastLogIndex);
+        logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
         ReadWriteIOUtils.writeWithoutSize(
             logIndexBuffer, 0, logIndexBuffer.position(), currentLogIndexOutputStream);
+        offsetOfTheCurrentLogDataOutputStream += Integer.BYTES + compressed.length;
         if (config.getFlushRaftLogThreshold() == 0) {
           currentLogDataOutputStream.getChannel().force(true);
           currentLogIndexOutputStream.getChannel().force(true);
@@ -483,7 +481,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     // sort by name before recover
     logDataFileList.sort(this::comparePersistLogFileName);
-    logIndexFileList.sort(this::comparePersistLogFileName);
+    logIndexFileList.sort(
+        (descriptor1, descriptor2) ->
+            comparePersistLogFileName(descriptor1.file, descriptor2.file));
 
     // 3. recover the last log file in case of abnormal exit
     recoverTheLastLogFile();
@@ -506,7 +506,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             logDataFileList.add(file);
             break;
           case LOG_INDEX_FILE_SUFFIX:
-            logIndexFileList.add(file);
+            logIndexFileList.add(new IndexFileDescriptor(file));
             break;
           default:
             logger.error("unknown file type={}", logFileType);
@@ -565,19 +565,21 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       return;
     }
 
-    File lastIndexFile = logIndexFileList.get(logIndexFileList.size() - 1);
-    long endIndex = Long.parseLong(lastIndexFile.getName().split(FILE_NAME_SEPARATOR)[1]);
+    IndexFileDescriptor lastIndexFileDescriptor = logIndexFileList.get(logIndexFileList.size() - 1);
+    long endIndex = lastIndexFileDescriptor.endIndex;
     boolean success = true;
     if (endIndex != Long.MAX_VALUE) {
-      logger.info("last log index file={} no need to recover", lastIndexFile.getAbsoluteFile());
+      logger.info(
+          "last log index file={} no need to recover",
+          lastIndexFileDescriptor.file.getAbsoluteFile());
     } else {
-      success = recoverTheLastLogIndexFile(lastIndexFile);
+      success = recoverTheLastLogIndexFile(lastIndexFileDescriptor);
     }
 
     if (!success) {
       logger.error(
           "recover log index file failed, clear all logs in disk, {}",
-          lastIndexFile.getAbsoluteFile());
+          lastIndexFileDescriptor.file.getAbsoluteFile());
       forceDeleteAllLogFiles();
       clearFirstLogIndex();
       return;
@@ -603,9 +605,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private boolean recoverTheLastLogDataFile(File file) {
     String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
     long startIndex = Long.parseLong(splits[0]);
-    Pair<File, Pair<Long, Long>> fileStartAndEndIndex = getLogIndexFile(startIndex);
-    if (fileStartAndEndIndex.right.left == startIndex) {
-      long endIndex = fileStartAndEndIndex.right.right;
+    IndexFileDescriptor descriptor = getLogIndexFile(startIndex);
+    if (descriptor.startIndex == startIndex) {
+      long endIndex = descriptor.endIndex;
       String newDataFileName =
           file.getName().replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(endIndex));
       File newLogDataFile =
@@ -620,30 +622,31 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return false;
   }
 
-  private boolean recoverTheLastLogIndexFile(File file) {
-    logger.debug("start to recover the last log index file={}", file.getAbsoluteFile());
-    String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
-    long startIndex = Long.parseLong(splits[0]);
+  private boolean recoverTheLastLogIndexFile(IndexFileDescriptor descriptor) {
+    logger.debug("start to recover the last log index file={}", descriptor.file.getAbsoluteFile());
+    long startIndex = descriptor.startIndex;
     int longLength = 8;
     byte[] bytes = new byte[longLength];
 
-    int totalCount = 0;
+    long index;
     long offset = 0;
-    try (FileInputStream fileInputStream = new FileInputStream(file);
+    long endIndex = 0;
+    try (FileInputStream fileInputStream = new FileInputStream(descriptor.file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       firstLogIndex = startIndex;
       while (bufferedInputStream.read(bytes) != -1) {
+        index = BytesUtils.bytesToLong(bytes);
+        bufferedInputStream.read(bytes);
         offset = BytesUtils.bytesToLong(bytes);
-        logIndexOffsetList.add(offset);
-        totalCount++;
+        logIndexOffsetList.add(new Pair<>(index, offset));
+        endIndex = index;
       }
     } catch (IOException e) {
       logger.error("recover log index file failed,", e);
     }
-    long endIndex = startIndex + totalCount - 1;
     logger.debug(
         "recover log index file={}, startIndex={}, endIndex={}",
-        file.getAbsoluteFile(),
+        descriptor.file.getAbsoluteFile(),
         startIndex,
         endIndex);
 
@@ -658,15 +661,21 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
     if (endIndex >= startIndex) {
       String newIndexFileName =
-          file.getName().replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(endIndex));
+          descriptor
+              .file
+              .getName()
+              .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(endIndex));
       File newLogIndexFile =
-          SystemFileFactory.INSTANCE.getFile(file.getParent() + File.separator + newIndexFileName);
-      if (!file.renameTo(newLogIndexFile)) {
-        logger.error("rename log index file={} failed when recover", file.getAbsoluteFile());
+          SystemFileFactory.INSTANCE.getFile(
+              descriptor.file.getParent() + File.separator + newIndexFileName);
+      if (!descriptor.file.renameTo(newLogIndexFile)) {
+        logger.error(
+            "rename log index file={} failed when recover", descriptor.file.getAbsoluteFile());
       }
-      logIndexFileList.set(logIndexFileList.size() - 1, newLogIndexFile);
+      descriptor.file = newLogIndexFile;
+      descriptor.endIndex = endIndex;
     } else {
-      logger.error("recover log index file failed,{}", file.getAbsoluteFile());
+      logger.error("recover log index file failed,{}", descriptor.file.getAbsoluteFile());
       return false;
     }
     return true;
@@ -733,8 +742,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
 
     if (currentLogIndexOutputStream == null) {
-      currentLogIndexOutputStream = new FileOutputStream(getCurrentLogIndexFile(), true);
-      logger.info("{}: Opened a new index data file: {}", this, getCurrentLogIndexFile());
+      currentLogIndexOutputStream =
+          new FileOutputStream(getCurrentLogIndexFileDescriptor().file, true);
+      logger.info("{}: Opened a new index data file: {}", this, getCurrentLogIndexFileDescriptor());
     }
   }
 
@@ -766,7 +776,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logger.warn("Cannot create new log index file {}", logDataFile);
       }
       logDataFileList.add(logDataFile);
-      logIndexFileList.add(logIndexFile);
+      logIndexFileList.add(new IndexFileDescriptor(logIndexFile, startLogIndex, endLogIndex));
     } finally {
       lock.unlock();
     }
@@ -776,7 +786,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return logDataFileList.get(logDataFileList.size() - 1);
   }
 
-  private File getCurrentLogIndexFile() {
+  private IndexFileDescriptor getCurrentLogIndexFileDescriptor() {
     return logIndexFileList.get(logIndexFileList.size() - 1);
   }
 
@@ -1025,7 +1035,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
 
     File logDataFile = null;
-    File logIndexFile = null;
+    IndexFileDescriptor logIndexFile = null;
 
     lock.lock();
     try {
@@ -1036,18 +1046,18 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         return false;
       }
       Files.delete(logDataFile.toPath());
-      Files.delete(logIndexFile.toPath());
+      Files.delete(logIndexFile.file.toPath());
       logDataFileList.remove(0);
       logIndexFileList.remove(0);
       logger.debug(
           "delete date file={}, index file={}",
           logDataFile.getAbsoluteFile(),
-          logIndexFile.getAbsoluteFile());
+          logIndexFile.file.getAbsoluteFile());
     } catch (IOException e) {
       logger.error(
           "delete file failed, data file={}, index file={}",
           logDataFile.getAbsoluteFile(),
-          logIndexFile.getAbsoluteFile());
+          logIndexFile.file.getAbsoluteFile());
       return false;
     } finally {
       lock.unlock();
@@ -1095,9 +1105,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       startIndex = 0;
     }
 
-    long newEndIndex = endIndex;
+    long newEndIndex;
     if (endIndex - startIndex > maxNumberOfLogsPerFetchOnDisk) {
       newEndIndex = startIndex + maxNumberOfLogsPerFetchOnDisk;
+    } else {
+      newEndIndex = endIndex;
     }
     logger.debug(
         "intend to get logs between[{}, {}], actually get logs between[{},{}]",
@@ -1122,6 +1134,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       for (Pair<File, Pair<Long, Long>> pair : logDataFileAndOffsetList) {
         result.addAll(getLogsFromOneLogDataFile(pair.left, pair.right));
       }
+      long finalStartIndex = startIndex;
+      result.removeIf(
+          e -> !(finalStartIndex <= e.getCurrLogIndex() && e.getCurrLogIndex() <= newEndIndex));
 
       return result;
     } finally {
@@ -1147,16 +1162,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
     // 1. first find in memory
     if (logIndex >= firstLogIndex) {
-      int arrayIndex = (int) (logIndex - firstLogIndex);
-      if (arrayIndex < logIndexOffsetList.size()) {
-        offset = logIndexOffsetList.get(arrayIndex);
-        logger.debug(
-            "found the offset in memory, logIndex={}, firstLogIndex={}, logIndexOffsetList size={}, offset={}",
-            logIndex,
-            firstLogIndex,
-            logIndexOffsetList.size(),
-            offset);
-        return offset;
+      for (Pair<Long, Long> indexOffset : logIndexOffsetList) {
+        // end index
+        if (indexOffset.left >= logIndex) {
+          return indexOffset.right;
+        }
       }
     }
 
@@ -1167,36 +1177,30 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logIndexOffsetList.size());
 
     // 2. second read the log index file
-    Pair<File, Pair<Long, Long>> fileWithStartAndEndIndex = getLogIndexFile(logIndex);
-    if (fileWithStartAndEndIndex == null) {
+    IndexFileDescriptor descriptor = getLogIndexFile(logIndex);
+    if (descriptor == null) {
       return -1;
     }
-    File file = fileWithStartAndEndIndex.left;
-    Pair<Long, Long> startAndEndIndex = fileWithStartAndEndIndex.right;
+    File file = descriptor.file;
     logger.debug(
         "start to read the log index file={} for log index={}, file size={}",
         file.getAbsoluteFile(),
         logIndex,
         file.length());
+    long endIndex;
     try (FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
-      long bytesNeedToSkip = (logIndex - startAndEndIndex.left) * (Long.BYTES);
-      long bytesActuallySkip = bufferedInputStream.skip(bytesNeedToSkip);
-      logger.debug("skip {} bytes when read file={}", bytesActuallySkip, file.getAbsoluteFile());
-      if (bytesNeedToSkip != bytesActuallySkip) {
-        logger.error(
-            "read file={} failed, should skip={}, actually skip={}",
-            file.getAbsoluteFile(),
-            bytesNeedToSkip,
-            bytesActuallySkip);
-        return -1;
+      while (bufferedInputStream.available() > 0) {
+        endIndex = ReadWriteIOUtils.readLong(bufferedInputStream);
+        offset = ReadWriteIOUtils.readLong(bufferedInputStream);
+        if (endIndex >= logIndex) {
+          return offset;
+        }
       }
-      offset = ReadWriteIOUtils.readLong(bufferedInputStream);
-      return offset;
     } catch (IOException e) {
       logger.error("can not read the log index file={}", file.getAbsoluteFile(), e);
-      return -1;
     }
+    return -1;
   }
 
   /**
@@ -1270,16 +1274,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    *     second pair's first value is the file's start log index. the second pair's second value is
    *     the file's end log index. null if not found
    */
-  public Pair<File, Pair<Long, Long>> getLogIndexFile(long startIndex) {
-    for (File file : logIndexFileList) {
-      String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
-      if (splits.length != FILE_NAME_PART_LENGTH) {
-        logger.error(
-            "file={} name should be in the following format: startLogIndex-endLogIndex-version-idx",
-            file.getAbsoluteFile());
-      }
-      if (Long.parseLong(splits[0]) <= startIndex && startIndex <= Long.parseLong(splits[1])) {
-        return new Pair<>(file, new Pair<>(Long.parseLong(splits[0]), Long.parseLong(splits[1])));
+  public IndexFileDescriptor getLogIndexFile(long startIndex) {
+    for (IndexFileDescriptor descriptor : logIndexFileList) {
+      if (descriptor.startIndex <= startIndex && startIndex <= descriptor.endIndex) {
+        return descriptor;
       }
     }
     logger.debug("can not found the log index file for startIndex={}", startIndex);
@@ -1351,11 +1349,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             file.getAbsoluteFile(),
             currentReadOffset,
             startAndEndOffset.right);
-        int logSize = ReadWriteIOUtils.readInt(bufferedInputStream);
-        Entry e = null;
-        e = parser.parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(bufferedInputStream, logSize)));
-        result.add(e);
-        currentReadOffset = currentReadOffset + Integer.BYTES + logSize;
+        int logBlockSize = ReadWriteIOUtils.readInt(bufferedInputStream);
+        byte[] bytes = ReadWriteIOUtils.readBytes(bufferedInputStream, logBlockSize);
+        ByteBuffer uncompressed = ByteBuffer.wrap(unCompressor.uncompress(bytes));
+        while (uncompressed.remaining() > 0) {
+          Entry e = parser.parse(uncompressed);
+          result.add(e);
+        }
+        currentReadOffset = currentReadOffset + Integer.BYTES + logBlockSize;
       }
     } catch (UnknownLogTypeException e) {
       logger.error("Unknown log detected ", e);
@@ -1363,31 +1364,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.error("Cannot read log from file={} ", file.getAbsoluteFile(), e);
     }
     return result;
-  }
-
-  @TestOnly
-  public void setLogDataBuffer(ByteBuffer logDataBuffer) {
-    this.logDataBuffer = logDataBuffer;
-  }
-
-  @TestOnly
-  public void setMaxRaftLogPersistDataSizePerFile(int maxRaftLogPersistDataSizePerFile) {
-    this.maxRaftLogPersistDataSizePerFile = maxRaftLogPersistDataSizePerFile;
-  }
-
-  @TestOnly
-  public void setMaxNumberOfPersistRaftLogFiles(int maxNumberOfPersistRaftLogFiles) {
-    this.maxNumberOfPersistRaftLogFiles = maxNumberOfPersistRaftLogFiles;
-  }
-
-  @TestOnly
-  public List<File> getLogDataFileList() {
-    return logDataFileList;
-  }
-
-  @TestOnly
-  public List<File> getLogIndexFileList() {
-    return logIndexFileList;
   }
 
   /**
@@ -1399,6 +1375,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * be guaranteed by the caller.
    */
   public interface VersionController {
+
     /**
      * Get the next version number.
      *

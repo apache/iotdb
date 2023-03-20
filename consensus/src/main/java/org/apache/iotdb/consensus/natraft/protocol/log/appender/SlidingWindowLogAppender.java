@@ -148,7 +148,7 @@ public class SlidingWindowLogAppender implements LogAppender {
       }
     }
     if (success != -1) {
-      moveWindowRightward(flushPos);
+      moveWindowRightward(flushPos, logs.get(logs.size() - 1).getCurrLogIndex());
     }
     result.status = Response.RESPONSE_STRONG_ACCEPT;
     result.setLastLogIndex(firstPosPrevIndex);
@@ -156,13 +156,13 @@ public class SlidingWindowLogAppender implements LogAppender {
     return success;
   }
 
-  private void moveWindowRightward(int step) {
+  private void moveWindowRightward(int step, long newIndex) {
     System.arraycopy(logWindow, step, logWindow, 0, windowCapacity - step);
     System.arraycopy(prevTerms, step, prevTerms, 0, windowCapacity - step);
     for (int i = 1; i <= step; i++) {
       logWindow[windowCapacity - i] = null;
     }
-    firstPosPrevIndex = logManager.getLastLogIndex();
+    firstPosPrevIndex = newIndex;
   }
 
   private void moveWindowLeftward(int step) {
