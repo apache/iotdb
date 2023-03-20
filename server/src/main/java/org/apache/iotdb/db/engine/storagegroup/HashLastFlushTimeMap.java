@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -258,6 +259,15 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
               stringLongMap -> {
                 long[] startAndEndTime =
                     TimePartitionUtils.getStartAndEndTimeForTimePartition(stringLongMap);
+                logger.info("start end time: {}", Arrays.toString(startAndEndTime));
+                if (timeFilter != null) {
+                  logger.info(
+                      "time filter: {}, result: {}",
+                      timeFilter,
+                      timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]));
+                } else {
+                  logger.info("time filter is null");
+                }
                 return (timeFilter == null
                     || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]));
               })
@@ -268,6 +278,19 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
               entry -> {
                 long[] startAndEndTime =
                     TimePartitionUtils.getStartAndEndTimeForTimePartition(entry.getKey());
+                logger.info(
+                    "start end time: {}, deviceId: {}", Arrays.toString(startAndEndTime), deviceId);
+                if (timeFilter != null) {
+                  logger.info(
+                      "time filter: {}, result: {}",
+                      timeFilter,
+                      timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]));
+                } else {
+                  logger.info("time filter is null");
+                }
+
+                logger.info("all devices: {}", entry.getValue().keySet());
+
                 return (timeFilter == null
                         || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]))
                     && entry.getValue().containsKey(deviceId);
