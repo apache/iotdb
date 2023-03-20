@@ -110,7 +110,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // we have consumed up data from children Operator, just return all remaining cached data in
     // cachedTsBlock, tsBlockBuilder and previousTsBlock
     if (currentIndex >= inputOperatorsCount) {
@@ -152,6 +152,7 @@ public class LastQuerySortOperator implements ProcessOperator {
             return null;
           }
         }
+
         currentIndex++;
       }
       if (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
@@ -169,7 +170,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return currentIndex < inputOperatorsCount
         || cachedTsBlockRowIndex < cachedTsBlockSize
         || !tsBlockBuilder.isEmpty()
@@ -185,7 +186,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

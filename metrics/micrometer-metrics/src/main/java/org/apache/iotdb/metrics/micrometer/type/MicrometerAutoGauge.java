@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics.micrometer.type;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import io.micrometer.core.instrument.Tags;
-import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 import java.util.function.ToDoubleFunction;
@@ -38,7 +37,6 @@ public class MicrometerAutoGauge<T> implements AutoGauge {
       T object,
       ToDoubleFunction<T> mapper,
       String... tags) {
-    LoggerFactory.getLogger(MicrometerAutoGauge.class).info("{},{}", metricName, tags);
     this.refObject =
         new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
     this.mapper = mapper;

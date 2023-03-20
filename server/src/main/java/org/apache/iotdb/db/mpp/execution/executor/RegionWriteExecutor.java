@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -116,8 +117,10 @@ public class RegionWriteExecutor {
       boolean hasFailedTriggerBeforeInsertion =
           result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
 
-      planNode.setMetricTime(System.nanoTime());
+      long startWriteTime = System.nanoTime();
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+      PerformanceOverviewMetricsManager.recordScheduleStorageCost(
+          System.nanoTime() - startWriteTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
@@ -132,7 +135,7 @@ public class RegionWriteExecutor {
         triggerCostTime += (System.nanoTime() - startTime);
       }
     }
-    PerformanceOverviewMetricsManager.getInstance().recordScheduleTriggerCost(triggerCostTime);
+    PerformanceOverviewMetricsManager.recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 
@@ -144,6 +147,16 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
+
+      if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+        response.setAccepted(false);
+        response.setMessage("Fail to do non-query operations because system is read-only.");
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SYSTEM_READ_ONLY,
+                "Fail to do non-query operations because system is read-only."));
+        return response;
+      }
 
       ConsensusWriteResponse writeResponse =
           executePlanNodeInConsensusLayer(context.getRegionId(), node);
@@ -159,7 +172,9 @@ public class RegionWriteExecutor {
             writeResponse.getException());
         response.setAccepted(false);
         response.setMessage(writeResponse.getException().toString());
-        response.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage()));
       }
       return response;
     }
@@ -224,8 +239,8 @@ public class RegionWriteExecutor {
           }
           return response;
         } finally {
-          PerformanceOverviewMetricsManager.getInstance()
-              .recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
+          PerformanceOverviewMetricsManager.recordScheduleSchemaValidateCost(
+              System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;
@@ -460,53 +475,10 @@ public class RegionWriteExecutor {
           }
           measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
-          RegionExecutionResult executionResult =
-              super.visitInternalCreateTimeSeries(node, context);
-
-          if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
-            return executionResult;
-          }
-
-          TSStatus executionStatus = executionResult.getStatus();
-
-          // separate the measurement_already_exist exception and other exceptions process,
-          // measurement_already_exist exception is acceptable due to concurrent timeseries creation
-          if (failingStatus.isEmpty()) {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              if (executionStatus.getSubStatus().get(0).getCode()
-                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                // there's only measurement_already_exist exception
-                alreadyExistingStatus.addAll(executionStatus.getSubStatus());
-              } else {
-                failingStatus.addAll(executionStatus.getSubStatus());
-              }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              failingStatus.add(executionStatus);
-            }
-          } else {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              if (executionStatus.getSubStatus().get(0).getCode()
-                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                failingStatus.addAll(executionStatus.getSubStatus());
-              }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              failingStatus.add(executionStatus);
-            }
-          }
-
-          RegionExecutionResult result = new RegionExecutionResult();
-          TSStatus status;
-          if (failingStatus.isEmpty()) {
-            status = RpcUtils.getStatus(alreadyExistingStatus);
-            result.setAccepted(true);
-          } else {
-            status = RpcUtils.getStatus(failingStatus);
-            result.setAccepted(false);
-          }
-
-          result.setMessage(status.getMessage());
-          result.setStatus(status);
-          return result;
+          return processExecutionResultOfInternalCreateSchema(
+              super.visitInternalCreateTimeSeries(node, context),
+              failingStatus,
+              alreadyExistingStatus);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
@@ -560,59 +532,65 @@ public class RegionWriteExecutor {
             measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
           }
 
-          RegionExecutionResult executionResult =
-              super.visitInternalCreateMultiTimeSeries(node, context);
-
-          if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
-            return executionResult;
-          }
-
-          TSStatus executionStatus = executionResult.getStatus();
-
-          // separate the measurement_already_exist exception and other exceptions process,
-          // measurement_already_exist exception is acceptable due to concurrent timeseries creation
-          if (failingStatus.isEmpty()) {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              if (executionStatus.getSubStatus().get(0).getCode()
-                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                // there's only measurement_already_exist exception
-                alreadyExistingStatus.addAll(executionStatus.getSubStatus());
-              } else {
-                failingStatus.addAll(executionStatus.getSubStatus());
-              }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              failingStatus.add(executionStatus);
-            }
-          } else {
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              if (executionStatus.getSubStatus().get(0).getCode()
-                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                failingStatus.addAll(executionStatus.getSubStatus());
-              }
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              failingStatus.add(executionStatus);
-            }
-          }
-
-          RegionExecutionResult result = new RegionExecutionResult();
-          TSStatus status;
-          if (failingStatus.isEmpty()) {
-            status = RpcUtils.getStatus(alreadyExistingStatus);
-            result.setAccepted(true);
-          } else {
-            status = RpcUtils.getStatus(failingStatus);
-            result.setAccepted(false);
-          }
-
-          result.setMessage(status.getMessage());
-          result.setStatus(status);
-          return result;
+          return processExecutionResultOfInternalCreateSchema(
+              super.visitInternalCreateMultiTimeSeries(node, context),
+              failingStatus,
+              alreadyExistingStatus);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
         return super.visitInternalCreateMultiTimeSeries(node, context);
       }
+    }
+
+    private RegionExecutionResult processExecutionResultOfInternalCreateSchema(
+        RegionExecutionResult executionResult,
+        List<TSStatus> failingStatus,
+        List<TSStatus> alreadyExistingStatus) {
+      TSStatus executionStatus = executionResult.getStatus();
+
+      // separate the measurement_already_exist exception and other exceptions process,
+      // measurement_already_exist exception is acceptable due to concurrent timeseries creation
+      if (failingStatus.isEmpty()) {
+        if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          if (executionStatus.getSubStatus().get(0).getCode()
+              == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+            // there's only measurement_already_exist exception
+            alreadyExistingStatus.addAll(executionStatus.getSubStatus());
+          } else {
+            failingStatus.addAll(executionStatus.getSubStatus());
+          }
+        } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failingStatus.add(executionStatus);
+        }
+      } else {
+        if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          if (executionStatus.getSubStatus().get(0).getCode()
+              != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+            failingStatus.addAll(executionStatus.getSubStatus());
+          }
+        } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failingStatus.add(executionStatus);
+        }
+      }
+
+      RegionExecutionResult result = new RegionExecutionResult();
+      TSStatus status;
+      if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
+        status = RpcUtils.SUCCESS_STATUS;
+        result.setAccepted(true);
+      } else if (failingStatus.isEmpty()) {
+        status = RpcUtils.getStatus(alreadyExistingStatus);
+        result.setAccepted(true);
+      } else {
+        status = RpcUtils.getStatus(failingStatus);
+        result.setAccepted(false);
+      }
+
+      result.setMessage(status.getMessage());
+      result.setStatus(status);
+      return result;
     }
 
     @Override
