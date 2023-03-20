@@ -33,6 +33,8 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -73,6 +75,8 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -413,6 +417,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowTrail:
           plan = new ShowTrailPlan();
+          break;
+        case CreatePipePlugin:
+          plan = new CreatePipePluginPlan();
+          break;
+        case DropPipePlugin:
+          plan = new DropPipePluginPlan();
+          break;
+        case GetPipePluginTable:
+          plan = new GetPipePluginTablePlan();
+          break;
+        case GetPipePluginJar:
+          plan = new GetPipePluginJarPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);

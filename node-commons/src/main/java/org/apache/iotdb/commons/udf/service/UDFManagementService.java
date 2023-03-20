@@ -168,7 +168,7 @@ public class UDFManagementService {
                         UDFExecutableManager.getInstance().getInstallDir()
                             + File.separator
                             + udfInformation.getJarName())));
-        // save the md5 in a txt under trigger temporary lib
+        // save the md5 in a txt under UDF temporary lib
         UDFExecutableManager.getInstance()
             .saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
       } catch (IOException e) {

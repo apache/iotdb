@@ -63,7 +63,7 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkHandle
+  // index of upstream SinkChannel
   4: required i32 index
 }
 
@@ -75,8 +75,14 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkHandle
+  // index of upstream SinkChannel
   4: required i32 index
+}
+
+struct TCloseSinkChannelEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  // index of upstream SinkChannel
+  2: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -765,6 +771,8 @@ service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
+
+  void onCloseSinkChannelEvent(TCloseSinkChannelEvent e);
 
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 

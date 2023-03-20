@@ -89,7 +89,7 @@ public class PipePluginClassLoaderManager implements IService {
 
   private static PipePluginClassLoaderManager INSTANCE = null;
 
-  public static synchronized PipePluginClassLoaderManager getInstance(String libRoot)
+  public static synchronized PipePluginClassLoaderManager setupAndGetInstance(String libRoot)
       throws IOException {
     if (INSTANCE == null) {
       INSTANCE = new PipePluginClassLoaderManager(libRoot);
