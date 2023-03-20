@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -27,44 +28,48 @@ import java.util.concurrent.TimeUnit;
 
 public class RatisMetricsManager {
   private final MetricService metricService = MetricService.getInstance();
+
   /** Record the time cost in write locally stage. */
-  public void recordWriteLocallyCost(long costTimeInNanos, String consensusGroupType) {
+  public void recordWriteLocallyCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        consensusGroupType + "_" + Metric.RATIS_CONSENSUS_WRITE,
+        consensusGroupType.toString() + "_" + Metric.RATIS_CONSENSUS_WRITE,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_LOCALLY);
   }
 
   /** Record the time cost in write remotely stage. */
-  public void recordWriteRemotelyCost(long costTimeInNanos, String consensusGroupType) {
+  public void recordWriteRemotelyCost(
+      long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        consensusGroupType + "_" + Metric.RATIS_CONSENSUS_WRITE,
+        consensusGroupType.toString() + "_" + Metric.RATIS_CONSENSUS_WRITE,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_REMOTELY);
   }
+
   /** Record the time cost in submit read request stage. */
-  public void recordReadRequestCost(long costTimeInNanos, String consensusGroupType) {
+  public void recordReadRequestCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        consensusGroupType + "_" + Metric.RATIS_CONSENSUS_READ,
+        consensusGroupType.toString() + "_" + Metric.RATIS_CONSENSUS_READ,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.SUBMIT_READ_REQUEST);
   }
 
   /** Record the time cost in write state machine stage. */
-  public void recordWriteStateMachineCost(long costTimeInNanos, String consensusGroupType) {
+  public void recordWriteStateMachineCost(
+      long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        consensusGroupType + "_" + Metric.RATIS_CONSENSUS_WRITE,
+        consensusGroupType.toString() + "_" + Metric.RATIS_CONSENSUS_WRITE,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_STATE_MACHINE);
