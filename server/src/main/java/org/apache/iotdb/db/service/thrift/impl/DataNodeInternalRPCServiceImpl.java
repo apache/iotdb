@@ -935,7 +935,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setStatus(result.status);
         resp.setColumnNameList(header.getRespColumns());
         resp.setColumnTypeList(header.getRespDataTypeList());
-        resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
+        resp.setColumnNameIndexMap(
+            header.getColumnNameIndexMap() == null
+                ? new HashMap<>()
+                : header.getColumnNameIndexMap());
         resp.setQueryId(queryId);
 
         while (queryExecution.hasNextResult()) {
