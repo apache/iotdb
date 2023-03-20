@@ -342,7 +342,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1() {
+  public void testOrderByTime1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -385,11 +385,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime2() {
+  public void testOrderByTime2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -432,11 +433,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime3() {
+  public void testOrderByTime3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -479,11 +481,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime4() {
+  public void testOrderByTime4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -526,6 +529,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
@@ -835,7 +839,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1_2() {
+  public void testOrderByTime1_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -874,15 +878,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime2_2() {
+  public void testOrderByTime2_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
@@ -917,11 +923,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime3_2() {
+  public void testOrderByTime3_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -960,11 +967,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime4_2() {
+  public void testOrderByTime4_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -1003,6 +1011,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
   // ------------------------------------------------------------------------------------------------
@@ -1274,7 +1283,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice1() {
+  public void testOrderByDevice1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1322,11 +1331,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice2() {
+  public void testOrderByDevice2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1374,15 +1384,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice3() {
+  public void testOrderByDevice3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
@@ -1430,7 +1442,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice4() {
+  public void testOrderByDevice4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -1493,7 +1505,7 @@ public class MergeSortOperatorTest {
   //                        ShowQueriesOperator      ShowQueriesOperator
   // ------------------------------------------------------------------------------------------------
   @Test
-  public void mergeSortWithSortOperatorTest() {
+  public void mergeSortWithSortOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 

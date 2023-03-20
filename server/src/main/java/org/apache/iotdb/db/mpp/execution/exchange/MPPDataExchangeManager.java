@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
@@ -54,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -96,22 +98,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
             req.getStartSequenceId(),
             req.getEndSequenceId());
-        if (!shuffleSinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
-          throw new TException(
-              "Source fragment instance not found. Fragment instance ID: "
-                  + req.getSourceFragmentInstanceId()
-                  + ".");
+        TGetDataBlockResponse resp = new TGetDataBlockResponse(new ArrayList<>());
+        ISinkHandle sinkHandle = shuffleSinkHandles.get(req.getSourceFragmentInstanceId());
+        if (sinkHandle == null) {
+          return resp;
         }
-        TGetDataBlockResponse resp = new TGetDataBlockResponse();
         // index of the channel must be a SinkChannel
-        SinkChannel sinkChannelHandle =
-            (SinkChannel)
-                (shuffleSinkHandles
-                    .get(req.getSourceFragmentInstanceId())
-                    .getChannel(req.getIndex()));
+        SinkChannel sinkChannel = (SinkChannel) (sinkHandle.getChannel(req.getIndex()));
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
           try {
-            ByteBuffer serializedTsBlock = sinkChannelHandle.getSerializedTsBlock(i);
+            ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
             resp.addToTsBlocks(serializedTsBlock);
           } catch (IllegalStateException | IOException e) {
             throw new TException(e);
@@ -140,15 +136,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getStartSequenceId(),
             e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
-        if (!shuffleSinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
+        ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
+        if (sinkHandle == null) {
           LOGGER.debug(
               "received ACK event but target FragmentInstance[{}] is not found.",
               e.getSourceFragmentInstanceId());
           return;
         }
         // index of the channel must be a SinkChannel
-        ((SinkChannel)
-                (shuffleSinkHandles.get(e.getSourceFragmentInstanceId()).getChannel(e.getIndex())))
+        ((SinkChannel) (sinkHandle.getChannel(e.getIndex())))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
       } catch (Throwable t) {
         LOGGER.warn(
@@ -159,6 +155,36 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
         QUERY_METRICS.recordDataBlockNum(
             ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER, e.getEndSequenceId() - e.getStartSequenceId());
+      }
+    }
+
+    @Override
+    public void onCloseSinkChannelEvent(TCloseSinkChannelEvent e) throws TException {
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(
+              createFullId(
+                  e.sourceFragmentInstanceId.queryId,
+                  e.sourceFragmentInstanceId.fragmentId,
+                  e.sourceFragmentInstanceId.instanceId))) {
+        LOGGER.debug(
+            "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex());
+        ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
+        if (sinkHandle == null) {
+          LOGGER.debug(
+              "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
+              e.getSourceFragmentInstanceId());
+          return;
+        }
+        sinkHandle.getChannel(e.getIndex()).close();
+      } catch (Throwable t) {
+        LOGGER.warn(
+            "Close channel of ShuffleSinkHandle {}, index {} failed.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex(),
+            t);
+        throw t;
       }
     }
 
@@ -465,9 +491,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         sourceHandleMap == null ? null : (LocalSourceHandle) sourceHandleMap.get(remotePlanNodeId);
     if (localSourceHandle != null) {
       LOGGER.debug("Get SharedTsBlockQueue from local source handle");
-      queue =
-          ((LocalSourceHandle) sourceHandles.get(remoteFragmentInstanceId).get(remotePlanNodeId))
-              .getSharedTsBlockQueue();
+      queue = localSourceHandle.getSharedTsBlockQueue();
     } else {
       LOGGER.debug("Create SharedTsBlockQueue");
       queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
@@ -623,11 +647,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localPlanNodeId,
         localFragmentInstanceId);
     SharedTsBlockQueue queue;
-    if (shuffleSinkHandles.containsKey(remoteFragmentInstanceId)) {
+    ISinkHandle sinkHandle = shuffleSinkHandles.get(remoteFragmentInstanceId);
+    if (sinkHandle != null) {
       LOGGER.debug("Get SharedTsBlockQueue from local sink handle");
-      queue =
-          ((LocalSinkChannel) shuffleSinkHandles.get(remoteFragmentInstanceId).getChannel(index))
-              .getSharedTsBlockQueue();
+      queue = ((LocalSinkChannel) (sinkHandle.getChannel(index))).getSharedTsBlockQueue();
     } else {
       LOGGER.debug("Create SharedTsBlockQueue");
       queue =

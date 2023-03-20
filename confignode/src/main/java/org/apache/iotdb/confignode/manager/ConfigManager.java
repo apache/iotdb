@@ -928,6 +928,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public PipeManager getPipeManager() {
+    return pipeManager;
+  }
+
+  @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

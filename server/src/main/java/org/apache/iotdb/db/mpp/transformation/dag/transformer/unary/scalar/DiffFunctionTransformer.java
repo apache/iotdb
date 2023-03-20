@@ -47,7 +47,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
   }
 
   @Override
-  public final YieldableState yieldValue() throws IOException, QueryProcessException {
+  public final YieldableState yieldValue() throws Exception {
     final YieldableState yieldableState = layerPointReader.yield();
     if (!YieldableState.YIELDABLE.equals(yieldableState)) {
       return yieldableState;

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -31,18 +32,42 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * ConfigNodeStartupCheck checks the parameters in iotdb-confignode.properties and
  * confignode-system.properties when start and restart
  */
-public class ConfigNodeStartupCheck {
+public class ConfigNodeStartupCheck extends StartupChecks {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
+  private static final int CONFIGNODE_PORTS = 2;
+
+  public ConfigNodeStartupCheck(String nodeRole) {
+    super(nodeRole);
+  }
+
+  @Override
+  protected void portCheck() throws StartupException {
+    Set<Integer> portSet = new HashSet<>();
+    portSet.add(CONF.getConsensusPort());
+    portSet.add(CONF.getInternalPort());
+    if (portSet.size() != CONFIGNODE_PORTS) {
+      throw new StartupException("ports used in configNode have repeat.");
+    } else {
+      LOGGER.info("configNode port check successful.");
+    }
+  }
+
+  @Override
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
+    envCheck();
+    portCheck();
+    verify();
     checkGlobalConfig();
     createDirsIfNecessary();
     if (SystemPropertiesUtils.isRestarted()) {
@@ -163,18 +188,5 @@ public class ConfigNodeStartupCheck {
                 dir.getAbsolutePath()));
       }
     }
-  }
-
-  private static class ConfigNodeConfCheckHolder {
-
-    private static final ConfigNodeStartupCheck INSTANCE = new ConfigNodeStartupCheck();
-
-    private ConfigNodeConfCheckHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static ConfigNodeStartupCheck getInstance() {
-    return ConfigNodeConfCheckHolder.INSTANCE;
   }
 }

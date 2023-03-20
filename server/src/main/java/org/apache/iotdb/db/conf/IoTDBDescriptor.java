@@ -1006,6 +1006,9 @@ public class IoTDBDescriptor {
     // CQ
     loadCQProps(properties);
 
+    // Pipe
+    loadPipeProps(properties);
+
     // cluster
     loadClusterProps(properties);
 
@@ -1785,6 +1788,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+  }
+
+  private void loadPipeProps(Properties properties) {
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
   }
 
   private void loadCQProps(Properties properties) {

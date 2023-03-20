@@ -271,6 +271,13 @@ public class IoTDBConfig {
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** External lib directory for Pipe Plugin, stores user-defined JAR files */
+  private String pipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded pipe plugin JAR files */
+  private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
@@ -1410,6 +1417,23 @@ public class IoTDBConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getPipeDir() {
+    return pipeDir;
+  }
+
+  public void setPipeDir(String pipeDir) {
+    this.pipeDir = pipeDir;
+    updatePipeTemporaryLibDir();
+  }
+
+  public String getPipeTemporaryLibDir() {
+    return pipeTemporaryLibDir;
+  }
+
+  public void updatePipeTemporaryLibDir() {
+    this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getMqttDir() {

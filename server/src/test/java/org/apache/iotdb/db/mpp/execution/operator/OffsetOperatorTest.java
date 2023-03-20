@@ -87,7 +87,7 @@ public class OffsetOperatorTest {
   }
 
   @Test
-  public void batchTest1() {
+  public void batchTest1() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -192,7 +192,7 @@ public class OffsetOperatorTest {
 
   /** offset is 0 in which case we will get all data */
   @Test
-  public void batchTest2() {
+  public void batchTest2() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -294,7 +294,7 @@ public class OffsetOperatorTest {
 
   /** offset is larger than max row number in which case we will get no data */
   @Test
-  public void batchTest3() {
+  public void batchTest3() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
