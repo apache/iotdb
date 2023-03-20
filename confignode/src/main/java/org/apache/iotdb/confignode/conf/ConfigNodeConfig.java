@@ -176,7 +176,7 @@ public class ConfigNodeConfig {
   private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
+  private long timePartitionInterval = 1_000;
 
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;

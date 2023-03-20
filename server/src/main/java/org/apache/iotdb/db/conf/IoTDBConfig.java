@@ -732,7 +732,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
+  private long timePartitionInterval = 1_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,

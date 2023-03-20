@@ -271,6 +271,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
                 return (timeFilter == null
                     || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]));
               })
+          .sorted()
           .collect(Collectors.toList());
     } else {
       return partitionLatestFlushedTimeForEachDevice.entrySet().stream()
@@ -289,13 +290,17 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
                   logger.info("time filter is null");
                 }
 
-                logger.info("all devices: {}", entry.getValue().keySet());
+                logger.info(
+                    "all devices: {}, result: {}",
+                    entry.getValue().keySet(),
+                    entry.getValue().containsKey(deviceId));
 
                 return (timeFilter == null
                         || timeFilter.satisfyStartEndTime(startAndEndTime[0], startAndEndTime[1]))
                     && entry.getValue().containsKey(deviceId);
               })
           .map(Map.Entry::getKey)
+          .sorted()
           .collect(Collectors.toList());
     }
   }
