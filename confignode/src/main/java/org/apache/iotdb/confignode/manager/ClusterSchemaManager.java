@@ -459,7 +459,7 @@ public class ClusterSchemaManager {
                 Math.ceil(
                     // The maxRegionGroupNum of the current StorageGroup is expected to be:
                     // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-                    resourceWeight * resource / (double) (databaseNum * replicationFactor)),
+                    resourceWeight * resource / (databaseNum * replicationFactor)),
             // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
             allocatedRegionGroupCount));
   }
