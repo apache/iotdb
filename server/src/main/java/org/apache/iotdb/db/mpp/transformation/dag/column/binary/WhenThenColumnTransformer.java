@@ -22,11 +22,17 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.type.BinaryType;
+import org.apache.iotdb.tsfile.read.common.type.BooleanType;
+import org.apache.iotdb.tsfile.read.common.type.DoubleType;
+import org.apache.iotdb.tsfile.read.common.type.FloatType;
+import org.apache.iotdb.tsfile.read.common.type.IntType;
+import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public class WhenThenColumnTransformer extends BinaryColumnTransformer {
-  protected WhenThenColumnTransformer(
+  public WhenThenColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }
@@ -47,6 +53,25 @@ public class WhenThenColumnTransformer extends BinaryColumnTransformer {
     }
   }
 
+  private void writeToColumnBuilder(
+      ColumnTransformer childTransformer, Column column, int index, ColumnBuilder builder) {
+    if (returnType instanceof BooleanType) {
+      builder.writeBoolean(childTransformer.getType().getBoolean(column, index));
+    } else if (returnType instanceof IntType) {
+      builder.writeInt(childTransformer.getType().getInt(column, index));
+    } else if (returnType instanceof LongType) {
+      builder.writeLong(childTransformer.getType().getLong(column, index));
+    } else if (returnType instanceof FloatType) {
+      builder.writeFloat(childTransformer.getType().getFloat(column, index));
+    } else if (returnType instanceof DoubleType) {
+      builder.writeDouble(childTransformer.getType().getDouble(column, index));
+    } else if (returnType instanceof BinaryType) {
+      builder.writeBinary(childTransformer.getType().getBinary(column, index));
+    } else {
+      throw new UnsupportedOperationException("Unsupported Type");
+    }
+  }
+
   @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
@@ -55,7 +80,9 @@ public class WhenThenColumnTransformer extends BinaryColumnTransformer {
         boolean whenResult = getWhen().getType().getBoolean(leftColumn, i);
         if (whenResult) {
           Type rightType = getThen().getType();
-          builder.writeObject(rightType.getObject(rightColumn, i)); // which type should I write?
+          writeToColumnBuilder(getThen(), rightColumn, i, builder);
+          //          builder.writeObject(rightType.getObject(rightColumn, i)); // which type should
+          // I write?
         } else {
           builder.appendNull();
         }

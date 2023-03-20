@@ -52,11 +52,11 @@ public abstract class CartesianProductVisitor<C>
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    if (binaryExpression instanceof WhenThenExpression) {
-      if (ExpressionAnalyzer.checkHasWildCard(((WhenThenExpression) binaryExpression).getThen())) {
-        throw new IllegalArgumentException("Cannot use wildcard in then-expression");
-      }
-    }
+//    if (binaryExpression instanceof WhenThenExpression) {
+//      if (ExpressionAnalyzer.checkHasWildCard(((WhenThenExpression) binaryExpression).getThen())) {
+//        throw new IllegalArgumentException("Cannot use wildcard in then-expression");
+//      }
+//    }
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
         binaryExpression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));

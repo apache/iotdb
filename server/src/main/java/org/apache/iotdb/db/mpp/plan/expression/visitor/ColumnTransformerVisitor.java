@@ -454,6 +454,9 @@ public class ColumnTransformerVisitor
       case LOGIC_OR:
         return new LogicOrColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
+      case WHEN_THEN:
+        return new WhenThenColumnTransformer(
+            returnType, leftColumnTransformer, rightColumnTransformer);
       default:
         throw new UnsupportedOperationException(
             "Unsupported Expression Type: " + expression.getExpressionType());

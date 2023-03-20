@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.WhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
@@ -312,6 +314,22 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   .getInputColumnTransformers()
                   .length,
           childMaxLevel);
+    } else if (columnTransformer instanceof CaseWhenThenColumnTransformer) {
+      int childMaxLevel = 0;
+      int childCount = 0;
+      for (WhenThenColumnTransformer whenThenColumnTransformer :
+          ((CaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
+        childMaxLevel =
+            Math.max(childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer));
+        childCount++;
+      }
+      childMaxLevel =
+          Math.max(
+              childMaxLevel,
+              getMaxLevelOfColumnTransformerTree(
+                  ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+      childMaxLevel = Math.max(childMaxLevel, childCount + 2);
+      return childMaxLevel;
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }

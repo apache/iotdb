@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.type.IntType;
 import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CaseWhenThenColumnTransformer extends ColumnTransformer {
@@ -45,6 +46,14 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
     super(returnType);
     this.whenThenTransformers = whenThenTransformers;
     this.elseTransformer = elseTransformer;
+  }
+
+  public List<WhenThenColumnTransformer> getWhenThenColumnTransformers() {
+    return whenThenTransformers;
+  }
+
+  public ColumnTransformer getElseTransformer() {
+    return elseTransformer;
   }
 
   private void writeToColumnBuilder(
@@ -80,15 +89,31 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     //        List<Object> resultList = new ArrayList<>(positionCount);
     //        for
+    List<Column> columnList = new ArrayList<>();
+    for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
+      columnList.add(whenThenTransformer.getColumn());
+    }
+    Column elseColumn = elseTransformer.getColumn();
     for (int i = 0; i < positionCount; i++) {
-      for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
-        Column whenThenColumn = whenThenTransformer.getColumn();
+      boolean hasValue = false;
+      for (int j = 0; j < whenThenTransformers.size(); j++) {
+        Column whenThenColumn = columnList.get(j);
         if (!whenThenColumn.isNull(i)) {
-          writeToColumnBuilder(whenThenTransformer, whenThenColumn, i, builder);
+          writeToColumnBuilder(whenThenTransformers.get(j), whenThenColumn, i, builder);
+          hasValue = true;
           break;
         }
       }
+      if (!hasValue) {
+        if (!elseColumn.isNull(i)) {
+          writeToColumnBuilder(elseTransformer, elseColumn, i, builder);
+        }
+        else {
+          builder.appendNull();
+        }
+      }
     }
+
     initializeColumnCache(builder.build());
   }
 

@@ -307,6 +307,7 @@ public class ExpressionTypeAnalyzer {
         finalOrdinal =
             (byte) Math.max(finalOrdinal, process(whenThenExpression, context).ordinal());
       }
+      process(caseWhenThenExpression.getElseExpression(), context);
       return setExpressionType(caseWhenThenExpression, TSDataType.getTsDataType(finalOrdinal));
     }
 

@@ -236,6 +236,9 @@ public class ExpressionUtils {
       case LOGIC_OR:
         return new LogicOrExpression(leftExpression, rightExpression);
 
+      case WHEN_THEN:
+        return new WhenThenExpression(leftExpression, rightExpression);
+
       default:
         throw new IllegalArgumentException("unsupported expression type: " + expressionType);
     }
