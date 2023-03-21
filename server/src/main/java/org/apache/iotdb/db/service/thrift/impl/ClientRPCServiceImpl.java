@@ -72,6 +72,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesOfSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -1869,7 +1870,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus createTimeseriesOfSchemaTemplate(List<String> devicePathList) throws TException {
+  public TSStatus createTimeseriesOfSchemaTemplate(TCreateTimeseriesOfSchemaTemplateReq req)
+      throws TException {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
@@ -1878,11 +1880,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: transfer to Statement
       BatchActivateTemplateStatement statement =
-          StatementGenerator.createBatchActivateTemplateStatement(devicePathList);
+          StatementGenerator.createBatchActivateTemplateStatement(req.getDevicePathList());
 
       if (enableAuditLog) {
         AuditLogger.log(
-            String.format("batch activate schema template %s", devicePathList), statement);
+            String.format("batch activate schema template %s", req.getDevicePathList()), statement);
       }
 
       // permission check
