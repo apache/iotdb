@@ -81,20 +81,23 @@ public class CrossSpaceCompactionCandidate {
     // one by one. And we cannot skip any device in the unseq file because it may lead to omission
     // of
     // target seq file
+    if (unseqFile.hasDetailedDeviceInfo()) {
+      // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
+      return false;
+    }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
-      if (!unseqFile.isDeviceTimeIndex) {
-        // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
-        return false;
-      }
       for (TsFileResourceCandidate seqFile : seqFiles) {
+        // If the seqFile may need to be selected but its invalid, the selection should be
+        // terminated.
+        if ((!seqFile.isValidCandidate || !seqFile.hasDetailedDeviceInfo())
+            && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
+          return false;
+        }
         if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
           continue;
         }
         DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(unseqDeviceInfo.deviceId);
-        // If the seqFile should be selected but its invalid, the selection should be terminated.
-        if (!seqFile.isValidCandidate && unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
-          return false;
-        }
+
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
         // is larger than endTime of unseqFile. Or, the selection should be terminated.
         if (seqFile.unsealed() && unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
@@ -185,7 +188,7 @@ public class CrossSpaceCompactionCandidate {
     public boolean isValidCandidate;
     private Map<String, DeviceInfo> deviceInfoMap;
 
-    private boolean isDeviceTimeIndex = true;
+    private boolean hasDetailedDeviceInfo;
 
     protected TsFileResourceCandidate(TsFileResource tsFileResource) {
       this.resource = tsFileResource;
@@ -213,10 +216,7 @@ public class CrossSpaceCompactionCandidate {
       deviceInfoMap = new LinkedHashMap<>();
       if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
         if (!resource.resourceFileExists()) {
-          // resource file does not exist, cannot upgrade to DEVICE_TIME_INDEX
-          isDeviceTimeIndex = false;
-          deviceInfoMap.put(
-              "", new DeviceInfo("", resource.getFileStartTime(), resource.getFileEndTime()));
+          hasDetailedDeviceInfo = false;
           return;
         }
         DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
@@ -234,6 +234,7 @@ public class CrossSpaceCompactionCandidate {
                   deviceId, resource.getStartTime(deviceId), resource.getEndTime(deviceId)));
         }
       }
+      hasDetailedDeviceInfo = true;
     }
 
     protected void markAsSelected() {
@@ -247,12 +248,27 @@ public class CrossSpaceCompactionCandidate {
 
     protected DeviceInfo getDeviceInfoById(String deviceId) throws IOException {
       prepareDeviceInfos();
-      return isDeviceTimeIndex ? deviceInfoMap.get(deviceId) : deviceInfoMap.get("");
+      return deviceInfoMap.get(deviceId);
     }
 
     protected boolean containsDevice(String deviceId) throws IOException {
       prepareDeviceInfos();
-      return isDeviceTimeIndex ? deviceInfoMap.containsKey(deviceId) : true;
+      return deviceInfoMap.containsKey(deviceId);
+    }
+
+    protected boolean hasDetailedDeviceInfo() throws IOException {
+      prepareDeviceInfos();
+      return hasDetailedDeviceInfo;
+    }
+
+    protected boolean mayHasOverlapWithUnseqFile(DeviceInfo unseqFileDeviceInfo)
+        throws IOException {
+      prepareDeviceInfos();
+      long endTime =
+          containsDevice(unseqFileDeviceInfo.deviceId)
+              ? getDeviceInfoById(unseqFileDeviceInfo.deviceId).endTime
+              : resource.getFileEndTime();
+      return unseqFileDeviceInfo.startTime <= endTime;
     }
   }
 
