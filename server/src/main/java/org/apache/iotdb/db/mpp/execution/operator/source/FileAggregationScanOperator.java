@@ -70,12 +70,12 @@ public class FileAggregationScanOperator extends AbstractSourceOperator
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return aggregationScanUtil.hasNextFile();
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     tsBlockBuilder.reset();
     try {
       aggregationScanUtil.consume();
@@ -86,7 +86,7 @@ public class FileAggregationScanOperator extends AbstractSourceOperator
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 
