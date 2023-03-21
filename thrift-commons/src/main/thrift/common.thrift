@@ -156,9 +156,3 @@ enum TrainingState {
 enum ModelTask {
   FORECAST
 }
-
-enum EvaluateMetric {
-  MSE,
-  MAE,
-  RMSE
-}

@@ -405,6 +405,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
+  /** Enable the service for MLNode */
+  private boolean enableMLNodeService = true;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -859,6 +862,12 @@ public class IoTDBConfig {
 
   /** Internal port for coordinator */
   private int internalPort = 10730;
+
+  /** Address for MLNode */
+  private String mlNodeAddress = "127.0.0.1";
+
+  /** Port for MLNode */
+  private int mlNodePort = 10780;
 
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
@@ -2673,6 +2682,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableMLNodeService() {
+    return enableMLNodeService;
+  }
+
+  public void setEnableMLNodeService(boolean enableMLNodeService) {
+    this.enableMLNodeService = enableMLNodeService;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -2924,6 +2941,22 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public String getMlNodeAddress() {
+    return mlNodeAddress;
+  }
+
+  public void setMlNodeAddress(String mlNodeAddress) {
+    this.mlNodeAddress = mlNodeAddress;
+  }
+
+  public int getMlNodePort() {
+    return mlNodePort;
+  }
+
+  public void setMlNodePort(int mlNodePort) {
+    this.mlNodePort = mlNodePort;
   }
 
   public int getDataRegionConsensusPort() {
