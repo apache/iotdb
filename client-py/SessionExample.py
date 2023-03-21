@@ -239,7 +239,12 @@ np_bitmaps_[2].mark(2)
 np_bitmaps_[4].mark(3)
 np_bitmaps_[5].mark(3)
 np_tablet_with_none = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+    "root.sg_test_01.d_02",
+    measurements_,
+    data_types_,
+    np_values_,
+    np_timestamps_,
+    np_bitmaps_,
 )
 session.insert_tablet(np_tablet_with_none)
 
