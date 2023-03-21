@@ -133,12 +133,23 @@ class Session(object):
         return session
 
     def open(self, enable_rpc_compression=False):
-        self.__enable_rpc_compression = enable_rpc_compression
-        self.init_connection(self.__default_endpoint)
-
-    def init_connection(self, endpoint):
         if not self.__is_close:
             return
+        self.__enable_rpc_compression = enable_rpc_compression
+        if self.__hosts is None:
+            self.init_connection(self.__default_endpoint)
+        else:
+            for i in range(0, len(self.__hosts)):
+                self.__default_endpoint = TEndPoint(self.__hosts[i], self.__ports[i])
+                try:
+                    self.init_connection(self.__default_endpoint)
+                except Exception as e:
+                    if not self.reconnect():
+                        logger.error("Cluster has no nodes to connect")
+                        raise e
+                break
+
+    def init_connection(self, endpoint):
         self.__transport = TTransport.TFramedTransport(
             TSocket.TSocket(endpoint.ip, endpoint.port)
         )
@@ -147,7 +158,6 @@ class Session(object):
             try:
                 self.__transport.open()
             except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
                 raise e
 
         if self.__enable_rpc_compression:
@@ -1492,7 +1502,7 @@ class Session(object):
         if self.__hosts is None:
             return False
         connected = False
-        for i in range(1, self.RETRY_NUM):
+        for i in range(1, self.RETRY_NUM + 1):
             if self.__transport is not None:
                 self.__transport.close()
                 curr_host_index = random.randint(0, len(self.__hosts))
