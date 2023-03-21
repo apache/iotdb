@@ -1076,7 +1076,45 @@ public class IoTDBConfig {
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
+  // IoTConsensus Config
+  private int maxLogEntriesNumPerBatch = 1024;
+  private int maxSizePerBatch = 16 * 1024 * 1024;
+  private int maxPendingBatchesNum = 12;
+  private double maxMemoryRatioForQueue = 0.6;
+
   IoTDBConfig() {}
+
+  public int getMaxLogEntriesNumPerBatch() {
+    return maxLogEntriesNumPerBatch;
+  }
+
+  public int getMaxSizePerBatch() {
+    return maxSizePerBatch;
+  }
+
+  public int getMaxPendingBatchesNum() {
+    return maxPendingBatchesNum;
+  }
+
+  public double getMaxMemoryRatioForQueue() {
+    return maxMemoryRatioForQueue;
+  }
+
+  public void setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
+    this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
+  }
+
+  public void setMaxSizePerBatch(int maxSizePerBatch) {
+    this.maxSizePerBatch = maxSizePerBatch;
+  }
+
+  public void setMaxPendingBatchesNum(int maxPendingBatchesNum) {
+    this.maxPendingBatchesNum = maxPendingBatchesNum;
+  }
+
+  public void setMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
+    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
+  }
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
