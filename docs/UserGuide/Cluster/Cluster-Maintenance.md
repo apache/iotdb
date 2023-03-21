@@ -44,7 +44,7 @@ IoTDB> show variables
 |                    DefaultTTL(ms)|                                              9223372036854775807|
 |              ReadConsistencyLevel|                                                           strong|
 |           SchemaRegionPerDataNode|                                                              1.0|
-|            DataRegionPerProcessor|                                                              1.0|
+|             DataRegionPerDataNode|                                                              5.0|
 |           LeastDataRegionGroupNum|                                                                5|
 |                     SeriesSlotNum|                                                            10000|
 |           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|

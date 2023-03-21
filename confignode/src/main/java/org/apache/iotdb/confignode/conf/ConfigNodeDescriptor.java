@@ -250,11 +250,11 @@ public class ConfigNodeDescriptor {
                 "default_data_region_group_num_per_database",
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
-    conf.setDataRegionPerProcessor(
+    conf.setDataRegionPerDataNode(
         Double.parseDouble(
             properties
                 .getProperty(
-                    "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
+                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
                 .trim()));
 
     try {
