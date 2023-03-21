@@ -19,6 +19,7 @@
 
 from iotdb.mlnode.datats.offline.dataset import *
 from iotdb.mlnode.datats.offline.data_source import DataSource
+from iotdb.mlnode.exception import BadConfigError
 
 support_forecasting_dataset = {
     'timeseries': TimeSeriesDataset,
@@ -65,8 +66,8 @@ def create_forecasting_dataset(
         dataset_config: dict of dataset configurations
     """
     if dataset_type not in support_dataset_cfgs.keys():
-        raise RuntimeError(f'Unknown dataset type: ({dataset_type}),'
-                           f' which should be one of {support_forecasting_dataset.keys()}')
+        raise BadConfigError(f'Unknown dataset type: ({dataset_type}),'
+                             f' which should be one of {support_forecasting_dataset.keys()}')
     assert data_source, 'Data source should be provided'
 
     dataset_cfg = support_dataset_cfgs[dataset_type]
@@ -76,8 +77,8 @@ def create_forecasting_dataset(
         if k in dataset_cfg.keys():
             dataset_cfg[k] = v
     dataset = dataset_cls(data_source, **dataset_cfg)
-    assert dataset.get_variable_num() == dataset_cfg['input_vars'], \
-        'Variable number should be consistent with input_vars ({0}), but got ({1})' \
-        .format(dataset_cfg['input_vars'], dataset.get_variable_num())
+    if not dataset.get_variable_num() == dataset_cfg['input_vars']:
+        raise BadConfigError('Variable number should be consistent with input_vars ({0}), but got ({1})'
+                             .format(dataset_cfg['input_vars'], dataset.get_variable_num()))
 
     return dataset, dataset_cfg

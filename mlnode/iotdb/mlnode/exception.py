@@ -16,6 +16,7 @@
 # under the License.
 #
 
+
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -24,3 +25,8 @@ class _BaseError(Exception):
 class BadNodeUrlError(_BaseError):
     def __init__(self, node_url: str):
         self.message = "Bad node url: {}".format(node_url)
+
+
+class BadConfigError(_BaseError):
+    def __init__(self, msg):
+        self.message = "Bad config: {}".format(msg)
