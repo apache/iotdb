@@ -22,14 +22,15 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
@@ -51,7 +52,7 @@ public class FileAggregationScanOperator extends AbstractSourceOperator
     this.aggregationScanUtil =
         new FileAggregationScanUtil(
             pathPattern, aggregationDescriptor, levels, new SeriesScanOptions.Builder().build());
-    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder();
+    this.tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
   }
 
   @Override

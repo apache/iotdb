@@ -250,14 +250,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Set<Expression> aggregationExpressions = new HashSet<>();
         FunctionExpression aggregationExpression =
             new FunctionExpression(
-                aggregationMeasurementExpression.getFunctionName(),
-                aggregationMeasurementExpression.getFunctionAttributes(),
-                Collections.singletonList(sourceExpression));
+                "count",
+                new LinkedHashMap<>(),
+                Collections.singletonList(
+                    new TimeSeriesOperand(
+                        new MeasurementPath("root.*.*.*.*.*.*", TSDataType.INT64))));
+        analyzeExpression(analysis, aggregationExpression);
         aggregationExpressions.add(aggregationExpression);
         analysis.setAggregationExpressions(aggregationExpressions);
 
         analysis.setRespDatasetHeader(
-            new DatasetHeader(ColumnHeaderConstant.lastQueryColumnHeaders, true));
+            new DatasetHeader(
+                Collections.singletonList(
+                    new ColumnHeader(aggregationExpression.toString(), TSDataType.INT64)),
+                true));
 
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
         sgNameToQueryParamsMap.put("root.iov", Collections.emptyList());
@@ -381,7 +387,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // fetch partition information
       analyzeDataPartition(analysis, queryStatement, schemaTree);
 
-    } catch (StatementAnalyzeException e) {
+    } catch (StatementAnalyzeException | IllegalPathException e) {
       logger.warn("Meet error when analyzing the query statement: ", e);
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());

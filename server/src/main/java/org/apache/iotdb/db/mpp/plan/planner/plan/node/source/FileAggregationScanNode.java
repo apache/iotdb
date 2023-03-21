@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -35,9 +36,8 @@ import com.google.common.collect.ImmutableList;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class FileAggregationScanNode extends SeriesSourceNode {
 
@@ -50,15 +50,19 @@ public class FileAggregationScanNode extends SeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
+  private final Expression outputExpression;
+
   public FileAggregationScanNode(
       PlanNodeId id,
       PartialPath pathPattern,
       AggregationDescriptor aggregationDescriptor,
-      int[] levels) {
+      int[] levels,
+      Expression outputExpression) {
     super(id);
     this.pathPattern = pathPattern;
     this.aggregationDescriptor = aggregationDescriptor;
     this.levels = levels;
+    this.outputExpression = outputExpression;
   }
 
   public FileAggregationScanNode(
@@ -66,8 +70,9 @@ public class FileAggregationScanNode extends SeriesSourceNode {
       PartialPath pathPattern,
       AggregationDescriptor aggregationDescriptor,
       int[] levels,
+      Expression outputExpression,
       TRegionReplicaSet regionReplicaSet) {
-    this(id, pathPattern, aggregationDescriptor, levels);
+    this(id, pathPattern, aggregationDescriptor, levels, outputExpression);
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -85,6 +90,10 @@ public class FileAggregationScanNode extends SeriesSourceNode {
 
   public int[] getLevels() {
     return levels;
+  }
+
+  public Expression getOutputExpression() {
+    return outputExpression;
   }
 
   @Override
@@ -135,12 +144,13 @@ public class FileAggregationScanNode extends SeriesSourceNode {
         getPathPattern(),
         getAggregationDescriptor(),
         getLevels(),
+        getOutputExpression(),
         getRegionReplicaSet());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return LAST_QUERY_HEADER_COLUMNS;
+    return Collections.singletonList(outputExpression.toString());
   }
 
   @Override
@@ -152,6 +162,7 @@ public class FileAggregationScanNode extends SeriesSourceNode {
     for (int level : levels) {
       ReadWriteIOUtils.write(level, buffer);
     }
+    Expression.serialize(outputExpression, buffer);
   }
 
   @Override
@@ -163,6 +174,7 @@ public class FileAggregationScanNode extends SeriesSourceNode {
     for (int level : levels) {
       ReadWriteIOUtils.write(level, stream);
     }
+    Expression.serialize(outputExpression, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -173,8 +185,10 @@ public class FileAggregationScanNode extends SeriesSourceNode {
     for (int i = 0; i < levelsSize; i++) {
       levels[i] = ReadWriteIOUtils.readInt(buffer);
     }
+    Expression outputExpression = Expression.deserialize(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new FileAggregationScanNode(planNodeId, pathPattern, aggregationDescriptor, levels);
+    return new FileAggregationScanNode(
+        planNodeId, pathPattern, aggregationDescriptor, levels, outputExpression);
   }
 
   @Override

@@ -1204,17 +1204,16 @@ public class LogicalPlanBuilder {
         new AggregationDescriptor(
             functionExpression.getFunctionName(),
             AggregationStep.SINGLE,
-            Collections.emptyList(),
+            Collections.singletonList(functionExpression.getExpressions().get(0)),
             Collections.emptyMap());
+    updateTypeProvider(Collections.singletonList(functionExpression));
     this.root =
         new FileAggregationScanNode(
-            context.getQueryId().genPlanNodeId(), pathPattern, aggregationDescriptor, levels);
-
-    ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
-        columnHeader ->
-            context
-                .getTypeProvider()
-                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            aggregationDescriptor,
+            levels,
+            functionExpression);
     return this;
   }
 }

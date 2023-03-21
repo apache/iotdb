@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -122,19 +121,11 @@ public class FileAggregationScanUtil {
   public TsBlock getAggregationResult(TsBlockBuilder builder) {
     for (Map.Entry<PartialPath, Aggregator> entry : pathToAggregatorMap.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getValueColumnBuilders()[0].writeBinary(
-          Binary.valueOf(
-              String.format(
-                  "%s(%s)",
-                  aggregationDescriptor.getAggregationFuncName(), entry.getKey().toString())));
 
       Aggregator aggregator = entry.getValue();
       ColumnBuilder[] columnBuilders = new ColumnBuilder[1];
-      columnBuilders[0] = builder.getValueColumnBuilders()[1];
+      columnBuilders[0] = builder.getValueColumnBuilders()[0];
       aggregator.outputResult(columnBuilders);
-
-      builder.getValueColumnBuilders()[2].writeBinary(
-          Binary.valueOf(aggregator.getOutputType()[0].toString()));
 
       builder.declarePosition();
     }

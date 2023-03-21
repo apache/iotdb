@@ -454,17 +454,28 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       return Collections.singletonList(node);
     }
 
-    LastQueryCollectNode lastQueryCollectNode =
-        new LastQueryCollectNode(context.queryContext.getQueryId().genPlanNodeId());
+    CrossSeriesAggregationDescriptor rootAggregationDescriptor =
+        new CrossSeriesAggregationDescriptor(
+            "count",
+            AggregationStep.FINAL,
+            Collections.singletonList(node.getOutputExpression().getExpressions().get(0)),
+            Collections.emptyMap(),
+            node.getOutputExpression().getExpressions().get(0));
+    AggregationNode aggregationNode =
+        new AggregationNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            Collections.singletonList(rootAggregationDescriptor),
+            null,
+            Ordering.ASC);
 
     for (TRegionReplicaSet dataRegion : dataDistribution) {
       FileAggregationScanNode split = (FileAggregationScanNode) node.clone();
       split.setAggregationDescriptor(node.getAggregationDescriptor());
       split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
       split.setRegionReplicaSet(dataRegion);
-      lastQueryCollectNode.addChild(split);
+      aggregationNode.addChild(split);
     }
-    return Collections.singletonList(lastQueryCollectNode);
+    return Collections.singletonList(aggregationNode);
   }
 
   private List<PlanNode> processSeriesAggregationSource(
