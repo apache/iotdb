@@ -85,23 +85,17 @@ class Session(object):
 
     def __init__(
         self,
-        hosts,
-        ports,
+        host,
+        port,
         user=DEFAULT_USER,
         password=DEFAULT_PASSWORD,
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
     ):
-        if isinstance(hosts, list):
-            self.__hosts = hosts
-            self.__host = hosts[0]
-        else:
-            self.__host = hosts
-        if isinstance(ports, list):
-            self.__ports = ports
-            self.__port = ports[0]
-        else:
-            self.__port = ports
+        self.__host = host
+        self.__port = port
+        self.__hosts = None
+        self.__ports = None
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
@@ -115,11 +109,34 @@ class Session(object):
         self.__zone_id = zone_id
         self.__enable_rpc_compression = None
 
+    @classmethod
+    def init_from_node_urls(
+        cls,
+        node_urls,
+        user=DEFAULT_USER,
+        password=DEFAULT_PASSWORD,
+        fetch_size=DEFAULT_FETCH_SIZE,
+        zone_id=DEFAULT_ZONE_ID,
+    ):
+        if node_urls is None:
+            raise RuntimeError("node urls is empty")
+        session = Session(None, None, user, password, fetch_size, zone_id)
+        session.__hosts = []
+        session.__ports = []
+        for node_url in node_urls:
+            split = node_url.split(":")
+            session.__hosts.append(split[0])
+            session.__ports.append(split[1])
+        session.__host = session.__hosts[0]
+        session.__port = session.__ports[0]
+        session.__default_endpoint = TEndPoint(session.__host, session.__port)
+        return session
+
     def open(self, enable_rpc_compression=False):
         self.__enable_rpc_compression = enable_rpc_compression
-        self.init(self.__default_endpoint)
+        self.init_connection(self.__default_endpoint)
 
-    def init(self, endpoint):
+    def init_connection(self, endpoint):
         if not self.__is_close:
             return
         self.__transport = TTransport.TFramedTransport(
@@ -1490,7 +1507,7 @@ class Session(object):
                         j = -1
                     try_host_num += 1
                     try:
-                        self.init(self.__default_endpoint)
+                        self.init_connection(self.__default_endpoint)
                         connected = True
                     except TTransport.TException as e:
                         continue
