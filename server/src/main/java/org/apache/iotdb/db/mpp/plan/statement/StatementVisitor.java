@@ -71,6 +71,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -382,6 +383,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitActivateTemplate(ActivateTemplateStatement activateTemplateStatement, C context) {
     return visitStatement(activateTemplateStatement, context);
+  }
+
+  public R visitBatchActivateTemplate(
+      BatchActivateTemplateStatement batchActivateTemplateStatement, C context) {
+    return visitStatement(batchActivateTemplateStatement, context);
   }
 
   public R visitShowPathsUsingTemplate(

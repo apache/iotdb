@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -697,6 +698,18 @@ public class StatementGenerator {
   public static DropSchemaTemplateStatement createStatement(TSDropSchemaTemplateReq req) {
     final long startTime = System.nanoTime();
     DropSchemaTemplateStatement statement = new DropSchemaTemplateStatement(req.getTemplateName());
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    return statement;
+  }
+
+  public static BatchActivateTemplateStatement createBatchActivateTemplateStatement(
+      List<String> devicePathStringList) throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    List<PartialPath> devicePathList = new ArrayList<>(devicePathStringList.size());
+    for (String pathString : devicePathStringList) {
+      devicePathList.add(new PartialPath(pathString));
+    }
+    BatchActivateTemplateStatement statement = new BatchActivateTemplateStatement(devicePathList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }

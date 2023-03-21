@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesOfSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -1053,6 +1054,25 @@ public class SessionConnection {
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+  }
+
+  protected void createTimeseriesOfSchemaTemplate(TCreateTimeseriesOfSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createTimeseriesOfSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createTimeseriesOfSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
       }
     }
   }
