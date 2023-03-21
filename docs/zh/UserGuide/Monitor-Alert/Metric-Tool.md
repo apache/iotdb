@@ -419,15 +419,18 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.16 元数据引擎统计
 
-| Metric        | Tags                                                               | Type      | Description                        |
-| ------------- | ------------------------------------------------------------------ | --------- | ---------------------------------- |
-| schema_engine | name="schema_region_total_mem_usage"                               | AutoGauge | SchemaRegion 全局内存使用量        |
-| schema_engine | name="schema_region_mem_capacity"                                  | AutoGauge | SchemaRegion 全局可用内存          |
-| schema_engine | name="schema_engine_mode"                                          | Gauge     | SchemaEngine 模式                  |
-| schema_engine | name="schema_region_consensus"                                     | Gauge     | 元数据管理引擎共识协议             |
-| schema_engine | name="schema_region_number"                                        | AutoGauge | SchemaRegion 个数                  |
-| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]"  | AutoGauge | 每个 SchemaRegion 分别的内存使用量 |
+| Metric        | Tags                                                         | Type      | Description                        |
+| ------------- | ------------------------------------------------------------ | --------- | ---------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | SchemaRegion 全局内存使用量        |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | SchemaRegion 全局可用内存          |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | SchemaEngine 模式                  |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | 元数据管理引擎共识协议             |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | SchemaRegion 个数                  |
+| quantity      | name="template_series_cnt"                                   | AutoGauge | 模板序列数                         |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的内存使用量 |
 | schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数 |
+| schema_region | name="activated_template_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 激活的模板数     |
+| schema_region | name="template_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 的模板序列数     |
 
 #### 4.2.17 写入指标统计
 

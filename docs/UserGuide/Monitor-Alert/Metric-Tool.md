@@ -439,15 +439,19 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.2.16 Schema Engine
 
-| Metric        | Tags                                                               | Type      | Description                            |
-| ------------- | ------------------------------------------------------------------ | --------- | -------------------------------------- |
-| schema_engine | name="schema_region_total_mem_usage"                               | AutoGauge | Memory usgae for all SchemaRegion      |
-| schema_engine | name="schema_region_mem_capacity"                                  | AutoGauge | Memory capacity for all SchemaRegion   |
-| schema_engine | name="schema_engine_mode"                                          | Gauge     | Mode of SchemaEngine                   |
-| schema_engine | name="schema_region_consensus"                                     | Gauge     | Consensus protocol of SchemaRegion     |
-| schema_engine | name="schema_region_number"                                        | AutoGauge | Number of SchemaRegion                 |
-| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]"  | AutoGauge | Memory usgae for each SchemaRegion     |
-| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Timeseries count for each SchemaRegion |
+| Metric        | Tags                                                         | Type      | Description                                        |
+| ------------- | ------------------------------------------------------------ | --------- | -------------------------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | Memory usgae for all SchemaRegion                  |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | Memory capacity for all SchemaRegion               |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | Mode of SchemaEngine                               |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | Consensus protocol of SchemaRegion                 |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | Number of SchemaRegion                             |
+| quantity      | name="template_series_cnt"                                   | AutoGauge | Number of template series                          |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | Memory usgae for each SchemaRegion                 |
+| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Number of total timeseries for each SchemaRegion   |
+| schema_region | name="activated_template_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Number of Activated template for each SchemaRegion |
+| schema_region | name="template_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Number of template series for each SchemaRegion    |
+
 #### 4.2.17 Write Performance
 
 | Metric                    | Tags                                                                  | Type      | Description                                            |

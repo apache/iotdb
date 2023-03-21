@@ -110,6 +110,7 @@ public class MTreeBelowSGMemoryImpl {
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
   private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
   private final int levelOfSG;
+  private final MemSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
@@ -117,6 +118,7 @@ public class MTreeBelowSGMemoryImpl {
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       MemSchemaRegionStatistics regionStatistics) {
     store = new MemMTreeStore(storageGroupPath, regionStatistics);
+    this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
@@ -126,8 +128,10 @@ public class MTreeBelowSGMemoryImpl {
   private MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       MemMTreeStore store,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter) {
+      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
+      MemSchemaRegionStatistics regionStatistics) {
     this.store = store;
+    this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
@@ -155,12 +159,15 @@ public class MTreeBelowSGMemoryImpl {
       String storageGroupFullPath,
       MemSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
-        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess, regionStatistics),
-        tagGetter);
+        MemMTreeStore.loadFromSnapshot(
+            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
+        tagGetter,
+        regionStatistics);
   }
 
   // endregion
@@ -710,6 +717,7 @@ public class MTreeBelowSGMemoryImpl {
     }
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(template.getId());
+    regionStatistics.activateTemplate(template.getId());
   }
 
   public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
@@ -767,6 +775,7 @@ public class MTreeBelowSGMemoryImpl {
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
+                regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
                 node.deactivateTemplate();
                 deleteEmptyInternalMNode(node);
               }
