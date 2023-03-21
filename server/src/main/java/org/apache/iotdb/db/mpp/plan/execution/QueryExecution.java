@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
@@ -134,6 +134,9 @@ public class QueryExecution implements IQueryExecution {
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -211,7 +214,7 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
-    PerformanceOverviewMetricsManager.recordPlanCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
   }
 
@@ -281,7 +284,7 @@ public class QueryExecution implements IQueryExecution {
     try {
       result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
-      PerformanceOverviewMetricsManager.recordAnalyzeCost(System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(System.nanoTime() - startTime);
     }
     return result;
   }
@@ -309,7 +312,7 @@ public class QueryExecution implements IQueryExecution {
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
     this.scheduler.start();
-    PerformanceOverviewMetricsManager.recordScheduleCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(System.nanoTime() - startTime);
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
