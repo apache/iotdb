@@ -99,8 +99,6 @@ public class FileAggregationScanUtil {
   }
 
   public void consume() throws IOException {
-    pathToAggregatorMap.clear();
-
     TsFileResource nextFile = fileResourceMaterializer.next();
     TsFileSequenceReader reader =
         FileReaderManager.getInstance().get(nextFile.getTsFilePath(), nextFile.isClosed());

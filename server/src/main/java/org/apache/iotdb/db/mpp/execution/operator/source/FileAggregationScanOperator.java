@@ -76,10 +76,13 @@ public class FileAggregationScanOperator extends AbstractSourceOperator
 
   @Override
   public TsBlock next() throws Exception {
-    tsBlockBuilder.reset();
     try {
       aggregationScanUtil.consume();
-      return aggregationScanUtil.getAggregationResult(tsBlockBuilder);
+      if (aggregationScanUtil.hasNextFile()) {
+        return null;
+      } else {
+        return aggregationScanUtil.getAggregationResult(tsBlockBuilder);
+      }
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     }
