@@ -185,7 +185,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     // we add a hard limit for cross compaction that selected unseqFile should be compacted in inner
     // space at least once. This is used to make to improve the priority of inner compaction and
     // avoid too much cross compaction with small files.
-    if (unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
+    if (unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()
+        && unseqFile.getTsFileSize() < config.getTargetCompactionFileSize()) {
       return false;
     }
     // currently, we must allow at least one unseqFile be selected to handle the situation that
