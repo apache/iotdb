@@ -253,5 +253,5 @@ def nbeats_s(d_model=128, inner_layers=4, outer_layers=4, harmonics=4, **kwargs)
     raise NotImplementedError
 
 # #TODO: test model usability
-# def nbeats_t(d_model=128, inner_layers=4, outer_layers=4, degree_of_polynomial=3, **kwargs):
+def nbeats_t(d_model=128, inner_layers=4, outer_layers=4, degree_of_polynomial=3, **kwargs):
     raise NotImplementedError
