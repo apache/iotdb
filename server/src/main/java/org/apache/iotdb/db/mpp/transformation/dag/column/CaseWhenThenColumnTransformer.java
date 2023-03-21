@@ -107,8 +107,7 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
       if (!hasValue) {
         if (!elseColumn.isNull(i)) {
           writeToColumnBuilder(elseTransformer, elseColumn, i, builder);
-        }
-        else {
+        } else {
           builder.appendNull();
         }
       }

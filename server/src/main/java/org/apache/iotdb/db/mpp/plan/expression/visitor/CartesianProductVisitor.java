@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
-import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
@@ -52,11 +50,12 @@ public abstract class CartesianProductVisitor<C>
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-//    if (binaryExpression instanceof WhenThenExpression) {
-//      if (ExpressionAnalyzer.checkHasWildCard(((WhenThenExpression) binaryExpression).getThen())) {
-//        throw new IllegalArgumentException("Cannot use wildcard in then-expression");
-//      }
-//    }
+    //    if (binaryExpression instanceof WhenThenExpression) {
+    //      if (ExpressionAnalyzer.checkHasWildCard(((WhenThenExpression)
+    // binaryExpression).getThen())) {
+    //        throw new IllegalArgumentException("Cannot use wildcard in then-expression");
+    //      }
+    //    }
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
         binaryExpression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));
