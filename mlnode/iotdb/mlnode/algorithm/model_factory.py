@@ -19,7 +19,7 @@
 
 from iotdb.mlnode.algorithm.models.DLinear import *
 from iotdb.mlnode.algorithm.models.NBeats import *
-
+from iotdb.mlnode.exception import BadConfigError
 
 support_forecasting_model = []
 support_forecasting_model.extend(DLinear.support_model_names)
@@ -102,19 +102,21 @@ def create_forecast_model(
         model_config: dict of model configurations
     """
     if not is_model(model_name):
-        raise RuntimeError(f'Unknown forecasting model: ({model_name}),'
-                           f' which should be one of {list_model()}')
+        raise BadConfigError(f'Unknown forecasting model: ({model_name}),'
+                             f' which should be one of {list_model()}')
     if task_type not in support_common_cfgs.keys():
-        raise RuntimeError(f'Unknown forecasting task type: ({task_type})'
-                           f' which should be one of {support_common_cfgs.keys()}')
+        raise BadConfigError(f'Unknown forecasting task type: ({task_type})'
+                             f' which should be one of {support_common_cfgs.keys()}')
 
     common_cfg = support_common_cfgs[task_type]
     common_cfg['input_len'] = input_len
     common_cfg['pred_len'] = pred_len
     common_cfg['input_vars'] = input_vars
     common_cfg['output_vars'] = output_vars
-    assert input_len > 0 and pred_len > 0, 'Length of input/output series should be positive'
-    assert input_vars > 0 and output_vars > 0, 'Number of input/output series should be positive'
+    if input_len <= 0 or pred_len <= 0:
+        raise BadConfigError('Length of input/output series should be positive')
+    if input_vars <= 0 or output_vars <= 0:
+        raise BadConfigError('Number of input/output series should be positive')
 
     create_fn = eval(model_name)
     model, model_config = create_fn(
@@ -125,4 +127,3 @@ def create_forecast_model(
     model_config['model_name'] = model_name
 
     return model, model_config
-

@@ -20,6 +20,7 @@
 import torch
 import torch.nn as nn
 from typing import Tuple
+from iotdb.mlnode.exception import BadConfigError
 
 __all__ = ['NBeats', 'nbeats']  # , 'nbeats_s', 'nbeats_t']
 
@@ -238,29 +239,19 @@ class NBeats(nn.Module):
 def nbeats(common_config, d_model=128, inner_layers=4, outer_layers=4, **kwargs):
     cfg = support_model_cfgs['nbeats']
     cfg.update(**common_config)
-    assert d_model > 0, 'Model dimension (d_model) of nbeats should larger than 0'
-    assert inner_layers > 0 and outer_layers > 0, 'Number of inner/outer layers of nbeats should larger than 0'
+    if d_model <= 0:
+        raise BadConfigError('Model dimension (d_model) of nbeats should be positive')
+    if inner_layers <= 0 or outer_layers <= 0:
+        raise BadConfigError('Number of inner/outer layers of nbeats should be positive')
     cfg['d_model'] = d_model
     cfg['inner_layers'] = inner_layers
     cfg['outer_layers'] = outer_layers
     return NBeats(**cfg), cfg
 
 # #TODO: test model usability
-# def nbeats_s(d_model=128, inner_layers=4, outer_layers=4, harmonics=4, **kwargs):
-#     cfg = support_model_cfgs['nbeats_s']
-#     cfg['d_model']=d_model
-#     cfg['inner_layers']=inner_layers
-#     cfg['outer_layers']=outer_layers
-#     cfg['harmonics']=harmonics
-#     cfg.update(**kwargs)
-#     return NBeats(**cfg), cfg
+def nbeats_s(d_model=128, inner_layers=4, outer_layers=4, harmonics=4, **kwargs):
+    raise NotImplementedError
 
 # #TODO: test model usability
 # def nbeats_t(d_model=128, inner_layers=4, outer_layers=4, degree_of_polynomial=3, **kwargs):
-#     cfg = support_model_cfgs['nbeats_t']
-#     cfg['d_model']=d_model
-#     cfg['inner_layers']=inner_layers
-#     cfg['outer_layers']=outer_layers
-#     cfg['degree_of_polynomial']=degree_of_polynomial
-#     cfg.update(**kwargs)
-#     return NBeats(**cfg), cfg
+    raise NotImplementedError

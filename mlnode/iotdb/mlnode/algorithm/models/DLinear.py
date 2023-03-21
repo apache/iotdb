@@ -20,6 +20,8 @@
 import torch
 import torch.nn as nn
 from iotdb.mlnode.algorithm.layers.decomp_layer import SeriesDecomp
+from iotdb.mlnode.exception import BadConfigError
+
 
 __all__ = ['DLinear', 'dlinear', 'dlinear_individual']
 
@@ -111,7 +113,8 @@ class DLinear(nn.Module):
 def dlinear(common_config, kernel_size=25, **kwargs):
     cfg = support_model_cfgs['dlinear']
     cfg.update(**common_config)
-    assert kernel_size > 0, 'Kernel size of dlinear should larger than 0'
+    if not kernel_size > 0:
+        raise BadConfigError('Kernel size of dlinear should larger than 0')
     cfg['kernel_size'] = kernel_size
     return DLinear(**cfg), cfg
 
@@ -119,6 +122,7 @@ def dlinear(common_config, kernel_size=25, **kwargs):
 def dlinear_individual(common_config, kernel_size=25, **kwargs):
     cfg = support_model_cfgs['dlinear_individual']
     cfg.update(**common_config)
-    assert kernel_size > 0, 'Kernel size of dlinear_individual should larger than 0'
+    if not kernel_size > 0:
+        raise BadConfigError('Kernel size of dlinear_individual should larger than 0')
     cfg['kernel_size'] = kernel_size
     return DLinear(**cfg), cfg
