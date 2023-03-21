@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
@@ -83,6 +83,9 @@ public class RegionWriteExecutor {
 
   private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
       WritePlanNodeExecutionContext context =
@@ -119,8 +122,7 @@ public class RegionWriteExecutor {
 
       long startWriteTime = System.nanoTime();
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-      PerformanceOverviewMetricsManager.recordScheduleStorageCost(
-          System.nanoTime() - startWriteTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
@@ -135,7 +137,7 @@ public class RegionWriteExecutor {
         triggerCostTime += (System.nanoTime() - startTime);
       }
     }
-    PerformanceOverviewMetricsManager.recordScheduleTriggerCost(triggerCostTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 
@@ -239,7 +241,7 @@ public class RegionWriteExecutor {
           }
           return response;
         } finally {
-          PerformanceOverviewMetricsManager.recordScheduleSchemaValidateCost(
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(
               System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();

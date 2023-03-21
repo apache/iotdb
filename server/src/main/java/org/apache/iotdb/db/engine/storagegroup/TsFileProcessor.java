@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -47,7 +48,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -170,6 +170,9 @@ public class TsFileProcessor {
 
   private final QueryMetricsManager queryMetricsManager = QueryMetricsManager.getInstance();
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
       String storageGroupName,
@@ -228,8 +231,7 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
-      PerformanceOverviewMetricsManager.recordCreateMemtableBlockCost(
-          System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
     }
 
     long[] memIncrements = null;
@@ -246,8 +248,7 @@ public class TsFileProcessor {
                 insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
                 insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
-      PerformanceOverviewMetricsManager.recordScheduleMemoryBlockCost(
-          System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     }
 
     long startTime = System.nanoTime();
@@ -266,7 +267,7 @@ public class TsFileProcessor {
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
     } finally {
-      PerformanceOverviewMetricsManager.recordScheduleWalCost(System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
     startTime = System.nanoTime();
@@ -285,7 +286,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
-    PerformanceOverviewMetricsManager.recordScheduleMemTableCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -310,8 +311,7 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
-      PerformanceOverviewMetricsManager.recordCreateMemtableBlockCost(
-          System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
     }
 
     long[] memIncrements = null;
@@ -337,8 +337,7 @@ public class TsFileProcessor {
                   start,
                   end);
         }
-        PerformanceOverviewMetricsManager.recordScheduleMemoryBlockCost(
-            System.nanoTime() - startTime);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -363,7 +362,7 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     } finally {
-      PerformanceOverviewMetricsManager.recordScheduleWalCost(System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
     startTime = System.nanoTime();
@@ -392,7 +391,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
-    PerformanceOverviewMetricsManager.recordScheduleMemTableCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
