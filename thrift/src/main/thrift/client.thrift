@@ -578,6 +578,8 @@ service IClientRPCService {
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
+  common.TSStatus createTimeseriesOfSchemaTemplate(list<string> devicePathList);
+
   common.TSStatus handshake(TSyncIdentityInfo info);
 
   common.TSStatus sendPipeData(1:binary buff);
