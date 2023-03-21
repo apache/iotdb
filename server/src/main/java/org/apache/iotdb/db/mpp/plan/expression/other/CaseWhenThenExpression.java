@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -57,10 +58,6 @@ public class CaseWhenThenExpression extends Expression {
         break;
       }
     }
-  }
-
-  public void appendWhenThenExpression(WhenThenExpression whenThenExpression) {
-    this.whenThenExpressions.add(whenThenExpression);
   }
 
   public void setElseExpression(Expression expression) {
@@ -130,7 +127,9 @@ public class CaseWhenThenExpression extends Expression {
     for (Expression expression : this.whenThenExpressions) {
       builder.append(expression.toString()).append(" ");
     }
-    builder.append("ELSE ").append(this.elseExpression.toString());
+    if (!(this.elseExpression instanceof NullOperand)) {
+      builder.append("ELSE ").append(this.elseExpression.toString());
+    }
     return builder.toString();
   }
 

@@ -45,9 +45,11 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ExpressionTypeAnalyzer {
@@ -301,14 +303,32 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitCaseWhenThenExpression(
         CaseWhenThenExpression caseWhenThenExpression, Void context) {
-      byte finalOrdinal = 0;
+      Set<TSDataType> typeSet = new HashSet<>();
       for (WhenThenExpression whenThenExpression :
           caseWhenThenExpression.getWhenThenExpressions()) {
-        finalOrdinal =
-            (byte) Math.max(finalOrdinal, process(whenThenExpression, context).ordinal());
+        typeSet.add(process(whenThenExpression, context));
       }
-      process(caseWhenThenExpression.getElseExpression(), context);
-      return setExpressionType(caseWhenThenExpression, TSDataType.getTsDataType(finalOrdinal));
+      TSDataType elseType = process(caseWhenThenExpression.getElseExpression(), context);
+      if (elseType != null) {
+        typeSet.add(elseType);
+      }
+      // if TEXT exist, every branch need to be TEXT
+      if (typeSet.contains(TSDataType.TEXT)) {
+        if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.TEXT)) {
+          throw new SemanticException("CASE expression: TEXT and other types cannot exist at same time");
+        }
+        return setExpressionType(caseWhenThenExpression, TSDataType.TEXT);
+      }
+      // if BOOLEAN exist, every branch need to be BOOLEAN
+      if (typeSet.contains(TSDataType.BOOLEAN)) {
+        if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.BOOLEAN)) {
+          throw new SemanticException("CASE expression: BOOLEAN and other types cannot exist at same time");
+        }
+        return setExpressionType(caseWhenThenExpression, TSDataType.BOOLEAN);
+      }
+      // other 4 TSDataType can exist at same time
+      // because they can transform by Type, finally treated as DOUBLE
+      return setExpressionType(caseWhenThenExpression, TSDataType.DOUBLE);
     }
 
     @Override
