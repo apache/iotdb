@@ -17,12 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin;
+package org.apache.iotdb.commons.pipe.task.meta;
 
-public class UDTFRound extends UDTFMath {
-
-  @Override
-  protected void setTransformer() {
-    transformer = Math::rint;
-  }
-}
+public class PipeTaskMetaAccessor {}

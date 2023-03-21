@@ -181,7 +181,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     InsertNode result;
-    if (insertNodes.get(0) instanceof InsertTabletNode) { // merge to InsertMultiTabletsNode
+    // merge to InsertMultiTabletsNode
+    if (insertNodes.get(0) instanceof InsertTabletNode) {
       List<Integer> index = new ArrayList<>(size);
       List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
       int i = 0;

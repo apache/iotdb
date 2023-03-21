@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -51,6 +52,8 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
@@ -572,6 +575,49 @@ public class ProcedureManager {
       return RpcUtils.SUCCESS_STATUS;
     } else {
       return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
+    }
+  }
+
+  public TSStatus createPipePlugin(PipePluginMeta pipePluginMeta, byte[] jarFile) {
+    final CreatePipePluginProcedure createPipePluginProcedure =
+        new CreatePipePluginProcedure(pipePluginMeta, jarFile);
+    try {
+      if (jarFile != null
+          && new UpdateProcedurePlan(createPipePluginProcedure).getSerializedSize()
+              > planSizeLimit) {
+        return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Fail to create pipe plugin[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    pipePluginMeta.getPluginName()));
+      }
+    } catch (IOException e) {
+      return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
+    long procedureId = executor.submitProcedure(createPipePluginProcedure);
+    List<TSStatus> statusList = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
+    }
+  }
+
+  public TSStatus dropPipePlugin(String pluginName) {
+    long procedureId = executor.submitProcedure(new DropPipePluginProcedure(pluginName));
+    List<TSStatus> statusList = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ERROR.getStatusCode())
           .setMessage(statusList.get(0).getMessage());
     }
   }

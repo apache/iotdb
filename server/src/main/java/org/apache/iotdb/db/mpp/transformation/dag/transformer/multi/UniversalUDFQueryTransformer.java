@@ -39,7 +39,7 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
   }
 
   @Override
-  protected final YieldableState yieldValue() throws QueryProcessException, IOException {
+  protected final YieldableState yieldValue() throws Exception {
     while (!cacheValueFromUDFOutput()) {
       final YieldableState udfYieldableState = tryExecuteUDFOnce();
       if (udfYieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -62,7 +62,7 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     return true;
   }
 
-  protected abstract YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException;
+  protected abstract YieldableState tryExecuteUDFOnce() throws Exception;
 
   protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
 

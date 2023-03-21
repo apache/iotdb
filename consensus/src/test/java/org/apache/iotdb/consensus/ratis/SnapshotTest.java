@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+
+import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.server.storage.RaftStorageDirectory;
@@ -94,8 +97,10 @@ public class SnapshotTest {
 
   @Test
   public void testSnapshot() throws Exception {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(0, 0);
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), null);
+        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), raftGroupId);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
 
@@ -166,8 +171,10 @@ public class SnapshotTest {
 
   @Test
   public void testCrossDiskLinkSnapshot() throws Exception {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(0, 0);
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), null);
+        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), raftGroupId);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
     proxy.notifyTermIndexUpdated(20, 1005);
