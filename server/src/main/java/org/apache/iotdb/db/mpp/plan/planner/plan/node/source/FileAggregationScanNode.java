@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -165,7 +166,7 @@ public class FileAggregationScanNode extends SeriesSourceNode {
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
-    PartialPath pathPattern = PartialPath.deserialize(buffer);
+    PartialPath pathPattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
     AggregationDescriptor aggregationDescriptor = AggregationDescriptor.deserialize(buffer);
     int levelsSize = ReadWriteIOUtils.readInt(buffer);
     int[] levels = new int[levelsSize];
