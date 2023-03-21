@@ -710,7 +710,7 @@ public class StatementGenerator {
       devicePathList.add(new PartialPath(pathString));
     }
     BatchActivateTemplateStatement statement = new BatchActivateTemplateStatement(devicePathList);
-    PerformanceOverviewMetricsManager.recordParseCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
