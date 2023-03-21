@@ -199,6 +199,9 @@ public class Analysis {
   // template and paths set template
   private Pair<Template, List<PartialPath>> templateSetInfo;
 
+  // devicePath -> <template, paths set template>
+  private Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap;
+
   // potential template used in timeseries query or fetch
   private Map<Integer, Template> relatedTemplateInfo;
 
@@ -492,6 +495,15 @@ public class Analysis {
 
   public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
+  }
+
+  public Map<PartialPath, Pair<Template, PartialPath>> getDeviceTemplateSetInfoMap() {
+    return deviceTemplateSetInfoMap;
+  }
+
+  public void setDeviceTemplateSetInfoMap(
+      Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap) {
+    this.deviceTemplateSetInfoMap = deviceTemplateSetInfoMap;
   }
 
   public Map<Integer, Template> getRelatedTemplateInfo() {

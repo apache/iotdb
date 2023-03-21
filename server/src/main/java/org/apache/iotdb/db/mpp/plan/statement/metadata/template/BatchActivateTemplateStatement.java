@@ -47,6 +47,6 @@ public class BatchActivateTemplateStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return super.accept(visitor, context);
+    return visitor.visitBatchActivateTemplate(this, context);
   }
 }
