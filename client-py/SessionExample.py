@@ -35,9 +35,9 @@ username_ = "root"
 password_ = "root"
 # session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
 session = Session.init_from_node_urls(
-    ["127.0.0.1:6667", "127.0.0.1:6668"],
-    username_,
-    password_,
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
     fetch_size=1024,
     zone_id="UTC+8",
 )
