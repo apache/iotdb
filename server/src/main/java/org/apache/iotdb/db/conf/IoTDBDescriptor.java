@@ -1073,6 +1073,35 @@ public class IoTDBDescriptor {
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
 
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
+
+    loadIoTConsensusProps(properties);
+  }
+
+  private void loadIoTConsensusProps(Properties properties) {
+    conf.setMaxLogEntriesNumPerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "max_log_entries_num_per_batch",
+                    String.valueOf(conf.getMaxLogEntriesNumPerBatch()))
+                .trim()));
+    conf.setMaxSizePerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty("max_size_per_batch", String.valueOf(conf.getMaxSizePerBatch()))
+                .trim()));
+    conf.setMaxPendingBatchesNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "max_pending_batches_num", String.valueOf(conf.getMaxPendingBatchesNum()))
+                .trim()));
+    conf.setMaxMemoryRatioForQueue(
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "max_memory_ratio_for_queue", String.valueOf(conf.getMaxMemoryRatioForQueue()))
+                .trim()));
   }
 
   private void loadAuthorCache(Properties properties) {

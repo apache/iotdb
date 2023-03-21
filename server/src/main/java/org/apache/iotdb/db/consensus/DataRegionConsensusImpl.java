@@ -97,6 +97,11 @@ public class DataRegionConsensusImpl {
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
+                                      .setMaxLogEntriesNumPerBatch(
+                                          conf.getMaxLogEntriesNumPerBatch())
+                                      .setMaxSizePerBatch(conf.getMaxSizePerBatch())
+                                      .setMaxPendingBatchesNum(conf.getMaxPendingBatchesNum())
+                                      .setMaxMemoryRatioForQueue(conf.getMaxMemoryRatioForQueue())
                                       .build())
                               .build())
                       .setRatisConfig(
