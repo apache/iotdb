@@ -167,6 +167,10 @@ public class FileAggregationScanUtil {
 
   private void consumeTimeseriesMetadata(
       PartialPath devicePath, TimeseriesMetadata timeseriesMetadata) {
+    if (timeseriesMetadata.getMeasurementId().isEmpty()) {
+      // skip time
+      return;
+    }
     PartialPath fullPath = devicePath.concatNode(timeseriesMetadata.getMeasurementId());
     if (!pathPattern.matchFullPath(fullPath)) {
       return;
