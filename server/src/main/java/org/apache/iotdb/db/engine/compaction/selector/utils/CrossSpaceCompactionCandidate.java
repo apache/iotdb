@@ -82,6 +82,10 @@ public class CrossSpaceCompactionCandidate {
     // of
     // target seq file
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      if (!unseqFile.isDeviceTimeIndex) {
+        // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
+        return false;
+      }
       for (TsFileResourceCandidate seqFile : seqFiles) {
         if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
           continue;
