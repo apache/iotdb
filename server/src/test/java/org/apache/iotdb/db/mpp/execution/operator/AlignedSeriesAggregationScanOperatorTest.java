@@ -95,7 +95,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testAggregationWithoutTimeFilter() throws IllegalPathException {
+  public void testAggregationWithoutTimeFilter() throws Exception {
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -126,7 +126,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws IllegalPathException {
+  public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -153,11 +153,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       }
       count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilter1() throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilter1() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -190,7 +191,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilter2() throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilter2() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -231,8 +232,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testMultiAggregationFuncWithoutTimeFilterOrderByTimeDesc()
-      throws IllegalPathException {
+  public void testMultiAggregationFuncWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -273,7 +273,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testAggregationWithTimeFilter1() throws IllegalPathException {
+  public void testAggregationWithTimeFilter1() throws Exception {
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -301,11 +301,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       }
       count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithTimeFilter2() throws IllegalPathException {
+  public void testAggregationWithTimeFilter2() throws Exception {
     Filter timeFilter = TimeFilter.ltEq(379);
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -333,11 +334,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       }
       count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testAggregationWithTimeFilter3() throws IllegalPathException {
+  public void testAggregationWithTimeFilter3() throws Exception {
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -369,7 +371,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testMultiAggregationWithTimeFilter() throws IllegalPathException {
+  public void testMultiAggregationWithTimeFilter() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
@@ -407,11 +409,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       assertEquals(399, resultTsBlock.getColumn(5).getLong(0));
       count++;
     }
+
     assertEquals(1, count);
   }
 
   @Test
-  public void testGroupByWithoutGlobalTimeFilter() throws IllegalPathException {
+  public void testGroupByWithoutGlobalTimeFilter() throws Exception {
     int[] result = new int[] {100, 100, 100, 99};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<Aggregator> aggregators = new ArrayList<>();
@@ -444,11 +447,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
         count++;
       }
     }
+
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupByWithGlobalTimeFilter() throws IllegalPathException {
+  public void testGroupByWithGlobalTimeFilter() throws Exception {
     int[] result = new int[] {0, 80, 100, 80};
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
@@ -487,7 +491,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testGroupByWithMultiFunction() throws IllegalPathException {
+  public void testGroupByWithMultiFunction() throws Exception {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
@@ -530,7 +534,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testGroupByWithMultiFunctionOrderByTimeDesc() throws IllegalPathException {
+  public void testGroupByWithMultiFunctionOrderByTimeDesc() throws Exception {
     int[][] result =
         new int[][] {
           {20000, 20100, 10200, 10300},
@@ -573,7 +577,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testGroupBySlidingTimeWindow() throws IllegalPathException {
+  public void testGroupBySlidingTimeWindow() throws Exception {
     int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 49};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
@@ -603,7 +607,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testGroupBySlidingTimeWindow2() throws IllegalPathException {
+  public void testGroupBySlidingTimeWindow2() throws Exception {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[] result = new int[] {20, 10, 20, 10, 20, 10, 20, 10, 20, 9};
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
@@ -634,7 +638,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
   }
 
   @Test
-  public void testGroupBySlidingWindowWithMultiFunction() throws IllegalPathException {
+  public void testGroupBySlidingWindowWithMultiFunction() throws Exception {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[][] result =
         new int[][] {

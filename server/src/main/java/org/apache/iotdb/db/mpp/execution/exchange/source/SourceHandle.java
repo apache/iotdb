@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
@@ -373,6 +374,7 @@ public class SourceHandle implements ISourceHandle {
           .clearMemoryReservationMap(
               localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
       closed = true;
+      executorService.submit(new SendCloseSinkChannelEventTask());
       currSequenceId = lastSequenceId + 1;
       sourceHandleListener.onFinished(this);
     }
@@ -490,8 +492,20 @@ public class SourceHandle implements ISourceHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
-
             int tsBlockNum = resp.getTsBlocks().size();
+            if (tsBlockNum == 0) {
+              if (!closed) {
+                // failed to pull TsBlocks
+                LOGGER.warn(
+                    "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
+                    localFragmentInstanceId,
+                    startSequenceId,
+                    endSequenceId,
+                    remoteFragmentInstanceId,
+                    indexOfUpstreamSinkHandle);
+              }
+              return;
+            }
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
@@ -615,6 +629,49 @@ public class SourceHandle implements ISourceHandle {
                 ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
             QUERY_METRICS.recordDataBlockNum(
                 ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER, endSequenceId - startSequenceId);
+          }
+        }
+      }
+    }
+  }
+
+  class SendCloseSinkChannelEventTask implements Runnable {
+
+    @Override
+    public void run() {
+      try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+        LOGGER.debug(
+            "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+            remoteFragmentInstanceId,
+            indexOfUpstreamSinkHandle);
+        int attempt = 0;
+        TCloseSinkChannelEvent closeSinkChannelEvent =
+            new TCloseSinkChannelEvent(remoteFragmentInstanceId, indexOfUpstreamSinkHandle);
+        while (attempt < MAX_ATTEMPT_TIMES) {
+          attempt += 1;
+          long startTime = System.nanoTime();
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+            client.onCloseSinkChannelEvent(closeSinkChannelEvent);
+            break;
+          } catch (Throwable e) {
+            LOGGER.warn(
+                "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                remoteFragmentInstanceId,
+                indexOfUpstreamSinkHandle);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              synchronized (SourceHandle.this) {
+                sourceHandleListener.onFailure(SourceHandle.this, e);
+              }
+            }
+            try {
+              Thread.sleep(retryIntervalInMs);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+              synchronized (SourceHandle.this) {
+                sourceHandleListener.onFailure(SourceHandle.this, e);
+              }
+            }
           }
         }
       }

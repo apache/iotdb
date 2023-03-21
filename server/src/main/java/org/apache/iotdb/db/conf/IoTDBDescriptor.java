@@ -189,7 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getClusterName(), conf.getDataNodeId(), NodeType.DATANODE);
+            .updateRpcInstance(conf.getClusterName(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
@@ -567,6 +567,15 @@ public class IoTDBDescriptor {
 
     if (conf.getDegreeOfParallelism() <= 0) {
       conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
+    conf.setModeMapSizeThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+
+    if (conf.getModeMapSizeThreshold() <= 0) {
+      conf.setModeMapSizeThreshold(10000);
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -996,6 +1005,9 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
+
+    // Pipe
+    loadPipeProps(properties);
 
     // cluster
     loadClusterProps(properties);
@@ -1776,6 +1788,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+  }
+
+  private void loadPipeProps(Properties properties) {
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
   }
 
   private void loadCQProps(Properties properties) {

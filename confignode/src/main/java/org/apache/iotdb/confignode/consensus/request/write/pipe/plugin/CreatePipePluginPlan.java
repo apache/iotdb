@@ -34,6 +34,10 @@ public class CreatePipePluginPlan extends ConfigPhysicalPlan {
 
   private Binary jarFile;
 
+  public CreatePipePluginPlan() {
+    super(ConfigPhysicalPlanType.CreatePipePlugin);
+  }
+
   public CreatePipePluginPlan(PipePluginMeta pipePluginMeta, Binary jarFile) {
     super(ConfigPhysicalPlanType.CreatePipePlugin);
     this.pipePluginMeta = pipePluginMeta;

@@ -157,6 +157,10 @@ public class SinkChannel implements ISinkChannel {
     long startTime = System.nanoTime();
     try {
       Validate.notNull(tsBlock, "tsBlocks is null");
+      if (closed) {
+        // SinkChannel may have been closed by its downstream SourceHandle
+        return;
+      }
       checkState();
       if (!blocked.isDone()) {
         throw new IllegalStateException("Sink handle is blocked.");
@@ -252,6 +256,11 @@ public class SinkChannel implements ISinkChannel {
     sinkListener.onFinish(this);
     closed = true;
     LOGGER.debug("[EndCloseSinkChannel]");
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
   }
 
   @Override
@@ -353,8 +362,6 @@ public class SinkChannel implements ISinkChannel {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("SinkChannel is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("SinkChannel is closed.");
     }
   }
 

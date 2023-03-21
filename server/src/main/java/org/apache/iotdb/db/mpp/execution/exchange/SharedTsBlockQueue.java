@@ -131,6 +131,10 @@ public class SharedTsBlockQueue {
     return queue.isEmpty();
   }
 
+  public boolean isClosed() {
+    return closed;
+  }
+
   public int getNumOfBufferedTsBlocks() {
     return queue.size();
   }
@@ -147,7 +151,7 @@ public class SharedTsBlockQueue {
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
-      LOGGER.warn("queue has been destroyed");
+      LOGGER.debug("The queue has been destroyed when calling setNoMoreTsBlocks.");
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;

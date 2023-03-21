@@ -156,6 +156,7 @@ keyWords
     | REPLACE
     | REVOKE
     | ROLE
+    | ROUND
     | RUNNING
     | SCHEMA
     | SELECT

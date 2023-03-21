@@ -570,6 +570,10 @@ ROOT
     : R O O T
     ;
 
+ROUND
+    : R O U N D
+    ;
+
 RUNNING
     : R U N N I N G
     ;

@@ -45,7 +45,7 @@ public abstract class TernaryTransformer extends Transformer {
   protected final boolean isCurrentConstant;
 
   @Override
-  protected YieldableState yieldValue() throws QueryProcessException, IOException {
+  protected YieldableState yieldValue() throws Exception {
     final YieldableState firstYieldableState = firstPointReader.yield();
     final YieldableState secondYieldableState = secondPointReader.yield();
     final YieldableState thirdYieldableState = thirdPointReader.yield();
@@ -81,7 +81,7 @@ public abstract class TernaryTransformer extends Transformer {
     return YieldableState.YIELDABLE;
   }
 
-  private YieldableState yieldTime() throws IOException, QueryProcessException {
+  private YieldableState yieldTime() throws Exception {
     if (isCurrentConstant) {
       return YieldableState.YIELDABLE;
     }
