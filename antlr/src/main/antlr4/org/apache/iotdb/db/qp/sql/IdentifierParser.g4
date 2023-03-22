@@ -80,6 +80,7 @@ keyWords
     | DISCARD
     | DROP
     | ELAPSEDTIME
+    | ELSE
     | END
     | ENDTIME
     | EVERY
@@ -177,6 +178,7 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | THEN
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID
@@ -199,13 +201,10 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
     | PRIVILEGE_VALUE
-    | CASE
-    | WHEN
-    | THEN
-    | ELSE
     ;
