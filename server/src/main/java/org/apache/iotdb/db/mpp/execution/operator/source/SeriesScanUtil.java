@@ -637,7 +637,7 @@ public class SeriesScanUtil {
         firstPageReader.setFilter(queryFilter);
       }
       firstPageReader.setLimitOffset(paginationController);
-      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending(), true);
       firstPageReader = null;
 
       return tsBlock;
@@ -719,12 +719,7 @@ public class SeriesScanUtil {
                   timeValuePair.getTimestamp(), firstPageReader.getStatistics())) {
                 // current timeValuePair is overlapped with firstPageReader, add it to merged reader
                 // and update endTime to the max end time
-                mergeReader.addReader(
-                    getPointReader(
-                        firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
-                    firstPageReader.version,
-                    orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
-                    context);
+                putPageReaderToMergeReader(firstPageReader);
                 currentPageEndPointTime =
                     updateEndPointTime(currentPageEndPointTime, firstPageReader);
                 firstPageReader = null;
@@ -745,11 +740,7 @@ public class SeriesScanUtil {
               } else if (orderUtils.isOverlapped(
                   timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
                 VersionPageReader pageReader = seqPageReaders.remove(0);
-                mergeReader.addReader(
-                    getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
-                    pageReader.version,
-                    orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
-                    context);
+                putPageReaderToMergeReader(pageReader);
                 currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
               }
             }
@@ -945,7 +936,7 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
+        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending(), false)),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);
@@ -1147,19 +1138,20 @@ public class SeriesScanUtil {
       return ((IAlignedPageReader) data).getTimeStatistics();
     }
 
-    TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
+    TsBlock getAllSatisfiedPageData(boolean ascending, boolean isSeq) throws IOException {
       long startTime = System.nanoTime();
       try {
-        paginationController.setEnable(ascending);
+        paginationController.setEnable(isSeq && ascending);
         TsBlock tsBlock = data.getAllSatisfiedData();
-        paginationController.setEnable(true);
 
-        if (ascending) {
-          return tsBlock;
-        } else {
+        if (!ascending) {
           tsBlock.reverse();
-          return paginationController.applyTsBlock(tsBlock);
+
+          paginationController.setEnable(isSeq);
+          tsBlock = paginationController.applyTsBlock(tsBlock);
+          paginationController.setEnable(true);
         }
+        return tsBlock;
       } finally {
         QUERY_METRICS.recordSeriesScanCost(
             isAligned
