@@ -2587,8 +2587,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           if (sumOfChildPipelines > dopForChild) {
             // Update dependencyPipeId, after which finishes we can submit curChildPipeline
             while (sumOfChildPipelines > dopForChild) {
-              dependencyPipeId = context.getPipelineNumber() - sumOfChildPipelines;
               sumOfChildPipelines -= childPipelineNums.get(dependencyChildNode);
+              // The dependency pipeline must be a parent pipeline rather than a child pipeline
+              dependencyPipeId = context.getPipelineNumber() - sumOfChildPipelines - 1;
               sumOfChildExchangeNums -= childExchangeNums.get(dependencyChildNode);
               dependencyChildNode++;
             }
