@@ -20,45 +20,33 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import java.util.Collections;
 import java.util.List;
 
-public class DropSchemaTemplateStatement extends Statement implements IConfigStatement {
+public class BatchActivateTemplateStatement extends Statement {
 
-  private String templateName;
+  private final List<PartialPath> devicePathList;
 
-  public DropSchemaTemplateStatement(String templateName) {
+  public BatchActivateTemplateStatement(List<PartialPath> devicePathList) {
     super();
-    this.templateName = templateName;
-    this.statementType = StatementType.DROP_TEMPLATE;
-  }
-
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public void setTemplateName(String templateName) {
-    this.templateName = templateName;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDropSchemaTemplate(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+    this.devicePathList = devicePathList;
+    statementType = StatementType.BATCH_ACTIVATE_TEMPLATE;
   }
 
   @Override
   public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+    return devicePathList;
+  }
+
+  public List<PartialPath> getDevicePathList() {
+    return devicePathList;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitBatchActivateTemplate(this, context);
   }
 }

@@ -22,7 +22,9 @@ from iotdb.utils.BitMap import BitMap
 
 
 class NumpyTablet(object):
-    def __init__(self, device_id, measurements, data_types, values, timestamps, bitmaps=None):
+    def __init__(
+        self, device_id, measurements, data_types, values, timestamps, bitmaps=None
+    ):
         """
         creating a numpy tablet for insertion
           for example, considering device: root.sg1.d1

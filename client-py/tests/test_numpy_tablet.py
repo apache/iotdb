@@ -100,7 +100,12 @@ def test_numpy_tablet_with_none_serialization():
     np_bitmaps_[4].mark(3)
     np_bitmaps_[5].mark(3)
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+        "root.sg_test_01.d_01",
+        measurements_,
+        data_types_,
+        np_values_,
+        np_timestamps_,
+        np_bitmaps_,
     )
     assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
