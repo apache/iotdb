@@ -1176,16 +1176,12 @@ class Session(object):
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
             resp = self.__client.executeUpdateStatement(request)
-            status = resp.status
-            return Session.verify_success(status)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeUpdateStatement(request)
-                    status = resp.status
-                    return Session.verify_success(status)
                 except TTransport.TException as e1:
                     logger.exception(
                         "execution of non-query statement fails because: ", e1
@@ -1193,6 +1189,22 @@ class Session(object):
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        if resp.columns:
+            return SessionDataSet(
+                sql,
+                resp.columns,
+                resp.dataTypeList,
+                resp.columnNameIndexMap,
+                resp.queryId,
+                self.__client,
+                self.__statement_id,
+                self.__session_id,
+                resp.queryDataSet,
+                resp.ignoreTimeStamp,
+            )
+        else:
+            return None
 
     def execute_statement(self, sql: str, timeout=0):
         request = TSExecuteStatementReq(
