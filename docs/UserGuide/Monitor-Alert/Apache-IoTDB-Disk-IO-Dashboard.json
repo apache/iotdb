@@ -835,7 +835,7 @@
         "description": "",
         "hide": 0,
         "includeAll": false,
-        "multi": true,
+        "multi": false,
         "name": "instance",
         "options": [],
         "query": {
@@ -889,6 +889,6 @@
   "timezone": "",
   "title": "Apache IoTDB Disk I/O Dashboard",
   "uid": "TrJ0dsaVk",
-  "version": 15,
+  "version": 2,
   "weekStart": ""
 }
