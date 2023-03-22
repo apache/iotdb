@@ -709,6 +709,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) throws TException {
+    return configManager.getPipePluginJar(req);
+  }
+
+  @Override
   public TSStatus merge() throws TException {
     return configManager.merge();
   }

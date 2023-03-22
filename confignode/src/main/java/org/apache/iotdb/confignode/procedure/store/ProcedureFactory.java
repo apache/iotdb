@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
@@ -117,6 +119,12 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_MODEL_PROCEDURE:
         procedure = new DropModelProcedure();
         break;
+      case CREATE_PIPE_PLUGIN_PROCEDURE:
+        procedure = new CreatePipePluginProcedure();
+        break;
+      case DROP_PIPE_PLUGIN_PROCEDURE:
+        procedure = new DropPipePluginProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeCode);
         throw new IOException("unknown Procedure type: " + typeCode);
@@ -158,6 +166,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreatePipePluginProcedure) {
+      return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
+    } else if (procedure instanceof DropPipePluginProcedure) {
+      return ProcedureType.DROP_PIPE_PLUGIN_PROCEDURE;
     }
     return null;
   }

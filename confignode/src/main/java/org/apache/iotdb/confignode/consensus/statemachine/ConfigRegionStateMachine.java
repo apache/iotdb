@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -76,7 +77,7 @@ public class ConfigRegionStateMachine
   private int endIndex;
 
   private static final String CURRENT_FILE_DIR =
-      CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
+      ConsensusManager.getConfigRegionDir() + File.separator + "current";
   private static final String PROGRESS_FILE_PATH =
       CURRENT_FILE_DIR + File.separator + "log_inprogress_";
   private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
@@ -364,7 +365,11 @@ public class ConfigRegionStateMachine
   private void createLogFile(int endIndex) {
     simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
     try {
-      simpleLogFile.createNewFile();
+      if (!simpleLogFile.createNewFile()) {
+        LOGGER.warn(
+            "ConfigNode SimpleConsensusFile has existed，filePath:{}",
+            simpleLogFile.getAbsolutePath());
+      }
       simpleLogWriter = new LogWriter(simpleLogFile, false);
       LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", simpleLogFile.getAbsolutePath());
     } catch (Exception e) {

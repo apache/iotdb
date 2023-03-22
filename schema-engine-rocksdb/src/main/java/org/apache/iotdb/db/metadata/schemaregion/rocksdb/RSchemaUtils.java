@@ -22,13 +22,13 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RDatabaseMNode;
+import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RDeviceMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RStorageGroupMNode;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -170,11 +170,11 @@ public class RSchemaUtils {
 
   public static RMNodeType typeOfMNode(IMNode mNode) {
     // order sensitive
-    if (mNode instanceof REntityMNode) {
+    if (mNode instanceof RDeviceMNode) {
       return RMNodeType.ENTITY;
     }
 
-    if (mNode instanceof RStorageGroupMNode) {
+    if (mNode instanceof RDatabaseMNode) {
       return RMNodeType.STORAGE_GROUP;
     }
 

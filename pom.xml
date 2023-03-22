@@ -797,6 +797,7 @@
                             <exclude>**/.eslintignore</exclude>
                             <exclude>**/palette.styl</exclude>
                             <exclude>**/RightMenu.vue</exclude>
+                            <exclude>**/pnpm-lock.yaml</exclude>
                         </excludes>
                     </configuration>
                 </plugin>

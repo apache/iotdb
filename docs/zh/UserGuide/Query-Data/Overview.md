@@ -35,9 +35,10 @@ SELECT [LAST] selectExpr [, selectExpr] ...
         ([startTime, endTime), interval [, slidingStep]) |
         LEVEL = levelNum [, levelNum] ... |
         TAGS(tagKey [, tagKey] ... |
-        VARIATION(expression[,delta][,ignoreNull=true/false])|
-        CONDITION(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])|
-        SESSION(timeInterval)
+        VARIATION(expression[,delta][,ignoreNull=true/false]) |
+        CONDITION(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false]) |
+        SESSION(timeInterval) |
+        COUNT(expression, size[,ignoreNull=true/false])
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
@@ -77,7 +78,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 #### `GROUP BY` 子句
 
 - `GROUP BY` 子句指定对序列进行分段或分组聚合的方式。
-- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前支持**时间区间分段**、**差值分段**、**条件分段**和**会话分段**，未来将支持更多分段方式。
+- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前支持**时间区间分段**、**差值分段**、**条件分段**、**会话分段**和**点数分段**，未来将支持更多分段方式。
 - 分组聚合是指针对不同时间序列，在时间序列的潜在业务属性上分组，每个组包含若干条时间序列，每个组得到一个聚合值。支持**按路径层级分组**和**按序列标签分组**两种分组方式。
 - 分段聚合和分组聚合可以混合使用。
 - 详细说明及示例见文档 [分段分组聚合](./Group-By.md) 。

@@ -28,6 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +44,8 @@ public class MeasurementGroup {
   private List<Map<String, String>> propsList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
+
+  private final transient Set<String> measurementSet = new HashSet<>();
 
   public List<String> getMeasurements() {
     return measurements;
@@ -80,15 +83,20 @@ public class MeasurementGroup {
     return attributesList;
   }
 
-  public void addMeasurement(
+  public boolean addMeasurement(
       String measurement,
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressionType) {
+    if (measurementSet.contains(measurement)) {
+      return false;
+    }
     measurements.add(measurement);
+    measurementSet.add(measurement);
     dataTypes.add(dataType);
     encodings.add(encoding);
     compressors.add(compressionType);
+    return true;
   }
 
   public void addAlias(String alias) {
@@ -119,29 +127,6 @@ public class MeasurementGroup {
     attributesList.add(attributes);
   }
 
-  public void removeMeasurement(int index) {
-    measurements.remove(index);
-    dataTypes.remove(index);
-    encodings.remove(index);
-    compressors.remove(index);
-
-    if (aliasList != null) {
-      aliasList.remove(index);
-    }
-
-    if (propsList != null) {
-      propsList.remove(index);
-    }
-
-    if (tagsList != null) {
-      tagsList.remove(index);
-    }
-
-    if (attributesList != null) {
-      attributesList.remove(index);
-    }
-  }
-
   public void removeMeasurements(Set<Integer> indexSet) {
     int restSize = this.measurements.size() - indexSet.size();
     List<String> measurements = new ArrayList<>(restSize);
@@ -156,6 +141,7 @@ public class MeasurementGroup {
 
     for (int i = 0; i < this.measurements.size(); i++) {
       if (indexSet.contains(i)) {
+        measurementSet.remove(this.measurements.get(i));
         continue;
       }
       measurements.add(this.measurements.get(i));
@@ -217,6 +203,7 @@ public class MeasurementGroup {
     MeasurementGroup subMeasurementGroup;
     subMeasurementGroup = new MeasurementGroup();
     subMeasurementGroup.measurements = measurements.subList(startIndex, endIndex);
+    subMeasurementGroup.measurementSet.addAll(subMeasurementGroup.measurements);
     subMeasurementGroup.dataTypes = dataTypes.subList(startIndex, endIndex);
     subMeasurementGroup.encodings = encodings.subList(startIndex, endIndex);
     subMeasurementGroup.compressors = compressors.subList(startIndex, endIndex);
@@ -359,6 +346,7 @@ public class MeasurementGroup {
     for (int i = 0; i < size; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
+    measurementSet.addAll(measurements);
 
     dataTypes = new ArrayList<>();
     for (int i = 0; i < size; i++) {

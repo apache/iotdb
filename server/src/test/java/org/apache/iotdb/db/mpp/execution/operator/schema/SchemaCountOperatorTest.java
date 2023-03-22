@@ -55,7 +55,7 @@ public class SchemaCountOperatorTest {
   private static final String SCHEMA_COUNT_OPERATOR_TEST_SG = "root.SchemaCountOperatorTest";
 
   @Test
-  public void testSchemaCountOperator() {
+  public void testSchemaCountOperator() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -184,7 +184,7 @@ public class SchemaCountOperatorTest {
     }
   }
 
-  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) {
+  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) throws Exception {
     List<TsBlock> tsBlocks = new ArrayList<>();
     while (operator.hasNext()) {
       TsBlock tsBlock = operator.next();
