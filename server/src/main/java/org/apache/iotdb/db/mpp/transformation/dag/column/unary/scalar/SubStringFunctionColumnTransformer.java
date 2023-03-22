@@ -27,19 +27,27 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class SubStrFunctionColumnTransformer extends UnaryColumnTransformer {
+public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
 
-  protected int beginPosition;
-  protected int endPosition;
+  private int beginPosition;
+  private int endPosition;
+  private int length;
 
-  public SubStrFunctionColumnTransformer(
+  private boolean hasLength;
+
+  public static final String EMPTY_STRING = "";
+
+  public SubStringFunctionColumnTransformer(
       Type returnType,
       ColumnTransformer childColumnTransformer,
       int beginPosition,
-      int endPosition) {
+      int length,
+      boolean hasLength) {
     super(returnType, childColumnTransformer);
-    this.beginPosition = beginPosition;
-    this.endPosition = endPosition;
+    this.beginPosition = beginPosition - 1;
+    this.endPosition = beginPosition + length - 1;
+    this.length = length;
+    this.hasLength = hasLength;
   }
 
   @Override
@@ -49,12 +57,37 @@ public class SubStrFunctionColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         if (sourceType == TypeEnum.BINARY) {
           String currentValue = column.getBinary(i).getStringValue();
-          if (endPosition == 0) {
-            columnBuilder.writeBinary(Binary.valueOf(currentValue.substring(beginPosition)));
+          if (!hasLength) {
+            if (beginPosition >= currentValue.length()) {
+              currentValue = EMPTY_STRING;
+            } else if (beginPosition >= 0) {
+              currentValue = currentValue.substring(beginPosition);
+            }
           } else {
-            columnBuilder.writeBinary(
-                Binary.valueOf(currentValue.substring(beginPosition, endPosition)));
+            if (length < 0) {
+              throw new UnsupportedOperationException(
+                  "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+            }
+            if (beginPosition < 0) {
+              beginPosition = 0;
+              if (endPosition >= currentValue.length()) {
+                currentValue = currentValue.substring(beginPosition);
+              } else if (endPosition < 0) {
+                currentValue = EMPTY_STRING;
+              } else {
+                currentValue = currentValue.substring(beginPosition, endPosition);
+              }
+            } else if (beginPosition >= currentValue.length()) {
+              currentValue = EMPTY_STRING;
+            } else {
+              if (endPosition >= currentValue.length()) {
+                currentValue = currentValue.substring(beginPosition);
+              } else {
+                currentValue = currentValue.substring(beginPosition, endPosition);
+              }
+            }
           }
+          columnBuilder.writeBinary(Binary.valueOf(currentValue));
         } else {
           throw new UnsupportedOperationException(
               String.format(

@@ -23,7 +23,7 @@ public enum BuiltinScalarFunctionEnum {
   DIFF("diff"),
   CAST("cast"),
   REPLACE("replace"),
-  SUBSTR("substr"),
+  SUBSTRING("substring"),
   ROUND("round");
   ;
 

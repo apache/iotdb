@@ -646,8 +646,8 @@ STOP
     : S T O P
     ;
 
-SUBSTR
-    : S U B S T R
+SUBSTRING
+    : S U B S T R I N G
     ;
 
 SYSTEM

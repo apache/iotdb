@@ -214,9 +214,12 @@ import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_TO;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_PLACES;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTR_END;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTR_FUNCTION;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTR_START;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FOR_LENGTH;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FROM;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_START;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -2373,7 +2376,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseReplaceFunction(context, canUseFullPath);
     } else if (context.ROUND() != null) {
       return parseRoundFunction(context, canUseFullPath);
-    } else if (context.SUBSTR() != null) {
+    } else if (context.SUBSTRING() != null) {
       return parseSubStrFunction(context, canUseFullPath);
     }
     throw new UnsupportedOperationException();
@@ -2398,13 +2401,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Expression parseSubStrFunction(
       IoTDBSqlParser.ScalarFunctionExpressionContext subStrClause, boolean canUseFullPath) {
-    FunctionExpression functionExpression = new FunctionExpression(SUBSTR_FUNCTION);
-    functionExpression.addExpression(parseExpression(subStrClause.input, canUseFullPath));
-    functionExpression.addAttribute(
-        SUBSTR_START, parseStringLiteral(subStrClause.startPosition.getText()));
-    if (subStrClause.endPosition != null) {
+    FunctionExpression functionExpression = new FunctionExpression(SUBSTRING_FUNCTION);
+    IoTDBSqlParser.SubStringExpressionContext subStringExpression =
+        subStrClause.subStringExpression();
+    functionExpression.addExpression(parseExpression(subStringExpression.input, canUseFullPath));
+    if (subStringExpression.startPosition != null) {
       functionExpression.addAttribute(
-          SUBSTR_END, parseStringLiteral(subStrClause.endPosition.getText()));
+          SUBSTRING_START, parseStringLiteral(subStringExpression.startPosition.getText()));
+      if (subStringExpression.length != null) {
+        functionExpression.addAttribute(
+            SUBSTRING_LENGTH, parseStringLiteral(subStringExpression.length.getText()));
+      }
+    }
+    if (subStringExpression.from != null) {
+      functionExpression.addAttribute(SUBSTRING_IS_STANDARD, "0");
+      functionExpression.addAttribute(
+          SUBSTRING_FROM, parseStringLiteral(subStringExpression.from.getText()));
+      if (subStringExpression.forLength != null) {
+        functionExpression.addAttribute(
+            SUBSTRING_FOR_LENGTH, parseStringLiteral(subStringExpression.forLength.getText()));
+      }
     }
     return functionExpression;
   }
