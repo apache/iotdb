@@ -4820,7 +4820,7 @@
       "type": "row"
     }
   ],
-  "refresh": false,
+  "refresh": "15s",
   "schemaVersion": 37,
   "style": "dark",
   "tags": [
