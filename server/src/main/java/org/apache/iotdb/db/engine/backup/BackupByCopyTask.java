@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.backup;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.service.BackupService;
-import org.apache.iotdb.db.tools.backup.BackupTool;
+import org.apache.iotdb.db.utils.BackupUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ public class BackupByCopyTask extends WrappedRunnable {
 
   public void backupByCopy() {
     try {
-      BackupTool.copyFile(Paths.get(sourcePath), Paths.get(targetPath));
+      BackupUtils.copyFile(Paths.get(sourcePath), Paths.get(targetPath));
     } catch (IOException e) {
       logger.error(
           String.format("Copy failed during backup: from %s to %s", sourcePath, targetPath));

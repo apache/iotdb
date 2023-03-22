@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.BackupPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -89,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
+import org.apache.iotdb.service.rpc.thrift.TSBackupReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -2151,6 +2153,12 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
     return SESSION_MANAGER.getAllConnectionInfo();
+  }
+
+  @Override
+  public TSStatus executeBackup(TSBackupReq req) {
+    BackupPlan plan = new BackupPlan(req.outputPath);
+    return executeNonQueryPlan(plan);
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

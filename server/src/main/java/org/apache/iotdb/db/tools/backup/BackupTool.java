@@ -19,139 +19,79 @@
 
 package org.apache.iotdb.db.tools.backup;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.service.rpc.thrift.TSBackupReq;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 public class BackupTool {
+  private static final Logger logger = LoggerFactory.getLogger(BackupTool.class);
+  private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+  private static TTransport transport;
+  private static TSIService.Client client;
+  private static String outputAbsolutePathStr;
 
-  /**
-   * @param target The hard link file to be created.
-   * @param source The file that is linked to.
-   * @return Returns true if the hard link is successfully created, false if failed to create.
-   * @throws IOException if failed to create the parent directory of target file.
-   */
-  public static boolean createTargetDirAndTryCreateLink(File target, File source)
-      throws IOException {
-    File targetParent = new File(target.getParent());
-    if (!targetParent.exists() && !targetParent.mkdirs()) {
-      throw new IOException("Cannot create directory " + targetParent.getAbsolutePath());
-    }
-    Files.deleteIfExists(target.toPath());
+  public static void main(String[] args) {
+    Thread.currentThread().setName(ThreadName.BACKUP_CLIENT.getName());
+    if (!checkArgs(args)) return;
+    RpcTransportFactory.setDefaultBufferCapacity(ioTDBConfig.getThriftDefaultBufferSize());
+    RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
     try {
-      Files.createLink(target.toPath(), source.toPath());
-    } catch (IOException e) {
+      transport = RpcTransportFactory.INSTANCE.getTransport("127.0.0.1", 6667, 2000);
+      transport.open();
+    } catch (TTransportException e) {
+      logger.error("Cannot connect to the receiver.");
+    }
+    if (ioTDBConfig.isRpcThriftCompressionEnable()) {
+      client = new TSIService.Client(new TCompactProtocol(transport));
+    } else {
+      client = new TSIService.Client(new TBinaryProtocol(transport));
+    }
+    try {
+      TSStatus status = client.executeBackup(new TSBackupReq(outputAbsolutePathStr));
+      System.out.println(status.code);
+    } catch (TException e) {
+      e.printStackTrace();
+    }
+    transport.close();
+  }
+
+  private static boolean checkArgs(String[] args) {
+    if (args.length == 0) {
+      logger.error("Too few arguments for backup.");
       return false;
     }
-    return true;
-  }
-
-  public static String getTsFileTargetPath(TsFileResource resource, String outputBaseDir) {
-    return FilePathUtils.regularizePath(outputBaseDir)
-        + "data"
-        + File.separator
-        + resource.getTsFile().getAbsolutePath().replaceFirst(":", "");
-  }
-
-  public static String getSystemFileTargetPath(File source, String outputBaseDir) {
-    String systemPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    File systemDir = new File(systemPath);
-    if (source.getAbsolutePath().contains(systemDir.getAbsolutePath())) {
-      String relativeSourcePath = source.getAbsolutePath().replace(systemDir.getAbsolutePath(), "");
-      if (!relativeSourcePath.startsWith(File.separator)) {
-        relativeSourcePath = File.separator + relativeSourcePath;
+    String outputPathStr = args[0];
+    File outputPathFile = new File(outputPathStr);
+    if (!outputPathFile.exists()) {
+      if (!outputPathFile.mkdirs()) {
+        logger.error("Can't create output directory for backup.");
+        return false;
       }
-      return FilePathUtils.regularizePath(outputBaseDir)
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + relativeSourcePath;
+    } else if (outputPathFile.isFile()) {
+      logger.error("Backup output directory can't be a file.");
+      return false;
     } else {
-      return "";
-    }
-  }
-
-  public static String getTsFileTmpLinkPath(TsFileResource resource) {
-    String absolutePath = resource.getTsFile().getAbsolutePath();
-    String dataDir =
-        resource
-            .getTsFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getAbsolutePath();
-    dataDir = FilePathUtils.regularizePath(dataDir);
-    return dataDir
-        + IoTDBConstant.BACKUP_DATA_TMP_FOLDER_NAME
-        + File.separator
-        + absolutePath.replace(dataDir, "");
-  }
-
-  public static String getSystemFileTmpLinkPath(File source) {
-    String absolutePath = source.getAbsolutePath();
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    systemDir = new File(systemDir).getAbsolutePath();
-    systemDir = FilePathUtils.regularizePath(systemDir);
-    return systemDir
-        + IoTDBConstant.BACKUP_SYSTEM_TMP_FOLDER_NAME
-        + File.separator
-        + absolutePath.replace(systemDir, "");
-  }
-
-  public static void copyFile(Path source, Path target) throws IOException {
-    Files.copy(source, target);
-  }
-
-  public static List<File> getAllFilesInOneDir(String path) {
-    List<File> sonFiles = new ArrayList<>();
-    File[] sonFileAndDirs = new File(path).listFiles();
-    if (sonFileAndDirs == null) {
-      return sonFiles;
-    }
-    for (File sonFile : sonFileAndDirs) {
-      if (sonFile.isFile()) {
-        sonFiles.add(sonFile);
-      } else {
-        sonFiles.addAll(getAllFilesInOneDir(sonFile.getAbsolutePath()));
+      String[] fileList = outputPathFile.list();
+      if (fileList != null && fileList.length > 0) {
+        logger.error("Backup output directory should be empty.");
+        return false;
       }
     }
-    return sonFiles;
-  }
-
-  public static boolean deleteBackupTmpDir() {
-    boolean success = true;
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      File dataTmpDir =
-          new File(
-              FilePathUtils.regularizePath(dataDir) + IoTDBConstant.BACKUP_DATA_TMP_FOLDER_NAME);
-      success = success && deleteFileOrDir(dataTmpDir);
-    }
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    File systemTmpDir =
-        new File(
-            FilePathUtils.regularizePath(systemDir) + IoTDBConstant.BACKUP_SYSTEM_TMP_FOLDER_NAME);
-    return success && deleteFileOrDir(systemTmpDir);
-  }
-
-  public static boolean deleteFileOrDir(File file) {
-    if (file == null) return true;
-    if (!file.isFile()) {
-      File[] sonFileAndDirs = file.listFiles();
-      if (sonFileAndDirs != null) {
-        for (File sonFile : sonFileAndDirs) {
-          deleteFileOrDir(sonFile);
-        }
-      }
-    }
-    return file.delete();
+    outputAbsolutePathStr = outputPathFile.getAbsolutePath();
+    return true;
   }
 }

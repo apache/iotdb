@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.tools.backup.BackupTool;
+import org.apache.iotdb.db.utils.BackupUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,30 +118,28 @@ public class BackupService implements IService {
    *
    * @param resources
    * @param outputPath
-   * @throws WriteProcessException
    */
-  public void backupFiles(List<TsFileResource> resources, String outputPath)
-      throws WriteProcessException {
+  public void backupFiles(List<TsFileResource> resources, String outputPath) {
     backupByCopyTaskList.clear();
-
     for (TsFileResource resource : resources) {
-      String tsfileTargetPath = BackupTool.getTsFileTargetPath(resource, outputPath);
       try {
-        if (BackupTool.createTargetDirAndTryCreateLink(
+        String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource, outputPath);
+        if (BackupUtils.createTargetDirAndTryCreateLink(
             new File(tsfileTargetPath), resource.getTsFile())) {
-          BackupTool.createTargetDirAndTryCreateLink(
+          BackupUtils.createTargetDirAndTryCreateLink(
               new File(tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX),
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
           if (resource.getModFile().exists()) {
-            BackupTool.createTargetDirAndTryCreateLink(
+            BackupUtils.createTargetDirAndTryCreateLink(
                 new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
                 new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
           }
         } else {
-          String tsfileTmpPath = BackupTool.getTsFileTmpLinkPath(resource);
-          BackupTool.createTargetDirAndTryCreateLink(new File(tsfileTmpPath), resource.getTsFile());
+          String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource);
+          BackupUtils.createTargetDirAndTryCreateLink(
+              new File(tsfileTmpPath), resource.getTsFile());
           backupByCopyTaskList.add(new BackupByCopyTask(tsfileTmpPath, tsfileTargetPath));
-          BackupTool.createTargetDirAndTryCreateLink(
+          BackupUtils.createTargetDirAndTryCreateLink(
               new File(tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX),
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
           backupByCopyTaskList.add(
@@ -149,7 +147,7 @@ public class BackupService implements IService {
                   tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX,
                   tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
           if (resource.getModFile().exists()) {
-            BackupTool.createTargetDirAndTryCreateLink(
+            BackupUtils.createTargetDirAndTryCreateLink(
                 new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
                 new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
             backupByCopyTaskList.add(
@@ -159,26 +157,24 @@ public class BackupService implements IService {
           }
         }
       } catch (IOException e) {
-        throw new WriteProcessException(
-            "Failed to create directory during backup: " + e.getMessage());
+        logger.error("Failed to create directory during backup: " + e.getMessage());
       } finally {
         resource.readUnlock();
       }
     }
 
     String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    List<File> systemFiles = BackupTool.getAllFilesInOneDir(systemDirPath);
+    List<File> systemFiles = BackupUtils.getAllFilesInOneDir(systemDirPath);
     for (File file : systemFiles) {
-      String systemFileTargetPath = BackupTool.getSystemFileTargetPath(file, outputPath);
+      String systemFileTargetPath = BackupUtils.getSystemFileTargetPath(file, outputPath);
       try {
-        if (!BackupTool.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
-          String systemFileTmpPath = BackupTool.getSystemFileTmpLinkPath(file);
-          BackupTool.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
+        if (!BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
+          String systemFileTmpPath = BackupUtils.getSystemFileTmpLinkPath(file);
+          BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
           backupByCopyTaskList.add(new BackupByCopyTask(systemFileTmpPath, systemFileTargetPath));
         }
       } catch (IOException e) {
-        throw new WriteProcessException(
-            "Failed to create directory during backup: " + e.getMessage());
+        logger.error("Failed to create directory during backup: " + e.getMessage());
       }
     }
 
@@ -202,7 +198,7 @@ public class BackupService implements IService {
 
   public void cleanUpAfterBackup() {
     logger.info("Backup completed, cleaning up temporary files now.");
-    if (BackupTool.deleteBackupTmpDir()) {
+    if (BackupUtils.deleteBackupTmpDir()) {
       logger.info("Backup temporary files successfully deleted.");
     } else {
       logger.warn("Failed to delete some backup temporary files.");
