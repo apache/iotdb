@@ -1143,6 +1143,73 @@ class Session(object):
         )
         try:
             resp = self.__client.executeQueryStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeQueryStatement(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of query statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            sql,
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def execute_non_query_statement(self, sql):
+        """
+        execute non-query sql statement
+        :param sql: String, non-query sql statement
+        """
+        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
+        try:
+            resp = self.__client.executeUpdateStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeUpdateStatement(request)
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "execution of non-query statement fails because: ", e1
+                    )
+                    raise e1
+            else:
+                raise e
+        return Session.verify_success(resp.status)
+
+    def execute_statement(self, sql: str, timeout=0):
+        request = TSExecuteStatementReq(
+            self.__session_id, sql, self.__statement_id, timeout
+        )
+        try:
+            resp = self.__client.executeStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeStatement(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
+        Session.verify_success(resp.status)
+        if resp.columns:
             return SessionDataSet(
                 sql,
                 resp.columns,
@@ -1155,55 +1222,8 @@ class Session(object):
                 resp.queryDataSet,
                 resp.ignoreTimeStamp,
             )
-        except TTransport.TException as e:
-            if self.reconnect():
-                try:
-                    request.sessionId = self.__session_id
-                    request.statementId = self.__statement_id
-                    resp = self.__client.executeQueryStatement(request)
-                    return SessionDataSet(
-                        sql,
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
-                except TTransport.TException as e1:
-                    logger.exception("execution of query statement fails because: ", e1)
-                    raise e1
-            else:
-                raise e
-
-    def execute_non_query_statement(self, sql):
-        """
-        execute non-query sql statement
-        :param sql: String, non-query sql statement
-        """
-        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
-        try:
-            resp = self.__client.executeUpdateStatement(request)
-            status = resp.status
-            return Session.verify_success(status)
-        except TTransport.TException as e:
-            if self.reconnect():
-                try:
-                    request.sessionId = self.__session_id
-                    request.statementId = self.__statement_id
-                    resp = self.__client.executeUpdateStatement(request)
-                    status = resp.status
-                    return Session.verify_success(status)
-                except TTransport.TException as e1:
-                    logger.exception(
-                        "execution of non-query statement fails because: ", e1
-                    )
-                    raise e1
-            else:
-                raise e
+        else:
+            return None
 
     @staticmethod
     def value_to_bytes(data_types, values):
@@ -1297,7 +1317,7 @@ class Session(object):
             return 0
 
         logger.error("error status is %s", status)
-        raise RuntimeError(status.code + ": " + status.message)
+        raise RuntimeError(str(status.code) + ": " + status.message)
 
     @staticmethod
     def verify_success_by_list(status_list):
@@ -1335,41 +1355,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeRawDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeRawDataQuery(request)
-                    return SessionDataSet(
-                        "",
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
         """
@@ -1388,41 +1397,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeLastDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeLastDataQuery(request)
-                    return SessionDataSet(
-                        "",
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def insert_string_records_of_one_device(
         self,
@@ -1563,13 +1561,20 @@ class Session(object):
         request = TSCreateSchemaTemplateReq(
             self.__session_id, template.get_name(), bytes_array
         )
-        status = self.__client.createSchemaTemplate(request)
-        logger.debug(
-            "create one template {} template name: {}".format(
-                self.__session_id, template.get_name()
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("create template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def drop_schema_template(self, template_name: str):
         """
@@ -1577,44 +1582,20 @@ class Session(object):
         :param template_name: template name
         """
         request = TSDropSchemaTemplateReq(self.__session_id, template_name)
-        status = self.__client.dropSchemaTemplate(request)
-        logger.debug(
-            "drop one template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
-
-    def execute_statement(self, sql: str, timeout=0):
-        request = TSExecuteStatementReq(
-            self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
-        )
         try:
-            resp = self.__client.executeStatement(request)
-            status = resp.status
-            logger.debug("execute statement {} message: {}".format(sql, status.message))
-            if Session.verify_success(status) == 0:
-                if resp.columns:
-                    return SessionDataSet(
-                        sql,
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
-                else:
-                    return None
-            else:
-                raise RuntimeError(
-                    "execution of statement fails because: " + status.message
-                )
+            return Session.verify_success(self.__client.dropSchemaTemplate(request))
         except TTransport.TException as e:
-            raise RuntimeError("execution of statement fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.dropSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("drop template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def add_measurements_in_template(
         self,
@@ -1643,13 +1624,20 @@ class Session(object):
             list(map(lambda x: x.value, encodings)),
             list(map(lambda x: x.value, compressors)),
         )
-        status = self.__client.appendSchemaTemplate(request)
-        logger.debug(
-            "append unaligned template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.appendSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.appendSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("append template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def delete_node_in_template(self, template_name: str, path: str):
         """
@@ -1658,13 +1646,20 @@ class Session(object):
         :param path: measurements path
         """
         request = TSPruneSchemaTemplateReq(self.__session_id, template_name, path)
-        status = self.__client.pruneSchemaTemplate(request)
-        logger.debug(
-            "append unaligned template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.pruneSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.pruneSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("prune template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def set_schema_template(self, template_name, prefix_path):
         """
@@ -1673,13 +1668,20 @@ class Session(object):
         :param prefix_path: prefix path
         """
         request = TSSetSchemaTemplateReq(self.__session_id, template_name, prefix_path)
-        status = self.__client.setSchemaTemplate(request)
-        logger.debug(
-            "set schema template to path{} template name: {}, path:{}".format(
-                self.__session_id, template_name, prefix_path
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.setSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.setSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("set template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def unset_schema_template(self, template_name, prefix_path):
         """
@@ -1691,13 +1693,20 @@ class Session(object):
         request = TSUnsetSchemaTemplateReq(
             self.__session_id, prefix_path, template_name
         )
-        status = self.__client.unsetSchemaTemplate(request)
-        logger.debug(
-            "set schema template to path{} template name: {}, path:{}".format(
-                self.__session_id, template_name, prefix_path
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.unsetSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.unsetSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("unset template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def count_measurements_in_template(self, template_name: str):
         """
@@ -1709,13 +1718,23 @@ class Session(object):
             template_name,
             TemplateQueryType.COUNT_MEASUREMENTS.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "count measurements template {}, template name is {}, count is {}".format(
-                self.__session_id, template_name, response.measurements
-            )
-        )
-        return response.count
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            return response.count
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.count
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "count measurements in template fails because: ", e1
+                    )
+                    raise e1
+            else:
+                raise e
 
     def is_measurement_in_template(self, template_name: str, path: str):
         """
@@ -1729,13 +1748,25 @@ class Session(object):
             TemplateQueryType.IS_MEASUREMENT.value,
             path,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "judge the path is measurement or not in template {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.result
-            )
-        )
-        return response.result
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.result
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.result
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "judge the path is measurement or not in template fails because: ",
+                        e1,
+                    )
+                    raise e1
+            else:
+                raise e
 
     def is_path_exist_in_template(self, template_name: str, path: str):
         """
@@ -1746,13 +1777,24 @@ class Session(object):
         request = TSQueryTemplateReq(
             self.__session_id, template_name, TemplateQueryType.PATH_EXIST.value, path
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "judge the path is in template or not {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.result
-            )
-        )
-        return response.result
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.result
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.result
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "judge the path is in template or not fails because: ", e1
+                    )
+                    raise e1
+            else:
+                raise e
 
     def show_measurements_in_template(self, template_name: str, pattern: str = ""):
         """
@@ -1766,13 +1808,24 @@ class Session(object):
             TemplateQueryType.SHOW_MEASUREMENTS.value,
             pattern,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show measurements in template {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "show measurements in template fails because: ", e1
+                    )
+                    raise e1
+            else:
+                raise e
 
     def show_all_templates(self):
         """
@@ -1783,13 +1836,22 @@ class Session(object):
             "",
             TemplateQueryType.SHOW_TEMPLATES.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show all template {}, measurements is {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    logger.exception("show all template fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def show_paths_template_set_on(self, template_name):
         """
@@ -1799,13 +1861,22 @@ class Session(object):
         request = TSQueryTemplateReq(
             self.__session_id, template_name, TemplateQueryType.SHOW_SET_TEMPLATES.value
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show paths template set {}, on {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    logger.exception("show paths template set on fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def show_paths_template_using_on(self, template_name):
         """
@@ -1817,10 +1888,19 @@ class Session(object):
             template_name,
             TemplateQueryType.SHOW_USING_TEMPLATES.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show paths template using {}, on {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    logger.exception("show paths template using on fails because: ", e1)
+                    raise e1
+            else:
+                raise e
