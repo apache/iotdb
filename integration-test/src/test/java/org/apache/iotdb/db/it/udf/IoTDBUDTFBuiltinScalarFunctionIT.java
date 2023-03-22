@@ -1130,9 +1130,10 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
 
   private void testSubStr(Statement statement) throws SQLException {
     ResultSet resultSet =
-        statement.executeQuery("select s1, substr(s1, 3, 7) " + "from root.testStringFunctions.d1");
+        statement.executeQuery(
+            "select s1, substring(s1, 3, 7) " + "from root.testStringFunctions.d1");
     while (resultSet.next()) {
-      assertEquals(resultSet.getString(2).substring(3, 7), resultSet.getString(3));
+      assertEquals(resultSet.getString(2).substring(2, 9), resultSet.getString(3));
     }
   }
 
