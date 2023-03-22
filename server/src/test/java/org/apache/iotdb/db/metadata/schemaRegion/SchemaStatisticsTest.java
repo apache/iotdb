@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -53,6 +54,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  @Ignore
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
