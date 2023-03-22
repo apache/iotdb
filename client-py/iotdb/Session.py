@@ -1143,41 +1143,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeQueryStatement(request)
-            return SessionDataSet(
-                sql,
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeQueryStatement(request)
-                    return SessionDataSet(
-                        sql,
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            sql,
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def execute_non_query_statement(self, sql):
         """
@@ -1222,9 +1211,7 @@ class Session(object):
                     status = resp.status
                     return Session.verify_success(status)
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "execution of non-query statement fails because: ", e1
-                    )
+                    logger.exception("execution of statement fails because: ", e1)
                     raise e1
             else:
                 raise e
@@ -1359,41 +1346,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeRawDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeRawDataQuery(request)
-                    return SessionDataSet(
-                        "",
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
         """
@@ -1412,41 +1388,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeLastDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeLastDataQuery(request)
-                    return SessionDataSet(
-                        "",
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def insert_string_records_of_one_device(
         self,
@@ -1752,6 +1717,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.count
                 except TTransport.TException as e1:
                     logger.exception(
@@ -1775,12 +1741,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
                     logger.exception(
@@ -1802,12 +1770,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
                     logger.exception(
@@ -1831,12 +1801,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     logger.exception(
@@ -1857,12 +1829,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     logger.exception("show all template fails because: ", e1)
@@ -1880,12 +1854,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     logger.exception("show paths template set on fails because: ", e1)
@@ -1905,12 +1881,14 @@ class Session(object):
         )
         try:
             response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
                     logger.exception("show paths template using on fails because: ", e1)
