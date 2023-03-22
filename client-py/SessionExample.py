@@ -33,7 +33,14 @@ ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
 password_ = "root"
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+# session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session.init_from_node_urls(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+)
 session.open(False)
 
 # create and delete databases
@@ -239,7 +246,12 @@ np_bitmaps_[2].mark(2)
 np_bitmaps_[4].mark(3)
 np_bitmaps_[5].mark(3)
 np_tablet_with_none = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+    "root.sg_test_01.d_02",
+    measurements_,
+    data_types_,
+    np_values_,
+    np_timestamps_,
+    np_bitmaps_,
 )
 session.insert_tablet(np_tablet_with_none)
 
