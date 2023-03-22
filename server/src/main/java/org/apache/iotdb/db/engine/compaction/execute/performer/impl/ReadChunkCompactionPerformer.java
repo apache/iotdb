@@ -170,13 +170,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted();
-      String seriesID = seriesIterator.nextSeries();
-      if (seriesID.equals("")) {
-        // encounter a deleted aligned device, return
-        return;
-      }
       // TODO: we can provide a configuration item to enable concurrent between each series
-      PartialPath p = new PartialPath(device, seriesID);
+      PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
       // TODO: seriesIterator needs to be refactor.
       // This statement must be called before next hasNextSeries() called, or it may be trapped in a
       // dead-loop.
