@@ -1133,41 +1133,30 @@ class Session(object):
         )
         try:
             resp = self.__client.executeQueryStatement(request)
-            return SessionDataSet(
-                sql,
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
                     resp = self.__client.executeQueryStatement(request)
-                    return SessionDataSet(
-                        sql,
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
             else:
                 raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            sql,
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
 
     def execute_non_query_statement(self, sql):
         """
@@ -1316,18 +1305,6 @@ class Session(object):
         )
         try:
             resp = self.__client.executeRawDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1370,18 +1347,6 @@ class Session(object):
         )
         try:
             resp = self.__client.executeLastDataQuery(request)
-            return SessionDataSet(
-                "",
-                resp.columns,
-                resp.dataTypeList,
-                resp.columnNameIndexMap,
-                resp.queryId,
-                self.__client,
-                self.__statement_id,
-                self.__session_id,
-                resp.queryDataSet,
-                resp.ignoreTimeStamp,
-            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1406,80 +1371,6 @@ class Session(object):
             resp.queryDataSet,
             resp.ignoreTimeStamp,
         )
-
-    def insert_string_records_of_one_device(
-        self,
-        device_id: str,
-        times: list,
-        measurements_list: list,
-        values_list: list,
-        have_sorted: bool = False,
-    ):
-        """
-        insert multiple row of string record into database:
-                 timestamp,     m1,    m2,     m3
-                         0,  text1,  text2, text3
-        :param device_id: String, device id
-        :param times: Timestamp list
-        :param measurements_list: Measurements list
-        :param values_list: Value list
-        :param have_sorted: have these list been sorted by timestamp
-        """
-        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
-            raise RuntimeError(
-                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
-            )
-        request = self.gen_insert_string_records_of_one_device_request(
-            device_id, times, measurements_list, values_list, have_sorted, False
-        )
-        try:
-            return Session.verify_success(
-                self.__client.insertStringRecordsOfOneDevice(request)
-            )
-        except TTransport.TException as e:
-            if self.reconnect():
-                try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__client.insertStringRecordsOfOneDevice(request)
-                    )
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
-
-    def insert_aligned_string_records_of_one_device(
-        self,
-        device_id: str,
-        times: list,
-        measurements_list: list,
-        values: list,
-        have_sorted: bool = False,
-    ):
-        if (len(times) != len(measurements_list)) or (len(times) != len(values)):
-            raise RuntimeError(
-                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
-            )
-        request = self.gen_insert_string_records_of_one_device_request(
-            device_id, times, measurements_list, values, have_sorted, True
-        )
-        try:
-            return Session.verify_success(
-                self.__client.insertStringRecordsOfOneDevice(request)
-            )
-        except TTransport.TException as e:
-            if self.reconnect():
-                try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__client.insertStringRecordsOfOneDevice(request)
-                    )
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
 
     def reconnect(self):
         if self.__hosts is None:
@@ -1506,31 +1397,3 @@ class Session(object):
             if connected:
                 break
         return connected
-
-    def gen_insert_string_records_of_one_device_request(
-        self,
-        device_id,
-        times,
-        measurements_list,
-        values_list,
-        have_sorted,
-        is_aligned=False,
-    ):
-        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
-            raise RuntimeError(
-                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
-            )
-        if not Session.check_sorted(times):
-            # sort by timestamp
-            sorted_zipped = sorted(zip(times, measurements_list, values_list))
-            result = zip(*sorted_zipped)
-            times_list, measurements_list, values_list = [list(x) for x in result]
-        request = TSInsertStringRecordsOfOneDeviceReq(
-            self.__session_id,
-            device_id,
-            measurements_list,
-            values_list,
-            times,
-            is_aligned,
-        )
-        return request
