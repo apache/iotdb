@@ -260,18 +260,22 @@ public class MemoryPool {
     Validate.notNull(queryId);
     Validate.isTrue(bytes > 0L);
 
-    Long queryReservedBytes =
-        queryMemoryReservations
-            .getOrDefault(queryId, Collections.emptyMap())
-            .getOrDefault(fragmentInstanceId, Collections.emptyMap())
-            .computeIfPresent(
-                planNodeId,
-                (k, reservedMemory) -> {
-                  if (reservedMemory < bytes) {
-                    throw new IllegalArgumentException("Free more memory than has been reserved.");
-                  }
-                  return reservedMemory - bytes;
-                });
+    try {
+      queryMemoryReservations
+          .get(queryId)
+          .get(fragmentInstanceId)
+          .computeIfPresent(
+              planNodeId,
+              (k, reservedMemory) -> {
+                if (reservedMemory < bytes) {
+                  throw new IllegalArgumentException("Free more memory than has been reserved.");
+                }
+                return reservedMemory - bytes;
+              });
+    } catch (NullPointerException e) {
+      throw new IllegalArgumentException("RelatedMemoryReserved can't be null when freeing memory");
+    }
+
     remainingBytes.addAndGet(bytes);
 
     List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
@@ -345,9 +349,16 @@ public class MemoryPool {
       return;
     }
 
-    if (planNodeIdToBytesReserved.get(planNodeId) == null
-        || planNodeIdToBytesReserved.get(planNodeId) == 0) {
-      planNodeIdToBytesReserved.remove(planNodeId);
+    Long newValue =
+        planNodeIdToBytesReserved.computeIfPresent(
+            planNodeId,
+            (k, memoryReserved) -> {
+              if (memoryReserved == 0) {
+                return null;
+              }
+              return memoryReserved;
+            });
+    if (newValue == null) {
       instanceBytesReserved.computeIfPresent(
           fragmentInstanceId,
           (k, kPlanNodeBytesReserved) -> {
