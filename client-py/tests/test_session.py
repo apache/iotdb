@@ -350,12 +350,11 @@ def test_session():
             print_message("insert records of one device failed")
 
         # execute non-query sql statement
-        if (
+        try:
             session.execute_non_query_statement(
                 "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message(
                 "execute 'insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)' failed"
