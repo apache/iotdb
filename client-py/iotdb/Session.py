@@ -1308,7 +1308,7 @@ class Session(object):
             return 0
 
         logger.error("error status is %s", status)
-        raise RuntimeError(status.code + ": " + status.message)
+        raise RuntimeError(str(status.code) + ": " + status.message)
 
     @staticmethod
     def verify_success_by_list(status_list):
