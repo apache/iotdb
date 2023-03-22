@@ -835,7 +835,7 @@
         "description": "",
         "hide": 0,
         "includeAll": false,
-        "multi": true,
+        "multi": false,
         "name": "instance",
         "options": [],
         "query": {
@@ -873,8 +873,8 @@
     ]
   },
   "time": {
-    "from": "now-6h",
-    "to": "now"
+    "from": "2023-03-22T12:12:11.190Z",
+    "to": "2023-03-22T12:22:11.190Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -889,6 +889,6 @@
   "timezone": "",
   "title": "Apache IoTDB Disk I/O Dashboard",
   "uid": "TrJ0dsaVk",
-  "version": 15,
+  "version": 2,
   "weekStart": ""
 }
