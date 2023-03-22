@@ -60,6 +60,7 @@ logger = logging.getLogger("IoTDB")
 
 class Session(object):
     SUCCESS_CODE = 200
+    MULTIPLE_ERROR = 506
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
@@ -1034,6 +1035,86 @@ class Session(object):
         verify success of operation
         :param status: execution result status
         """
+        if status.code == Session.MULTIPLE_ERROR:
+            Session.verify_success_by_list(status.subStatus)
+            return 0
         if status.code == Session.SUCCESS_CODE:
             return 0
-        return -1
+
+        logger.error("error status is %s", status)
+        raise RuntimeError(status.code + ": " + status.message)
+
+    @staticmethod
+    def verify_success_by_list(status_list):
+        """
+        verify success of operation
+        :param status_list: execution result status
+        """
+        message = str(Session.MULTIPLE_ERROR) + ": "
+        for status in status_list:
+            if status.code != Session.SUCCESS_CODE:
+                message += status.message + "; "
+        raise RuntimeError(message)
+
+    def execute_raw_data_query(
+        self, paths: list, start_time: int, end_time: int
+    ) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param start_time: Query start time
+        :param end_time: Query end time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
+        request = TSRawDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            startTime=start_time,
+            endTime=end_time,
+            statementId=self.__statement_id,
+            enableRedirectQuery=False,
+        )
+        resp = self.__client.executeRawDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param last_time: Query last time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
+        request = TSLastDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            last_time,
+            self.__statement_id,
+            enableRedirectQuery=False,
+        )
+
+        resp = self.__client.executeLastDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
