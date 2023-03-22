@@ -67,11 +67,12 @@ def test_non_time_query():
         "tags",
         "attributes",
         "deadband",
-        "deadband parameters"
+        "deadband parameters",
     ]
     assert_array_equal(
         df.values,
-        [[
+        [
+            [
                 "root.device1.pressure",
                 None,
                 "root.device1",
