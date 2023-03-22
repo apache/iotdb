@@ -1112,7 +1112,7 @@ public class SeriesScanUtil {
     return scanOptions.getGlobalTimeFilter();
   }
 
-  protected static class VersionPageReader {
+  protected class VersionPageReader {
 
     private final PriorityMergeReader.MergeReaderPriority version;
     private final IPageReader data;
@@ -1150,11 +1150,16 @@ public class SeriesScanUtil {
     TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
+        paginationController.setEnable(ascending);
         TsBlock tsBlock = data.getAllSatisfiedData();
-        if (!ascending) {
+        paginationController.setEnable(true);
+
+        if (ascending) {
+          return tsBlock;
+        } else {
           tsBlock.reverse();
+          return paginationController.applyTsBlock(tsBlock);
         }
-        return tsBlock;
       } finally {
         QUERY_METRICS.recordSeriesScanCost(
             isAligned
