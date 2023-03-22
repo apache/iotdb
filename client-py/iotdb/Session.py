@@ -1189,6 +1189,25 @@ class Session(object):
                     raise e1
             else:
                 raise e
+        return Session.verify_success(resp.status)
+
+    def execute_statement(self, sql: str, timeout=0):
+        request = TSExecuteStatementReq(
+            self.__session_id, sql, self.__statement_id, timeout
+        )
+        try:
+            resp = self.__client.executeStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeStatement(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
         Session.verify_success(resp.status)
         if resp.columns:
             return SessionDataSet(
@@ -1205,28 +1224,6 @@ class Session(object):
             )
         else:
             return None
-
-    def execute_statement(self, sql: str, timeout=0):
-        request = TSExecuteStatementReq(
-            self.__session_id, sql, self.__statement_id, timeout
-        )
-        try:
-            resp = self.__client.executeStatement(request)
-            status = resp.status
-            return Session.verify_success(status)
-        except TTransport.TException as e:
-            if self.reconnect():
-                try:
-                    request.sessionId = self.__session_id
-                    request.statementId = self.__statement_id
-                    resp = self.__client.executeStatement(request)
-                    status = resp.status
-                    return Session.verify_success(status)
-                except TTransport.TException as e1:
-                    logger.exception("execution of statement fails because: ", e1)
-                    raise e1
-            else:
-                raise e
 
     @staticmethod
     def value_to_bytes(data_types, values):
