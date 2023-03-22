@@ -72,7 +72,7 @@ def test_non_time_query():
     assert_array_equal(
         df.values,
         [[
-                "root.device.pressure",
+                "root.device1.pressure",
                 None,
                 "root.device1",
                 "FLOAT",
