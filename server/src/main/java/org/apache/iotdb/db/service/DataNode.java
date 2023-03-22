@@ -70,7 +70,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.pipe.agent.PipePluginAgent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
@@ -857,7 +857,7 @@ public class DataNode implements DataNodeMBean {
     // create instances of pipe plugins and do registration
     try {
       for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
-        PipePluginAgent.getInstance().doRegister(meta);
+        PipeAgent.plugin().doRegister(meta);
       }
     } catch (Exception e) {
       throw new StartupException(e);

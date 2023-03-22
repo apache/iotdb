@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -39,11 +41,11 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -82,6 +84,9 @@ public class RegionWriteExecutor {
 
   private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
       WritePlanNodeExecutionContext context =
@@ -118,8 +123,7 @@ public class RegionWriteExecutor {
 
       long startWriteTime = System.nanoTime();
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-      PerformanceOverviewMetricsManager.recordScheduleStorageCost(
-          System.nanoTime() - startWriteTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
@@ -134,7 +138,7 @@ public class RegionWriteExecutor {
         triggerCostTime += (System.nanoTime() - startTime);
       }
     }
-    PerformanceOverviewMetricsManager.recordScheduleTriggerCost(triggerCostTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 
@@ -146,6 +150,16 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
+
+      if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+        response.setAccepted(false);
+        response.setMessage("Fail to do non-query operations because system is read-only.");
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SYSTEM_READ_ONLY,
+                "Fail to do non-query operations because system is read-only."));
+        return response;
+      }
 
       ConsensusWriteResponse writeResponse =
           executePlanNodeInConsensusLayer(context.getRegionId(), node);
@@ -161,7 +175,9 @@ public class RegionWriteExecutor {
             writeResponse.getException());
         response.setAccepted(false);
         response.setMessage(writeResponse.getException().toString());
-        response.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+        response.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage()));
       }
       return response;
     }
@@ -226,7 +242,7 @@ public class RegionWriteExecutor {
           }
           return response;
         } finally {
-          PerformanceOverviewMetricsManager.recordScheduleSchemaValidateCost(
+          PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(
               System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
@@ -602,6 +618,36 @@ public class RegionWriteExecutor {
           return result;
         }
         return super.visitActivateTemplate(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().readLock().unlock();
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitBatchActivateTemplate(
+        BatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      // activate template operation shall be blocked by unset template check
+      context.getRegionWriteValidationRWLock().readLock().lock();
+      try {
+        for (PartialPath devicePath : node.getTemplateActivationMap().keySet()) {
+          Pair<Template, PartialPath> templateSetInfo =
+              ClusterTemplateManager.getInstance().checkTemplateSetInfo(devicePath);
+          if (templateSetInfo == null) {
+            // The activation has already been validated during analyzing.
+            // That means the template is being unset during the activation plan transport.
+            RegionExecutionResult result = new RegionExecutionResult();
+            result.setAccepted(false);
+            String message =
+                String.format(
+                    "Template is being unsetting from path %s. Please try activating later.",
+                    node.getPathSetTemplate(devicePath));
+            result.setMessage(message);
+            result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+            return result;
+          }
+        }
+
+        return super.visitBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }

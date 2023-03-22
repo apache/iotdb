@@ -210,10 +210,12 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public static MemMTreeStore loadFromSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     return new MemMTreeStore(
-        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
+        MemMTreeSnapshotUtil.loadSnapshot(
+            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
         regionStatistics);
   }
 

@@ -159,4 +159,6 @@ public enum StatementType {
   SHOW_PIPEPLUGINS,
 
   SHOW_PIPES,
+
+  BATCH_ACTIVATE_TEMPLATE,
 }

@@ -208,7 +208,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setTimePartitionInterval(604800000);
     clusterParameters.setDataReplicationFactor(1);
     clusterParameters.setSchemaReplicationFactor(1);
-    clusterParameters.setDataRegionPerProcessor(1.0);
+    clusterParameters.setDataRegionPerDataNode(5.0);
     clusterParameters.setSchemaRegionPerDataNode(1.0);
     clusterParameters.setDiskSpaceWarningThreshold(0.05);
     clusterParameters.setReadConsistencyLevel("strong");

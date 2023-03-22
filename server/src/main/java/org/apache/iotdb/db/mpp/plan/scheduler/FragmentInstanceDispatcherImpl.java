@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -75,6 +75,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       asyncInternalServiceClientManager;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
@@ -194,7 +196,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
       }
     }
-    PerformanceOverviewMetricsManager.recordScheduleLocalCost(
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
         System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
