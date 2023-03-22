@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
 public class PaginationController {
 
   public static final PaginationController UNLIMITED_PAGINATION_CONTROLLER =
@@ -29,6 +31,8 @@ public class PaginationController {
   private long curLimit;
   private long curOffset;
 
+  private boolean enable = true;
+
   public PaginationController(long limit, long offset) {
     // row limit for result set. The default value is 0, which means no limit
     this.curLimit = limit;
@@ -38,29 +42,57 @@ public class PaginationController {
     this.curOffset = offset;
   }
 
+  public void setEnable(boolean enable) {
+    this.enable = enable;
+  }
+
   public boolean hasCurOffset() {
-    return curOffset > 0;
+    return enable && curOffset > 0;
   }
 
   public boolean hasCurOffset(long rowCount) {
-    return curOffset >= rowCount;
+    return enable && curOffset >= rowCount;
   }
 
   public boolean hasCurLimit() {
-    return !hasLimit || curLimit > 0;
+    return !enable || (!hasLimit || curLimit > 0);
   }
 
   public void consumeOffset(long rowCount) {
-    curOffset -= rowCount;
+    if (enable) {
+      curOffset -= rowCount;
+    }
   }
 
   public void consumeOffset() {
-    curOffset--;
+    if (enable) {
+      curOffset--;
+    }
   }
 
   public void consumeLimit() {
-    if (hasLimit) {
+    if (enable && hasLimit) {
       curLimit--;
     }
+  }
+
+  public void consumeLimit(long rowCount) {
+    if (enable && hasLimit) {
+      curLimit -= rowCount;
+    }
+  }
+
+  public TsBlock applyTsBlock(TsBlock resultTsBlock) {
+    int fromIndex = 0, length = resultTsBlock.getPositionCount();
+    if (hasCurOffset()) {
+      fromIndex = (int) Math.min(curOffset, length);
+      length -= fromIndex;
+      consumeOffset(fromIndex);
+    }
+    if (hasCurLimit()) {
+      length = (int) Math.min(curLimit, length);
+      consumeLimit(length);
+    }
+    return resultTsBlock.getRegion(fromIndex, length);
   }
 }
