@@ -1149,8 +1149,9 @@ public class SeriesScanUtil {
 
           paginationController.setEnable(isSeq);
           tsBlock = paginationController.applyTsBlock(tsBlock);
-          paginationController.setEnable(true);
         }
+
+        paginationController.setEnable(true);
         return tsBlock;
       } finally {
         QUERY_METRICS.recordSeriesScanCost(
