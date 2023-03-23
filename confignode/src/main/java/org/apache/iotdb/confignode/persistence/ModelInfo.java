@@ -84,7 +84,7 @@ public class ModelInfo implements SnapshotProcessor {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
-    return null;
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropModel(DropModelPlan plan) {

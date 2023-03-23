@@ -158,6 +158,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreateModelProcedure) {
+      return ProcedureType.CREATE_MODEL_PROCEDURE;
+    } else if (procedure instanceof DropModelProcedure) {
+      return ProcedureType.DROP_MODEL_PROCEDURE;
     }
     return null;
   }
