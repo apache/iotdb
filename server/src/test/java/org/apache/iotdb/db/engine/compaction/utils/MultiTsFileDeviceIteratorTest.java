@@ -349,6 +349,29 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.addAll(seqResources, true);
 
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertTrue(deviceInfo.right);
+        } else {
+          Assert.assertFalse(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
+
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
@@ -399,16 +422,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                TSDataType.INT64));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
-    // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
-    }
-    deviceIds.sort(String::compareTo);
-
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
@@ -453,7 +478,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, true, true);
     createFiles(4, 30, 5, 100, 1000, 0, 50, 50, true, true);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     List<String> seriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 5; j++) {
@@ -464,14 +489,37 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate d0 ~ d9 with aligned property
+    // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
+
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertFalse(deviceInfo.right);
+        } else {
+          Assert.assertTrue(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
 
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
-        if (i < 10) {
+        if (i >= 10) {
           timeseriesPaths.add(
               new AlignedPath(
                   COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -502,7 +550,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
 
-    // generate mods file, delete d0 ~ d9 with aligned property
+    // generate mods file, delete d0 ~ d9 with nonAligned property
     seriesPaths.clear();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 15; j++) {
@@ -514,20 +562,23 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
-    // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
-    }
-    deviceIds.sort(String::compareTo);
-
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
@@ -585,6 +636,29 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.addAll(seqResources, true);
 
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertTrue(deviceInfo.right);
+        } else {
+          Assert.assertFalse(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
+
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
@@ -635,16 +709,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                TSDataType.INT64));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
-    // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
-    }
-    deviceIds.sort(String::compareTo);
-
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
@@ -688,7 +764,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, true, true);
     createFiles(4, 30, 5, 100, 1000, 0, 50, 50, true, true);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     List<String> seriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 5; j++) {
@@ -699,9 +775,32 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate d0 ~ d9 with aligned property
+    // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
+
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertFalse(deviceInfo.right);
+        } else {
+          Assert.assertTrue(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
 
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
@@ -737,7 +836,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
 
-    // generate mods file, delete d0 ~ d9 with aligned property
+    // generate mods file, delete d0 ~ d9 with nonAligned property
     seriesPaths.clear();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 15; j++) {
@@ -749,20 +848,30 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
     }
     deviceIds.sort(String::compareTo);
 
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
@@ -823,6 +932,29 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.addAll(seqResources, true);
 
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertTrue(deviceInfo.right);
+        } else {
+          Assert.assertFalse(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
+
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
@@ -873,16 +1005,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                TSDataType.INT64));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
-    // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
-    }
-    deviceIds.sort(String::compareTo);
-
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
@@ -928,7 +1062,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, true, true);
     createFiles(4, 30, 5, 100, 1000, 0, 50, 50, true, true);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     List<String> seriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 5; j++) {
@@ -939,9 +1073,32 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate d0 ~ d9 with aligned property
+    // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
+
+    // sort the deviceId in lexicographical order from small to large
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+    }
+    deviceIds.sort(String::compareTo);
+
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+          Assert.assertFalse(deviceInfo.right);
+        } else {
+          Assert.assertTrue(deviceInfo.right);
+        }
+        deviceNum++;
+      }
+    }
+    Assert.assertEquals(30, deviceNum);
 
     List<PartialPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
@@ -977,7 +1134,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
 
-    // generate mods file, delete d0 ~ d9 with aligned property
+    // generate mods file, delete d0 ~ d9 with nonAligned property
     seriesPaths.clear();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 15; j++) {
@@ -989,20 +1146,30 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deleteTimeseriesInMManager(seriesPaths);
 
-    // generate mods file, delete d0 ~ d9 with nonAligned property
+    // generate mods file, delete d0 ~ d9 with aligned property
     createFiles(1, 10, 5, 100, 2000, 2000, 50, 50, true, true);
     tsFileManager.add(seqResources.get(seqResources.size() - 1), true);
 
+    timeseriesPaths.clear();
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 15; j++) {
+        timeseriesPaths.add(
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
+      }
+    }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
     }
     deviceIds.sort(String::compareTo);
 
-    int deviceNum = 0;
+    deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
