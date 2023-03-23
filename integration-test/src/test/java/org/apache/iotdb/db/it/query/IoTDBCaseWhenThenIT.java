@@ -51,18 +51,18 @@ public class IoTDBCaseWhenThenIT {
         "CREATE TIMESERIES root.sg.d2.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.d1.s5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "INSERT INTO root.sg.d1(timestamp,s1) values(0, 0)",
-        "INSERT INTO root.sg.d1(timestamp,s1) values(1, 11)",
-        "INSERT INTO root.sg.d1(timestamp,s1) values(2, 22)",
-        "INSERT INTO root.sg.d1(timestamp,s1) values(3, 33)",
-        "INSERT INTO root.sg.d2(timestamp,s3) values(0, 0)",
-        "INSERT INTO root.sg.d2(timestamp,s3) values(1, 11)",
-        "INSERT INTO root.sg.d2(timestamp,s3) values(2, 22)",
-        "INSERT INTO root.sg.d2(timestamp,s3) values(3, 33)",
-        "INSERT INTO root.sg.d2(timestamp,s4) values(0, 44)",
-        "INSERT INTO root.sg.d2(timestamp,s4) values(1, 55)",
-        "INSERT INTO root.sg.d2(timestamp,s4) values(2, 66)",
-        "INSERT INTO root.sg.d2(timestamp,s4) values(3, 77)",
+        "INSERT INTO root.sg.d1(timestamp,s1) values(0,         0)",
+        "INSERT INTO root.sg.d1(timestamp,s1) values(1000000,   11)",
+        "INSERT INTO root.sg.d1(timestamp,s1) values(20000000,  22)",
+        "INSERT INTO root.sg.d1(timestamp,s1) values(210000000, 33)",
+        "INSERT INTO root.sg.d2(timestamp,s3) values(0,         0)",
+        "INSERT INTO root.sg.d2(timestamp,s3) values(1000000,   11)",
+        "INSERT INTO root.sg.d2(timestamp,s3) values(20000000,  22)",
+        "INSERT INTO root.sg.d2(timestamp,s3) values(210000000, 33)",
+        "INSERT INTO root.sg.d2(timestamp,s4) values(0,         44)",
+        "INSERT INTO root.sg.d2(timestamp,s4) values(1000000,   55)",
+        "INSERT INTO root.sg.d2(timestamp,s4) values(20000000,  66)",
+        "INSERT INTO root.sg.d2(timestamp,s4) values(210000000, 77)",
       };
 
   @BeforeClass
@@ -88,7 +88,8 @@ public class IoTDBCaseWhenThenIT {
           TIMESTAMP_STR,
           "CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999"
         };
-    String[] retArray = new String[] {"0,99.0,", "1,9999.0,", "2,9999.0,", "3,999.0,"};
+    String[] retArray =
+        new String[] {"0,99.0,", "1000000,9999.0,", "20000000,9999.0,", "210000000,999.0,"};
     resultSetEqualTest(
         "select case when s1=0 then 99 when s1>22 then 999 else 9999 end from root.sg.d1",
         expectedHeader,
@@ -102,7 +103,8 @@ public class IoTDBCaseWhenThenIT {
           TIMESTAMP_STR,
           "CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 = 22.0 THEN 999 ELSE 9999"
         };
-    String[] retArray = new String[] {"0,99.0,", "1,9999.0,", "2,999.0,", "3,9999.0,"};
+    String[] retArray =
+        new String[] {"0,99.0,", "1000000,9999.0,", "20000000,999.0,", "210000000,9999.0,"};
     resultSetEqualTest(
         "select case s1 when 0 then 99 when 22.0 then 999 else 9999 end from root.sg.d1",
         expectedHeader,
@@ -116,7 +118,8 @@ public class IoTDBCaseWhenThenIT {
           TIMESTAMP_STR,
           "CASE WHEN root.sg.d1.s1 <= 0 THEN true WHEN root.sg.d1.s1 = 11 THEN false ELSE true"
         };
-    String[] retArray = new String[] {"0,true,", "1,false,", "2,true,", "3,true,"};
+    String[] retArray =
+        new String[] {"0,true,", "1000000,false,", "20000000,true,", "210000000,true,"};
     resultSetEqualTest(
         "select case when s1<=0 then true when s1=11 then false else true end from root.sg.d1",
         expectedHeader,
@@ -133,7 +136,8 @@ public class IoTDBCaseWhenThenIT {
           TIMESTAMP_STR,
           "CASE WHEN root.sg.d1.s1 <= 0 THEN \"good\" WHEN root.sg.d1.s1 = 11 THEN \"bad\" ELSE \"okok\""
         };
-    String[] retArray = new String[] {"0,good,", "1,bad,", "2,okok,", "3,okok,"};
+    String[] retArray =
+        new String[] {"0,good,", "1000000,bad,", "20000000,okok,", "210000000,okok,"};
     resultSetEqualTest(
         "select case when s1<=0 then \"good\" when s1=11 then \"bad\" else \"okok\" end from root.sg.d1",
         expectedHeader,
@@ -152,7 +156,9 @@ public class IoTDBCaseWhenThenIT {
           "CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 = 11 THEN 99.9 WHEN root.sg.d1.s1 = 22 THEN 8589934588 WHEN root.sg.d1.s1 = 33 THEN 999.9999999999 ELSE 10086"
         };
     String[] retArray =
-        new String[] {"0,99.0,", "1,99.9000015258789,", "2,8.589934588E9,", "3,1000.0,"};
+        new String[] {
+          "0,99.0,", "1000000,99.9000015258789,", "20000000,8.589934588E9,", "210000000,1000.0,"
+        };
     resultSetEqualTest(
         "select case s1 when 0 then 99 when 11 then 99.9 when 22 then 8589934588 when 33 then 999.9999999999 else 10086 end from root.sg.d1",
         expectedHeader,
@@ -165,7 +171,8 @@ public class IoTDBCaseWhenThenIT {
         new String[] {
           TIMESTAMP_STR, "CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 "
         };
-    String[] retArray = new String[] {"0,99.0,", "1,null,", "2,null,", "3,999.0,"};
+    String[] retArray =
+        new String[] {"0,99.0,", "1000000,null,", "20000000,null,", "210000000,999.0,"};
     resultSetEqualTest(
         "select case when s1=0 then 99 when s1>22 then 999 end from root.sg.d1",
         expectedHeader,
@@ -194,10 +201,11 @@ public class IoTDBCaseWhenThenIT {
   public void testCalculate() {
     String[] expectedHeader =
         new String[] {
-            TIMESTAMP_STR,
-            "2 * CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 = 22.0 THEN 999 ELSE 9999"
+          TIMESTAMP_STR,
+          "2 * CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 = 22.0 THEN 999 ELSE 9999"
         };
-    String[] retArray = new String[] {"0,198.0,", "1,19998.0,", "2,1998.0,", "3,19998.0,"};
+    String[] retArray =
+        new String[] {"0,198.0,", "1000000,19998.0,", "20000000,1998.0,", "210000000,19998.0,"};
     resultSetEqualTest(
         "select 2 * case s1 when 0 then 99 when 22.0 then 999 else 9999 end from root.sg.d1",
         expectedHeader,
@@ -229,9 +237,9 @@ public class IoTDBCaseWhenThenIT {
         };
     String[] retArray = {
       "0,0.0,0.0,44.0,44.0,0.0,44.0,0.0,44.0,0.0,44.0,0.0,44.0,0.0,0.0,44.0,44.0,",
-      "1,11.0,11.0,55.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,11.0,55.0,55.0,",
-      "2,22.0,22.0,66.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,22.0,66.0,66.0,",
-      "3,33.0,33.0,77.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,33.0,77.0,77.0,",
+      "1000000,11.0,11.0,55.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,11.0,55.0,55.0,",
+      "20000000,22.0,22.0,66.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,22.0,66.0,66.0,",
+      "210000000,33.0,33.0,77.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,33.0,77.0,77.0,",
     };
     resultSetEqualTest(sql, expectedHeaders, retArray);
   }
@@ -240,7 +248,7 @@ public class IoTDBCaseWhenThenIT {
   public void testWithAggregation() {
     String[] expectedHeader =
         new String[] {
-            "avg(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"
+          "avg(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"
         };
     String[] retArray = new String[] {"5274.0,"};
     resultSetEqualTest(
@@ -250,14 +258,16 @@ public class IoTDBCaseWhenThenIT {
 
     resultSetEqualTest(
         "select max_value(case when s1=0 then 99 when s1>22 then 999 else 9999 end) from root.sg.d1",
-        new String[] {"max_value(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"},
-        new String[] {"9999.0,"}
-    );
+        new String[] {
+          "max_value(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"
+        },
+        new String[] {"9999.0,"});
 
     resultSetEqualTest(
         "select avg(case when s1=0 then 99 when s1>22 then 999 else 9999 end) * max_value(case when s1=0 then 99 when s1>22 then 999 else 9999 end) from root.sg.d1",
-        new String[] {"avg(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999) * max_value(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"},
-        new String[] {"5.2734726E7,"}
-    );
+        new String[] {
+          "avg(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999) * max_value(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999)"
+        },
+        new String[] {"5.2734726E7,"});
   }
 }
