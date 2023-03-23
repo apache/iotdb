@@ -60,7 +60,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | backup
+    : merge | fullMerge | flush | clearCache | settle
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile | exportSchema;
@@ -641,11 +641,6 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
-    ;
-
-// Backup
-backup
-    : BACKUP outputPath=STRING_LITERAL
     ;
 
 // Set System To ReadOnly/Writable

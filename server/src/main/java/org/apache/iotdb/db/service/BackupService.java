@@ -23,8 +23,6 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.backup.BackupByCopyTask;
-import org.apache.iotdb.db.engine.backup.BackupSystemFileTask;
-import org.apache.iotdb.db.engine.backup.BackupTsFileTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
@@ -79,14 +77,6 @@ public class BackupService implements IService {
 
   public AtomicInteger getBackupByCopyCount() {
     return backupByCopyCount;
-  }
-
-  private void submitBackupTsFileTask(BackupTsFileTask task) {
-    task.backupTsFile();
-  }
-
-  private void submitBackupSystemFileTask(BackupSystemFileTask task) {
-    task.backupSystemFile();
   }
 
   private void submitBackupByCopyTask(BackupByCopyTask task) {

@@ -201,8 +201,6 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_DEACTIVATE = 124;
   public static final int TOK_EXPORT_SCHEMA = 125;
 
-  public static final int TOK_BACKUP = 126;
-
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -290,8 +288,6 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_DEACTIVATE, "TOK_SCHEMA_TEMPLATE_DEACTIVATE");
 
     tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
-
-    tokenNames.put(TOK_BACKUP, "TOK_BACKUP");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {
