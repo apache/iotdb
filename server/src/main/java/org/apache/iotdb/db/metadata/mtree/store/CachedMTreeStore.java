@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaOverflowException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -57,17 +59,12 @@ public class CachedMTreeStore implements IMTreeStore {
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final MemManager memManager;
-
   private final ICacheManager cacheManager;
-
   private ISchemaFile file;
-
   private IMNode root;
-
   private final Runnable flushCallback;
-
   private final CachedSchemaRegionStatistics regionStatistics;
-
+  private final DataNodeSchemaQuotaManager quotaManager = DataNodeSchemaQuotaManager.getInstance();
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(
@@ -330,7 +327,8 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
+  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaOverflowException {
+    quotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
     regionStatistics.addDevice();
     if (result != node) {
@@ -343,6 +341,7 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
+    regionStatistics.deleteDevice();
     if (result != entityMNode) {
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }

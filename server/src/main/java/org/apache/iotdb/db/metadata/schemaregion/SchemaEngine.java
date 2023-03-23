@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -32,17 +33,23 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -71,6 +78,9 @@ public class SchemaEngine {
   private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   private ISchemaEngineStatistics schemaEngineStatistics;
+
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private static class SchemaEngineManagerHolder {
 
@@ -341,6 +351,35 @@ public class SchemaEngine {
 
   public int getSchemaRegionNumber() {
     return schemaRegionMap == null ? 0 : schemaRegionMap.size();
+  }
+
+  public TSchemaQuotaResp generateSchemaQuotaResp(@NotNull TSchemaQuotaReq req) {
+    // update DataNodeSchemaQuotaManager
+    schemaQuotaManager.update(req);
+    Map<TConsensusGroupId, Long> res = new HashMap<>();
+    switch (req.getLevel()) {
+      case MEASUREMENT:
+        schemaRegionMap
+            .values()
+            .forEach(
+                i ->
+                    res.put(
+                        i.getSchemaRegionId().convertToTConsensusGroupId(),
+                        i.getSchemaRegionStatistics().getSeriesNumber()));
+        break;
+      case DEVICE:
+        schemaRegionMap
+            .values()
+            .forEach(
+                i ->
+                    res.put(
+                        i.getSchemaRegionId().convertToTConsensusGroupId(),
+                        i.getSchemaRegionStatistics().getDevicesNumber()));
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+    return new TSchemaQuotaResp(res);
   }
 
   @TestOnly

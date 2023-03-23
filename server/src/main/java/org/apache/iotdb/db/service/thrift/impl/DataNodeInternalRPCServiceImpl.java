@@ -976,6 +976,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setLoadSample(loadSample);
     }
 
+    // Update schema quota if necessary
+    if (req.getSchemaQuotaReq() != null) {
+      resp.setSchemaQuotaResp(
+          SchemaEngine.getInstance().generateSchemaQuotaResp(req.getSchemaQuotaReq()));
+    }
+
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {

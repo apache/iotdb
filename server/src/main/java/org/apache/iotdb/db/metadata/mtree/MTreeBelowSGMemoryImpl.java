@@ -801,7 +801,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) {
+      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {

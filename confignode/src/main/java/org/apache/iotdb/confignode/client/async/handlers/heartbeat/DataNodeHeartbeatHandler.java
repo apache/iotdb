@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
@@ -86,7 +87,14 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                         heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
               }
             });
-    schemaQuotaManager.updateCount(heartbeatResp.getSchemaQuotaResp());
+    if (heartbeatResp.getSchemaQuotaResp() != null) {
+      schemaQuotaManager.updateCount(
+          heartbeatResp.getSchemaQuotaResp(),
+          routeBalancer.getLatestRegionLeaderMap().entrySet().stream()
+              .filter(i -> i.getValue() == dataNodeLocation.dataNodeId)
+              .map(Map.Entry::getKey)
+              .collect(Collectors.toList()));
+    }
   }
 
   @Override

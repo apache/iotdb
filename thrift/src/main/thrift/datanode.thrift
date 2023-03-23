@@ -244,7 +244,7 @@ struct TSchemaQuotaReq {
 }
 
 struct TSchemaQuotaResp {
-  1: required map<i32, i64> regionIdCountMap
+  1: required map<common.TConsensusGroupId, i64> regionIdCountMap
 }
 
 enum TSchemaQuotaLevel {

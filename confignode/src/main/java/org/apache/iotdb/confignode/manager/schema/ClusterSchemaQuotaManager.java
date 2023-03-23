@@ -18,17 +18,21 @@
  */
 package org.apache.iotdb.confignode.manager.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 
+import javax.validation.constraints.NotNull;
+
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClusterSchemaQuotaManager {
 
-  private final Map<Integer, Long> countMap = new ConcurrentHashMap<>();
+  private final Map<TConsensusGroupId, Long> countMap = new ConcurrentHashMap<>();
   private ClusterSchemaQuotaLevel level = ClusterSchemaQuotaLevel.MEASUREMENT;
   private long limit = -1;
 
@@ -37,10 +41,11 @@ public class ClusterSchemaQuotaManager {
     this.limit = limit;
   }
 
-  public void updateCount(TSchemaQuotaResp resp) {
-    if (resp != null) {
-      resp.regionIdCountMap.forEach(
-          (regionId, cnt) -> countMap.compute(regionId, (k, v) -> v == null ? cnt : v + cnt));
+  public void updateCount(@NotNull TSchemaQuotaResp resp, List<TConsensusGroupId> leaderGroupIds) {
+    for (TConsensusGroupId groupId : leaderGroupIds) {
+      if (resp.regionIdCountMap.containsKey(groupId)) {
+        countMap.put(groupId, resp.regionIdCountMap.get(groupId));
+      }
     }
   }
 
