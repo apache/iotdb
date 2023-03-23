@@ -149,20 +149,20 @@ OR, |, ||
 
 ### 字符串处理函数
 
-| 函数名          | 输入序列类型 | 必要的属性参数                       | 输出序列类型 | 功能描述                                  |
-| --------------- | ------------ | ------------------------------------ | ------------ | ----------------------------------------- |
-| STRING_CONTAINS | TEXT         | `s`: 待搜寻的字符串                  | BOOLEAN      | 判断字符串中是否存在`s`                   |
-| STRING_MATCHES  | TEXT         | `regex`: Java 标准库风格的正则表达式 | BOOLEAN      | 判断字符串是否能够被正则表达式`regex`匹配 |
-| LENGTH | TEXT | 无 | INT32 | 返回字符串的长度 |
-| LOCATE | TEXT | `target`: 需要被定位的子串 <br/> `reverse`: 指定是否需要倒序定位，默认值为`false`, 即从左至右定位 | INT32 | 获取`target`子串第一次出现在输入序列的位置，如果输入序列中不包含`target`则返回 -1 |
-| STARTSWITH | TEXT | `target`: 需要匹配的前缀 | BOOLEAN | 判断字符串是否有指定前缀 |
-| ENDSWITH | TEXT | `target`: 需要匹配的后缀 | BOOLEAN | 判断字符串是否有指定后缀 |
-| CONCAT | TEXT | `targets`: 一系列 K-V, key需要以`target`为前缀且不重复, value是待拼接的字符串。<br/>`series_behind`: 指定拼接时时间序列是否在后面，默认为`false`。 | TEXT | 拼接字符串和`target`字串 |
-| SUBSTR | TEXT | `start`: 指定子串开始下标 <br/>`end`: 指定子串结束下标  | TEXT | 获取下标从`start`到`end - 1`的子串 |
-| UPPER | TEXT | 无 | TEXT | 将字符串转化为大写 |
-| LOWER | TEXT | 无 | TEXT | 将字符串转化为小写 |
-| TRIM | TEXT | 无 | TEXT | 移除字符串前后的空格 |
-| STRCMP | TEXT | 无 | TEXT | 用于比较两个输入序列，如果值相同返回 `0` , 序列1的值小于序列2的值返回一个`负数`，序列1的值大于序列2的值返回一个`正数` |
+| 函数名             | 输入序列类型 | 必要的属性参数                                                                                                   | 输出序列类型 | 功能描述                                                                    |
+|-----------------| ------------ |-----------------------------------------------------------------------------------------------------------| ------------ |-------------------------------------------------------------------------|
+| STRING_CONTAINS | TEXT         | `s`: 待搜寻的字符串                                                                                              | BOOLEAN      | 判断字符串中是否存在`s`                                                           |
+| STRING_MATCHES  | TEXT         | `regex`: Java 标准库风格的正则表达式                                                                                 | BOOLEAN      | 判断字符串是否能够被正则表达式`regex`匹配                                                |
+| LENGTH          | TEXT | 无                                                                                                         | INT32 | 返回字符串的长度                                                                |
+| LOCATE          | TEXT | `target`: 需要被定位的子串 <br/> `reverse`: 指定是否需要倒序定位，默认值为`false`, 即从左至右定位                                       | INT32 | 获取`target`子串第一次出现在输入序列的位置，如果输入序列中不包含`target`则返回 -1                      |
+| STARTSWITH      | TEXT | `target`: 需要匹配的前缀                                                                                         | BOOLEAN | 判断字符串是否有指定前缀                                                            |
+| ENDSWITH        | TEXT | `target`: 需要匹配的后缀                                                                                         | BOOLEAN | 判断字符串是否有指定后缀                                                            |
+| CONCAT          | TEXT | `targets`: 一系列 K-V, key需要以`target`为前缀且不重复, value是待拼接的字符串。<br/>`series_behind`: 指定拼接时时间序列是否在后面，默认为`false`。 | TEXT | 拼接字符串和`target`字串                                                        |
+| SUBSTRING       | TEXT | `from`: 指定子串开始下标 <br/>`for`: 指定的字符个数之后停止                                                                  | TEXT | 提取字符串的子字符串，从指定的第一个字符开始，并在指定的字符数之后停止。下标从1开始。from 和 for的范围是 INT32 类型取值范围。 |
+| UPPER           | TEXT | 无                                                                                                         | TEXT | 将字符串转化为大写                                                               |
+| LOWER           | TEXT | 无                                                                                                         | TEXT | 将字符串转化为小写                                                               |
+| TRIM            | TEXT | 无                                                                                                         | TEXT | 移除字符串前后的空格                                                              |
+| STRCMP          | TEXT | 无                                                                                                         | TEXT | 用于比较两个输入序列，如果值相同返回 `0` , 序列1的值小于序列2的值返回一个`负数`，序列1的值大于序列2的值返回一个`正数`      |
 
 详细说明及示例见文档 [字符串处理函数](./String.md)。
 
