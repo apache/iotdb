@@ -31,8 +31,6 @@ public class PaginationController {
   private long curLimit;
   private long curOffset;
 
-  private boolean enable = true;
-
   public PaginationController(long limit, long offset) {
     // row limit for result set. The default value is 0, which means no limit
     this.curLimit = limit;
@@ -42,51 +40,39 @@ public class PaginationController {
     this.curOffset = offset;
   }
 
-  public void setEnable(boolean enable) {
-    this.enable = enable;
-  }
-
   public boolean hasCurOffset() {
-    return enable && curOffset > 0;
+    return curOffset > 0;
   }
 
   public boolean hasCurOffset(long rowCount) {
-    return enable && curOffset >= rowCount;
+    return curOffset >= rowCount;
   }
 
   public boolean hasCurLimit() {
-    return !enable || (!hasLimit || curLimit > 0);
+    return !hasLimit || curLimit > 0;
   }
 
   public void consumeOffset(long rowCount) {
-    if (enable) {
-      curOffset -= rowCount;
-    }
+    curOffset -= rowCount;
   }
 
   public void consumeOffset() {
-    if (enable) {
-      curOffset--;
-    }
+    curOffset--;
   }
 
   public void consumeLimit() {
-    if (enable && hasLimit) {
+    if (hasLimit) {
       curLimit--;
     }
   }
 
   public void consumeLimit(long rowCount) {
-    if (enable && hasLimit) {
+    if (hasLimit) {
       curLimit -= rowCount;
     }
   }
 
   public TsBlock applyTsBlock(TsBlock resultTsBlock) {
-    if (!enable) {
-      return resultTsBlock;
-    }
-
     int fromIndex = 0, length = resultTsBlock.getPositionCount();
     if (curOffset > 0) {
       fromIndex = (int) Math.min(curOffset, length);

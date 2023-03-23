@@ -637,7 +637,10 @@ public class SeriesScanUtil {
         firstPageReader.setFilter(queryFilter);
       }
       firstPageReader.setLimitOffset(paginationController);
-      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending(), true);
+      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      if (!orderUtils.getAscending()) {
+        tsBlock = paginationController.applyTsBlock(tsBlock);
+      }
       firstPageReader = null;
 
       return tsBlock;
@@ -936,7 +939,7 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending(), false)),
+        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);
@@ -1138,20 +1141,13 @@ public class SeriesScanUtil {
       return ((IAlignedPageReader) data).getTimeStatistics();
     }
 
-    TsBlock getAllSatisfiedPageData(boolean ascending, boolean isSeq) throws IOException {
+    TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
-        paginationController.setEnable(isSeq && ascending);
         TsBlock tsBlock = data.getAllSatisfiedData();
-
         if (!ascending) {
           tsBlock.reverse();
-
-          paginationController.setEnable(isSeq);
-          tsBlock = paginationController.applyTsBlock(tsBlock);
         }
-
-        paginationController.setEnable(true);
         return tsBlock;
       } finally {
         QUERY_METRICS.recordSeriesScanCost(
@@ -1179,7 +1175,9 @@ public class SeriesScanUtil {
     }
 
     public void setLimitOffset(PaginationController paginationController) {
-      data.setLimitOffset(paginationController);
+      if (orderUtils.getAscending()) {
+        data.setLimitOffset(paginationController);
+      }
     }
   }
 
