@@ -28,6 +28,7 @@ import javax.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClusterSchemaQuotaManager {
@@ -59,6 +60,12 @@ public class ClusterSchemaQuotaManager {
               : TSchemaQuotaLevel.DEVICE,
           countMap.values().stream().mapToLong(i -> i).sum(),
           limit);
+    }
+  }
+
+  public void invalidateSchemaRegion(Set<TConsensusGroupId> consensusGroupIdSet) {
+    for (TConsensusGroupId consensusGroupId : consensusGroupIdSet) {
+      countMap.remove(consensusGroupId);
     }
   }
 

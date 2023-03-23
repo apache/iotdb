@@ -120,7 +120,7 @@ public class ConfigNodeProcedureEnv {
    * @param name database name
    * @return tsStatus
    */
-  public TSStatus deleteConfig(String name) {
+  public TSStatus deleteDatabaseConfig(String name) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
     return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
   }
@@ -131,7 +131,8 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDelete(PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
+  public void preDeleteDatabase(
+      PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
     getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 

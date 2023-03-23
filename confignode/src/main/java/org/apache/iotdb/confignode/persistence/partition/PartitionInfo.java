@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaManager;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -266,7 +267,11 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public void deleteDatabase(DeleteDatabasePlan plan) {
     // Clean the StorageGroupTable cache
-    databasePartitionTables.remove(plan.getName());
+    DatabasePartitionTable partitionTable = databasePartitionTables.remove(plan.getName());
+    if (partitionTable != null) {
+      ClusterSchemaQuotaManager.getInstance()
+          .invalidateSchemaRegion(partitionTable.getAllConsensusGroupId());
+    }
   }
 
   /**
