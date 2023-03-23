@@ -104,7 +104,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     // end time series for returned TsBlock this time, it's the min/max end time series among all
     // the children
@@ -133,10 +133,12 @@ public class LastQueryMergeOperator implements ProcessOperator {
           } else {
             // child operator has next but return an empty TsBlock which means that it may not
             // finish calculation in given time slice.
-            // In such case, LastQueryMergeOperator can't go on calculating, so we just return null.
+            // In such case, LastQueryMergeOperator can't go on calculating, so we just return
+            // null.
             // We can also use the while loop here to continuously call the hasNext() and next()
             // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
+            // the data that is not empty, but this will cause the execution time of the while
+            // loop
             // to be uncontrollable and may exceed all allocated time slice
             return null;
           }
@@ -179,7 +181,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -207,7 +209,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }

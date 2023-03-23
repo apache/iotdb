@@ -119,7 +119,7 @@ public class TimeJoinOperator extends AbstractOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -147,7 +147,8 @@ public class TimeJoinOperator extends AbstractOperator {
             // In such case, TimeJoinOperator can't go on calculating, so we just return null.
             // We can also use the while loop here to continuously call the hasNext() and next()
             // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
+            // the data that is not empty, but this will cause the execution time of the while
+            // loop
             // to be uncontrollable and may exceed all allocated time slice
             return null;
           }
@@ -198,7 +199,7 @@ public class TimeJoinOperator extends AbstractOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -228,7 +229,7 @@ public class TimeJoinOperator extends AbstractOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }

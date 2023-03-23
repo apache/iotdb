@@ -23,25 +23,28 @@ import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-public abstract class EventWindow implements IWindow {
+public abstract class AbstractVariationWindow implements IWindow {
 
-  protected EventWindowParameter eventWindowParameter;
+  private final double delta;
+  private final int controlColumnIndex;
+  private final boolean outputEndTime;
+  private final boolean ignoreNull;
 
   protected long startTime;
-
   protected long endTime;
-
-  protected boolean initializedEventValue;
-
+  protected boolean initializedHeadValue;
   protected boolean valueIsNull = false;
 
-  protected EventWindow(EventWindowParameter eventWindowParameter) {
-    this.eventWindowParameter = eventWindowParameter;
+  protected AbstractVariationWindow(VariationWindowParameter variationWindowParameter) {
+    this.controlColumnIndex = variationWindowParameter.getControlColumnIndex();
+    this.ignoreNull = variationWindowParameter.isIgnoringNull();
+    this.outputEndTime = variationWindowParameter.isNeedOutputEndTime();
+    this.delta = variationWindowParameter.getDelta();
   }
 
   @Override
   public Column getControlColumn(TsBlock tsBlock) {
-    return tsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
+    return tsBlock.getColumn(controlColumnIndex);
   }
 
   @Override
@@ -49,13 +52,12 @@ public abstract class EventWindow implements IWindow {
     return accumulator.hasFinalResult();
   }
 
-  // TODO
   @Override
   public boolean contains(Column column) {
     return false;
   }
 
-  public abstract void updatePreviousEventValue();
+  public abstract void updatePreviousValue();
 
   public long getStartTime() {
     return startTime;
@@ -73,15 +75,23 @@ public abstract class EventWindow implements IWindow {
     this.endTime = endTime;
   }
 
-  public void setInitializedEventValue(boolean initializedEventValue) {
-    this.initializedEventValue = initializedEventValue;
+  public void setInitializedHeadValue(boolean initializedHeadValue) {
+    this.initializedHeadValue = initializedHeadValue;
+  }
+
+  public boolean ignoreNull() {
+    return ignoreNull;
   }
 
   public boolean valueIsNull() {
     return valueIsNull;
   }
 
-  public boolean ignoringNull() {
-    return eventWindowParameter.isIgnoringNull();
+  public boolean isOutputEndTime() {
+    return outputEndTime;
+  }
+
+  public double getDelta() {
+    return delta;
   }
 }

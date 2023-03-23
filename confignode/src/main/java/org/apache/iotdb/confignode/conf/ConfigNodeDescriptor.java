@@ -134,7 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getClusterName(), conf.getConfigNodeId(), NodeType.CONFIGNODE);
+            .updateRpcInstance(conf.getClusterName(), NodeType.CONFIGNODE);
       }
     } else {
       LOGGER.warn(
@@ -250,11 +250,11 @@ public class ConfigNodeDescriptor {
                 "default_data_region_group_num_per_database",
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
-    conf.setDataRegionPerProcessor(
+    conf.setDataRegionPerDataNode(
         Double.parseDouble(
             properties
                 .getProperty(
-                    "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
+                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
                 .trim()));
 
     try {

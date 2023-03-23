@@ -141,7 +141,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     setProperty("config_node_ratis_rpc_leader_election_timeout_max_ms", String.valueOf(maxMs));
     return this;
   }
@@ -332,6 +332,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    setProperty("write_memory_proportion", writeMemoryProportion);
     return this;
   }
 }

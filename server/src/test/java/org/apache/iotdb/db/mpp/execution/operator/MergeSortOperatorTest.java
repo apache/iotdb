@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -175,6 +174,7 @@ public class MergeSortOperatorTest {
           9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
+
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), MergeSortOperator.class.getSimpleName());
 
@@ -318,17 +318,22 @@ public class MergeSortOperatorTest {
               Arrays.asList(4, 5),
               tsDataTypes);
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(10),
-          Arrays.asList(
-              singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(10),
               Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+                  singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -337,13 +342,14 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1() {
+  public void testOrderByTime1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -379,17 +385,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime2() {
+  public void testOrderByTime2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -425,17 +433,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime3() {
+  public void testOrderByTime3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -471,17 +481,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime4() {
+  public void testOrderByTime4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -517,6 +529,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
@@ -785,6 +798,9 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               driverContext.getOperatorContexts().get(15),
@@ -796,17 +812,25 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(16),
-          Arrays.asList(mergeSortOperator1, mergeSortOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(16),
+              Arrays.asList(mergeSortOperator1, mergeSortOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -815,13 +839,14 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1_2() {
+  public void testOrderByTime1_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -853,17 +878,20 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime2_2() {
+  public void testOrderByTime2_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -895,17 +923,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime3_2() {
+  public void testOrderByTime3_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -937,17 +967,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime4_2() {
+  public void testOrderByTime4_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -979,6 +1011,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
   // ------------------------------------------------------------------------------------------------
@@ -1227,16 +1260,21 @@ public class MergeSortOperatorTest {
                   : Arrays.asList(timeJoinOperator3, timeJoinOperator2),
               deviceColumnIndex,
               tsDataTypes);
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(12),
-          Arrays.asList(deviceViewOperator1, deviceViewOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.DEVICE, deviceOrdering),
-                  new SortItem(SortKey.TIME, timeOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(12),
+              Arrays.asList(deviceViewOperator1, deviceViewOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.DEVICE, deviceOrdering),
+                      new SortItem(SortKey.TIME, timeOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1245,7 +1283,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice1() {
+  public void testOrderByDevice1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1293,11 +1331,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice2() {
+  public void testOrderByDevice2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1345,15 +1384,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice3() {
+  public void testOrderByDevice3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
@@ -1401,7 +1442,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice4() {
+  public void testOrderByDevice4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -1464,7 +1505,7 @@ public class MergeSortOperatorTest {
   //                        ShowQueriesOperator      ShowQueriesOperator
   // ------------------------------------------------------------------------------------------------
   @Test
-  public void mergeSortWithSortOperatorTest() {
+  public void mergeSortWithSortOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
@@ -1529,6 +1570,7 @@ public class MergeSortOperatorTest {
               ImmutableList.of(sortOperator1, sortOperator2),
               dataTypes,
               comparator);
+      root.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int index = 0;
       // Time ASC
@@ -1623,12 +1665,12 @@ public class MergeSortOperatorTest {
     }
 
     @Override
-    public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    public Optional<TsBlock> getBatchResult() {
       return Optional.empty();
     }
 
     @Override
-    public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
     }
 

@@ -88,7 +88,7 @@ public class DataNodeRemoveHandler {
         .filter(
             replicaSet ->
                 replicaSet.getDataNodeLocations().contains(removedDataNode)
-                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
+                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
@@ -559,6 +559,9 @@ public class DataNodeRemoveHandler {
     // Remove consensus record
     List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+
+    // Adjust maxRegionGroupNum
+    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
 
     // Remove metrics
     PartitionMetrics.unbindDataNodePartitionMetrics(

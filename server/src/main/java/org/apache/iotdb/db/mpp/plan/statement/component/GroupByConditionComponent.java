@@ -17,18 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
-public class ConfigNodeRegionId extends ConsensusGroupId {
+public class GroupByConditionComponent extends GroupByComponent {
 
-  public ConfigNodeRegionId(int id) {
-    this.id = id;
+  // use to filter continuous value (keep>=/>/=/</<=threshold)
+  private Expression keepExpression;
+
+  public GroupByConditionComponent() {
+    super(WindowType.CONDITION_WINDOW);
   }
 
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.ConfigNodeRegion;
+  public void setKeepExpression(Expression keepExpression) {
+    this.keepExpression = keepExpression;
+  }
+
+  public Expression getKeepExpression() {
+    return keepExpression;
   }
 }

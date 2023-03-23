@@ -81,7 +81,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock tsBlock = deviceOperator.nextWithTimer();
     if (tsBlock == null) {
       return null;
@@ -103,7 +103,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return deviceOperator.hasNextWithTimer();
   }
 
@@ -113,7 +113,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 

@@ -22,6 +22,8 @@ package org.apache.iotdb.consensus.simple;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -66,6 +68,8 @@ class SimpleConsensus implements IConsensus {
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, SimpleServerImpl> stateMachineMap = new ConcurrentHashMap<>();
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   public SimpleConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -121,7 +125,14 @@ class SimpleConsensus implements IConsensus {
       status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
-      status = impl.write(request);
+      if (groupId instanceof DataRegionId) {
+        long startWriteTime = System.nanoTime();
+        status = impl.write(request);
+        // only record time cost for data region in Performance Overview Dashboard
+        PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
+      } else {
+        status = impl.write(request);
+      }
     }
     return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
