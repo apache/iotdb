@@ -363,7 +363,7 @@ Output series:
 
 ### Usage
 
-Extracts a substring of a string, starting with the first specified character and stopping after the specified number of characters.The index start at 1 .
+Extracts a substring of a string, starting with the first specified character and stopping after the specified number of characters.The index start at 1 .The value range of from and for is an INT32.
 
 **Name:** SUBSTRING
 

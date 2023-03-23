@@ -36,7 +36,8 @@ public class SubStringFunctionTransformer extends UnaryTransformer {
   public SubStringFunctionTransformer(
       LayerPointReader layerPointReader, int beginPosition, int length) {
     super(layerPointReader);
-    this.endPosition = beginPosition + length - 1;
+    this.endPosition =
+        (length == Integer.MAX_VALUE ? Integer.MAX_VALUE : beginPosition + length - 1);
     this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
   }
 

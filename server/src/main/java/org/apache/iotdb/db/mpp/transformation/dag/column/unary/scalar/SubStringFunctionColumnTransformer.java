@@ -35,7 +35,8 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
   public SubStringFunctionColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, int beginPosition, int length) {
     super(returnType, childColumnTransformer);
-    this.endPosition = beginPosition + length - 1;
+    this.endPosition =
+        (length == Integer.MAX_VALUE ? Integer.MAX_VALUE : beginPosition + length - 1);
     this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
   }
 

@@ -366,7 +366,7 @@ select s1, s2, concat(s1, s2, "target1"="IoT", "target2"="DB", "series_behind"="
 ###  Substring
 
 ####  函数简介
-提取字符串的子字符串，从指定的第一个字符开始，并在指定的字符数之后停止。下标从1开始。
+提取字符串的子字符串，从指定的第一个字符开始，并在指定的字符数之后停止。下标从1开始。from 和 for的范围是 INT32 类型取值范围。
 
 **函数名:** SUBSTRING
 
