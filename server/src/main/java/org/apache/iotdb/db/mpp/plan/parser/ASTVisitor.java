@@ -616,7 +616,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowDatabases(IoTDBSqlParser.ShowDatabasesContext ctx) {
-    ShowStorageGroupStatement showDatabasesStatement;
+    ShowDatabaseStatement showDatabaseStatement;
 
     // Parse prefixPath
     if (ctx.prefixPath() != null) {
@@ -2084,8 +2084,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     databaseSchemaStatement.setDatabasePath(path);
     if (ctx.databaseAttributesClause() != null) {
-      parseDatabaseAttributesClause(
-          databaseSchemaStatement, ctx.databaseAttributesClause());
+      parseDatabaseAttributesClause(databaseSchemaStatement, ctx.databaseAttributesClause());
     }
     return databaseSchemaStatement;
   }
