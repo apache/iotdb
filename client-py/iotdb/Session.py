@@ -165,7 +165,7 @@ class Session(object):
 
         try:
             open_resp = self.__client.openSession(open_req)
-
+            Session.verify_success(open_resp.status)
             if self.protocol_version != open_resp.serverProtocolVersion:
                 logger.exception(
                     "Protocol differ, Client version is {}, but Server version is {}".format(
