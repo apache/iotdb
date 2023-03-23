@@ -332,6 +332,7 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
+    regionStatistics.addDevice();
     if (result != node) {
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }

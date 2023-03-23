@@ -99,6 +99,9 @@ public abstract class MTreeBelowSGTest {
                 node -> {
                   // do nothing
                 },
+                node -> {
+                  // do nothing
+                },
                 0,
                 new CachedSchemaRegionStatistics(0, new CachedSchemaEngineStatistics()));
       } else {

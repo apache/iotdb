@@ -156,6 +156,7 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
+    regionStatistics.addDevice();
     if (result != node) {
       requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
