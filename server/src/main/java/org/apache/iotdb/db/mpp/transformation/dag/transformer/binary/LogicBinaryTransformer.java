@@ -43,7 +43,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  public YieldableState yieldValue() throws QueryProcessException, IOException {
+  public YieldableState yieldValue() throws Exception {
     final YieldableState leftYieldableState = leftPointReader.yield();
     final YieldableState rightYieldableState = rightPointReader.yield();
 

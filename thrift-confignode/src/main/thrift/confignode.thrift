@@ -90,6 +90,7 @@ struct TRuntimeConfiguration {
   2: required list<binary> allTriggerInformation
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
+  5: required list<binary> allPipeInformation
 }
 
 struct TDataNodeRegisterReq {
@@ -332,7 +333,7 @@ struct TClusterParameters {
   8: required i64 defaultTTL
   9: required string readConsistencyLevel
   10: required double schemaRegionPerDataNode
-  11: required double dataRegionPerProcessor
+  11: required double dataRegionPerDataNode
   12: required i32 seriesPartitionSlotNum
   13: required string seriesPartitionExecutorClass
   14: required double diskSpaceWarningThreshold
@@ -869,7 +870,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the SchemaPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new SchemaRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
@@ -899,7 +900,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the DataPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new DataRegions
-   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
+   *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
@@ -1099,6 +1100,11 @@ service IConfigNodeRPCService {
    * Return the pipe plugin table
    */
   TGetPipePluginTableResp getPipePluginTable();
+
+  /**
+   * Return the pipe plugin jar list of the plugin name list
+   */
+  TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
 
   // ======================================================
   // Maintenance Tools

@@ -92,6 +92,8 @@ OR, |, ||
 
 ## 内置函数列表
 
+列表中的函数无须注册即可在 IoTDB 中使用，数据函数质量库中的函数需要参考注册步骤进行注册后才能使用。
+
 ### 聚合函数
 
 | 函数名      | 功能描述                                                     | 允许的输入类型           | 输出类型       |
@@ -110,28 +112,28 @@ OR, |, ||
 
 ### 数学函数 
 
-| 函数名  | 输入序列类型                   | 输出序列类型             | Java 标准库中的对应实现                                      |
-| ------- | ------------------------------ | ------------------------ | ------------------------------------------------------------ |
-| SIN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sin(double)                                             |
-| COS     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#cos(double)                                             |
-| TAN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#tan(double)                                             |
-| ASIN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#asin(double)                                            |
-| ACOS    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#acos(double)                                            |
-| ATAN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#atan(double)                                            |
-| SINH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sinh(double)                                            |
-| COSH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#cosh(double)                                            |
-| TANH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#tanh(double)                                            |
-| DEGREES | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toDegrees(double)                                       |
-| RADIANS | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toRadians(double)                                       |
-| ABS     | INT32 / INT64 / FLOAT / DOUBLE | 与输入序列的实际类型一致 | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
-| SIGN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#signum(double)                                          |
-| CEIL    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#ceil(double)                                            |
-| FLOOR   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#floor(double)                                           |
-| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#rint(double)                                            |
-| EXP     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#exp(double)                                             |
-| LN      | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log(double)                                             |
-| LOG10   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#log10(double)                                           |
-| SQRT    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sqrt(double)                                            |
+| 函数名  | 输入序列类型                   | 输出序列类型             | 必要属性参数                                       | Java 标准库中的对应实现                                                    |
+| ------- | ------------------------------ | ------------------------ |----------------------------------------------|-------------------------------------------------------------------|
+| SIN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sin(double)                                                  |
+| COS     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#cos(double)                                                  |
+| TAN     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#tan(double)                                                  |
+| ASIN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#asin(double)                                                 |
+| ACOS    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#acos(double)                                                 |
+| ATAN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#atan(double)                                                 |
+| SINH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sinh(double)                                                 |
+| COSH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#cosh(double)                                                 |
+| TANH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#tanh(double)                                                 |
+| DEGREES | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#toDegrees(double)                                            |
+| RADIANS | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#toRadians(double)                                            |
+| ABS     | INT32 / INT64 / FLOAT / DOUBLE | 与输入序列的实际类型一致 |                                              | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
+| SIGN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#signum(double)                                               |
+| CEIL    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#ceil(double)                                                 |
+| FLOOR   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#floor(double)                                                |
+| ROUND   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | `places`:四舍五入有效位数，正数为小数点后面的有效位数，负数为整数位的有效位数 | Math#rint(Math#pow(10,places))/Math#pow(10,places)                         |
+| EXP     | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#exp(double)                                                  |
+| LN      | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#log(double)                                                  |
+| LOG10   | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#log10(double)                                                |
+| SQRT    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   |                                              | Math#sqrt(double)                                                 |
 
 
 详细说明及示例见文档 [算数运算符和函数](./Mathematical.md)。
@@ -161,10 +163,6 @@ OR, |, ||
 | LOWER | TEXT | 无 | TEXT | 将字符串转化为小写 |
 | TRIM | TEXT | 无 | TEXT | 移除字符串前后的空格 |
 | STRCMP | TEXT | 无 | TEXT | 用于比较两个输入序列，如果值相同返回 `0` , 序列1的值小于序列2的值返回一个`负数`，序列1的值大于序列2的值返回一个`正数` |
-| STRREPLACE | TEXT | `target`: 需要替换的字符子串 <br/> `replace`: 替换后的字符串 <br/> `limit`: 替换次数，大于等于 -1 的整数，默认为 -1 表示所有匹配的子串都会被替换 <br/>`offset`: 需要跳过的匹配次数，即前`offset`次匹配到的字符子串并不会被替换，默认为 0 <br/>`reverse`: 是否需要反向计数，默认为 false 即按照从左向右的次序 | TEXT | 将字符串中的子串替换为指定的字符串|
-| REGEXMATCH | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `group`: 输出的匹配组序号，根据 java.util.regex 规定，第 0 组为整个正则表达式，此后的组按照左括号出现的顺序依次编号 | TEXT | 用于正则表达式匹配文本中的具体内容并返回 |
-| REGEXREPLACE | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `replace`: 替换后的字符串，支持 Java 正则表达式中的后向引用 <br/> `limit`: 替换次数，大于等于 -1 的整数，默认为 -1 表示所有匹配的子串都会被替换 <br/> `offset`: 需要跳过的匹配次数，即前`offset`次匹配到的字符子串并不会被替换，默认为 0 <br/> `reverse`: 是否需要反向计数，默认为 false 即按照从左向右的次序 | TEXT | 用于将文本中符合正则表达式的匹配结果替换为指定的字符串 |
-| REGEXSPLIT | TEXT | `regex`: Java 标准库风格的正则表达式 <br/> `index`: 输出结果在切分后数组中的序号 | TEXT | 用于使用给定的正则表达式切分文本，并返回指定的项 |
 
 详细说明及示例见文档 [字符串处理函数](./String.md)。
 

@@ -566,6 +566,10 @@ RESOURCE
     : R E S O U R C E
     ;
 
+REPLACE
+    : R E P L A C E
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -576,6 +580,10 @@ ROLE
 
 ROOT
     : R O O T
+    ;
+
+ROUND
+    : R O U N D
     ;
 
 RUNNING

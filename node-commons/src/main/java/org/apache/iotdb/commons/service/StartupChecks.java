@@ -28,10 +28,12 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StartupChecks {
+public abstract class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
-  public static final StartupCheck checkJDK =
+
+  private final String nodeRole;
+  private static final StartupCheck checkJDK =
       () -> {
         int version = JVMCommonUtils.getJdkVersion();
         if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
@@ -43,16 +45,14 @@ public class StartupChecks {
           logger.info("JDK version is {}.", version);
         }
       };
-  private final List<StartupCheck> preChecks = new ArrayList<>();
-  private final List<StartupCheck> defaultTests = new ArrayList<>();
+  protected final List<StartupCheck> preChecks = new ArrayList<>();
 
-  public StartupChecks(String nodeRole) {
-    defaultTests.add(() -> checkJMXPort(nodeRole));
-    defaultTests.add(checkJDK);
+  protected StartupChecks(String nodeRole) {
+    this.nodeRole = nodeRole;
   }
 
   private void checkJMXPort(String nodeRole) {
-    Boolean jmxLocal = Boolean.valueOf(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
+    boolean jmxLocal = Boolean.parseBoolean(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
 
     if (jmxLocal) {
@@ -66,7 +66,7 @@ public class StartupChecks {
               ? IoTDBConstant.DN_ENV_FILE_NAME
               : IoTDBConstant.CN_ENV_FILE_NAME;
       logger.warn(
-          "{} missing from {}.sh(Unix or OS X, if you use Windows," + " check conf/{}.bat)",
+          "{} missing from {}.sh(Unix or OS X, if you use Windows, check conf/{}.bat)",
           IoTDBConstant.IOTDB_JMX_PORT,
           filename,
           filename);
@@ -76,15 +76,18 @@ public class StartupChecks {
     }
   }
 
-  public StartupChecks withDefaultTest() {
-    preChecks.addAll(defaultTests);
-    return this;
+  protected void envCheck() {
+    preChecks.add(() -> checkJMXPort(nodeRole));
+    preChecks.add(checkJDK);
   }
-
-  /** execute every pretests. */
-  public void verify() throws StartupException {
+  /** execute every pretest. */
+  protected void verify() throws StartupException {
     for (StartupCheck check : preChecks) {
       check.execute();
     }
   }
+
+  protected abstract void portCheck() throws StartupException;
+
+  protected abstract void startUpCheck() throws Exception;
 }

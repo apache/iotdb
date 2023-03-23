@@ -33,11 +33,19 @@ public class NetMetrics implements IMetricSet {
   private static final String RECEIVED_PACKETS = "received_packets";
   private static final String TRANSMITTED_BYTES = "transmitted_bytes";
   private static final String TRANSMITTED_PACKETS = "transmitted_packets";
+  private static final String CONNECTION_NUM = "connection_num";
 
   private static final String TYPE = "type";
   private static final String IFACE_NAME = "iface_name";
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
+  private static final String PROCESS_NAME = "process_num";
+
+  private final String processName;
+
+  public NetMetrics(String processName) {
+    this.processName = processName;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -81,6 +89,13 @@ public class NetMetrics implements IMetricSet {
           IFACE_NAME,
           iface);
     }
+    metricService.createAutoGauge(
+        CONNECTION_NUM,
+        MetricLevel.IMPORTANT,
+        netMetricManager,
+        x -> x.getConnectionNum(),
+        PROCESS_NAME,
+        this.processName);
   }
 
   @Override
@@ -94,5 +109,6 @@ public class NetMetrics implements IMetricSet {
       metricService.remove(
           MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, IFACE_NAME, iface);
     }
+    metricService.remove(MetricType.AUTO_GAUGE, CONNECTION_NUM, PROCESS_NAME, this.processName);
   }
 }

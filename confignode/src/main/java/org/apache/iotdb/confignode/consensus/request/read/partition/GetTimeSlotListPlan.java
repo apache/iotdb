@@ -53,7 +53,7 @@ public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
     this.endTime = endTime;
   }
 
-  public String getStorageGroup() {
+  public String getDatabase() {
     return storageGroup;
   }
 

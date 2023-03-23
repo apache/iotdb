@@ -187,7 +187,7 @@
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
-        <swagger.core.version>1.5.24</swagger.core.version>
+        <swagger.core.version>1.6.2</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.0</openapi.generator.version>
         <!-- cli -->
@@ -797,6 +797,7 @@
                             <exclude>**/.eslintignore</exclude>
                             <exclude>**/palette.styl</exclude>
                             <exclude>**/RightMenu.vue</exclude>
+                            <exclude>**/pnpm-lock.yaml</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
