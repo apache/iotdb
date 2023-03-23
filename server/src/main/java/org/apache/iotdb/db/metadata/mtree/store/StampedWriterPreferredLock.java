@@ -68,7 +68,7 @@ public class StampedWriterPreferredLock {
   public long stampedReadLock() {
     lock.lock();
     try {
-      return acquireReadLockStamp();
+      return acquireReadLockStamp(false);
     } finally {
       lock.unlock();
     }
@@ -80,12 +80,24 @@ public class StampedWriterPreferredLock {
    * wait if another thread holds a write lock or the write lock waiting queue is not empty.
    */
   public void threadReadLock() {
+    threadReadLock(false);
+  }
+
+  /**
+   * Acquires the thread-bound read lock. Read lock acquire and release is thread-bound and supports
+   * re-entry within the same thread. Return directly if no thread holds a write lock ; block and
+   * wait if another thread holds a write lock.
+   *
+   * @param prior If false, it will also block and * wait if the write lock waiting queue is not
+   *     empty.
+   */
+  public void threadReadLock(boolean prior) {
     lock.lock();
     try {
       Long allocateStamp = sharedOwnerStamp.get();
       if (allocateStamp == null) {
         // first time entry, acquire read lock and set thread local
-        sharedOwnerStamp.set(acquireReadLockStamp());
+        sharedOwnerStamp.set(acquireReadLockStamp(prior));
       } else {
         // reentry, add read count
         readCnt.put(allocateStamp, readCnt.get(allocateStamp) + 1);
@@ -99,10 +111,11 @@ public class StampedWriterPreferredLock {
    * Acquires a read lock and block and wait if another thread holds a write lock or the write lock
    * waiting queue is not empty.
    *
+   * @param prior if the write lock waiting queue can be ignored
    * @return read lock stamp
    */
-  private long acquireReadLockStamp() {
-    if (writeCnt + writeWait > 0) {
+  private long acquireReadLockStamp(boolean prior) {
+    if ((prior ? writeCnt : writeCnt + writeWait) > 0) {
       readWait++;
       try {
         okToRead.await();
