@@ -83,13 +83,17 @@ public class PaginationController {
   }
 
   public TsBlock applyTsBlock(TsBlock resultTsBlock) {
+    if (!enable) {
+      return resultTsBlock;
+    }
+
     int fromIndex = 0, length = resultTsBlock.getPositionCount();
-    if (hasCurOffset()) {
+    if (curOffset > 0) {
       fromIndex = (int) Math.min(curOffset, length);
       length -= fromIndex;
       consumeOffset(fromIndex);
     }
-    if (hasCurLimit()) {
+    if (hasLimit && curLimit > 0) {
       length = (int) Math.min(curLimit, length);
       consumeLimit(length);
     }
