@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
@@ -359,8 +360,8 @@ public class SchemaEngine {
     Map<TConsensusGroupId, Long> res = new HashMap<>();
     switch (req.getLevel()) {
       case MEASUREMENT:
-        schemaRegionMap
-            .values()
+        schemaRegionMap.values().stream()
+            .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
             .forEach(
                 i ->
                     res.put(
@@ -368,8 +369,8 @@ public class SchemaEngine {
                         i.getSchemaRegionStatistics().getSeriesNumber()));
         break;
       case DEVICE:
-        schemaRegionMap
-            .values()
+        schemaRegionMap.values().stream()
+            .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
             .forEach(
                 i ->
                     res.put(
