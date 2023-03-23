@@ -139,6 +139,7 @@ keyWords
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
+    | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROPERTY
     | PRUNE
@@ -206,5 +207,4 @@ keyWords
     | WITH
     | WITHOUT
     | WRITABLE
-    | PRIVILEGE_VALUE
     ;
