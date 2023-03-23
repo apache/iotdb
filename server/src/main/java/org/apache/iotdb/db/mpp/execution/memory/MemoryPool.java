@@ -26,11 +26,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -153,12 +152,14 @@ public class MemoryPool {
    * Before executing, we register memory map which is related to queryId, fragmentInstanceId, and
    * planNodeId to queryMemoryReservationsMap first.
    */
-  public synchronized void registerPlanNodeIdToQueryMemoryMap(
+  public void registerPlanNodeIdToQueryMemoryMap(
       String queryId, String fragmentInstanceId, String planNodeId) {
-    queryMemoryReservations
-        .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-        .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-        .putIfAbsent(planNodeId, 0L);
+    synchronized (queryMemoryReservations) {
+      queryMemoryReservations
+          .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+          .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+          .putIfAbsent(planNodeId, 0L);
+    }
   }
 
   /**
