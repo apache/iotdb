@@ -289,6 +289,9 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  private String clusterSchemaLimitLevel = "MEASUREMENT";
+  private long clusterMaxSchemaCount = -1;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1109,5 +1112,21 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public String getClusterSchemaLimitLevel() {
+    return clusterSchemaLimitLevel;
+  }
+
+  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
+  }
+
+  public long getClusterMaxSchemaCount() {
+    return clusterMaxSchemaCount;
+  }
+
+  public void setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+    this.clusterMaxSchemaCount = clusterMaxSchemaCount;
   }
 }

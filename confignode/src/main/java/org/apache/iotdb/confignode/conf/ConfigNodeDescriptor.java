@@ -773,6 +773,17 @@ public class ConfigNodeDescriptor {
                     "force_wal_period_for_confignode_simple_in_ms",
                     String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
                 .trim()));
+    conf.setClusterSchemaLimitLevel(
+        properties
+            .getProperty(
+                "cluster_schema_limit_level", String.valueOf(conf.getClusterSchemaLimitLevel()))
+            .trim());
+    conf.setClusterMaxSchemaCount(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "cluster_max_schema_count", String.valueOf(conf.getClusterMaxSchemaCount()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {

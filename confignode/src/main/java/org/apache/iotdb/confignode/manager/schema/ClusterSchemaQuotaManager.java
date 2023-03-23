@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
@@ -34,13 +35,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClusterSchemaQuotaManager {
 
   private final Map<TConsensusGroupId, Long> countMap = new ConcurrentHashMap<>();
-  private ClusterSchemaQuotaLevel level = ClusterSchemaQuotaLevel.MEASUREMENT;
-  private long limit = -1;
-
-  public void updateConfig(ClusterSchemaQuotaLevel level, long limit) {
-    this.level = level;
-    this.limit = limit;
-  }
+  private ClusterSchemaQuotaLevel level =
+      ClusterSchemaQuotaLevel.valueOf(
+          ConfigNodeDescriptor.getInstance().getConf().getClusterSchemaLimitLevel());
+  private long limit = ConfigNodeDescriptor.getInstance().getConf().getClusterMaxSchemaCount();
 
   public void updateCount(@NotNull TSchemaQuotaResp resp, List<TConsensusGroupId> leaderGroupIds) {
     for (TConsensusGroupId groupId : leaderGroupIds) {
@@ -67,6 +65,14 @@ public class ClusterSchemaQuotaManager {
     for (TConsensusGroupId consensusGroupId : consensusGroupIdSet) {
       countMap.remove(consensusGroupId);
     }
+  }
+
+  public void setLevel(ClusterSchemaQuotaLevel level) {
+    this.level = level;
+  }
+
+  public void setLimit(long limit) {
+    this.limit = limit;
   }
 
   private ClusterSchemaQuotaManager() {}
