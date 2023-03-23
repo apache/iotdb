@@ -37,7 +37,7 @@ import java.util.List;
 /** An elastic list of records that implements memory control using LRU strategy. */
 public class ElasticSerializableRowRecordList {
 
-  // test
+  // test test
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ElasticSerializableRowRecordList.class);
 
