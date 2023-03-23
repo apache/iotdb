@@ -75,7 +75,6 @@ public class SqlConstant {
   public static final String SUBSTRING_LENGTH = "length";
 
   public static final String SUBSTRING_FROM = "FROM";
-  public static final String SUBSTRING_FOR_LENGTH = "forLength";
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
 

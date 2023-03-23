@@ -214,8 +214,6 @@ import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_TO;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_PLACES;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FOR_LENGTH;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FROM;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_IS_STANDARD;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_LENGTH;
@@ -2406,20 +2404,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         subStrClause.subStringExpression();
     functionExpression.addExpression(parseExpression(subStringExpression.input, canUseFullPath));
     if (subStringExpression.startPosition != null) {
-      functionExpression.addAttribute(
-          SUBSTRING_START, parseStringLiteral(subStringExpression.startPosition.getText()));
+      functionExpression.addAttribute(SUBSTRING_START, subStringExpression.startPosition.getText());
       if (subStringExpression.length != null) {
-        functionExpression.addAttribute(
-            SUBSTRING_LENGTH, parseStringLiteral(subStringExpression.length.getText()));
+        functionExpression.addAttribute(SUBSTRING_LENGTH, subStringExpression.length.getText());
       }
     }
     if (subStringExpression.from != null) {
       functionExpression.addAttribute(SUBSTRING_IS_STANDARD, "0");
       functionExpression.addAttribute(
-          SUBSTRING_FROM, parseStringLiteral(subStringExpression.from.getText()));
+          SUBSTRING_START, parseStringLiteral(subStringExpression.from.getText()));
       if (subStringExpression.forLength != null) {
-        functionExpression.addAttribute(
-            SUBSTRING_FOR_LENGTH, parseStringLiteral(subStringExpression.forLength.getText()));
+        functionExpression.addAttribute(SUBSTRING_LENGTH, subStringExpression.forLength.getText());
       }
     }
     return functionExpression;

@@ -32,16 +32,12 @@ import static org.apache.iotdb.db.mpp.transformation.dag.column.unary.scalar.Sub
 public class SubStringFunctionTransformer extends UnaryTransformer {
   private int beginPosition;
   private int endPosition;
-  private int length;
-  private boolean hasLength;
 
   public SubStringFunctionTransformer(
-      LayerPointReader layerPointReader, int beginPosition, int length, boolean hasLength) {
+      LayerPointReader layerPointReader, int beginPosition, int length) {
     super(layerPointReader);
-    this.beginPosition = beginPosition - 1;
     this.endPosition = beginPosition + length - 1;
-    this.length = length;
-    this.hasLength = hasLength;
+    this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
   }
 
   @Override
@@ -52,34 +48,13 @@ public class SubStringFunctionTransformer extends UnaryTransformer {
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     String currentValue = layerPointReader.currentBinary().getStringValue();
-    if (!hasLength) {
-      if (beginPosition >= currentValue.length()) {
-        currentValue = EMPTY_STRING;
-      } else if (beginPosition >= 0) {
-        currentValue = currentValue.substring(beginPosition);
-      }
+    if (beginPosition >= currentValue.length() || endPosition < 0) {
+      currentValue = EMPTY_STRING;
     } else {
-      if (length < 0) {
-        throw new UnsupportedOperationException(
-            "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
-      }
-      if (beginPosition < 0) {
-        beginPosition = 0;
-        if (endPosition >= currentValue.length()) {
-          currentValue = currentValue.substring(beginPosition);
-        } else if (endPosition < 0) {
-          currentValue = EMPTY_STRING;
-        } else {
-          currentValue = currentValue.substring(beginPosition, endPosition);
-        }
-      } else if (beginPosition >= currentValue.length()) {
-        currentValue = EMPTY_STRING;
+      if (endPosition >= currentValue.length()) {
+        currentValue = currentValue.substring(beginPosition);
       } else {
-        if (endPosition >= currentValue.length()) {
-          currentValue = currentValue.substring(beginPosition);
-        } else {
-          currentValue = currentValue.substring(beginPosition, endPosition);
-        }
+        currentValue = currentValue.substring(beginPosition, endPosition);
       }
     }
     cachedBinary = Binary.valueOf(currentValue);

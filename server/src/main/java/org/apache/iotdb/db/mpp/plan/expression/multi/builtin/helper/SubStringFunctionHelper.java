@@ -34,7 +34,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FOR;
-import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FOR_LENGTH;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FROM;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_IS_STANDARD;
 import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_LENGTH;
@@ -48,7 +47,7 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
       throws SemanticException {
     if (functionExpression.getFunctionAttributes().isEmpty()
-        || functionExpression.getExpressions().size() > 1) {
+        || functionExpression.getExpressions().size() != 1) {
       throw new SemanticException(
           "Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
     }
@@ -73,39 +72,34 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public ColumnTransformer getBuiltInScalarFunctionColumnTransformer(
       FunctionExpression expression, ColumnTransformer columnTransformer) {
     LinkedHashMap<String, String> functionAttributes = expression.getFunctionAttributes();
+    String subStringLength =
+        functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE));
+    if (Long.parseLong(subStringLength) < 0) {
+      throw new SemanticException(
+          "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+    }
+
     return new SubStringFunctionColumnTransformer(
         TypeFactory.getType(this.getBuiltInScalarFunctionReturnType(expression)),
         columnTransformer,
-        Integer.parseInt(
-            functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-                ? functionAttributes.getOrDefault(SUBSTRING_FROM, "0")
-                : functionAttributes.getOrDefault(SUBSTRING_START, "0")),
-        Integer.parseInt(
-            functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-                ? functionAttributes.getOrDefault(SUBSTRING_FOR_LENGTH, "0")
-                : functionAttributes.getOrDefault(SUBSTRING_LENGTH, "0")),
-        functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-            ? functionAttributes.containsKey(SUBSTRING_FOR_LENGTH)
-            : functionAttributes.containsKey(SUBSTRING_LENGTH));
+        Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0")),
+        Integer.parseInt(subStringLength));
   }
 
   @Override
   public Transformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, LayerPointReader layerPointReader) {
     LinkedHashMap<String, String> functionAttributes = expression.getFunctionAttributes();
+    String subStringLength =
+        functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE));
+    if (Long.parseLong(subStringLength) < 0) {
+      throw new SemanticException(
+          "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+    }
     return new SubStringFunctionTransformer(
         layerPointReader,
-        Integer.parseInt(
-            functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-                ? functionAttributes.getOrDefault(SUBSTRING_FROM, "0")
-                : functionAttributes.getOrDefault(SUBSTRING_START, "0")),
-        Integer.parseInt(
-            functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-                ? functionAttributes.getOrDefault(SUBSTRING_FOR_LENGTH, "0")
-                : functionAttributes.getOrDefault(SUBSTRING_LENGTH, "0")),
-        functionAttributes.containsKey(SUBSTRING_IS_STANDARD)
-            ? functionAttributes.containsKey(SUBSTRING_FOR_LENGTH)
-            : functionAttributes.containsKey(SUBSTRING_LENGTH));
+        Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0")),
+        Integer.parseInt(subStringLength));
   }
 
   @Override
@@ -117,13 +111,13 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
           .append(BLANK_STRING)
           .append(SUBSTRING_FROM)
           .append(BLANK_STRING)
-          .append(functionAttributes.get(SUBSTRING_FROM));
-      if (functionAttributes.containsKey(SUBSTRING_FOR_LENGTH)) {
+          .append(functionAttributes.get(SUBSTRING_START));
+      if (functionAttributes.containsKey(SUBSTRING_LENGTH)) {
         builder
             .append(BLANK_STRING)
             .append(SUBSTRING_FOR)
             .append(BLANK_STRING)
-            .append(functionAttributes.get(SUBSTRING_FOR_LENGTH));
+            .append(functionAttributes.get(SUBSTRING_LENGTH));
       }
     } else {
       builder.append(COMMA_STRING).append(functionAttributes.get(SUBSTRING_START));
