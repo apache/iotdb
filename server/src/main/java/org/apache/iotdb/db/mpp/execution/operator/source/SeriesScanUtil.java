@@ -636,8 +636,16 @@ public class SeriesScanUtil {
       if (queryFilter != null) {
         firstPageReader.setFilter(queryFilter);
       }
-      firstPageReader.setLimitOffset(paginationController);
-      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      TsBlock tsBlock;
+      if (orderUtils.getAscending()) {
+        firstPageReader.setLimitOffset(paginationController);
+        tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      } else {
+        tsBlock =
+            paginationController.applyTsBlock(
+                firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending()));
+      }
+
       firstPageReader = null;
 
       return tsBlock;
