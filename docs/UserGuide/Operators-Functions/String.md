@@ -413,7 +413,7 @@ Output series:
 
 Replace a substring in the input sequence with the target substring.
 
-**Name:** SUBSTRING
+**Name:** REPLACE
 
 **Input Series:** Only support a single input series. The data type is TEXT.
 
