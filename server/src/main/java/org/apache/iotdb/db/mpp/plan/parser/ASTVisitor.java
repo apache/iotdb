@@ -214,6 +214,10 @@ import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.REPLACE_TO;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_FUNCTION;
 import static org.apache.iotdb.db.constant.SqlConstant.ROUND_PLACES;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.db.constant.SqlConstant.SUBSTRING_START;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -2370,6 +2374,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseReplaceFunction(context, canUseFullPath);
     } else if (context.ROUND() != null) {
       return parseRoundFunction(context, canUseFullPath);
+    } else if (context.SUBSTRING() != null) {
+      return parseSubStrFunction(context, canUseFullPath);
     }
     throw new UnsupportedOperationException();
   }
@@ -2388,6 +2394,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     functionExpression.addExpression(parseExpression(replaceClause.text, canUseFullPath));
     functionExpression.addAttribute(REPLACE_FROM, parseStringLiteral(replaceClause.from.getText()));
     functionExpression.addAttribute(REPLACE_TO, parseStringLiteral(replaceClause.to.getText()));
+    return functionExpression;
+  }
+
+  private Expression parseSubStrFunction(
+      IoTDBSqlParser.ScalarFunctionExpressionContext subStrClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(SUBSTRING_FUNCTION);
+    IoTDBSqlParser.SubStringExpressionContext subStringExpression =
+        subStrClause.subStringExpression();
+    functionExpression.addExpression(parseExpression(subStringExpression.input, canUseFullPath));
+    if (subStringExpression.startPosition != null) {
+      functionExpression.addAttribute(SUBSTRING_START, subStringExpression.startPosition.getText());
+      if (subStringExpression.length != null) {
+        functionExpression.addAttribute(SUBSTRING_LENGTH, subStringExpression.length.getText());
+      }
+    }
+    if (subStringExpression.from != null) {
+      functionExpression.addAttribute(SUBSTRING_IS_STANDARD, "0");
+      functionExpression.addAttribute(
+          SUBSTRING_START, parseStringLiteral(subStringExpression.from.getText()));
+      if (subStringExpression.forLength != null) {
+        functionExpression.addAttribute(SUBSTRING_LENGTH, subStringExpression.forLength.getText());
+      }
+    }
     return functionExpression;
   }
 
