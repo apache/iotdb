@@ -30,7 +30,7 @@ import static java.util.Objects.requireNonNull;
 
 public class ColumnBuilderStatus {
 
-  public static final int INSTANCE_SIZE = deepInstanceSize(ColumnBuilderStatus.class);
+  public static final long INSTANCE_SIZE = deepInstanceSize(ColumnBuilderStatus.class);
 
   private final TsBlockBuilderStatus tsBlockBuilderStatus;
 
