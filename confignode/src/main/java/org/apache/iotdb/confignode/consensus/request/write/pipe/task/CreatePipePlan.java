@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
+
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -26,31 +27,31 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetPipeSinkPlan extends ConfigPhysicalPlan {
-  /** empty pipeSinkName means get all PIPESINK */
-  private String pipeSinkName;
+public class CreatePipePlan extends ConfigPhysicalPlan {
 
-  public GetPipeSinkPlan() {
-    super(ConfigPhysicalPlanType.GetPipeSink);
+  private PipeTaskMeta pipeTaskMeta;
+
+  public CreatePipePlan() {
+    super(ConfigPhysicalPlanType.CreatePipePlugin);
   }
 
-  public GetPipeSinkPlan(String pipeSinkName) {
-    this();
-    this.pipeSinkName = pipeSinkName;
+  public CreatePipePlan(PipeTaskMeta pipeTaskMeta) {
+    super(ConfigPhysicalPlanType.CreatePipePlugin);
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeSinkName, stream);
+    pipeTaskMeta.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
+    pipeTaskMeta = PipeTaskMeta.deserialize(buffer);
   }
 }

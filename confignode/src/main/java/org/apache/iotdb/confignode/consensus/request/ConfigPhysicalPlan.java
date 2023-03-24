@@ -77,20 +77,15 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
@@ -337,29 +332,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateRegionLocation:
           plan = new UpdateRegionLocationPlan();
           break;
-        case CreatePipeSink:
-          plan = new CreatePipeSinkPlan();
-          break;
-        case DropPipeSink:
-          plan = new DropPipeSinkPlan();
-          break;
-        case GetPipeSink:
-          plan = new GetPipeSinkPlan();
-          break;
-        case PreCreatePipe:
-          plan = new PreCreatePipePlan();
+        case CreatePipe:
+          plan = new CreatePipePlan();
           break;
         case SetPipeStatus:
           plan = new SetPipeStatusPlan();
           break;
         case DropPipe:
           plan = new DropPipePlan();
-          break;
-        case ShowPipe:
-          plan = new ShowPipePlan();
-          break;
-        case RecordPipeMessage:
-          plan = new RecordPipeMessagePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

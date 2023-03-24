@@ -176,9 +176,8 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
             countDownLatch);
-      case PRE_CREATE_PIPE:
+      case CREATE_PIPE:
       case OPERATE_PIPE:
-      case ROLLBACK_OPERATE_PIPE:
         return new OperatePipeRPCHandler(
             requestType,
             requestId,

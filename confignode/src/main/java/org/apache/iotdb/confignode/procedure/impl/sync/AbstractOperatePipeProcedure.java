@@ -41,21 +41,20 @@ abstract class AbstractOperatePipeProcedure
   private static final int RETRY_THRESHOLD = 3;
 
   /**
-   * Execute at state OPERATE_CHECK
+   * Execute at state VALIDATE_TASK
    *
    * @return true if procedure can finish directly
    */
-  abstract boolean executeCheckCanSkip(ConfigNodeProcedureEnv env)
-      throws PipeException, PipeSinkException;
+  abstract boolean validateTask(ConfigNodeProcedureEnv env) throws PipeException, PipeSinkException;
 
   /** Execute at state PRE_OPERATE_PIPE_CONFIGNODE */
-  abstract void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException;
+  abstract void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state OPERATE_PIPE_DATANODE */
-  abstract void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException;
+  /** Execute at state OPERATE_ON_DATA_NODES */
+  abstract void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state OPERATE_PIPE_CONFIGNODE */
-  abstract void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException;
+  /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
+  abstract void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException;
 
   abstract SyncOperation getOperation();
 
@@ -64,25 +63,25 @@ abstract class AbstractOperatePipeProcedure
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     try {
       switch (state) {
-        case OPERATE_CHECK:
-          env.getConfigManager().getSyncManager().lockSyncMetadata();
-          if (executeCheckCanSkip(env)) {
-            env.getConfigManager().getSyncManager().unlockSyncMetadata();
+        case VALIDATE_TASK:
+          env.getConfigManager().getPipeManager().lockPipeTaskInfo();
+          if (!validateTask(env)) {
+            env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
             return Flow.NO_MORE_STATE;
           }
-          setNextState(OperatePipeState.PRE_OPERATE_PIPE_CONFIGNODE);
+          setNextState(OperatePipeState.CALCULATE_INFO_FOR_TASK);
           break;
-        case PRE_OPERATE_PIPE_CONFIGNODE:
-          executePreOperatePipeOnConfigNode(env);
-          setNextState(OperatePipeState.OPERATE_PIPE_DATANODE);
+        case CALCULATE_INFO_FOR_TASK:
+          calculateInfoForTask(env);
+          setNextState(OperatePipeState.OPERATE_ON_DATA_NODES);
           break;
-        case OPERATE_PIPE_DATANODE:
-          executeOperatePipeOnDataNode(env);
-          setNextState(OperatePipeState.OPERATE_PIPE_CONFIGNODE);
+        case OPERATE_ON_DATA_NODES:
+          operateOnDataNodes(env);
+          setNextState(OperatePipeState.WRITE_CONFIG_NODE_CONSENSUS);
           break;
-        case OPERATE_PIPE_CONFIGNODE:
-          executeOperatePipeOnConfigNode(env);
-          env.getConfigManager().getSyncManager().unlockSyncMetadata();
+        case WRITE_CONFIG_NODE_CONSENSUS:
+          writeConfigNodeConsensus(env);
+          env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
           return Flow.NO_MORE_STATE;
       }
     } catch (PipeException | PipeSinkException e) {
@@ -142,6 +141,6 @@ abstract class AbstractOperatePipeProcedure
 
   @Override
   protected OperatePipeState getInitialState() {
-    return OperatePipeState.OPERATE_CHECK;
+    return OperatePipeState.VALIDATE_TASK;
   }
 }

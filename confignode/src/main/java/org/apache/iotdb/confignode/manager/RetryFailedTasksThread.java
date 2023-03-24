@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -167,9 +168,16 @@ public class RetryFailedTasksThread {
             dataNodeId, nodeManager.getRegisteredDataNodeLocations().get(dataNodeId));
         TOperatePipeOnDataNodeReq request;
         while ((request = entry.getValue().peek()) != null) {
+          if (request.getOperation() == SyncOperation.START_PIPE.ordinal()) {
+            request.operation = (byte) SyncOperation.STOP_PIPE.ordinal();
+          } else if (request.getOperation() == SyncOperation.STOP_PIPE.ordinal()) {
+            request.operation = (byte) SyncOperation.START_PIPE.ordinal();
+          } else {
+            continue;
+          }
           AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
               new AsyncClientHandler<>(
-                  DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
+                  DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
           AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
           TSStatus tsStatus = clientHandler.getResponseList().get(0);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

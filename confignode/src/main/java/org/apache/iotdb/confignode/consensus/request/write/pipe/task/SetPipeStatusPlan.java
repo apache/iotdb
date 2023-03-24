@@ -16,42 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
+
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreatePipeSinkPlan extends ConfigPhysicalPlan {
+public class SetPipeStatusPlan extends ConfigPhysicalPlan {
+  private String pipeName;
 
-  private TPipeSinkInfo pipeSinkInfo;
+  private PipeStatus status;
 
-  public CreatePipeSinkPlan() {
-    super(ConfigPhysicalPlanType.CreatePipeSink);
+  public SetPipeStatusPlan() {
+    super(ConfigPhysicalPlanType.CreatePipePlugin);
   }
 
-  public CreatePipeSinkPlan(TPipeSinkInfo pipeSinkInfo) {
-    this();
-    this.pipeSinkInfo = pipeSinkInfo;
+  public SetPipeStatusPlan(String pipeName, PipeStatus status) {
+    super(ConfigPhysicalPlanType.CreatePipePlugin);
+    this.pipeName = pipeName;
+    this.status = status;
   }
 
-  public TPipeSinkInfo getPipeSinkInfo() {
-    return pipeSinkInfo;
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public PipeStatus getPipeStatus() {
+    return status;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftConfigNodeSerDeUtils.serializeTPipeSinkInfo(pipeSinkInfo, stream);
+    ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(status.getType(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeSinkInfo = ThriftConfigNodeSerDeUtils.deserializeTPipeSinkInfo(buffer);
+    pipeName = ReadWriteIOUtils.readString(buffer);
+    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
   }
 }

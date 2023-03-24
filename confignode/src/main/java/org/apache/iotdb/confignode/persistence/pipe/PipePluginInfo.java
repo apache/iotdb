@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -108,6 +109,11 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(String jarName) {
     return !pipePluginMetaKeeper.containsJar(jarName);
+  }
+
+  public boolean validatePluginForTask(TCreatePipeReq req) {
+    // TODO: validate the plugins in the create pipe Req.
+    return true;
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////

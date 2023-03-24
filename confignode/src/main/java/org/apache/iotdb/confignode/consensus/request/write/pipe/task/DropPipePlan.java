@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.sync;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -26,31 +26,31 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PreCreatePipePlan extends ConfigPhysicalPlan {
+public class DropPipePlan extends ConfigPhysicalPlan {
 
-  private PipeInfo pipeInfo;
+  private String pipeName;
 
-  public PreCreatePipePlan() {
-    super(ConfigPhysicalPlanType.PreCreatePipe);
+  public DropPipePlan() {
+    super(ConfigPhysicalPlanType.DropPipe);
   }
 
-  public PreCreatePipePlan(PipeInfo pipeInfo) {
+  public DropPipePlan(String pipeName) {
     this();
-    this.pipeInfo = pipeInfo;
+    this.pipeName = pipeName;
   }
 
-  public PipeInfo getPipeInfo() {
-    return pipeInfo;
+  public String getPipeName() {
+    return pipeName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    pipeInfo.serialize(stream);
+    BasicStructureSerDeUtil.write(pipeName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeInfo = PipeInfo.deserializePipeInfo(buffer);
+    pipeName = BasicStructureSerDeUtil.readString(buffer);
   }
 }

@@ -118,7 +118,7 @@ public enum ConfigPhysicalPlanType {
   CreatePipeSink((short) 900),
   DropPipeSink((short) 901),
   GetPipeSink((short) 902),
-  PreCreatePipe((short) 903),
+  CreatePipe((short) 903),
   SetPipeStatus((short) 904),
   DropPipe((short) 905),
   ShowPipe((short) 906),

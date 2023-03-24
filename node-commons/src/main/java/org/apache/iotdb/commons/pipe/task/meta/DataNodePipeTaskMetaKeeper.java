@@ -16,11 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.procedure.state.sync;
+package org.apache.iotdb.commons.pipe.task.meta;
 
-public enum OperatePipeState {
-  VALIDATE_TASK,
-  CALCULATE_INFO_FOR_TASK,
-  OPERATE_ON_DATA_NODES,
-  WRITE_CONFIG_NODE_CONSENSUS
+public class DataNodePipeTaskMetaKeeper extends PipeTaskMetaKeeper {
+  public static DataNodePipeTaskMetaKeeper getInstance() {
+    return DataNodePipeTaskMetaKeeper.DataNodePipeTaskMetaKeeperHolder.INSTANCE;
+  }
+
+  private static class DataNodePipeTaskMetaKeeperHolder {
+
+    private static final DataNodePipeTaskMetaKeeper INSTANCE = new DataNodePipeTaskMetaKeeper();
+
+    private DataNodePipeTaskMetaKeeperHolder() {
+      // empty constructor
+    }
+  }
 }

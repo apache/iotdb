@@ -35,9 +35,9 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTask;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -81,6 +81,9 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -90,8 +93,6 @@ import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRe
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -982,25 +983,47 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void PreCreatePipePlanTest() throws IOException {
-    PipeInfo pipeInfo =
-        new TsFilePipeInfo(
-            "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
-    PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
-    PreCreatePipePlan PreCreatePipePlan1 =
-        (PreCreatePipePlan)
-            ConfigPhysicalPlan.Factory.create(PreCreatePipePlan.serializeToByteBuffer());
-    Assert.assertEquals(PreCreatePipePlan.getPipeInfo(), PreCreatePipePlan1.getPipeInfo());
+  public void CreatePipePlanTest() throws IOException {
+    Map<String, String> collectorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+    collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
+    processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
+    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
+    DataRegionPipeTask dataRegionPipeTask = new DataRegionPipeTask(0, 0, 1, 3);
+    Map<Integer, DataRegionPipeTask> dataRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(1, dataRegionPipeTask);
+    PipeTaskMeta pipeTaskMeta =
+        new PipeTaskMeta(
+            "testPipe",
+            121,
+            PipeStatus.STOP,
+            collectorAttributes,
+            processorAttributes,
+            connectorAttributes,
+            dataRegionPipeTasks);
+    CreatePipePlan createPipePlan = new CreatePipePlan(pipeTaskMeta);
+    CreatePipePlan createPipePlan1 =
+        (CreatePipePlan) ConfigPhysicalPlan.Factory.create(createPipePlan.serializeToByteBuffer());
+    Assert.assertEquals(createPipePlan.getPipeTaskMeta(), createPipePlan1.getPipeTaskMeta());
   }
 
   @Test
-  public void SetPipeStatusPlan() throws IOException {
-    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PARTIAL_CREATE);
+  public void SetPipeStatusPlanTest() throws IOException {
+    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.RUNNING);
     SetPipeStatusPlan setPipeStatusPlan1 =
         (SetPipeStatusPlan)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlan.getPipeName(), setPipeStatusPlan1.getPipeName());
     Assert.assertEquals(setPipeStatusPlan.getPipeStatus(), setPipeStatusPlan1.getPipeStatus());
+  }
+
+  @Test
+  public void DropPipePlanTest() throws IOException {
+    DropPipePlan dropPipePlan = new DropPipePlan("demo");
+    DropPipePlan dropPipePlan1 =
+        (DropPipePlan) ConfigPhysicalPlan.Factory.create(dropPipePlan.serializeToByteBuffer());
+    Assert.assertEquals(dropPipePlan.getPipeName(), dropPipePlan1.getPipeName());
   }
 
   @Test

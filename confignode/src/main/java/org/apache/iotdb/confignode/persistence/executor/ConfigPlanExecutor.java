@@ -76,19 +76,14 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
@@ -112,7 +107,6 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -154,7 +148,6 @@ public class ConfigPlanExecutor {
   private final UDFInfo udfInfo;
 
   private final TriggerInfo triggerInfo;
-  private final ClusterSyncInfo syncInfo;
 
   private final CQInfo cqInfo;
 
@@ -170,7 +163,6 @@ public class ConfigPlanExecutor {
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
-      ClusterSyncInfo syncInfo,
       CQInfo cqInfo,
       ModelInfo modelInfo,
       PipeInfo pipeInfo) {
@@ -194,9 +186,6 @@ public class ConfigPlanExecutor {
 
     this.udfInfo = udfInfo;
     this.snapshotProcessorList.add(udfInfo);
-
-    this.syncInfo = syncInfo;
-    this.snapshotProcessorList.add(syncInfo);
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
@@ -249,10 +238,6 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetTemplateSetInfo:
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
-      case GetPipeSink:
-        return syncInfo.getPipeSink((GetPipeSinkPlan) req);
-      case ShowPipe:
-        return syncInfo.showPipe((ShowPipePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:
@@ -385,18 +370,12 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.unsetSchemaTemplate((UnsetSchemaTemplatePlan) physicalPlan);
       case DropSchemaTemplate:
         return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
-      case CreatePipeSink:
-        return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
-      case DropPipeSink:
-        return syncInfo.dropPipeSink((DropPipeSinkPlan) physicalPlan);
-      case PreCreatePipe:
-        return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
+      case CreatePipe:
+        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlan) physicalPlan);
       case SetPipeStatus:
-        return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
+        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlan) physicalPlan);
       case DropPipe:
-        return syncInfo.dropPipe((DropPipePlan) physicalPlan);
-      case RecordPipeMessage:
-        return syncInfo.recordPipeMessage((RecordPipeMessagePlan) physicalPlan);
+        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

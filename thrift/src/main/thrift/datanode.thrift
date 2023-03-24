@@ -349,7 +349,11 @@ struct TCountPathsUsingTemplateResp{
 }
 
 struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeInfo
+  1: required string pipeName
+  2: optional map<string, string> collectorAttributes
+  3: optional map<string, string> processorAttributes
+  4: required map<string, string> connectorAttributes
+  5: required map<i32, i32> regionGroupToLeaderMap
 }
 
 struct TOperatePipeOnDataNodeReq {
@@ -733,11 +737,6 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
-
- /**
-  * Start, stop or drop PIPE on DataNode for rollback
-  */
-  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
 
  /**
   * Execute CQ on DataNode
