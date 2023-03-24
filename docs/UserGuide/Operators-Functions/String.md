@@ -407,6 +407,54 @@ Output series:
 +-----------------------------+--------------+----------------------------------------------+
 ```
 
+## replace
+
+### Usage
+
+Replace a substring in the input sequence with the target substring.
+
+**Name:** SUBSTRING
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
++ first parameter: The target substring to be replaced.
++ second parameter: The substring to replace with.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, replace(s1, 'es', 'tt') from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+----------------------------------------------+
+|                         Time|root.sg1.d1.s1|  REPLACE(root.sg1.d1.s1, 'es', 'tt')         |
++-----------------------------+--------------+----------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                        1tttt1|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                      22tttt22|
++-----------------------------+--------------+----------------------------------------------+
+```
+
 ## Upper
 
 ### Usage
