@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.common.index;
 
-/** */
 public interface ComparableConsensusRequest {
   ConsensusIndex getConsensusIndex();
 
