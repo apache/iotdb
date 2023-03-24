@@ -20,6 +20,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.common.index.ComparableConsensusRequest;
+import org.apache.iotdb.consensus.common.index.ConsensusIndex;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -31,7 +33,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -47,7 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode {
+public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
@@ -82,6 +83,8 @@ public abstract class InsertNode extends WritePlanNode {
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
+
+  private ConsensusIndex consensusIndex;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -167,12 +170,24 @@ public abstract class InsertNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    ReadWriteIOUtils.write(consensusIndex != null, byteBuffer);
+    if (consensusIndex != null) {
+      consensusIndex.serialize(byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    ReadWriteIOUtils.write(consensusIndex != null, stream);
+    if (consensusIndex != null) {
+      consensusIndex.serialize(stream);
+    }
+  }
+
+  protected void deserializeInsertNodeAttributes(ByteBuffer byteBuffer) {
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      consensusIndex = ConsensusIndex.deserializeFrom(byteBuffer);
+    }
   }
 
   // region Serialization methods for WAL
@@ -368,6 +383,20 @@ public abstract class InsertNode extends WritePlanNode {
       this.cause = cause;
     }
   }
+  // endregion
+
+  // region consensus index
+
+  @Override
+  public ConsensusIndex getConsensusIndex() {
+    return consensusIndex;
+  }
+
+  @Override
+  public void setConsensusIndex(ConsensusIndex consensusIndex) {
+    this.consensusIndex = consensusIndex;
+  }
+
   // endregion
 
   @Override

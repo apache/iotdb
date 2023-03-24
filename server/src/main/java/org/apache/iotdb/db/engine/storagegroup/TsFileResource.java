@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.index.ConsensusIndex;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -153,6 +154,8 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
+  private ConsensusIndexRecorder consensusIndexRecorder;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
@@ -170,6 +173,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
+    this.consensusIndexRecorder = other.consensusIndexRecorder;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -243,6 +247,9 @@ public class TsFileResource {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
       }
+      if (consensusIndexRecorder != null) {
+        consensusIndexRecorder.serialize(outputStream);
+      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
@@ -264,6 +271,10 @@ public class TsFileResource {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
         }
+      }
+      if (inputStream.available() > 0) {
+        consensusIndexRecorder = new ConsensusIndexRecorder();
+        consensusIndexRecorder.deserialize(inputStream);
       }
     }
 
@@ -309,6 +320,10 @@ public class TsFileResource {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
         }
+      }
+      if (inputStream.available() > 0) {
+        consensusIndexRecorder = new ConsensusIndexRecorder();
+        consensusIndexRecorder.deserialize(inputStream);
       }
     }
   }
@@ -1109,5 +1124,59 @@ public class TsFileResource {
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
+  }
+
+  public void updateConsensusIndex(ConsensusIndex consensusIndex) {
+    if (consensusIndexRecorder == null) {
+      consensusIndexRecorder = new ConsensusIndexRecorder();
+    }
+    consensusIndexRecorder.update(consensusIndex);
+  }
+
+  private class ConsensusIndexRecorder {
+    private int indexTypes;
+    private List<ConsensusIndex> minIndex;
+    private List<ConsensusIndex> maxIndex;
+
+    public ConsensusIndexRecorder() {
+      indexTypes = 0;
+      minIndex = new ArrayList<>();
+      maxIndex = new ArrayList<>();
+    }
+
+    public void update(ConsensusIndex index) {
+      for (int i = 0; i < indexTypes; i++) {
+        switch (index.compareTo(minIndex.get(i))) {
+          case SMALLER:
+            minIndex.set(i, index);
+            return;
+          case GREATER:
+            if (index.compareTo(maxIndex.get(i)) == ConsensusIndex.CompareResult.GREATER) {
+              maxIndex.set(i, index);
+            }
+          case EQUAL:
+            DEBUG_LOGGER.warn(String.format("Equal consensus index %s.", index));
+        }
+      }
+      indexTypes += 1;
+      minIndex.add(index);
+      maxIndex.add(index);
+    }
+
+    public void serialize(OutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(indexTypes, stream);
+      for (int i = 0; i < indexTypes; i++) {
+        minIndex.get(i).serialize(stream);
+        maxIndex.get(i).serialize(stream);
+      }
+    }
+
+    public void deserialize(InputStream stream) throws IOException {
+      indexTypes = ReadWriteIOUtils.readInt(stream);
+      for (int i = 0; i < indexTypes; i++) {
+        minIndex.add(ConsensusIndex.deserializeFrom(stream));
+        maxIndex.add(ConsensusIndex.deserializeFrom(stream));
+      }
+    }
   }
 }

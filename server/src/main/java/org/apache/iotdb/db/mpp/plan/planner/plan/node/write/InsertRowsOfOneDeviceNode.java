@@ -234,6 +234,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodeList);
     insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndex);
     insertRowsOfOneDeviceNode.setDevicePath(devicePath);
+    insertRowsOfOneDeviceNode.deserializeInsertNodeAttributes(byteBuffer);
     return insertRowsOfOneDeviceNode;
   }
 
@@ -251,6 +252,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, byteBuffer);
     }
+
+    super.serializeAttributes(byteBuffer);
   }
 
   @Override
@@ -267,6 +270,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
+
+    super.serializeAttributes(stream);
   }
 
   @Override

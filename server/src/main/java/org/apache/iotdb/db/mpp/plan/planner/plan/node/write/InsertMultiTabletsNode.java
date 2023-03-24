@@ -223,6 +223,7 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     InsertMultiTabletsNode insertMultiTabletsNode = new InsertMultiTabletsNode(planNodeId);
     insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
     insertMultiTabletsNode.setParentInsertTabletNodeIndexList(parentIndex);
+    insertMultiTabletsNode.deserializeInsertNodeAttributes(byteBuffer);
     return insertMultiTabletsNode;
   }
 
@@ -238,6 +239,8 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     for (Integer index : parentInsertTabletNodeIndexList) {
       ReadWriteIOUtils.write(index, byteBuffer);
     }
+
+    super.serializeAttributes(byteBuffer);
   }
 
   @Override
@@ -252,6 +255,8 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     for (Integer index : parentInsertTabletNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
+
+    super.serializeAttributes(stream);
   }
 
   @Override

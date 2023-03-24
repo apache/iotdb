@@ -195,6 +195,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     InsertRowsNode insertRowsNode = new InsertRowsNode(planNodeId);
     insertRowsNode.setInsertRowNodeList(insertRowNodeList);
     insertRowsNode.setInsertRowNodeIndexList(insertRowNodeIndex);
+    insertRowsNode.deserializeInsertNodeAttributes(byteBuffer);
     return insertRowsNode;
   }
 
@@ -210,6 +211,8 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, byteBuffer);
     }
+
+    super.serializeAttributes(byteBuffer);
   }
 
   @Override
@@ -224,6 +227,8 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
+
+    super.serializeAttributes(stream);
   }
 
   @Override
