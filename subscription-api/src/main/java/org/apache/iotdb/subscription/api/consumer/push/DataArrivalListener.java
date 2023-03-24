@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.subscription.api.consumer.push;
 
-import org.apache.iotdb.subscription.api.dataset.SubscriptionDataSet;
+import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
 import java.util.List;
@@ -33,5 +33,5 @@ public interface DataArrivalListener {
    * @param subscriptionDataSets the data
    * @throws SubscriptionException if the data cannot be handled
    */
-  void onDataArrival(List<SubscriptionDataSet> subscriptionDataSets) throws SubscriptionException;
+  void onDataArrival(List<ISubscriptionDataSet> subscriptionDataSets) throws SubscriptionException;
 }

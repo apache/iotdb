@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.subscription.api;
 
-import org.apache.iotdb.subscription.api.consumer.pull.PullConsumer;
-import org.apache.iotdb.subscription.api.consumer.push.PushConsumer;
+import org.apache.iotdb.subscription.api.consumer.pull.IPullConsumer;
+import org.apache.iotdb.subscription.api.consumer.push.IPushConsumer;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
-public interface SubscriptionFactory {
+public interface ISubscriptionFactory {
 
   /**
    * Create a push consumer.
@@ -32,7 +32,7 @@ public interface SubscriptionFactory {
    * @return push consumer
    * @throws SubscriptionException if the subscription configuration is not valid
    */
-  PushConsumer createPushConsumer(SubscriptionConfiguration subscriptionConfiguration)
+  IPushConsumer createPushConsumer(SubscriptionConfiguration subscriptionConfiguration)
       throws SubscriptionException;
 
   /**
@@ -42,6 +42,6 @@ public interface SubscriptionFactory {
    * @return pull consumer
    * @throws SubscriptionException if the subscription configuration is not valid
    */
-  PullConsumer createPullConsumer(SubscriptionConfiguration subscriptionConfiguration)
+  IPullConsumer createPullConsumer(SubscriptionConfiguration subscriptionConfiguration)
       throws SubscriptionException;
 }

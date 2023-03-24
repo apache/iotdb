@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.subscription.api.consumer.push;
 
-import org.apache.iotdb.subscription.api.consumer.Consumer;
+import org.apache.iotdb.subscription.api.consumer.IConsumer;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
-public interface PushConsumer extends Consumer {
+public interface IPushConsumer extends IConsumer {
 
   /**
    * Register a listener to listen to the data arrival. The method should be called before the

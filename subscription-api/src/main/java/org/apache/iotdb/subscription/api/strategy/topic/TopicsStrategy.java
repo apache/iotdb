@@ -21,4 +21,8 @@ package org.apache.iotdb.subscription.api.strategy.topic;
 
 import org.apache.iotdb.subscription.api.strategy.SubscriptionStrategy;
 
-public interface TopicsStrategy extends SubscriptionStrategy {}
+import java.util.List;
+
+public interface TopicsStrategy extends SubscriptionStrategy {
+  List<String> getTopics();
+}

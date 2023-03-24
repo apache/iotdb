@@ -41,6 +41,7 @@ public class MultipleConnectionStrategy implements TopicsStrategy {
     this.topics.addAll(Arrays.asList(topics));
   }
 
+  @Override
   public List<String> getTopics() {
     return topics;
   }

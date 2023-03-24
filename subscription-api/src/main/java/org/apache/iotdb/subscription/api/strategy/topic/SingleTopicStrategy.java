@@ -25,11 +25,12 @@ import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.commons.lang3.StringUtils;
 
-public class SingleTopicStrategy implements TopicsStrategy {
+public class SingleTopicStrategy extends MultipleConnectionStrategy implements TopicsStrategy {
 
   private final String topic;
 
   public SingleTopicStrategy(String topic) {
+    super(topic);
     this.topic = topic;
   }
 

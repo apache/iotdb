@@ -25,6 +25,8 @@ import org.apache.iotdb.subscription.api.strategy.topic.TopicsStrategy;
 
 public class SubscriptionConfiguration {
 
+  private String localHost;
+  private Integer localPort;
   private String host;
   private Integer port;
   private String username;
@@ -36,6 +38,12 @@ public class SubscriptionConfiguration {
   private SubscriptionConfiguration() {}
 
   private void check() throws SubscriptionException {
+    if (localHost == null) {
+      throw new SubscriptionException("localHost is not set!");
+    }
+    if (localPort == null) {
+      throw new SubscriptionException("localPort is not set!");
+    }
     if (host == null) {
       throw new SubscriptionException("Host is not set!");
     }
@@ -47,9 +55,6 @@ public class SubscriptionConfiguration {
     }
     if (password == null) {
       throw new SubscriptionException("Password is not set!");
-    }
-    if (group == null) {
-      throw new SubscriptionException("Group is not set!");
     }
 
     if (disorderHandlingStrategy == null) {
@@ -63,12 +68,58 @@ public class SubscriptionConfiguration {
     topicStrategy.check();
   }
 
+  public String getLocalHost() {
+    return localHost;
+  }
+
+  public Integer getLocalPort() {
+    return localPort;
+  }
+
+  public String getHost() {
+    return host;
+  }
+
+  public Integer getPort() {
+    return port;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public String getGroup() {
+    return group;
+  }
+
+  public DisorderHandlingStrategy getDisorderHandlingStrategy() {
+    return disorderHandlingStrategy;
+  }
+
+  public TopicsStrategy getTopicStrategy() {
+    return topicStrategy;
+  }
+
   public static class Builder {
 
     private final SubscriptionConfiguration subscriptionConfiguration;
 
     public Builder() {
       subscriptionConfiguration = new SubscriptionConfiguration();
+    }
+
+    public Builder localHost(String localHost) {
+      subscriptionConfiguration.localHost = localHost;
+      return this;
+    }
+
+    public Builder localPort(int localPort) {
+      subscriptionConfiguration.localPort = localPort;
+      return this;
     }
 
     public Builder host(String host) {

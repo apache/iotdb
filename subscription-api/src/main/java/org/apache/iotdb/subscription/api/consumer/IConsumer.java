@@ -17,22 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.consumer.pull;
+package org.apache.iotdb.subscription.api.consumer;
 
-import org.apache.iotdb.subscription.api.consumer.Consumer;
-import org.apache.iotdb.subscription.api.dataset.SubscriptionDataSet;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
 import java.util.List;
 
-public interface PullConsumer extends Consumer {
+public interface IConsumer extends AutoCloseable {
+
+  /** Open the subscription. */
+  void openSubscription() throws SubscriptionException;
+
+  /** Close the subscription. */
+  void closeSubscription() throws SubscriptionException;
 
   /**
-   * Poll data from the subscription server.
+   * Check if the subscription is closed.
    *
-   * @param timeoutInMs timeout in milliseconds. If no data arrives in the given time, return null.
-   * @return a list of SubscriptionDataSets
-   * @throws SubscriptionException if any error occurs
+   * @return true if the subscription is closed, false otherwise
    */
-  List<SubscriptionDataSet> poll(long timeoutInMs) throws SubscriptionException;
+  boolean isClosed();
+
+  /**
+   * Get the consumer group of the subscription.
+   *
+   * @return the consumer group
+   * @throws SubscriptionException if the consumer group cannot be retrieved
+   */
+  String consumerGroup() throws SubscriptionException;
+
+  /**
+   * Get the topics of the subscription.
+   *
+   * @return the topics
+   * @throws SubscriptionException if the topics cannot be retrieved
+   */
+  List<String> subscription() throws SubscriptionException;
 }

@@ -17,6 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.dataset;
+package org.apache.iotdb.subscription.api.consumer.pull;
 
-public interface SubscriptionDataSet {}
+import org.apache.iotdb.subscription.api.consumer.IConsumer;
+import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
+import org.apache.iotdb.subscription.api.exception.SubscriptionException;
+
+import java.util.List;
+
+public interface IPullConsumer extends IConsumer {
+
+  /**
+   * Poll data from the subscription server.
+   *
+   * @param timeoutInMs timeout in milliseconds. If no data arrives in the given time, return null.
+   * @return a list of SubscriptionDataSets
+   * @throws SubscriptionException if any error occurs
+   */
+  List<ISubscriptionDataSet> poll(long timeoutInMs) throws SubscriptionException;
+}
