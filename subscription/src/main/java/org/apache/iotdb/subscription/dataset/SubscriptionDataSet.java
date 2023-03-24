@@ -28,7 +28,7 @@ import java.util.Optional;
 public class SubscriptionDataSet implements ISubscriptionDataSet {
   private Long time;
   private List<String> columnNames;
-  private List<String> columnTypes; // no deduplication
+  private List<String> columnTypes;
   private List<Object> dataResult;
   private IDataGetter dataGetter;
 
