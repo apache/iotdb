@@ -177,6 +177,9 @@ public class MemTableFlushTask {
       encodingTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       ioTaskFuture.cancel(true);
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw e;
     }
 

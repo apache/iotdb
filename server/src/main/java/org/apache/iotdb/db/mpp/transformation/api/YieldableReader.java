@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.api;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-
-import java.io.IOException;
-
 public interface YieldableReader {
 
-  YieldableState yield() throws IOException, QueryProcessException;
+  YieldableState yield() throws Exception;
 }

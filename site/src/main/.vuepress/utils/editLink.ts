@@ -44,10 +44,10 @@ const getBranch = (branch = 'master', path = '') => {
   if (path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
     return branch;
   }
-  const branchRex = /UserGuide\/(\d+\.\d+\.x)/;
+  const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
   if (branchRex.test(path)) {
     const tag = branchRex.exec(path)![1];
-    return `ref/${tag.replace('.x', '')}`;
+    return `rel/${tag.replace('.x', '')}`;
   }
   return branch;
 };
@@ -55,10 +55,10 @@ const getPath = (path: string) => {
   if (path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
     return path.replace('UserGuide/Master', 'UserGuide');
   }
-  const branchRex = /UserGuide\/(\d+\.\d+\.x)/;
+  const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
   if (branchRex.test(path)) {
     const tag = branchRex.exec(path)![1];
-    return path.replace(`UserGuide/${tag}`, 'UserGuide');
+    return path.replace(`UserGuide/V${tag}`, 'UserGuide');
   }
   return path;
 };

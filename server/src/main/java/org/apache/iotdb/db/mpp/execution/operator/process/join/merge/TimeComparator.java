@@ -25,4 +25,7 @@ public interface TimeComparator {
 
   /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
   long getCurrentEndTime(long time1, long time2);
+
+  /** @return time < endTime if order by time asc, time > endTime if order by desc */
+  boolean canContinue(long time, long endTime);
 }

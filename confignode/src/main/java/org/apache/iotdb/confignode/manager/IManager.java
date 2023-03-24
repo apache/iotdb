@@ -34,12 +34,12 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
@@ -188,6 +189,13 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get PipeManager
+   *
+   * @return PipeManager instance
+   */
+  PipeManager getPipeManager();
+
+  /**
    * Get RetryFailedTasksThread
    *
    * @return RetryFailedTasksThread instance
@@ -275,14 +283,14 @@ public interface IManager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan);
+  DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
+  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
 
   /**
    * Set Database
@@ -304,7 +312,7 @@ public interface IManager {
    * @param deletedPaths List<StringPattern>
    * @return status
    */
-  TSStatus deleteStorageGroups(List<String> deletedPaths);
+  TSStatus deleteDatabases(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition
@@ -428,6 +436,9 @@ public interface IManager {
   /** Show pipe plugins */
   TGetPipePluginTableResp getPipePluginTable();
 
+  /** Get pipe plugin jar */
+  TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
+
   /** Merge on all DataNodes */
   TSStatus merge();
 
@@ -474,7 +485,7 @@ public interface IManager {
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
    */
-  TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan);
+  TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan);
 
   /**
    * create schema template

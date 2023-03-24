@@ -96,7 +96,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock input = inputOperator.nextWithTimer();
     if (input == null) {
       return null;
@@ -194,12 +194,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return inputOperator.hasNextWithTimer();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return inputOperator.isFinished();
   }
 

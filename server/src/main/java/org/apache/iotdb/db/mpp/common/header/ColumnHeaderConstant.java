@@ -98,7 +98,7 @@ public class ColumnHeaderConstant {
 
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
-  public static final String PLUGIN_TYPE = "PluginType";
+  public static final String PLUGIN_JAR = "PluginJar";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -114,7 +114,7 @@ public class ColumnHeaderConstant {
   public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
   public static final String DEFAULT_TTL = "DefaultTTL(ms)";
   public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
-  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String DATA_REGION_PER_DATA_NODE = "DataRegionPerDataNode";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
 
@@ -126,6 +126,7 @@ public class ColumnHeaderConstant {
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
   public static final String TIME_SLOT_ID = "TimeSlotId";
   public static final String ROLE = "Role";
+  public static final String CREATE_TIME = "CreateTime";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -138,9 +139,12 @@ public class ColumnHeaderConstant {
   public static final String NAME = "Name";
 
   // column names for show pipe
-  public static final String CREATE_TIME = "CreateTime";
-  public static final String REMOTE = "Remote";
-  public static final String MESSAGE = "Message";
+  public static final String ID = "ID";
+  public static final String CREATION_TIME = "CreationTime";
+  public static final String PIPE_COLLECTOR = "PipeCollector";
+  public static final String PIPE_PROCESSOR = "PipeProcessor";
+  public static final String PIPE_CONNECTOR = "PipeConnector";
+  public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -332,8 +336,8 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
-          new ColumnHeader(PLUGIN_TYPE, TSDataType.TEXT),
-          new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(TEMPLATE_NAME, TSDataType.TEXT));
@@ -349,13 +353,13 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showPipeColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(NAME, TSDataType.TEXT),
-          new ColumnHeader(ROLE, TSDataType.TEXT),
-          new ColumnHeader(REMOTE, TSDataType.TEXT),
-          new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
-          new ColumnHeader(MESSAGE, TSDataType.TEXT));
+          new ColumnHeader(ID, TSDataType.TEXT),
+          new ColumnHeader(CREATION_TIME, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(PIPE_COLLECTOR, TSDataType.TEXT),
+          new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
+          new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

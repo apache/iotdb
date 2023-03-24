@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCac
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -231,6 +232,7 @@ public class NodeManager {
   }
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
+    getPipeManager().getPipePluginCoordinator().getPipePluginInfo().acquirePipePluginInfoLock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
 
@@ -241,12 +243,15 @@ public class NodeManager {
           getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
       runtimeConfiguration.setAllUDFInformation(
           getUDFManager().getUDFTable().getAllUDFInformation());
+      runtimeConfiguration.setAllPipeInformation(
+          getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
           DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
       getUDFManager().getUdfInfo().releaseUDFTableLock();
+      getPipeManager().getPipePluginCoordinator().getPipePluginInfo().releasePipePluginInfoLock();
     }
   }
 
@@ -976,6 +981,10 @@ public class NodeManager {
 
   private TriggerManager getTriggerManager() {
     return configManager.getTriggerManager();
+  }
+
+  private PipeManager getPipeManager() {
+    return configManager.getPipeManager();
   }
 
   private UDFManager getUDFManager() {

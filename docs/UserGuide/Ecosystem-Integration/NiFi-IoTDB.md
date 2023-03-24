@@ -106,7 +106,7 @@ The structure of property `Schema`:
 4. The property `Prefix` will be added to tsName as the field name when add data to IoTDB.
 5. The supported `dataTypes` are `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
 6. The supported `encoding` are `PLAIN`, `DICTIONARY`, `RLE`, `DIFF`, `TS_2DIFF`, `BITMAP`, `GORILLA_V1`, `REGULAR`, `GORILLA`.
-7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`.
+7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`, `ZSTD`.
 
 ## Relationships
 

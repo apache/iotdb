@@ -31,7 +31,6 @@ call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "creat
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function integralavg as 'org.apache.iotdb.library.dprofile.UDAFIntegralAvg'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function mad as 'org.apache.iotdb.library.dprofile.UDAFMad'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function median as 'org.apache.iotdb.library.dprofile.UDAFMedian'"
-call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function mode as 'org.apache.iotdb.library.dprofile.UDAFMode'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function percentile as 'org.apache.iotdb.library.dprofile.UDAFPercentile'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function quantile as 'org.apache.iotdb.library.dprofile.UDAFQuantile'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function period as 'org.apache.iotdb.library.dprofile.UDAFPeriod'"

@@ -100,7 +100,7 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
   public void setUp() throws Exception {
     super.setUp();
     if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
-      allocateMemoryForSchemaRegion(5500);
+      allocateMemoryForSchemaRegion(10000);
     }
     EnvFactory.getEnv().initClusterEnvironment();
     createSchema();

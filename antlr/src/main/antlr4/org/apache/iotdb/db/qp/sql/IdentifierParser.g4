@@ -155,8 +155,10 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
+    | ROUND
     | RUNNING
     | SCHEMA
     | SELECT
@@ -175,6 +177,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTRING
     | SYSTEM
     | TAGS
     | TASK
