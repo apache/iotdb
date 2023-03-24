@@ -19,7 +19,9 @@
 
 import os
 import time
+
 import torch.nn as nn
+
 from iotdb.mlnode.config import config
 from iotdb.mlnode.model_storage import model_storage
 
@@ -44,7 +46,7 @@ model_config = {
 def test_save_model():
     trial_id = 'tid_0'
     model_id = 'mid_test_model_save'
-    res = model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
+    model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
     assert os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id}.pt'))
 
 
@@ -72,5 +74,5 @@ def test_delete_trial():
     trial_id = 'tid_0'
     model_id = 'mid_test_model_delete'
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
-    model_storage.delete_model(model_id=model_id)
+    model_storage.delete_trial(model_id=model_id, trial_id=trial_id)
     assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), model_id, f'{trial_id}.pt'))

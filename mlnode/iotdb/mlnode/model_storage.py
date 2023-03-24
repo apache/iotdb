@@ -16,53 +16,47 @@
 # under the License.
 #
 
-
-import os
 import json
-import torch
+import os
 import shutil
+
+import torch
 import torch.nn as nn
 from pylru import lrucache
-from iotdb.mlnode.exception import ModelNotExistError
+
 from iotdb.mlnode.config import config
+from iotdb.mlnode.exception import ModelNotExistError
 
 
-# TODO: Add permission check firstly
-# TODO: Consider concurrency, maybe
 class ModelStorage(object):
-    def __init__(self,
-                 root_path: str,
-                 cache_size: int):
-        self.__model_dir = os.path.join(os.getcwd(), root_path)
+    def __init__(self):
+        self.__model_dir = os.path.join(os.getcwd(), config.get_mn_model_storage_dir())
         if not os.path.exists(self.__model_dir):
             os.mkdir(self.__model_dir)
-        self.__model_cache = lrucache(cache_size)
+
+        self.__model_cache = lrucache(config.get_mn_model_storage_cache_size())
 
     def save_model(self,
                    model: nn.Module,
                    model_config: dict,
                    model_id: str,
-                   trial_id: str) -> bool:
+                   trial_id: str) -> None:
         """
-        Return: True if successfully saved
-
         Note: model config for time series should contain 'input_len' and 'input_vars'
         """
-        fold_path = os.path.join(self.__model_dir, f'{model_id}')
-        if not os.path.exists(fold_path):
-            os.mkdir(fold_path)
+        model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
+        if not os.path.exists(model_dir_path):
+            os.mkdir(model_dir_path)
+        model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
+
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
-        try:
-            torch.jit.save(torch.jit.trace(model, sample_input),
-                           os.path.join(fold_path, f'{trial_id}.pt'),
-                           _extra_files={'model_config': json.dumps(model_config)})
-        except PermissionError:
-            return False
-        return True
+        torch.jit.save(torch.jit.trace(model, sample_input),
+                       model_file_path,
+                       _extra_files={'model_config': json.dumps(model_config)})
 
     def load_model(self, model_id: str, trial_id: str) -> (torch.jit.ScriptModule, dict):
         """
-        Return:
+        Returns:
             jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
             model_config: a dict contains model attributes
         """
@@ -79,35 +73,23 @@ class ModelStorage(object):
                 self.__model_cache[file_path] = jit_model, model_config
                 return jit_model, model_config
 
-    def _remove_from_cache(self, key: str):
-        if key in self.__model_cache:
-            del self.__model_cache[key]
+    def delete_model(self, model_id: str) -> None:
+        model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
+        if os.path.exists(model_dir_path):
+            for file_name in os.listdir(model_dir_path):
+                self.__remove_from_cache(os.path.join(model_dir_path, file_name))
+            shutil.rmtree(model_dir_path)
 
-    def delete_trial(self, model_id: str, trial_id: str) -> bool:
-        """
-        Return: True if successfully deleted
-        """
-        file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
-        self._remove_from_cache(file_path)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        return not os.path.exists(file_path)
+    def delete_trial(self, model_id: str, trial_id: str) -> None:
+        model_file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
+        self.__remove_from_cache(model_file_path)
+        if os.path.exists(model_file_path):
+            os.remove(model_file_path)
 
-    def delete_model(self, model_id: str) -> bool:
-        """
-        Return: True if successfully deleted
-        """
-        folder_path = os.path.join(self.__model_dir, f'{model_id}')
-        if os.path.exists(folder_path):
-            for file_name in os.listdir(folder_path):
-                self._remove_from_cache(os.path.join(folder_path, file_name))
-            shutil.rmtree(folder_path)
-        return not os.path.exists(folder_path)
-
-    def send_model(self):  # TODO: inference on db in future
-        pass
+    def __remove_from_cache(self, file_path: str) -> None:
+        if file_path in self.__model_cache:
+            del self.__model_cache[file_path]
 
 
 # initialize a singleton
-model_storage = ModelStorage(root_path=config.get_mn_model_storage_dir(),
-                             cache_size=config.get_mn_model_storage_cachesize())
+model_storage = ModelStorage()
