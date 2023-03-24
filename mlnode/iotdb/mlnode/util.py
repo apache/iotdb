@@ -24,6 +24,7 @@ from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 from iotdb.mlnode.constant import MLNODE_REQUEST_TEMPLATE
+from iotdb.mlnode.parser import ConfigParser
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
@@ -67,22 +68,51 @@ def parse_training_request(req: TCreateTrainingTaskReq):
         task_conf: configurations related to task
     """
     config = req.modelConfigs
-    config.update(model_id=str(req.modelId))
-    config.update(tuning=str(req.isAuto))
-    config.update(query_expressions=str(req.queryExpressions))
-    config.update(query_filter=str(req.queryFilter))
-
-    yaml_path = os.path.join(MLNODE_REQUEST_TEMPLATE, 'createTrainingTask.yml')
-    with open(yaml_path, 'r') as f:  # TODO: add exception check
-        default_confs = yaml.safe_load_all(f)
-        data_conf, model_conf, task_conf = tuple(default_confs)
-
+    config.update(model_id=req.modelId)
+    config.update(tuning=req.isAuto)
+    config.update(query_expressions=req.queryExpressions)
+    config.update(query_filter=req.queryFilter)
+    config.update(metric_names=eval(config['metric_names']))
+    data_conf_parser = ConfigParser('data')
+    data_conf_keys = vars(data_conf_parser.parse_args([])).keys()
+    model_conf_parser = ConfigParser('model')
+    model_conf_keys = vars(model_conf_parser.parse_args([])).keys()
+    task_conf_parser = ConfigParser('task')
+    task_conf_keys = vars(task_conf_parser.parse_args([])).keys()
+    data_args = []
+    model_args = []
+    task_args = []
     for k, v in config.items():
-        if k in data_conf.keys():
-            data_conf[k] = v if type(data_conf[k]) is str else eval(v)
-        if k in model_conf.keys():
-            model_conf[k] = v if type(model_conf[k]) is str else eval(v)
-        if k in task_conf.keys():
-            task_conf[k] = v if type(task_conf[k]) is str else eval(v)
-
+        if k in data_conf_keys:
+            data_args.append('--' + k)
+            data_args.append(v)
+        if k in model_conf_keys:
+            model_args.append('--' + k)
+            model_args.append(v)
+        if k in task_conf_keys:
+            task_args.append('--' + k)
+            task_args.append(v)
+    data_conf = vars(data_conf_parser.parse_args(data_args))
+    model_conf = vars(model_conf_parser.parse_args(model_args))
+    task_conf = vars(task_conf_parser.parse_args(task_args))
     return data_conf, model_conf, task_conf
+
+
+if __name__ == '__main__':
+    from client import *
+    modelId = 'mid_etth1_dlinear_default'
+    isAuto = False
+    modelConfigs = config_dlinear
+    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    queryFilter = '0,1501516800000'
+    req = TCreateTrainingTaskReq(
+        modelId=str(modelId),
+        isAuto=isAuto,
+        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
+        queryExpressions=[str(query) for query in queryExpressions],
+        queryFilter=str(queryFilter),
+    )
+    data_conf, model_conf, task_conf = parse_training_request(req)
+    print(data_conf)
+    print(model_conf)
+    print(task_conf)
