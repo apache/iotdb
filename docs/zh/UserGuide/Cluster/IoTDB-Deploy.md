@@ -23,56 +23,57 @@ alias "iotd=python3 <main.py's absolute path>"
 * 在`iotd/config` 目录下有集群配置的yaml文件，yaml文件名字就是集群名字yaml 文件可以有多个，为了方便用户配置yaml文件在iotd/config目录下面提供了`default_cluster.yaml`示例。
 * yaml 文件配置由`global`、`confignode_servers`、`datanode_servers`、`grafana_servers`(功能待开发)四大部分组成
 * global 是通用配置主要配置机器用户名密码、IoTDB本地安装文件、Jdk配置等。在`iotd/config`目录中提供了一个`default_cluster.yaml`样例数据，
-用户可以复制修改成自己集群名字并参考里面的说明进行配置iotdb集群
+用户可以复制修改成自己集群名字并参考里面的说明进行配置iotdb集群，在`default_cluster.yaml`样例中没有注释的均为必填项，已经注释的为非必填项。
 
 例如要执行`default_cluster.yaml`检查命令则需要执行命令`iotd cluster check default_cluster`即可，
 更多详细命令请参考下面命令列表。
 
-| 参数 | 说明 |
-| ---| --- | 
-|iotdb_zip_dir|IoTDB 部署分发目录，如果值为空则从`iotdb_download_url`指定地址下载|
-|iotdb_download_url|IoTDB 下载地址，如果`iotdb_zip_dir` 没有值则从指定地址下载|
-|jdk_tar_dir|jdk 本地目录，可使用该 jdk 路径进行上传部署至目标节点。|
-|jdk_deploy_dir|jdk 远程机器部署目录，会将 jdk 部署到目标节点该文件夹下最终部署完成的路径是`<jdk_deploy_dir>/jdk_iotdb`|
-|user|ssh登陆部署机器的用户名|
-|password|ssh登录的密码, 如果password未指定使用pkey登陆, 请确保已配置节点之间ssh登录免密钥|
-|pkey|密钥登陆如果password 有值优先使用password否则使用pkey登陆|
-|ssh_port|ssh登录端口|
-|deploy_dir|iotdb 部署目录，会把 iotdb 部署到目标节点该文件夹下最终部署完成的路径是`<deploy_dir>/iotdb`|
-|datanode-env.sh|对应`iotdb/config/datanode-env.sh`|
-|confignode-env.sh|对应`iotdb/config/confignode-env.sh`|
-|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`|
-
+| 参数 | 说明 |是否必填|
+| ---| --- | --- |
+|iotdb_zip_dir|IoTDB 部署分发目录，如果值为空则从`iotdb_download_url`指定地址下载|非必填|
+|iotdb_download_url|IoTDB 下载地址，如果`iotdb_zip_dir` 没有值则从指定地址下载|非必填|
+|jdk_tar_dir|jdk 本地目录，可使用该 jdk 路径进行上传部署至目标节点。|非必填|
+|jdk_deploy_dir|jdk 远程机器部署目录，会将 jdk 部署到目标节点该文件夹下最终部署完成的路径是`<jdk_deploy_dir>/jdk_iotdb`|非必填|
+|user|ssh登陆部署机器的用户名|必填|
+|password|ssh登录的密码, 如果password未指定使用pkey登陆, 请确保已配置节点之间ssh登录免密钥|非必填|
+|pkey|密钥登陆如果password 有值优先使用password否则使用pkey登陆|非必填|
+|ssh_port|ssh登录端口|必填|
+|deploy_dir|iotdb 部署目录，会把 iotdb 部署到目标节点该文件夹下最终部署完成的路径是`<deploy_dir>/iotdb`|必填|
+|datanode-env.sh|对应`iotdb/config/datanode-env.sh`|非必填|
+|confignode-env.sh|对应`iotdb/config/confignode-env.sh`|非必填|
+|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`|非必填|
+|cn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，在`global`与`confignode_servers`同时配置值时优先使用`confignode_servers`中的值，对应`iotdb/config/iotdb-confignode.properties`中的`cn_target_config_node_list`|必填|
+|dn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，在`global`与`datanode_servers`同时配置值时优先使用`datanode_servers`中的值，对应`iotdb/config/iotdb-datanode.properties`中的`dn_target_config_node_list`|必填|
 
 * confignode_servers 是部署IoTDB Confignodes配置，里面可以配置多个Confignode
 默认将第一个启动的ConfigNode节点node1当作Seed-ConfigNode
 
-| 参数 | 说明 |
-| ---| --- | 
-|name|Confignode 名称|
-|deploy_dir|IoTDB config node 部署目录，注:该目录不能与下面的IoTDB data node部署目录相同|
-|iotdb-confignode.properties|对应`iotdb/config/iotdb-confignode.properties`更加详细请参看`iotdb-confignode.properties`文件说明|
-|cn_internal_address|对应iotdb/内部通信地址，对应`iotdb/config/iotdb-confignode.properties`中的`cn_internal_address`|
-|cn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，对应`iotdb/config/iotdb-confignode.properties`中的`cn_target_config_node_list`|
-|cn_internal_port|内部通信端口，对应`iotdb/config/iotdb-confignode.properties`中的`cn_internal_port`|
-|cn_consensus_port|对应`iotdb/config/iotdb-confignode.properties`中的`cn_consensus_port`|
-|cn_data_dir|对应`iotdb/config/iotdb-confignode.properties`中的`cn_data_dir`|
-|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`在`global`与`confignode_servers`同时配置值优先使用confignode_servers中的值|
+| 参数 | 说明 |是否必填|
+| ---| --- | --- |
+|name|Confignode 名称|必填|
+|deploy_dir|IoTDB config node 部署目录，注:该目录不能与下面的IoTDB data node部署目录相同|必填｜
+|iotdb-confignode.properties|对应`iotdb/config/iotdb-confignode.properties`更加详细请参看`iotdb-confignode.properties`文件说明|非必填|
+|cn_internal_address|对应iotdb/内部通信地址，对应`iotdb/config/iotdb-confignode.properties`中的`cn_internal_address`|必填|
+|cn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，在`global`与`confignode_servers`同时配置值时优先使用`confignode_servers`中的值，对应`iotdb/config/iotdb-confignode.properties`中的`cn_target_config_node_list`|必填|
+|cn_internal_port|内部通信端口，对应`iotdb/config/iotdb-confignode.properties`中的`cn_internal_port`|必填|
+|cn_consensus_port|对应`iotdb/config/iotdb-confignode.properties`中的`cn_consensus_port`|非必填|
+|cn_data_dir|对应`iotdb/config/iotdb-confignode.properties`中的`cn_data_dir`|必填|
+|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`在`global`与`confignode_servers`同时配置值优先使用confignode_servers中的值|非必填|
 
 
 * datanode_servers 是部署IoTDB Datanodes配置，里面可以配置多个Datanode
 
-| 参数 | 说明 |
-| ---| --- | 
-|name|Datanode 名称|
-|deploy_dir|IoTDB data node 部署目录，注:该目录不能与下面的IoTDB config node部署目录相同|
-|iotdb-datanode.properties|对应`iotdb/config/iotdb-datanode.properties`更加详细请参看`iotdb-datanode.properties`文件说明|
-|dn_rpc_address|datanode rpc 地址对应`iotdb/config/iotdb-datanode.properties`中的`dn_rpc_address`|
-|dn_internal_address|内部通信地址，对应`iotdb/config/iotdb-datanode.properties`中的`dn_internal_address`|
-|dn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，对应`iotdb/config/iotdb-datanode.properties`中的`dn_target_config_node_list`|
-|dn_rpc_port|datanode rpc端口地址，对应`iotdb/config/iotdb-datanode.properties`中的`dn_rpc_port`|
-|dn_internal_port|内部通信端口，对应`iotdb/config/iotdb-datanode.properties`中的`dn_internal_port`|
-|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`在`global`与`datanode_servers`同时配置值优先使用`datanode_servers`中的值|
+| 参数 | 说明 |是否必填|
+| ---| --- |--- |
+|name|Datanode 名称|必填|
+|deploy_dir|IoTDB data node 部署目录，注:该目录不能与下面的IoTDB config node部署目录相同|必填|
+|iotdb-datanode.properties|对应`iotdb/config/iotdb-datanode.properties`更加详细请参看`iotdb-datanode.properties`文件说明|非必填|
+|dn_rpc_address|datanode rpc 地址对应`iotdb/config/iotdb-datanode.properties`中的`dn_rpc_address`|必填|
+|dn_internal_address|内部通信地址，对应`iotdb/config/iotdb-datanode.properties`中的`dn_internal_address`|必填|
+|dn_target_config_node_list|集群配置地址指向存活的ConfigNode,默认指向confignode_x，在`global`与`datanode_servers`同时配置值时优先使用`datanode_servers`中的值，对应`iotdb/config/iotdb-datanode.properties`中的`dn_target_config_node_list`|必填|
+|dn_rpc_port|datanode rpc端口地址，对应`iotdb/config/iotdb-datanode.properties`中的`dn_rpc_port`|必填|
+|dn_internal_port|内部通信端口，对应`iotdb/config/iotdb-datanode.properties`中的`dn_internal_port`|必填|
+|iotdb-common.properties|对应`iotdb/config/iotdb-common.properties`在`global`与`datanode_servers`同时配置值优先使用`datanode_servers`中的值|非必填|
 
 * grafana_servers 是部署Grafana 相关配置
 该模块暂不支持
