@@ -18,4 +18,8 @@
 
 -r requirements.txt
 # Pytest to run tests
-pytest==7.2.0
+
+pytest
+thrift
+dynaconf
+torch
