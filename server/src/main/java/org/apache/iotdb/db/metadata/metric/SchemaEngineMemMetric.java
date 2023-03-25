@@ -39,6 +39,8 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
 
+  private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
+
   private final MemSchemaEngineStatistics engineStatistics;
 
   public SchemaEngineMemMetric(MemSchemaEngineStatistics engineStatistics) {
@@ -54,6 +56,13 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         ISchemaEngineStatistics::getTotalSeriesNumber,
         Tag.NAME.toString(),
         TIME_SERES_CNT);
+    metricService.createAutoGauge(
+        Metric.QUANTITY.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        ISchemaEngineStatistics::getTemplateSeriesNumber,
+        Tag.NAME.toString(),
+        TEMPLATE_SERIES_CNT);
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -100,7 +109,12 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
+        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), TIME_SERES_CNT);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUANTITY.toString(),
+        Tag.NAME.toString(),
+        TEMPLATE_SERIES_CNT);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),

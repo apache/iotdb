@@ -570,6 +570,10 @@ ROOT
     : R O O T
     ;
 
+ROUND
+    : R O U N D
+    ;
+
 RUNNING
     : R U N N I N G
     ;
@@ -640,6 +644,10 @@ STATEMENT
 
 STOP
     : S T O P
+    ;
+
+SUBSTRING
+    : S U B S T R I N G
     ;
 
 SYSTEM

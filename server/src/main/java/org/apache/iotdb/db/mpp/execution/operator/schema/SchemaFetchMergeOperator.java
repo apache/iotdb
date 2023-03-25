@@ -66,7 +66,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (isReadingStorageGroupInfo) {
       isReadingStorageGroupInfo = false;
       return generateStorageGroupInfo();
@@ -81,7 +81,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return isReadingStorageGroupInfo || currentIndex < childrenCount;
   }
 
@@ -93,7 +93,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

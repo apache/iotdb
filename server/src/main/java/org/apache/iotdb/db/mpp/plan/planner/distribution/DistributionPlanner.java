@@ -103,11 +103,32 @@ public class DistributionPlanner {
       return;
     }
 
+    if (analysis.isVirtualSource()) {
+      adjustUpStreamHelper(root, context);
+      return;
+    }
+
     final boolean needShuffleSinkNode =
         analysis.getStatement() instanceof QueryStatement
             && needShuffleSinkNode((QueryStatement) analysis.getStatement(), context);
 
     adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
+  }
+
+  private void adjustUpStreamHelper(PlanNode root, NodeGroupContext context) {
+    for (PlanNode child : root.getChildren()) {
+      adjustUpStreamHelper(child, context);
+      if (child instanceof ExchangeNode) {
+        ExchangeNode exchangeNode = (ExchangeNode) child;
+        MultiChildrenSinkNode newChild =
+            new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
+        newChild.addChild(exchangeNode.getChild());
+        newChild.addDownStreamChannelLocation(
+            new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
+        exchangeNode.setChild(newChild);
+        exchangeNode.setIndexOfUpstreamSinkHandle(newChild.getCurrentLastIndex());
+      }
+    }
   }
 
   private void adjustUpStreamHelper(

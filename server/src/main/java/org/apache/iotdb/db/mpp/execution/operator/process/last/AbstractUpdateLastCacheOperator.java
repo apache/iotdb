@@ -81,12 +81,12 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return child.hasNextWithTimer();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return child.isFinished();
   }
 
