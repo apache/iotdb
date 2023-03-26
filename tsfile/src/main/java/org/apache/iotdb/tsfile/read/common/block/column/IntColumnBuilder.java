@@ -32,7 +32,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calcul
 
 public class IntColumnBuilder implements ColumnBuilder {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(IntColumnBuilder.class).instanceSize();
   public static final IntColumn NULL_VALUE_BLOCK =
       new IntColumn(0, 1, new boolean[] {true}, new int[1]);

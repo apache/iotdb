@@ -33,7 +33,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calcul
 
 public class BinaryColumnBuilder implements ColumnBuilder {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(BinaryColumnBuilder.class).instanceSize();
 
   private final ColumnBuilderStatus columnBuilderStatus;

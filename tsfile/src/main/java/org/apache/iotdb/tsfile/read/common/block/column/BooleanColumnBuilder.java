@@ -32,7 +32,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calcul
 
 public class BooleanColumnBuilder implements ColumnBuilder {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(BooleanColumnBuilder.class).instanceSize();
   public static final BooleanColumn NULL_VALUE_BLOCK =
       new BooleanColumn(0, 1, new boolean[] {true}, new boolean[1]);

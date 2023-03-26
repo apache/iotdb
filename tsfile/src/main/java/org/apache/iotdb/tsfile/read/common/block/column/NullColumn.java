@@ -31,7 +31,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
  */
 public class NullColumn implements Column {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(BooleanColumn.class).instanceSize();
 
   private final int positionCount;
@@ -119,7 +119,7 @@ public class NullColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
+  public long getInstanceSize() {
     return INSTANCE_SIZE;
   }
 }

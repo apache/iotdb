@@ -212,7 +212,7 @@
         jol v0.4: time cost is 980ms,
         jol v0.14, time cost is 1600ms
         -->
-        <jol-core.version>0.2</jol-core.version>
+        <jol-core.version>0.16</jol-core.version>
         <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
         <mqtt-client.version>1.12</mqtt-client.version>
         <google.code.findbugs.jsr305.version>3.0.2</google.code.findbugs.jsr305.version>

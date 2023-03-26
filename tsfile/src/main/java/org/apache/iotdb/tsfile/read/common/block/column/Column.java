@@ -150,5 +150,5 @@ public interface Column {
   /** reverse the column */
   void reverse();
 
-  int getInstanceSize();
+  long getInstanceSize();
 }

@@ -32,7 +32,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class DoubleColumn implements Column {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(DoubleColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Double.BYTES + Byte.BYTES;
 
@@ -163,7 +163,7 @@ public class DoubleColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
+  public long getInstanceSize() {
     return INSTANCE_SIZE;
   }
 }

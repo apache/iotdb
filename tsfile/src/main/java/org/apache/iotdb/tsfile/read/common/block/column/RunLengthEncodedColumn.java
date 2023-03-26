@@ -32,7 +32,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class RunLengthEncodedColumn implements Column {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(RunLengthEncodedColumn.class).instanceSize();
 
   private final Column value;
@@ -210,7 +210,7 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
+  public long getInstanceSize() {
     return INSTANCE_SIZE;
   }
 }

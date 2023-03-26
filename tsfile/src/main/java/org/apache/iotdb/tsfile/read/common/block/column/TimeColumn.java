@@ -144,7 +144,7 @@ public class TimeColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
-    return (int) INSTANCE_SIZE;
+  public long getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }
