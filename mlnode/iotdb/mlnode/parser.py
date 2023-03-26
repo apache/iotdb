@@ -1,13 +1,30 @@
 import argparse
 
 
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 class ConfigParser(argparse.ArgumentParser):
     def __init__(self, config_type='data', *args, **kwargs):
         super(ConfigParser, self).__init__(*args, **kwargs)
         if config_type == 'data':
             self.add_argument('--source_type', type=str, default='file')
             self.add_argument('--filename', type=str, default='dataset/ETT-small/ETTh1.csv')
-            self.add_argument('--query_expressions', type=list, default=['root.eg.etth1.s0','root.eg.etth1.s1'])
+            self.add_argument('--query_expressions', type=list, default=['root.eg.etth1.s0', 'root.eg.etth1.s1'])
             self.add_argument('--query_filter', type=str, default='-1,1501516800000')
             self.add_argument('--dataset_type', type=str, default='window')
             self.add_argument('--time_embed', type=str, default='h')
@@ -47,6 +64,3 @@ class ConfigParser(argparse.ArgumentParser):
             self.add_argument('--metric_names', type=list, default=['MSE', 'MAE'])
         else:
             raise NotImplementedError
-
-
-

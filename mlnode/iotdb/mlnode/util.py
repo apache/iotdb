@@ -17,13 +17,10 @@
 #
 
 
-import os
-import yaml
 from iotdb.mlnode.exception import BadNodeUrlError
-from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
-from iotdb.mlnode.constant import MLNODE_REQUEST_TEMPLATE
+from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ConfigParser
 
 
@@ -99,10 +96,28 @@ def parse_training_request(req: TCreateTrainingTaskReq):
 
 
 if __name__ == '__main__':
-    from client import *
+    from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
+
     modelId = 'mid_etth1_dlinear_default'
     isAuto = False
-    modelConfigs = config_dlinear
+    modelConfigs = {
+        'task_class': 'forecast_training_task',
+        'source_type': 'thrift',
+        'dataset_type': 'window',
+        'time_embed': 'h',
+        'input_len': 96,
+        'pred_len': 96,
+        'model_name': 'dlinear',
+        'input_vars': 7,
+        'output_vars': 7,
+        'task_type': 'm',
+        'kernel_size': 25,
+        'learning_rate': 1e-3,
+        'batch_size': 32,
+        'num_workers': 0,
+        'epochs': 10,
+        'metric_names': ['MSE', 'MAE']
+    }
     queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
     queryFilter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
