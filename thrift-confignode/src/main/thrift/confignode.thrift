@@ -581,7 +581,7 @@ struct TGetPathsSetTemplatesResp {
 
 // SYNC
 struct TRecordPipeMessageReq{
-  1: required string pipeName
+  1: required string pipeSinkName
   2: required binary message
 }
 
@@ -601,7 +601,7 @@ struct TGetAllPipeInfoResp{
 }
 
 struct TCreatePipeReq {
-    1: required string pipeName
+    1: required string pipeSinkName
     2: optional map<string, string> collectorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
@@ -627,7 +627,7 @@ struct TGetPipeSinkResp {
 }
 
 struct TShowPipeReq {
-  1: optional string pipeName
+  1: optional string pipeSinkName
   2: optional bool whereClause
 }
 
@@ -1239,13 +1239,13 @@ service IConfigNodeRPCService {
   common.TSStatus createPipe(TCreatePipeReq req)
 
   /** Start Pipe */
-  common.TSStatus startPipe(string pipeName)
+  common.TSStatus startPipe(string pipeSinkName)
 
   /** Stop Pipe */
-  common.TSStatus stopPipe(string pipeName)
+  common.TSStatus stopPipe(string pipeSinkName)
 
   /** Drop Pipe */
-  common.TSStatus dropPipe(string pipeName)
+  common.TSStatus dropPipe(string pipeSinkName)
 
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)

@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -91,10 +91,11 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
 
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan(pipeName, PipeStatus.RUNNING);
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(setPipeStatusPlan);
+        configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
@@ -163,10 +164,11 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
     // Stop pipe
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan(pipeName, PipeStatus.STOP);
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2(pipeName, PipeStatus.STOP);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(setPipeStatusPlan);
+        configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }

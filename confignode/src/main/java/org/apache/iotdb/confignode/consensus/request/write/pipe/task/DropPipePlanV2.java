@@ -26,15 +26,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DropPipePlan extends ConfigPhysicalPlan {
+public class DropPipePlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
 
-  public DropPipePlan() {
-    super(ConfigPhysicalPlanType.DropPipe);
+  public DropPipePlanV2() {
+    super(ConfigPhysicalPlanType.DropPipeV2);
   }
 
-  public DropPipePlan(String pipeName) {
+  public DropPipePlanV2(String pipeName) {
     this();
     this.pipeName = pipeName;
   }

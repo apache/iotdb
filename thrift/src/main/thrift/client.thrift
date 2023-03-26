@@ -437,7 +437,7 @@ struct TCreateTimeseriesOfSchemaTemplateReq{
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
   // Sender needs to tell receiver its identity.
-  1:required string pipeName
+  1:required string pipeSinkName
   2:required i64 createTime
   // The version of sender and receiver need to be the same.
   3:required string version

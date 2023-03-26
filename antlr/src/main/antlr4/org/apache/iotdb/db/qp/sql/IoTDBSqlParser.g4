@@ -845,23 +845,23 @@ dropPipeSink
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=identifier collectorAttributesClause? processorAttributesClause? connectorAttributesClause
+    : CREATE PIPE pipeSinkName=identifier collectorAttributesClause? processorAttributesClause? connectorAttributesClause
     ;
 
 showPipe
-    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
+    : SHOW ((PIPE pipeSinkName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeSinkName=identifier)?)
     ;
 
 stopPipe
-    : STOP PIPE pipeName=identifier
+    : STOP PIPE pipeSinkName=identifier
     ;
 
 startPipe
-    : START PIPE pipeName=identifier
+    : START PIPE pipeSinkName=identifier
     ;
 
 dropPipe
-    : DROP PIPE pipeName=identifier
+    : DROP PIPE pipeSinkName=identifier
     ;
 
 // attribute clauses

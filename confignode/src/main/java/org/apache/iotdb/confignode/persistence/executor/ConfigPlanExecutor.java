@@ -76,9 +76,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -370,12 +370,12 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.unsetSchemaTemplate((UnsetSchemaTemplatePlan) physicalPlan);
       case DropSchemaTemplate:
         return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
-      case CreatePipe:
-        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlan) physicalPlan);
-      case SetPipeStatus:
-        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlan) physicalPlan);
-      case DropPipe:
-        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlan) physicalPlan);
+      case CreatePipeV2:
+        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlanV2) physicalPlan);
+      case SetPipeStatusV2:
+        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
+      case DropPipeV2:
+        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -396,6 +396,15 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:
         return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
+      case CreatePipeSink:
+      case DropPipe:
+      case DropPipeSink:
+      case GetPipeSink:
+      case PreCreatePipe:
+      case RecordPipeMessage:
+      case SetPipeStatus:
+      case ShowPipe:
+        return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

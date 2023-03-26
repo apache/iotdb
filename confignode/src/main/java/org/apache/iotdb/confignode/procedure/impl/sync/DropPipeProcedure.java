@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -90,10 +90,10 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
 
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final DropPipePlan dropPipePlan = new DropPipePlan(pipeName);
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2(pipeName);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(dropPipePlan);
+        configNodeManager.getConsensusManager().write(dropPipePlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }

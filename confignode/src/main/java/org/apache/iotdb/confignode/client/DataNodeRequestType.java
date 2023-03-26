@@ -68,6 +68,8 @@ public enum DataNodeRequestType {
 
   /** Sync */
   CREATE_PIPE,
+  // DROP_PIPE, START_PIPE, STOP_PIPE
+  // Merge them into OPERATE_PIPE since these requests requires only pipe name
   OPERATE_PIPE,
 
   /** CQ */

@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -75,17 +75,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Task Management ///////////////////////////////
 
-  public TSStatus createPipe(CreatePipePlan plan) {
+  public TSStatus createPipe(CreatePipePlanV2 plan) {
     pipeTaskMetaKeeper.addPipeTaskMeta(plan.getPipeTaskMeta());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus setPipeStatus(SetPipeStatusPlan plan) {
+  public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
     pipeTaskMetaKeeper.getPipeTaskMeta(plan.getPipeName()).setStatus(plan.getPipeStatus());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus dropPipe(DropPipePlan plan) {
+  public TSStatus dropPipe(DropPipePlanV2 plan) {
     pipeTaskMetaKeeper.removePipeTaskMeta(plan.getPipeName());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

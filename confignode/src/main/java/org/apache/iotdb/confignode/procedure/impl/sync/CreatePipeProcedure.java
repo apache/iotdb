@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -104,10 +104,10 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     LOGGER.info("Start to create PIPE [{}] on Config Nodes", req.getPipeName());
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final CreatePipePlan createPipePlan = new CreatePipePlan(parseInfoToPipeTaskMeta());
+    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(parseInfoToPipeTaskMeta());
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(createPipePlan);
+        configNodeManager.getConsensusManager().write(createPipePlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
@@ -194,10 +194,10 @@ public class CreatePipeProcedure extends AbstractOperatePipeProcedure {
     // Drop pipe
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final DropPipePlan dropPipePlan = new DropPipePlan(req.getPipeName());
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2(req.getPipeName());
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(dropPipePlan);
+        configNodeManager.getConsensusManager().write(dropPipePlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }

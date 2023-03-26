@@ -27,16 +27,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CreatePipePlan extends ConfigPhysicalPlan {
+public class CreatePipePlanV2 extends ConfigPhysicalPlan {
 
   private PipeTaskMeta pipeTaskMeta;
 
-  public CreatePipePlan() {
-    super(ConfigPhysicalPlanType.CreatePipePlugin);
+  public CreatePipePlanV2() {
+    super(ConfigPhysicalPlanType.CreatePipeV2);
   }
 
-  public CreatePipePlan(PipeTaskMeta pipeTaskMeta) {
-    super(ConfigPhysicalPlanType.CreatePipePlugin);
+  public CreatePipePlanV2(PipeTaskMeta pipeTaskMeta) {
+    super(ConfigPhysicalPlanType.CreatePipeV2);
     this.pipeTaskMeta = pipeTaskMeta;
   }
 

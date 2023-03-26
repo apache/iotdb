@@ -114,11 +114,11 @@ public enum ConfigPhysicalPlanType {
   UnsetTemplate((short) 810),
   DropSchemaTemplate((short) 811),
 
-  /** Sync */
+  /** Old Sync, restored for upgrade */
   CreatePipeSink((short) 900),
   DropPipeSink((short) 901),
   GetPipeSink((short) 902),
-  CreatePipe((short) 903),
+  PreCreatePipe((short) 903),
   SetPipeStatus((short) 904),
   DropPipe((short) 905),
   ShowPipe((short) 906),
@@ -154,7 +154,12 @@ public enum ConfigPhysicalPlanType {
   CreatePipePlugin((short) 1300),
   DropPipePlugin((short) 1301),
   GetPipePluginTable((short) 1302),
-  GetPipePluginJar((short) 1303);
+  GetPipePluginJar((short) 1303),
+
+  /** New Pipe */
+  CreatePipeV2((short) 1401),
+  SetPipeStatusV2((short) 904),
+  DropPipeV2((short) 905);
 
   private final short planType;
 

@@ -349,7 +349,7 @@ struct TCountPathsUsingTemplateResp{
 }
 
 struct TCreatePipeOnDataNodeReq{
-  1: required string pipeName
+  1: required string pipeSinkName
   2: optional map<string, string> collectorAttributes
   3: optional map<string, string> processorAttributes
   4: required map<string, string> connectorAttributes
@@ -357,7 +357,7 @@ struct TCreatePipeOnDataNodeReq{
 }
 
 struct TOperatePipeOnDataNodeReq {
-    1: required string pipeName
+    1: required string pipeSinkName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
     3: optional i64 createTime
