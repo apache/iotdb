@@ -289,7 +289,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   private static class Location {
 
-    private static final int INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
+    private static final long INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
     int tsBlockIndex;
     int rowIndex;
 
