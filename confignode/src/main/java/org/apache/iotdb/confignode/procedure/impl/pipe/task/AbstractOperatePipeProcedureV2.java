@@ -36,7 +36,8 @@ import org.slf4j.LoggerFactory;
 abstract class AbstractOperatePipeProcedureV2
     extends StateMachineProcedure<ConfigNodeProcedureEnv, OperatePipeState> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
 
   private static final int RETRY_THRESHOLD = 3;
 

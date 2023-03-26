@@ -18,31 +18,21 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
-import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
-import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class DropPipeProcedure extends AbstractOperatePipeProcedure {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedure.class);
+// Empty procedure for old sync, restored only for compatibility
+public class DropPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   private String pipeName;
 
@@ -50,94 +40,20 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
     super();
   }
 
-  public DropPipeProcedure(String pipeName) throws PipeException {
-    super();
-    this.pipeName = pipeName;
+  @Override
+  protected Procedure<ConfigNodeProcedureEnv>[] execute(
+      ConfigNodeProcedureEnv configNodeProcedureEnv)
+      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+    return new Procedure[0];
   }
 
   @Override
-  boolean validateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to validate PIPE [{}]", pipeName);
-    return env.getConfigManager()
-        .getPipeManager()
-        .getPipeInfo()
-        .checkOperatePipeTask(pipeName, SyncOperation.STOP_PIPE);
-  }
+  protected void rollback(ConfigNodeProcedureEnv configNodeProcedureEnv)
+      throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    // Do nothing
-  }
-
-  @Override
-  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to broadcast drop PIPE [{}] on Data Nodes", pipeName);
-
-    TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
-    }
-  }
-
-  @Override
-  void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to drop PIPE [{}] on Config Nodes", pipeName);
-
-    final ConfigManager configNodeManager = env.getConfigManager();
-
-    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2(pipeName);
-
-    final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(dropPipePlanV2);
-    if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
-    }
-  }
-
-  @Override
-  SyncOperation getOperation() {
-    return SyncOperation.DROP_PIPE;
-  }
-
-  @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    switch (state) {
-      case VALIDATE_TASK:
-      case CALCULATE_INFO_FOR_TASK:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
-    switch (state) {
-      case VALIDATE_TASK:
-        rollbackFromValidateTask(env);
-        break;
-      case CALCULATE_INFO_FOR_TASK:
-        rollbackFromCalculateInfoForTask(env);
-        break;
-      default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
-    }
-  }
-
-  private void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from validate task [{}]", pipeName);
-    env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
-  }
-
-  private void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    // Do nothing
+  protected boolean abort(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return false;
   }
 
   @Override
@@ -158,11 +74,11 @@ public class DropPipeProcedure extends AbstractOperatePipeProcedure {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DropPipeProcedure that = (DropPipeProcedure) o;
-    return pipeName.equals(that.pipeName);
+    return Objects.equals(pipeName, that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(pipeName);
   }
 }
