@@ -115,7 +115,7 @@ public class ShuffleHelperOperator implements Operator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return unfinishedChildren.isEmpty();
+    return unfinishedChildren.isEmpty() || sinkHandle.isClosed();
   }
 
   @Override

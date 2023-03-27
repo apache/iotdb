@@ -17,6 +17,7 @@
 #
 import numpy as np
 import pandas as pd
+
 from iotdb.utils.IoTDBConstants import TSDataType
 
 TIMESTAMP_STR = "Time"
@@ -81,12 +82,10 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
         for i in range(len(column_values)):
             column_name = column_name_list[i + 1]
 
-            location = (
-                    column_ordinal_dict[column_name] - START_INDEX
-            )
-
+            location = column_ordinal_dict[column_name] - START_INDEX
             if location < 0:
                 continue
+
             data_type = column_type_deduplicated_list[location]
             value_buffer = column_values[location]
             value_buffer_len = len(value_buffer)
@@ -200,7 +199,8 @@ def deserialize(buffer):
     column_values = [None] * value_column_count
     null_indicators = [None] * value_column_count
     for i in range(value_column_count):
-        column_value, nullIndicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i], position_count)
+        column_value, nullIndicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i],
+                                                          position_count)
         column_values[i] = column_value
         null_indicators[i] = nullIndicator
 
