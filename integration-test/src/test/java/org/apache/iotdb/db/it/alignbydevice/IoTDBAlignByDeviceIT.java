@@ -193,6 +193,114 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  public void selectTestWithLimitOffset1() {
+    String[] retArray =
+        new String[] {
+          "1,root.vehicle.d1,999,null,null,null,null,",
+          "2,root.vehicle.d0,10000,40000,2.22,null,null,",
+          "3,root.vehicle.d0,null,null,3.33,null,null,",
+          "4,root.vehicle.d0,null,null,4.44,null,null,",
+          "50,root.vehicle.d0,10000,50000,null,null,null,"
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.vehicle.** order by time asc limit 5 offset 1 align by device")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,s0,s1,s2,s3,s4",
+                new int[] {
+                  Types.TIMESTAMP,
+                  Types.VARCHAR,
+                  Types.INTEGER,
+                  Types.BIGINT,
+                  Types.FLOAT,
+                  Types.VARCHAR,
+                  Types.BOOLEAN
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectTestWithLimitOffset2() {
+    String[] retArray =
+        new String[] {
+          "1,root.vehicle.d1,999,null,null,null,null,",
+          "946684800000,root.vehicle.d0,null,100,null,good,null,",
+          "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
+          "106,root.vehicle.d0,99,null,null,null,null,",
+          "105,root.vehicle.d0,99,199,11.11,null,null,",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.vehicle.** order by device desc, time desc limit 5 offset 1 align by device")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,s0,s1,s2,s3,s4",
+                new int[] {
+                  Types.TIMESTAMP,
+                  Types.VARCHAR,
+                  Types.INTEGER,
+                  Types.BIGINT,
+                  Types.FLOAT,
+                  Types.VARCHAR,
+                  Types.BOOLEAN
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void selectWithDuplicatedPathsTest() {
     String[] retArray =
         new String[] {
