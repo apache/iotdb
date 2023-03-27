@@ -80,7 +80,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -723,10 +722,7 @@ public class NodeManager {
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
-    TSchemaQuotaReq schemaQuotaReq = getClusterSchemaManager().generateSchemaQuotaReq();
-    if (schemaQuotaReq != null) {
-      heartbeatReq.setSchemaQuotaReq(schemaQuotaReq);
-    }
+    heartbeatReq.setSchemaQuotaCount(getClusterSchemaManager().getSchemaQuotaCount());
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndUpdate((x) -> (x + 1) % 10);

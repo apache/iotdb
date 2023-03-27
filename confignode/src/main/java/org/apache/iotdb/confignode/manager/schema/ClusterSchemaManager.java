@@ -78,8 +78,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -816,20 +814,16 @@ public class ClusterSchemaManager {
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
-  public TSchemaQuotaReq generateSchemaQuotaReq() {
-    return schemaQuotaInfo.generateReq();
+  public long getSchemaQuotaCount() {
+    return schemaQuotaInfo.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
   }
 
-  public void updateSchemaQuota(TSchemaQuotaResp resp) {
-    schemaQuotaInfo.updateCount(resp);
+  public void updateSchemaQuota(Map<TConsensusGroupId, Long> schemaCountMap) {
+    schemaQuotaInfo.updateCount(schemaCountMap);
   }
 
   public void clearSchemaQuotaCache() {
     schemaQuotaInfo.clear();
-  }
-
-  public void removeRegionQuotaCache(TConsensusGroupId consensusGroupId) {
-    schemaQuotaInfo.invalidateSchemaRegion(consensusGroupId);
   }
 
   /**

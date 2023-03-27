@@ -127,9 +127,6 @@ public class DeleteDatabaseProcedure
                     .getRouteBalancer()
                     .getRegionRouteMap()
                     .removeRegionRouteCache(regionReplicaSet.getRegionId());
-                env.getConfigManager()
-                    .getClusterSchemaManager()
-                    .removeRegionQuotaCache(regionReplicaSet.getRegionId());
 
                 if (regionReplicaSet
                     .getRegionId()

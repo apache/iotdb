@@ -199,7 +199,16 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) {
-
+    conf.setClusterSchemaLimitLevel(
+        properties
+            .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
+            .trim());
+    conf.setClusterMaxSchemaCount(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "cluster_max_schema_count", Long.toString(conf.getClusterMaxSchemaCount()))
+                .trim()));
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 

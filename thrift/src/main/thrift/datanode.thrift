@@ -225,7 +225,7 @@ struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
-  4: optional TSchemaQuotaReq schemaQuotaReq
+  4: required i64 schemaQuotaCount
 }
 
 struct THeartbeatResp {
@@ -234,22 +234,7 @@ struct THeartbeatResp {
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
-  6: optional TSchemaQuotaResp schemaQuotaResp
-}
-
-struct TSchemaQuotaReq {
-  1: required TSchemaQuotaLevel level
-  2: required i64 count
-  3: required i64 limit
-}
-
-struct TSchemaQuotaResp {
-  1: required map<common.TConsensusGroupId, i64> regionIdCountMap
-}
-
-enum TSchemaQuotaLevel {
-  MEASUREMENT
-  DEVICE
+  6: optional map<common.TConsensusGroupId, i64> schemaCountMap
 }
 
 struct TLoadSample {

@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -42,14 +41,14 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   private final RouteBalancer routeBalancer;
-  private final Consumer<TSchemaQuotaResp> schemaQuotaRespProcess;
+  private final Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
       Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
       RouteBalancer routeBalancer,
-      Consumer<TSchemaQuotaResp> schemaQuotaRespProcess) {
+      Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
@@ -87,8 +86,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                         heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
               }
             });
-    if (heartbeatResp.getSchemaQuotaResp() != null) {
-      schemaQuotaRespProcess.accept(heartbeatResp.schemaQuotaResp);
+    if (heartbeatResp.getSchemaCountMap() != null) {
+      schemaQuotaRespProcess.accept(heartbeatResp.getSchemaCountMap());
     }
   }
 
