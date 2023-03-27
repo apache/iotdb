@@ -601,7 +601,7 @@ struct TGetAllPipeInfoResp{
 }
 
 struct TCreatePipeReq {
-    1: required string pipeSinkName
+    1: required string pipeName
     2: optional map<string, string> collectorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
@@ -627,7 +627,7 @@ struct TGetPipeSinkResp {
 }
 
 struct TShowPipeReq {
-  1: optional string pipeSinkName
+  1: optional string pipeName
   2: optional bool whereClause
 }
 
