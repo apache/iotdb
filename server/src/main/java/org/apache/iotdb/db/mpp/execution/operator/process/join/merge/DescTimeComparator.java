@@ -30,4 +30,9 @@ public class DescTimeComparator implements TimeComparator {
   public long getCurrentEndTime(long time1, long time2) {
     return Math.max(time1, time2);
   }
+
+  @Override
+  public boolean canContinue(long time, long endTime) {
+    return time > endTime;
+  }
 }

@@ -230,7 +230,8 @@ public class SeriesScanLimitOffsetPushDownTest {
     EnvironmentUtils.cleanAllDir();
   }
 
-  private SeriesScanUtil getSeriesScanUtil(long limit, long offset) throws IllegalPathException {
+  private SeriesScanUtil getSeriesScanUtil(long limit, long offset, Ordering scanOrder)
+      throws IllegalPathException {
     MeasurementPath scanPath = new MeasurementPath(TEST_PATH, TSDataType.INT32);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -240,7 +241,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     SeriesScanUtil seriesScanUtil =
         new SeriesScanUtil(
             scanPath,
-            Ordering.ASC,
+            scanOrder,
             scanOptionsBuilder.build(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
     seriesScanUtil.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
@@ -249,7 +250,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipFile() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 10);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 10, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -269,7 +270,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipChunk() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 20);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 20, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -289,7 +290,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPage() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 30);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 30, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -309,7 +310,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPoint1() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 45);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 45, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -341,7 +342,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPoint2() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 55);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 55, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -359,6 +360,74 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertEquals(5, tsBlock.getPositionCount());
     for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
       Assert.assertEquals(expectedTime++, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    Assert.assertFalse(seriesScanUtil.hasNextFile());
+  }
+
+  @Test
+  public void testSkipPointDesc1() throws IllegalPathException, IOException {
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 5, Ordering.DESC);
+
+    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    long expectedTime = 64;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    expectedTime = 59;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    Assert.assertFalse(seriesScanUtil.hasNextFile());
+  }
+
+  @Test
+  public void testSkipPointDesc2() throws IllegalPathException, IOException {
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 25, Ordering.DESC);
+
+    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(0, tsBlock.getPositionCount());
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    long expectedTime = 44;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    expectedTime = 39;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
