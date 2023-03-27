@@ -66,7 +66,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -155,6 +155,8 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
+          children.get(i).close();
+          children.set(i, null);
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
         }
@@ -220,7 +222,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i]) {

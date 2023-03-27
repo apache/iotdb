@@ -17,7 +17,6 @@
 #
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
-
 from iotdb.thrift.common.ttypes import TEndPoint
 
 

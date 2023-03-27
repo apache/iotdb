@@ -75,6 +75,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertData2();
   }
 
   @AfterClass
@@ -173,10 +174,63 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
+  // use to test if the compare result of time will overflow.
+  protected static void insertData2() {
+    try (Connection iotDBConnection = EnvFactory.getEnv().getConnection();
+        Statement statement = iotDBConnection.createStatement()) {
+      long startTime = 1;
+      String createSql = "CREATE TIMESERIES root.overflow.value WITH DATATYPE=INT32, ENCODING=RLE";
+      statement.execute(createSql);
+      for (int i = 0; i < 20; i++) {
+        String insertTime =
+            "INSERT INTO "
+                + "root.overflow"
+                + "(timestamp,value) VALUES("
+                + (startTime + 2147483648L)
+                + ","
+                + i
+                + ")";
+        statement.execute(insertTime);
+        startTime += 2147483648L;
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
   private void checkHeader(ResultSetMetaData resultSetMetaData, String title) throws SQLException {
     String[] headers = title.split(",");
     for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
       assertEquals(headers[i - 1], resultSetMetaData.getColumnName(i));
+    }
+  }
+
+  @Test
+  public void overFlowTest() {
+    String sql = "SELECT value from root.overflow ALIGN BY DEVICE";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        long startTime = 1;
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,Device,value");
+        int cnt = 0;
+        while (resultSet.next()) {
+          long actualTimeStamp = resultSet.getLong(1);
+          String actualDevice = resultSet.getString(2);
+          assertEquals("root.overflow", actualDevice);
+          assertEquals(startTime + 2147483648L, actualTimeStamp);
+
+          String value = resultSet.getString(3);
+          assertEquals(value, Integer.toString(cnt));
+          startTime += 2147483648L;
+          cnt++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 

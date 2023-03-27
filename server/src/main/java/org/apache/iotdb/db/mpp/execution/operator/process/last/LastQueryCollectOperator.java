@@ -64,6 +64,8 @@ public class LastQueryCollectOperator implements ProcessOperator {
     if (children.get(currentIndex).hasNextWithTimer()) {
       return children.get(currentIndex).nextWithTimer();
     } else {
+      children.get(currentIndex).close();
+      children.set(currentIndex, null);
       currentIndex++;
       return null;
     }
@@ -77,7 +79,9 @@ public class LastQueryCollectOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
   }
 

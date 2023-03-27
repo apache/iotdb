@@ -69,6 +69,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -102,6 +105,8 @@ import java.util.function.Function;
  * </ol>
  */
 public class MTreeBelowSGCachedImpl {
+
+  private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSGCachedImpl.class);
 
   private final CachedMTreeStore store;
   private volatile ICachedMNode storageGroupMNode;
@@ -845,6 +850,42 @@ public class MTreeBelowSGCachedImpl {
 
       store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(template.getId());
+    } finally {
+      unPinPath(cur);
+    }
+  }
+
+  public void activateTemplateWithoutCheck(
+      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
+    String[] nodes = activatePath.getNodes();
+    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode child;
+    IDeviceMNode<ICachedMNode> entityMNode;
+
+    try {
+      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+        child = store.getChild(cur, nodes[i]);
+        if (child == null) {
+          throw new PathNotExistException(activatePath.getFullPath());
+        }
+        cur = child;
+      }
+      if (cur.isDevice()) {
+        entityMNode = cur.getAsDeviceMNode();
+      } else {
+        entityMNode = store.setToEntity(cur);
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
+        }
+      }
+
+      if (!entityMNode.isAligned()) {
+        entityMNode.setAligned(isAligned);
+      }
+      entityMNode.setUseTemplate(true);
+      entityMNode.setSchemaTemplateId(templateId);
+
+      store.updateMNode(entityMNode.getAsMNode());
     } finally {
       unPinPath(cur);
     }
