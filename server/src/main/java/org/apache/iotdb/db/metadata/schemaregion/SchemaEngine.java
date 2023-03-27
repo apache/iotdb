@@ -39,13 +39,9 @@ import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -354,11 +350,21 @@ public class SchemaEngine {
     return schemaRegionMap == null ? 0 : schemaRegionMap.size();
   }
 
-  public TSchemaQuotaResp generateSchemaQuotaResp(@NotNull TSchemaQuotaReq req) {
+  /**
+   * Update total count in schema quota manager and generate local count map response.
+   *
+   * @param totalCount cluster schema usage
+   * @return if limit is -1, return null; else return schemaCountMap of the SchemaRegion whose
+   *     current node is the leader
+   */
+  public Map<TConsensusGroupId, Long> updateAndGenerateSchemaCountMap(long totalCount) {
     // update DataNodeSchemaQuotaManager
-    schemaQuotaManager.update(req);
+    schemaQuotaManager.updateRemain(totalCount);
+    if (schemaQuotaManager.getLimit() < 0) {
+      return null;
+    }
     Map<TConsensusGroupId, Long> res = new HashMap<>();
-    switch (req.getLevel()) {
+    switch (schemaQuotaManager.getLevel()) {
       case MEASUREMENT:
         schemaRegionMap.values().stream()
             .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
@@ -380,7 +386,7 @@ public class SchemaEngine {
       default:
         throw new UnsupportedOperationException();
     }
-    return new TSchemaQuotaResp(res);
+    return res;
   }
 
   @TestOnly

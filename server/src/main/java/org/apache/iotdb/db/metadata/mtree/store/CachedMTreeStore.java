@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaOverflowException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -327,7 +327,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaOverflowException {
+  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaExceededException {
     quotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
     regionStatistics.addDevice();

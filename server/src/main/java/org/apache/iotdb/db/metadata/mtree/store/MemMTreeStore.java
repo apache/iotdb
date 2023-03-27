@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaOverflowException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -158,7 +158,7 @@ public class MemMTreeStore implements IMTreeStore {
   public void updateMNode(IMNode node) {}
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaOverflowException {
+  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaExceededException {
     schemaQuotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
     regionStatistics.addDevice();

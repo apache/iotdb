@@ -19,45 +19,61 @@
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaOverflowException;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaLevel;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DataNodeSchemaQuotaManager {
 
-  private ClusterSchemaQuotaLevel level = ClusterSchemaQuotaLevel.MEASUREMENT;
-  private long limit = -1; // -1 means no limitation
+  private ClusterSchemaQuotaLevel level =
+      ClusterSchemaQuotaLevel.valueOf(
+          IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel());
+  private long limit =
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getClusterMaxSchemaCount(); // -1 means no limitation
   private final AtomicLong remain = new AtomicLong(0);
 
-  public void update(TSchemaQuotaReq req) {
-    this.level =
-        req.getLevel() == TSchemaQuotaLevel.MEASUREMENT
-            ? ClusterSchemaQuotaLevel.MEASUREMENT
-            : ClusterSchemaQuotaLevel.DEVICE;
-    this.limit = req.getLimit();
-    this.remain.getAndSet(req.getLimit() - req.getCount());
+  public void updateRemain(long totalCount) {
+    this.remain.getAndSet(limit - totalCount);
   }
 
-  public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaOverflowException {
+  public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
     if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.MEASUREMENT)) {
       if (remain.get() <= 0) {
-        throw new SchemaQuotaOverflowException(level, limit);
+        throw new SchemaQuotaExceededException(level, limit);
       } else {
         remain.addAndGet(-acquireNumber);
       }
     }
   }
 
-  public void checkDeviceLevel() throws SchemaQuotaOverflowException {
+  public void checkDeviceLevel() throws SchemaQuotaExceededException {
     if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.DEVICE)) {
       if (remain.get() <= 0) {
-        throw new SchemaQuotaOverflowException(level, limit);
+        throw new SchemaQuotaExceededException(level, limit);
       } else {
         remain.addAndGet(-1L);
       }
     }
+  }
+
+  public void updateConfiguration() {
+    this.level =
+        ClusterSchemaQuotaLevel.valueOf(
+            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel());
+    long oldLimit = limit;
+    this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterMaxSchemaCount();
+    this.remain.addAndGet(limit - oldLimit);
+  }
+
+  public ClusterSchemaQuotaLevel getLevel() {
+    return level;
+  }
+
+  public long getLimit() {
+    return limit;
   }
 
   private DataNodeSchemaQuotaManager() {}
