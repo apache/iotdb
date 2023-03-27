@@ -25,7 +25,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
-from .thrift.common.ttypes import TEndPoint
+from .thrift.common.ttypes import TEndPoint, TSStatus
 from .thrift.rpc.IClientRPCService import (
     Client,
     TSCreateTimeseriesReq,
@@ -533,9 +533,11 @@ class Session(object):
             device_id, timestamp, measurements, string_values
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertStringRecord(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -561,9 +563,11 @@ class Session(object):
             device_id, timestamp, measurements, string_values, True
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertStringRecord(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -594,9 +598,11 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertRecord(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -663,9 +669,11 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values, True
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertRecord(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -730,9 +738,11 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).testInsertRecord(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -861,9 +871,11 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(tablet.get_device_id()).insertTablet(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -912,9 +924,11 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet, True)
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(tablet.get_device_id()).insertTablet(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1001,9 +1015,11 @@ class Session(object):
             device_id, times_list, measurements_list, values_list, types_list
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertRecordsOfOneDevice(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1070,9 +1086,11 @@ class Session(object):
 
         # send request
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertRecordsOfOneDevice(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1124,9 +1142,11 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(tablet.get_device_id()).testInsertTablet(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1375,7 +1395,7 @@ class Session(object):
         return True
 
     @staticmethod
-    def verify_success(status):
+    def verify_success(status: TSStatus):
         """
         verify success of operation
         :param status: execution result status
@@ -1393,7 +1413,7 @@ class Session(object):
         raise RuntimeError(str(status.code) + ": " + status.message)
 
     @staticmethod
-    def verify_success_by_list(status_list):
+    def verify_success_by_list(status_list: list):
         """
         verify success of operation
         :param status_list: execution result status
@@ -1406,6 +1426,12 @@ class Session(object):
             ):
                 message += status.message + "; "
         raise RuntimeError(message)
+
+    @staticmethod
+    def verify_success_with_redirection(status: TSStatus):
+        Session.verify_success(status)
+        if status.redirectNode is not None:
+            raise RedirectException(status.redirectNode)
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
@@ -1521,9 +1547,11 @@ class Session(object):
             device_id, times, measurements_list, values_list, have_sorted, False
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertStringRecordsOfOneDevice(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1553,9 +1581,11 @@ class Session(object):
             device_id, times, measurements_list, values, have_sorted, True
         )
         try:
-            return Session.verify_success(
+            return Session.verify_success_with_redirection(
                 self.get_client(device_id).insertStringRecordsOfOneDevice(request)
             )
+        except RedirectException as e:
+            self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1613,7 +1643,7 @@ class Session(object):
                 ).client
         return self.__default_client
 
-    def handle_redirection(self, device_id, endpoint):
+    def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
             if endpoint.ip == "0.0.0.0":
                 return
@@ -2051,3 +2081,9 @@ class SessionConnection(object):
         finally:
             if self.transport is not None:
                 self.transport.close()
+
+
+class RedirectException(Exception):
+    def __init__(self, redirect_node: TEndPoint):
+        Exception.__init__(self)
+        self.redirect_node = redirect_node
