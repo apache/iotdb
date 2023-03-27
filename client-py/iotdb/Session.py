@@ -94,7 +94,7 @@ class Session(object):
         enable_redirection=True,
     ):
         self.__host = host
-        self.__port = port
+        self.__port = str(port)
         self.__hosts = None
         self.__ports = None
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
