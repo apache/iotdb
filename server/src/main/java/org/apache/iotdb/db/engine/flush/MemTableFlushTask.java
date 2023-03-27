@@ -263,7 +263,7 @@ public class MemTableFlushTask {
               lastIndex = storageGroup.length();
             }
             MetricService.getInstance()
-                .gaugeWithInternalReport(
+                .gaugeWithInternalReportAsync(
                     memTable.getTotalPointsNum(),
                     Metric.POINTS.toString(),
                     MetricLevel.CORE,
