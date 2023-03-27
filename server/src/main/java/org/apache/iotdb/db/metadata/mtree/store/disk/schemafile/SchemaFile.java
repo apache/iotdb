@@ -468,7 +468,8 @@ public class SchemaFile implements ISchemaFile {
             getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
     Files.deleteIfExists(schemaLogFile.toPath());
-    Files.createLink(schemaFile.toPath(), snapshot.toPath());
+    // TODO: 拷贝出来用
+    //    Files.createLink(schemaFile.toPath(), snapshot.toPath());
     return new SchemaFile(
         sgName,
         schemaRegionId,

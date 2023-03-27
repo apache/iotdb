@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -77,6 +78,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -108,10 +111,15 @@ public class ClusterSchemaManager {
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
+  private final ClusterSchemaQuotaInfo schemaQuotaInfo;
 
-  public ClusterSchemaManager(IManager configManager, ClusterSchemaInfo clusterSchemaInfo) {
+  public ClusterSchemaManager(
+      IManager configManager,
+      ClusterSchemaInfo clusterSchemaInfo,
+      ClusterSchemaQuotaInfo schemaQuotaInfo) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
+    this.schemaQuotaInfo = schemaQuotaInfo;
   }
 
   // ======================================================
@@ -806,6 +814,22 @@ public class ClusterSchemaManager {
 
     // execute drop template
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+  }
+
+  public TSchemaQuotaReq generateSchemaQuotaReq() {
+    return schemaQuotaInfo.generateReq();
+  }
+
+  public void updateSchemaQuota(TSchemaQuotaResp resp) {
+    schemaQuotaInfo.updateCount(resp);
+  }
+
+  public void clearSchemaQuotaCache() {
+    schemaQuotaInfo.clear();
+  }
+
+  public void removeRegionQuotaCache(TConsensusGroupId consensusGroupId) {
+    schemaQuotaInfo.invalidateSchemaRegion(consensusGroupId);
   }
 
   /**

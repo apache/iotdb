@@ -26,14 +26,14 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
@@ -42,19 +42,19 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   private final RouteBalancer routeBalancer;
-  private final ClusterSchemaQuotaManager schemaQuotaManager;
+  private final Consumer<TSchemaQuotaResp> schemaQuotaRespProcess;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
       Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
       RouteBalancer routeBalancer,
-      ClusterSchemaQuotaManager schemaQuotaManager) {
+      Consumer<TSchemaQuotaResp> schemaQuotaRespProcess) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
     this.routeBalancer = routeBalancer;
-    this.schemaQuotaManager = schemaQuotaManager;
+    this.schemaQuotaRespProcess = schemaQuotaRespProcess;
   }
 
   @Override
@@ -88,12 +88,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
               }
             });
     if (heartbeatResp.getSchemaQuotaResp() != null) {
-      schemaQuotaManager.updateCount(
-          heartbeatResp.getSchemaQuotaResp(),
-          routeBalancer.getLatestRegionLeaderMap().entrySet().stream()
-              .filter(i -> i.getValue() == dataNodeLocation.dataNodeId)
-              .map(Map.Entry::getKey)
-              .collect(Collectors.toList()));
+      schemaQuotaRespProcess.accept(heartbeatResp.schemaQuotaResp);
     }
   }
 

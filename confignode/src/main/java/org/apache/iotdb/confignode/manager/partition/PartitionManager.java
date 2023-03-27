@@ -735,10 +735,10 @@ public class PartitionManager {
     return schemaNodeManagementResp;
   }
 
-  public void preDeleteStorageGroup(
-      String storageGroup, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
+  public void preDeleteDatabase(
+      String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
-        new PreDeleteDatabasePlan(storageGroup, preDeleteType);
+        new PreDeleteDatabasePlan(database, preDeleteType);
     getConsensusManager().write(preDeleteDatabasePlan);
   }
 

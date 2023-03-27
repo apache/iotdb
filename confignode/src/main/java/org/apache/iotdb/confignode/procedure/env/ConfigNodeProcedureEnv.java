@@ -133,7 +133,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void preDeleteDatabase(
       PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
-    getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
+    getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
   /**

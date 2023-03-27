@@ -27,12 +27,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TSchemaQuotaResp;
 
 import javax.validation.constraints.NotNull;
 
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ClusterSchemaQuotaManager {
+public class ClusterSchemaQuotaInfo {
 
   private final Map<TConsensusGroupId, Long> countMap = new ConcurrentHashMap<>();
   private ClusterSchemaQuotaLevel level =
@@ -40,12 +38,8 @@ public class ClusterSchemaQuotaManager {
           ConfigNodeDescriptor.getInstance().getConf().getClusterSchemaLimitLevel());
   private long limit = ConfigNodeDescriptor.getInstance().getConf().getClusterMaxSchemaCount();
 
-  public void updateCount(@NotNull TSchemaQuotaResp resp, List<TConsensusGroupId> leaderGroupIds) {
-    for (TConsensusGroupId groupId : leaderGroupIds) {
-      if (resp.regionIdCountMap.containsKey(groupId)) {
-        countMap.put(groupId, resp.regionIdCountMap.get(groupId));
-      }
-    }
+  public void updateCount(@NotNull TSchemaQuotaResp resp) {
+    countMap.putAll(resp.getRegionIdCountMap());
   }
 
   public TSchemaQuotaReq generateReq() {
@@ -61,10 +55,12 @@ public class ClusterSchemaQuotaManager {
     }
   }
 
-  public void invalidateSchemaRegion(Set<TConsensusGroupId> consensusGroupIdSet) {
-    for (TConsensusGroupId consensusGroupId : consensusGroupIdSet) {
-      countMap.remove(consensusGroupId);
-    }
+  public void invalidateSchemaRegion(TConsensusGroupId consensusGroupId) {
+    countMap.remove(consensusGroupId);
+  }
+
+  public void clear() {
+    countMap.clear();
   }
 
   public void setLevel(ClusterSchemaQuotaLevel level) {
@@ -73,19 +69,5 @@ public class ClusterSchemaQuotaManager {
 
   public void setLimit(long limit) {
     this.limit = limit;
-  }
-
-  private ClusterSchemaQuotaManager() {}
-
-  public static ClusterSchemaQuotaManager getInstance() {
-    return ClusterSchemaQuotaManager.ClusterSchemaQuotaManagerHolder.INSTANCE;
-  }
-
-  private static class ClusterSchemaQuotaManagerHolder {
-    private static final ClusterSchemaQuotaManager INSTANCE = new ClusterSchemaQuotaManager();
-
-    private ClusterSchemaQuotaManagerHolder() {
-      // empty constructor
-    }
   }
 }

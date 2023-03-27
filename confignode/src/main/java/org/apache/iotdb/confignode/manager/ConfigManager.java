@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaInfo;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -246,6 +247,7 @@ public class ConfigManager implements IManager {
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
     ModelInfo modelInfo = new ModelInfo();
+    ClusterSchemaQuotaInfo schemaQuotaInfo = new ClusterSchemaQuotaInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -264,7 +266,7 @@ public class ConfigManager implements IManager {
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
-    this.clusterSchemaManager = new ClusterSchemaManager(this, clusterSchemaInfo);
+    this.clusterSchemaManager = new ClusterSchemaManager(this, clusterSchemaInfo, schemaQuotaInfo);
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);

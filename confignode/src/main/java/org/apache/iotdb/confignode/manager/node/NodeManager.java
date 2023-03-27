@@ -64,7 +64,6 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -130,9 +129,6 @@ public class NodeManager {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
 
   private final Random random;
-
-  private final ClusterSchemaQuotaManager schemaQuotaManager =
-      ClusterSchemaQuotaManager.getInstance();
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
@@ -727,7 +723,7 @@ public class NodeManager {
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
-    TSchemaQuotaReq schemaQuotaReq = schemaQuotaManager.generateReq();
+    TSchemaQuotaReq schemaQuotaReq = getClusterSchemaManager().generateSchemaQuotaReq();
     if (schemaQuotaReq != null) {
       heartbeatReq.setSchemaQuotaReq(schemaQuotaReq);
     }
@@ -755,7 +751,7 @@ public class NodeManager {
                       empty -> new DataNodeHeartbeatCache()),
               getPartitionManager().getRegionGroupCacheMap(),
               getLoadManager().getRouteBalancer(),
-              schemaQuotaManager);
+              getClusterSchemaManager()::updateSchemaQuota);
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
