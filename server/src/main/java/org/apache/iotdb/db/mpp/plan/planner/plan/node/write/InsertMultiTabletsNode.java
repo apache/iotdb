@@ -201,6 +201,7 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
+    InsertMultiTabletsNode insertMultiTabletsNode = new InsertMultiTabletsNode(new PlanNodeId(""));
     PlanNodeId planNodeId;
     List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
     List<Integer> parentIndex = new ArrayList<>();
@@ -214,16 +215,17 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     for (int i = 0; i < size; i++) {
       parentIndex.add(byteBuffer.getInt());
     }
+    insertMultiTabletsNode.deserializeInsertNodeAttributes(byteBuffer);
 
     planNodeId = PlanNodeId.deserialize(byteBuffer);
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
       insertTabletNode.setPlanNodeId(planNodeId);
+      insertTabletNode.setConsensusIndex(insertMultiTabletsNode.getConsensusIndex());
     }
+    insertMultiTabletsNode.setPlanNodeId(planNodeId);
 
-    InsertMultiTabletsNode insertMultiTabletsNode = new InsertMultiTabletsNode(planNodeId);
     insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
     insertMultiTabletsNode.setParentInsertTabletNodeIndexList(parentIndex);
-    insertMultiTabletsNode.deserializeInsertNodeAttributes(byteBuffer);
     return insertMultiTabletsNode;
   }
 

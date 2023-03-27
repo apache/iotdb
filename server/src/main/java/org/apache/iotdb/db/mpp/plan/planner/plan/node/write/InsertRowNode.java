@@ -445,8 +445,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     // TODO: (xingtanzjr) remove placeholder
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     insertNode.deserializeInsertNodeAttributes(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }
 
