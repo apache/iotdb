@@ -75,10 +75,11 @@ public class EncodeTest {
 //            TSEncoding.PLAIN ,
             TSEncoding.TS_2DIFF,
             TSEncoding.RLE ,
-            TSEncoding.SPRINTZ,
+            TSEncoding.CHIMP,
+//            TSEncoding.SPRINTZ,
             TSEncoding.GORILLA,
-            TSEncoding.RLBE,
-            TSEncoding.RAKE
+//            TSEncoding.RLBE,
+//            TSEncoding.RAKE
     };
     // select compression algorithms
     CompressionType[] compressList = {

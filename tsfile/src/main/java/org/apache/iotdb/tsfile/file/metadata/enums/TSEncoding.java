@@ -34,7 +34,9 @@ public enum TSEncoding {
   TEXTRLE((byte) 12),
   HUFFMAN((byte) 13),
   HUFFMANV2((byte) 14),
-  BUCKET((byte) 15);
+  BUCKET((byte) 15),
+
+  CHIMP((byte) 16);
 
   private final byte type;
 
@@ -86,6 +88,8 @@ public enum TSEncoding {
         return TSEncoding.HUFFMANV2;
       case 15:
         return TSEncoding.BUCKET;
+      case 16:
+        return TSEncoding.CHIMP;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

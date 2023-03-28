@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 import static java.lang.Math.abs;
-import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
+//import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
 
 public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
 
