@@ -41,14 +41,10 @@ def test_parse_training_request():
         'epochs': 10,
         'metric_names': ['MSE', 'MAE']
     }
-    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
-    queryFilter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
         modelId=str(modelId),
         isAuto=isAuto,
         modelConfigs={k: str(v) for k, v in modelConfigs.items()},
-        queryExpressions=[str(query) for query in queryExpressions],
-        queryFilter=str(queryFilter),
     )
     data_conf, model_conf, task_conf = parse_training_request(req)
     for config in modelConfigs:

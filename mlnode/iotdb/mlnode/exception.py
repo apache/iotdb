@@ -29,3 +29,13 @@ class BadNodeUrlError(_BaseError):
 class ModelNotExistError(_BaseError):
     def __init__(self, file_path: str):
         self.message = "Model path: ({}) not exists".format(file_path)
+
+
+class ModelNotSupportedError(_BaseError):
+    def __init__(self, model_name: str):
+        self.message = "Model: ({}) not supported".format(model_name)
+
+
+class MissingConfigError(_BaseError):
+    def __init__(self, config_name: str):
+        self.message = "Missing config: ({})".format(config_name)
