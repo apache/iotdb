@@ -20,16 +20,13 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
@@ -58,7 +55,9 @@ import java.util.concurrent.TimeUnit;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
 
-  private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
+  private static final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   private final IStateMachine applicationStateMachine;
   private final IStateMachine.RetryPolicy retryPolicy;
   private final SnapshotStorage snapshotStorage;
@@ -165,7 +164,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         Thread.currentThread().interrupt();
       } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
-        ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
+        ret =
+            new ResponseMessage(
+                new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                    .setMessage("internal error. statemachine throws a runtime exception: " + rte));
         if (applicationStateMachine.isReadOnly()) {
           waitUntilSystemNotReadOnly();
           shouldRetry = true;
@@ -177,14 +179,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
       if (consensusGroupType == TConsensusGroupType.DataRegion) {
-        MetricService.getInstance()
-            .timer(
-                System.nanoTime() - writeToStateMachineStartTime,
-                TimeUnit.NANOSECONDS,
-                Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.STAGE.toString(),
-                PerformanceOverviewMetrics.ENGINE);
+        PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+            System.nanoTime() - writeToStateMachineStartTime);
       }
       // statistic the time of write stateMachine
       RatisMetricsManager.getInstance()

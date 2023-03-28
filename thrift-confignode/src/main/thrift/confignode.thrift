@@ -333,7 +333,7 @@ struct TClusterParameters {
   8: required i64 defaultTTL
   9: required string readConsistencyLevel
   10: required double schemaRegionPerDataNode
-  11: required double dataRegionPerProcessor
+  11: required double dataRegionPerDataNode
   12: required i32 seriesPartitionSlotNum
   13: required string seriesPartitionExecutorClass
   14: required double diskSpaceWarningThreshold

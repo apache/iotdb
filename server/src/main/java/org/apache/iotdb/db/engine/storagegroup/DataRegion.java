@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -70,7 +71,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -277,6 +277,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final QueryMetricsManager queryMetricsManager = QueryMetricsManager.getInstance();
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   /**
    * construct a database processor.
    *
@@ -924,7 +926,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("InsertRow");
-    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -975,7 +977,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("insertTablet");
-    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -1068,8 +1070,7 @@ public class DataRegion implements IDataRegionForQuery {
           lastFlushTimeMap.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
       startTime = System.nanoTime();
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
-      PerformanceOverviewMetricsManager.recordScheduleUpdateLastCacheCost(
-          System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1174,8 +1175,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     long startTime = System.nanoTime();
     tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
-    PerformanceOverviewMetricsManager.recordScheduleUpdateLastCacheCost(
-        System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -3097,7 +3097,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
-    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
