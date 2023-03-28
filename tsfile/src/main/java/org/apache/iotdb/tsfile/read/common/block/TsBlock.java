@@ -40,7 +40,7 @@ import static java.util.Objects.requireNonNull;
  */
 public class TsBlock {
 
-  public static final int INSTANCE_SIZE = ClassLayout.parseClass(TsBlock.class).instanceSize();
+  public static final long INSTANCE_SIZE = ClassLayout.parseClass(TsBlock.class).instanceSize();
 
   private static final Column[] EMPTY_COLUMNS = new Column[0];
 
@@ -479,8 +479,8 @@ public class TsBlock {
     return retainedSizeInBytes;
   }
 
-  public int getTotalInstanceSize() {
-    int totalInstanceSize = INSTANCE_SIZE;
+  public long getTotalInstanceSize() {
+    long totalInstanceSize = INSTANCE_SIZE;
     totalInstanceSize += timeColumn.getInstanceSize();
     for (Column column : valueColumns) {
       totalInstanceSize += column.getInstanceSize();

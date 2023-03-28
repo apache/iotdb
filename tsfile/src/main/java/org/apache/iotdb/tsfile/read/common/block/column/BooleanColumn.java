@@ -31,7 +31,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class BooleanColumn implements Column {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(BooleanColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Byte.BYTES + Byte.BYTES;
 

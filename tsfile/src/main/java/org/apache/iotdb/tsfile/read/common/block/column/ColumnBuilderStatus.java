@@ -30,7 +30,7 @@ import static java.util.Objects.requireNonNull;
 
 public class ColumnBuilderStatus {
 
-  public static final int INSTANCE_SIZE = deepInstanceSize(ColumnBuilderStatus.class);
+  public static final long INSTANCE_SIZE = deepInstanceSize(ColumnBuilderStatus.class);
 
   private final TsBlockBuilderStatus tsBlockBuilderStatus;
 
@@ -58,7 +58,7 @@ public class ColumnBuilderStatus {
   /**
    * Computes the size of an instance of this class assuming that all reference fields are non-null
    */
-  private static int deepInstanceSize(Class<?> clazz) {
+  private static long deepInstanceSize(Class<?> clazz) {
     if (clazz.isArray()) {
       throw new IllegalArgumentException(
           format(
@@ -77,7 +77,7 @@ public class ColumnBuilderStatus {
               clazz.getSimpleName(), clazz.getSuperclass().getSimpleName()));
     }
 
-    int size = ClassLayout.parseClass(clazz).instanceSize();
+    long size = ClassLayout.parseClass(clazz).instanceSize();
     for (Field field : clazz.getDeclaredFields()) {
       // if the field is not static and is a reference field and it's not synthetic
       if (!Modifier.isStatic(field.getModifiers())

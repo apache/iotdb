@@ -33,7 +33,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class BinaryColumn implements Column {
 
-  private static final int INSTANCE_SIZE =
+  private static final long INSTANCE_SIZE =
       ClassLayout.parseClass(BinaryColumn.class).instanceSize();
 
   private final int arrayOffset;

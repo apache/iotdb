@@ -32,7 +32,8 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class FloatColumn implements Column {
 
-  private static final int INSTANCE_SIZE = ClassLayout.parseClass(FloatColumn.class).instanceSize();
+  private static final long INSTANCE_SIZE =
+      ClassLayout.parseClass(FloatColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Float.BYTES + Byte.BYTES;
 
   private final int arrayOffset;
