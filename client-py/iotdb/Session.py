@@ -102,7 +102,7 @@ class Session(object):
         self.__password = password
         self.__fetch_size = fetch_size
         self.__is_close = True
-        self.__default_connection.client = None
+        self.__client = None
         self.__default_connection = None
         self.protocol_version = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
         self.__session_id = None
@@ -157,6 +157,7 @@ class Session(object):
                         logger.error("Cluster has no nodes to connect")
                         raise e
                 break
+        self.__client = self.__default_connection.client
         self.__is_close = False
         if self.__enable_redirection:
             self.__device_id_to_endpoint = {}
@@ -247,17 +248,13 @@ class Session(object):
         """
         try:
             return Session.verify_success(
-                self.__default_connection.client.setStorageGroup(
-                    self.__session_id, group_name
-                )
+                self.__client.setStorageGroup(self.__session_id, group_name)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return Session.verify_success(
-                        self.__default_connection.client.setStorageGroup(
-                            self.__session_id, group_name
-                        )
+                        self.__client.setStorageGroup(self.__session_id, group_name)
                     )
                 except TTransport.TException as e1:
                     logger.exception("create databases fails because: ", e1)
@@ -280,15 +277,13 @@ class Session(object):
         """
         try:
             return Session.verify_success(
-                self.__default_connection.client.deleteStorageGroups(
-                    self.__session_id, storage_group_lst
-                )
+                self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return Session.verify_success(
-                        self.__default_connection.client.deleteStorageGroups(
+                        self.__client.deleteStorageGroups(
                             self.__session_id, storage_group_lst
                         )
                     )
@@ -335,15 +330,13 @@ class Session(object):
             alias,
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.createTimeseries(request)
-            )
+            return Session.verify_success(self.__client.createTimeseries(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.createTimeseries(request)
+                        self.__client.createTimeseries(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("creating time series fails because: ", e1)
@@ -376,16 +369,14 @@ class Session(object):
         )
         try:
             return Session.verify_success(
-                self.__default_connection.client.createAlignedTimeseries(request)
+                self.__client.createAlignedTimeseries(request)
             )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.createAlignedTimeseries(
-                            request
-                        )
+                        self.__client.createAlignedTimeseries(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("creating time series fails because: ", e1)
@@ -430,15 +421,13 @@ class Session(object):
             alias_lst,
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.createMultiTimeseries(request)
-            )
+            return Session.verify_success(self.__client.createMultiTimeseries(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.createMultiTimeseries(request)
+                        self.__client.createMultiTimeseries(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("creating multi time series fails because: ", e1)
@@ -453,17 +442,13 @@ class Session(object):
         """
         try:
             return Session.verify_success(
-                self.__default_connection.client.deleteTimeseries(
-                    self.__session_id, paths_list
-                )
+                self.__client.deleteTimeseries(self.__session_id, paths_list)
             )
         except TTransport.TException:
             if self.reconnect():
                 try:
                     return Session.verify_success(
-                        self.__default_connection.client.deleteTimeseries(
-                            self.__session_id, paths_list
-                        )
+                        self.__client.deleteTimeseries(self.__session_id, paths_list)
                     )
                 except TTransport.TException as e1:
                     logger.exception("deleting time series fails because: ", e1)
@@ -490,16 +475,12 @@ class Session(object):
             self.__session_id, paths_list, -9223372036854775808, end_time
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.deleteData(request)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.deleteData(request)
-                    )
+                    return Session.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
                     logger.exception("data deletion fails because: ", e1)
                     raise e1
@@ -515,16 +496,12 @@ class Session(object):
         """
         request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.deleteData(request)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.deleteData(request)
-                    )
+                    return Session.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
                     logger.exception("data deletion fails because: ", e1)
                     raise e1
@@ -551,7 +528,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertStringRecord(request)
+                        self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -581,7 +558,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertStringRecord(request)
+                        self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -615,9 +592,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertRecord(request)
-                    )
+                    return Session.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -644,16 +619,12 @@ class Session(object):
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.insertRecords(request)
-            )
+            return Session.verify_success(self.__client.insertRecords(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertRecords(request)
-                    )
+                    return Session.verify_success(self.__client.insertRecords(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -688,9 +659,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertRecord(request)
-                    )
+                    return Session.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -717,16 +686,12 @@ class Session(object):
             device_ids, times, measurements_lst, type_values_lst, values_lst, True
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.insertRecords(request)
-            )
+            return Session.verify_success(self.__client.insertRecords(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertRecords(request)
-                    )
+                    return Session.verify_success(self.__client.insertRecords(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -759,7 +724,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     return Session.verify_success(
-                        self.__default_connection.client.testInsertRecord(request)
+                        self.__client.testInsertRecord(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("test insert fails because: ", e1)
@@ -787,14 +752,12 @@ class Session(object):
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.testInsertRecords(request)
-            )
+            return Session.verify_success(self.__client.testInsertRecords(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return Session.verify_success(
-                        self.__default_connection.client.testInsertRecords(request)
+                        self.__client.testInsertRecords(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("test insert fails because: ", e1)
@@ -892,9 +855,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertTablet(request)
-                    )
+                    return Session.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -908,16 +869,12 @@ class Session(object):
         """
         request = self.gen_insert_tablets_req(tablet_lst)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.insertTablets(request)
-            )
+            return Session.verify_success(self.__client.insertTablets(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertTablets(request)
-                    )
+                    return Session.verify_success(self.__client.insertTablets(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -947,9 +904,7 @@ class Session(object):
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertTablet(request)
-                    )
+                    return Session.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -963,16 +918,12 @@ class Session(object):
         """
         request = self.gen_insert_tablets_req(tablet_lst, True)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.insertTablets(request)
-            )
+            return Session.verify_success(self.__client.insertTablets(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    return Session.verify_success(
-                        self.__default_connection.client.insertTablets(request)
-                    )
+                    return Session.verify_success(self.__client.insertTablets(request))
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
                     raise e1
@@ -1041,9 +992,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertRecordsOfOneDevice(
-                            request
-                        )
+                        self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -1114,9 +1063,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertRecordsOfOneDevice(
-                            request
-                        )
+                        self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -1172,7 +1119,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.testInsertTablet(request)
+                        self.__client.testInsertTablet(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("test insert fails because: ", e1)
@@ -1188,15 +1135,13 @@ class Session(object):
         """
         request = self.gen_insert_tablets_req(tablet_list)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.testInsertTablets(request)
-            )
+            return Session.verify_success(self.__client.testInsertTablets(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.testInsertTablets(request)
+                        self.__client.testInsertTablets(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("test insert fails because: ", e1)
@@ -1255,15 +1200,13 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
         try:
-            resp = self.__default_connection.client.executeQueryStatement(request)
+            resp = self.__client.executeQueryStatement(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__default_connection.client.executeQueryStatement(
-                        request
-                    )
+                    resp = self.__client.executeQueryStatement(request)
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
@@ -1276,7 +1219,7 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
-            self.__default_connection.client,
+            self.__client,
             self.__statement_id,
             self.__session_id,
             resp.queryDataSet,
@@ -1290,15 +1233,13 @@ class Session(object):
         """
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
-            resp = self.__default_connection.client.executeUpdateStatement(request)
+            resp = self.__client.executeUpdateStatement(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__default_connection.client.executeUpdateStatement(
-                        request
-                    )
+                    resp = self.__client.executeUpdateStatement(request)
                 except TTransport.TException as e1:
                     logger.exception(
                         "execution of non-query statement fails because: ", e1
@@ -1313,13 +1254,13 @@ class Session(object):
             self.__session_id, sql, self.__statement_id, timeout
         )
         try:
-            resp = self.__default_connection.client.executeStatement(request)
+            resp = self.__client.executeStatement(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__default_connection.client.executeStatement(request)
+                    resp = self.__client.executeStatement(request)
                 except TTransport.TException as e1:
                     logger.exception("execution of statement fails because: ", e1)
                     raise e1
@@ -1333,7 +1274,7 @@ class Session(object):
                 resp.dataTypeList,
                 resp.columnNameIndexMap,
                 resp.queryId,
-                self.__default_connection.client,
+                self.__client,
                 self.__statement_id,
                 self.__session_id,
                 resp.queryDataSet,
@@ -1393,7 +1334,7 @@ class Session(object):
         if self.__zone_id is not None:
             return self.__zone_id
         try:
-            resp = self.__default_connection.client.getTimeZone(self.__session_id)
+            resp = self.__client.getTimeZone(self.__session_id)
         except TTransport.TException as e:
             raise RuntimeError("Could not get time zone because: ", e)
         return resp.timeZone
@@ -1401,7 +1342,7 @@ class Session(object):
     def set_time_zone(self, zone_id):
         request = TSSetTimeZoneReq(self.__session_id, zone_id)
         try:
-            status = self.__default_connection.client.setTimeZone(request)
+            status = self.__client.setTimeZone(request)
             logger.debug(
                 "setting time zone_id as {}, message: {}".format(
                     zone_id, status.message
@@ -1478,13 +1419,13 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__default_connection.client.executeRawDataQuery(request)
+            resp = self.__client.executeRawDataQuery(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__default_connection.client.executeRawDataQuery(request)
+                    resp = self.__client.executeRawDataQuery(request)
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
@@ -1497,7 +1438,7 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
-            self.__default_connection.client,
+            self.__client,
             self.__statement_id,
             self.__session_id,
             resp.queryDataSet,
@@ -1520,15 +1461,13 @@ class Session(object):
             enableRedirectQuery=False,
         )
         try:
-            resp = self.__default_connection.client.executeLastDataQuery(request)
+            resp = self.__client.executeLastDataQuery(request)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     request.statementId = self.__statement_id
-                    resp = self.__default_connection.client.executeLastDataQuery(
-                        request
-                    )
+                    resp = self.__client.executeLastDataQuery(request)
                 except TTransport.TException as e1:
                     logger.exception("execution of query statement fails because: ", e1)
                     raise e1
@@ -1541,7 +1480,7 @@ class Session(object):
             resp.dataTypeList,
             resp.columnNameIndexMap,
             resp.queryId,
-            self.__default_connection.client,
+            self.__client,
             self.__statement_id,
             self.__session_id,
             resp.queryDataSet,
@@ -1584,9 +1523,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertStringRecordsOfOneDevice(
-                            request
-                        )
+                        self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -1620,9 +1557,7 @@ class Session(object):
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.insertStringRecordsOfOneDevice(
-                            request
-                        )
+                        self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("insert fails because: ", e1)
@@ -1652,9 +1587,7 @@ class Session(object):
                         self.__default_connection = self.init_connection(
                             self.__default_endpoint
                         )
-                        self.__default_connection.client = (
-                            self.__default_connection.client
-                        )
+                        self.__client = self.__default_connection.client
                         connected = True
                     except TTransport.TException as e:
                         continue
@@ -1671,10 +1604,10 @@ class Session(object):
         ):
             endpoint = self.__device_id_to_endpoint.get(device_id)
             if self.__endpoint_to_connection.has_key(endpoint.ip + ":" + endpoint.port):
-                return self.__endpoint_to_connection.get(
+                return self.__endpoint_to_connection[
                     endpoint.ip + ":" + endpoint.port
-                ).client
-        return self.__default_connection.client
+                ].client
+        return self.__client
 
     def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
@@ -1739,15 +1672,13 @@ class Session(object):
             self.__session_id, template.get_name(), bytes_array
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.createSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.createSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.createSchemaTemplate(request)
+                        self.__client.createSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("create template fails because: ", e1)
@@ -1762,15 +1693,13 @@ class Session(object):
         """
         request = TSDropSchemaTemplateReq(self.__session_id, template_name)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.dropSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.dropSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.dropSchemaTemplate(request)
+                        self.__client.dropSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("drop template fails because: ", e1)
@@ -1806,15 +1735,13 @@ class Session(object):
             list(map(lambda x: x.value, compressors)),
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.appendSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.appendSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.appendSchemaTemplate(request)
+                        self.__client.appendSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("append template fails because: ", e1)
@@ -1830,15 +1757,13 @@ class Session(object):
         """
         request = TSPruneSchemaTemplateReq(self.__session_id, template_name, path)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.pruneSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.pruneSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.pruneSchemaTemplate(request)
+                        self.__client.pruneSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("prune template fails because: ", e1)
@@ -1854,15 +1779,13 @@ class Session(object):
         """
         request = TSSetSchemaTemplateReq(self.__session_id, template_name, prefix_path)
         try:
-            return Session.verify_success(
-                self.__default_connection.client.setSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.setSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.setSchemaTemplate(request)
+                        self.__client.setSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("set template fails because: ", e1)
@@ -1881,15 +1804,13 @@ class Session(object):
             self.__session_id, prefix_path, template_name
         )
         try:
-            return Session.verify_success(
-                self.__default_connection.client.unsetSchemaTemplate(request)
-            )
+            return Session.verify_success(self.__client.unsetSchemaTemplate(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
                     return Session.verify_success(
-                        self.__default_connection.client.unsetSchemaTemplate(request)
+                        self.__client.unsetSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
                     logger.exception("unset template fails because: ", e1)
@@ -1908,15 +1829,13 @@ class Session(object):
             TemplateQueryType.COUNT_MEASUREMENTS.value,
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             return response.count
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.count
                 except TTransport.TException as e1:
@@ -1940,16 +1859,14 @@ class Session(object):
             path,
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
@@ -1971,16 +1888,14 @@ class Session(object):
             self.__session_id, template_name, TemplateQueryType.PATH_EXIST.value, path
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.result
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
@@ -2004,16 +1919,14 @@ class Session(object):
             pattern,
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
@@ -2034,16 +1947,14 @@ class Session(object):
             TemplateQueryType.SHOW_TEMPLATES.value,
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
@@ -2061,16 +1972,14 @@ class Session(object):
             self.__session_id, template_name, TemplateQueryType.SHOW_SET_TEMPLATES.value
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
@@ -2090,16 +1999,14 @@ class Session(object):
             TemplateQueryType.SHOW_USING_TEMPLATES.value,
         )
         try:
-            response = self.__default_connection.client.querySchemaTemplate(request)
+            response = self.__client.querySchemaTemplate(request)
             Session.verify_success(response.status)
             return response.measurements
         except TTransport.TException as e:
             if self.reconnect():
                 try:
                     request.sessionId = self.__session_id
-                    response = self.__default_connection.client.querySchemaTemplate(
-                        request
-                    )
+                    response = self.__client.querySchemaTemplate(request)
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
