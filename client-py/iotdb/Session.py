@@ -537,7 +537,7 @@ class Session(object):
                 self.get_client(device_id).insertStringRecord(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -567,7 +567,7 @@ class Session(object):
                 self.get_client(device_id).insertStringRecord(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -602,7 +602,7 @@ class Session(object):
                 self.get_client(device_id).insertRecord(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -673,7 +673,7 @@ class Session(object):
                 self.get_client(device_id).insertRecord(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -742,7 +742,7 @@ class Session(object):
                 self.get_client(device_id).testInsertRecord(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -875,7 +875,7 @@ class Session(object):
                 self.get_client(tablet.get_device_id()).insertTablet(request)
             )
         except RedirectException as e:
-            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -928,7 +928,7 @@ class Session(object):
                 self.get_client(tablet.get_device_id()).insertTablet(request)
             )
         except RedirectException as e:
-            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1019,7 +1019,7 @@ class Session(object):
                 self.get_client(device_id).insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1090,7 +1090,7 @@ class Session(object):
                 self.get_client(device_id).insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1146,7 +1146,7 @@ class Session(object):
                 self.get_client(tablet.get_device_id()).testInsertTablet(request)
             )
         except RedirectException as e:
-            self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1432,6 +1432,7 @@ class Session(object):
         Session.verify_success(status)
         if status.redirectNode is not None:
             raise RedirectException(status.redirectNode)
+        return 0
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
@@ -1551,7 +1552,7 @@ class Session(object):
                 self.get_client(device_id).insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1585,7 +1586,7 @@ class Session(object):
                 self.get_client(device_id).insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
-            self.handle_redirection(device_id, e.redirect_node)
+            return self.handle_redirection(device_id, e.redirect_node)
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1646,7 +1647,7 @@ class Session(object):
     def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
             if endpoint.ip == "0.0.0.0":
-                return
+                return 0
             if (
                 not self.__device_id_to_endpoint.has_key(device_id)
                 or self.__device_id_to_endpoint.get(device_id) != endpoint
@@ -1666,6 +1667,7 @@ class Session(object):
                 ] = connection
             if connection is None:
                 self.__device_id_to_endpoint.pop(device_id)
+        return 0
 
     def gen_insert_string_records_of_one_device_request(
         self,
