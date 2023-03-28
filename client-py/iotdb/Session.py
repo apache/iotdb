@@ -57,17 +57,6 @@ from .thrift.rpc.ttypes import (
     TSInsertStringRecordsOfOneDeviceReq,
 )
 
-# for debug
-# from IoTDBConstants import *
-# from SessionDataSet import SessionDataSet
-#
-# from thrift.protocol import TBinaryProtocol, TCompactProtocol
-# from thrift.transport import TSocket, TTransport
-#
-# from iotdb.rpc.IClientRPCService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
-#      TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
-#      TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
-# from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 from .utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
@@ -1029,9 +1018,7 @@ class Session(object):
                 client = self.get_client(tablet_lst[i].get_device_id())
                 request = request_group.setdefault(
                     client,
-                    TSInsertTabletsReq(
-                        self.__session_id, [], [], [], [], [], [], True
-                    ),
+                    TSInsertTabletsReq(self.__session_id, [], [], [], [], [], [], True),
                 )
                 request.prefixPaths.append(tablet_lst[i].get_device_id())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
@@ -1337,7 +1324,8 @@ class Session(object):
         """
         execute query sql statement and returns SessionDataSet
         :param sql: String, query sql statement
-        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        :param timeout:
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py):
         """
         request = TSExecuteStatementReq(
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
@@ -1747,7 +1735,7 @@ class Session(object):
                         )
                         self.__client = self.__default_connection.client
                         connected = True
-                    except TTransport.TException as e:
+                    except TTransport.TException:
                         continue
                     break
             if connected:
@@ -1758,10 +1746,10 @@ class Session(object):
         if (
             self.__enable_redirection
             and len(self.__device_id_to_endpoint) != 0
-            and self.__device_id_to_endpoint.has_key(device_id)
+            and device_id in self.__device_id_to_endpoint
         ):
             endpoint = self.__device_id_to_endpoint.get(device_id)
-            if self.__endpoint_to_connection.has_key(endpoint.ip + ":" + endpoint.port):
+            if str(endpoint.ip + ":" + endpoint.port) in self.__endpoint_to_connection:
                 return self.__endpoint_to_connection[
                     endpoint.ip + ":" + endpoint.port
                 ].client
@@ -1772,11 +1760,11 @@ class Session(object):
             if endpoint.ip == "0.0.0.0":
                 return 0
             if (
-                not self.__device_id_to_endpoint.has_key(device_id)
+                device_id not in self.__device_id_to_endpoint
                 or self.__device_id_to_endpoint.get(device_id) != endpoint
             ):
                 self.__device_id_to_endpoint[device_id] = endpoint
-            if self.__endpoint_to_connection.has_key(endpoint.ip + ":" + endpoint.port):
+            if str(endpoint.ip + ":" + endpoint.port) in self.__endpoint_to_connection:
                 connection = self.__endpoint_to_connection[
                     endpoint.ip + ":" + endpoint.port
                 ]
@@ -1875,9 +1863,10 @@ class Session(object):
         is_aligned: bool = False,
     ):
         """
-        add measurements in the template, the template must already create. This function adds some measurements node.
+        add measurements in the template, the template must already create. This function adds some measurements' node.
         :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
-        :param measurements_path: when ths is_aligned is True, recommend the name like a.b, like [python.x, python.y, iotdb.z]
+        :param measurements_path: when ths is_aligned is True, recommend the name like a.b,
+        like [python.x, python.y, iotdb.z]
         :param data_types: using TSDataType(see IoTDBConstants.py)
         :param encodings: using TSEncoding(see IoTDBConstants.py)
         :param compressors: using Compressor(see IoTDBConstants.py)
@@ -2068,7 +2057,7 @@ class Session(object):
         """
         show all measurements under the pattern in template
         :param template_name: template name
-        :param pattern: parent path, if default, show all measurements
+        :param pattern: parent path, if defaulted, show all measurements
         """
         request = TSQueryTemplateReq(
             self.__session_id,
