@@ -57,15 +57,10 @@ public class CachedMTreeStore implements IMTreeStore {
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final MemManager memManager;
-
   private final ICacheManager cacheManager;
-
   private ISchemaFile file;
-
   private IMNode root;
-
   private final Runnable flushCallback;
-
   private final CachedSchemaRegionStatistics regionStatistics;
 
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
@@ -333,6 +328,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
+      regionStatistics.addDevice();
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     updateMNode(result);
@@ -343,6 +339,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
+      regionStatistics.deleteDevice();
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     updateMNode(result);

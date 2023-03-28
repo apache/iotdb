@@ -129,10 +129,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
 
-  private String storageGroupDirPath;
-  private String schemaRegionDirPath;
-  private String storageGroupFullPath;
-  private SchemaRegionId schemaRegionId;
+  private final String storageGroupDirPath;
+  private final String schemaRegionDirPath;
+  private final String storageGroupFullPath;
+  private final SchemaRegionId schemaRegionId;
 
   // the log file writer
   private boolean usingMLog = true;
@@ -144,7 +144,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private TagManager tagManager;
 
   // seriesNumberMonitor may be null
-  private final ISeriesNumerMonitor seriesNumerMonitor;
+  private final ISeriesNumerMonitor seriesNumberMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
@@ -167,7 +167,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
+    this.seriesNumberMonitor = schemaRegionParams.getSeriesNumberMonitor();
     this.regionStatistics =
         new MemSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
@@ -389,8 +389,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
     long seriesCount = regionStatistics.getSeriesNumber();
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
+    if (seriesNumberMonitor != null) {
+      seriesNumberMonitor.deleteTimeSeries((int) seriesCount);
     }
 
     // clear all the components and release all the file handlers
@@ -477,6 +477,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 }
               },
               deviceMNode -> {
+                regionStatistics.addDevice();
                 if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
                   regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
@@ -530,7 +531,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException();
     }
 
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
+    if (seriesNumberMonitor != null && !seriesNumberMonitor.addTimeSeries(1)) {
       throw new SeriesNumberOverflowException();
     }
 
@@ -553,8 +554,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 plan.getProps(),
                 plan.getAlias());
       } catch (Throwable t) {
-        if (seriesNumerMonitor != null) {
-          seriesNumerMonitor.deleteTimeSeries(1);
+        if (seriesNumberMonitor != null) {
+          seriesNumberMonitor.deleteTimeSeries(1);
         }
         throw t;
       }
@@ -610,7 +611,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException();
     }
 
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
+    if (seriesNumberMonitor != null && !seriesNumberMonitor.addTimeSeries(seriesCount)) {
       throw new SeriesNumberOverflowException();
     }
 
@@ -639,8 +640,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 plan.getCompressors(),
                 plan.getAliasList());
       } catch (Throwable t) {
-        if (seriesNumerMonitor != null) {
-          seriesNumerMonitor.deleteTimeSeries(seriesCount);
+        if (seriesNumberMonitor != null) {
+          seriesNumberMonitor.deleteTimeSeries(seriesCount);
         }
         throw t;
       }
@@ -782,8 +783,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(1);
+    if (seriesNumberMonitor != null) {
+      seriesNumberMonitor.deleteTimeSeries(1);
     }
   }
 
@@ -799,8 +800,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(1);
+    if (seriesNumberMonitor != null) {
+      seriesNumberMonitor.deleteTimeSeries(1);
     }
   }
   // endregion
