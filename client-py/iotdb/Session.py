@@ -626,7 +626,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst)
+                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
@@ -728,7 +728,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst)
+                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
