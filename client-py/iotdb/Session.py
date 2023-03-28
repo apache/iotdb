@@ -619,8 +619,9 @@ class Session(object):
             request_group = {}
             for i in range(len(device_ids)):
                 client = self.get_client(device_ids[i])
-                request = request_group.setdefault(client, TSInsertRecordsReq())
-                request.sessionId = self.__session_id
+                request = request_group.setdefault(
+                    client, TSInsertRecordsReq(self.__session_id, [], [], [], [])
+                )
                 request.prefixPaths.append(device_ids[i])
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
@@ -720,9 +721,9 @@ class Session(object):
             request_group = {}
             for i in range(len(device_ids)):
                 client = self.get_client(device_ids[i])
-                request = request_group.setdefault(client, TSInsertRecordsReq())
-                request.isAligned = True
-                request.sessionId = self.__session_id
+                request = request_group.setdefault(
+                    client, TSInsertRecordsReq(self.__session_id, [], [], [], [], True)
+                )
                 request.prefixPaths.append(device_ids[i])
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
@@ -936,13 +937,21 @@ class Session(object):
             request_group = {}
             for i in range(len(tablet_lst)):
                 client = self.get_client(tablet_lst[i].get_device_id())
-                request = request_group.setdefault(client, TSInsertTabletsReq())
-                request.isAligned = False
-                request.sessionId = self.__session_id
+                request = request_group.setdefault(
+                    client,
+                    TSInsertTabletsReq(
+                        self.__session_id, [], [], [], [], [], [], False
+                    ),
+                )
                 request.prefixPaths.append(tablet_lst[i].get_device_id())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
+                request.sizeList.append(tablet_lst[i].get_row_number())
+                data_type_values = [
+                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                ]
+                request.typesList.append(data_type_values)
             for client, request in request_group.items():
                 try:
                     Session.verify_success_with_redirection_for_multi_devices(
@@ -1018,13 +1027,21 @@ class Session(object):
             request_group = {}
             for i in range(len(tablet_lst)):
                 client = self.get_client(tablet_lst[i].get_device_id())
-                request = request_group.setdefault(client, TSInsertTabletsReq())
-                request.isAligned = False
-                request.sessionId = self.__session_id
+                request = request_group.setdefault(
+                    client,
+                    TSInsertTabletsReq(
+                        self.__session_id, [], [], [], [], [], [], True
+                    ),
+                )
                 request.prefixPaths.append(tablet_lst[i].get_device_id())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
+                request.sizeList.append(tablet_lst[i].get_row_number())
+                data_type_values = [
+                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                ]
+                request.typesList.append(data_type_values)
             for client, request in request_group.items():
                 try:
                     Session.verify_success_with_redirection_for_multi_devices(
