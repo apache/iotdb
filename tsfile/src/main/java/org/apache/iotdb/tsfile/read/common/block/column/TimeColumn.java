@@ -27,7 +27,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 
 public class TimeColumn implements Column {
 
-  private static final int INSTANCE_SIZE = ClassLayout.parseClass(LongColumn.class).instanceSize();
+  private static final long INSTANCE_SIZE = ClassLayout.parseClass(LongColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Long.BYTES;
 
   private final int arrayOffset;
@@ -144,7 +144,7 @@ public class TimeColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
+  public long getInstanceSize() {
     return INSTANCE_SIZE;
   }
 }

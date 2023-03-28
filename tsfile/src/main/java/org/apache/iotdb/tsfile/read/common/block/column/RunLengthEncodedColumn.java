@@ -210,7 +210,7 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
-  public int getInstanceSize() {
+  public long getInstanceSize() {
     return INSTANCE_SIZE;
   }
 }
