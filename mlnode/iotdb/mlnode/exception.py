@@ -17,7 +17,6 @@
 #
 
 
-
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -31,8 +30,3 @@ class BadNodeUrlError(_BaseError):
 class ModelNotExistError(_BaseError):
     def __init__(self, file_path: str):
         self.message = "Model path: ({}) not exists".format(file_path)
-
-
-class BadConfigError(_BaseError):
-    def __init__(self, msg):
-        self.message = "Bad config: {}".format(msg)
