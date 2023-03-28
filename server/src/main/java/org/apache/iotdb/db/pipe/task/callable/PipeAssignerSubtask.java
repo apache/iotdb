@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.task.callable;
 
 public class PipeAssignerSubtask extends PipeSubtask {
 
@@ -26,5 +26,8 @@ public class PipeAssignerSubtask extends PipeSubtask {
   }
 
   @Override
-  public void runMayThrow() throws Throwable {}
+  public Void call() throws Exception {
+    // TODO: implement PipeCollector
+    return null;
+  }
 }

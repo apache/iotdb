@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public interface PipeTaskStage {
@@ -50,4 +52,18 @@ public interface PipeTaskStage {
    * @throws PipeException if failed to drop a pipe task stage.
    */
   void drop() throws PipeException;
+
+  /**
+   * Get the pipe subtask.
+   *
+   * @return the pipe subtask.
+   */
+  PipeSubtask getSubtask();
+
+  /**
+   * Bind the pipe subtask executor to the pipe task stage.
+   *
+   * @param executor the pipe subtask executor to bind.
+   */
+  void bind(PipeSubtaskExecutor executor);
 }

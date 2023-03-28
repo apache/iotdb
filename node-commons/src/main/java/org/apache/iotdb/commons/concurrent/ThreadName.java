@@ -65,7 +65,10 @@ public enum ThreadName {
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
   SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
   SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
-  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor");
+  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
+  PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
+  PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
+  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool");
 
   private final String name;
 

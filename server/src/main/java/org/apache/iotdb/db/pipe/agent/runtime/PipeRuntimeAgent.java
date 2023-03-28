@@ -19,7 +19,19 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeRuntimeAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+
+  public void report(PipeSubtask subtask) {
+    // TODO: implement the report logic
+    LOGGER.warn("SubtaskID{} failed.", subtask.getSubtaskID());
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 

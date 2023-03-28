@@ -17,20 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 
-public class PipeProcessorSubtaskScheduler implements PipeSubtaskScheduler {
+public class PipeProcessorSubtask extends PipeSubtask {
+
+  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
+
+  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
+    super(taskID);
+    this.pipeProcessor = pipeProcessor;
+  }
+
   @Override
-  public void createSubtask(String subtaskId, PipeSubtask subtask) {}
-
-  @Override
-  public void dropSubtask(String subtaskId) {}
-
-  @Override
-  public void startSubtask(String subtaskId) {}
-
-  @Override
-  public void stopSubtask(String subtaskId) {}
+  public Void call() throws Exception {
+    if (!Thread.currentThread().isInterrupted()) {
+      pipeProcessor.runOnce();
+    }
+    return null;
+  }
 }

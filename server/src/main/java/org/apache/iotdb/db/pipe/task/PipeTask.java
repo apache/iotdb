@@ -45,4 +45,44 @@ public class PipeTask {
 
     runtimeRecorder = new PipeTaskRuntimeRecorder();
   }
+
+  public PipeTaskStage getCollectorStage() {
+    return collectorStage;
+  }
+
+  public PipeTaskStage getProcessorStage() {
+    return processorStage;
+  }
+
+  public PipeTaskStage getConnectorStage() {
+    return connectorStage;
+  }
+
+  public void create() {
+    collectorStage.create();
+    processorStage.create();
+    connectorStage.create();
+  }
+
+  public void drop() {
+    collectorStage.drop();
+    processorStage.drop();
+    connectorStage.drop();
+  }
+
+  public void start() {
+    connectorStage.start();
+    processorStage.start();
+    collectorStage.start();
+  }
+
+  public void stop() {
+    collectorStage.stop();
+    processorStage.stop();
+    connectorStage.stop();
+  }
+
+  public String getPipeName() {
+    return pipeName;
+  }
 }

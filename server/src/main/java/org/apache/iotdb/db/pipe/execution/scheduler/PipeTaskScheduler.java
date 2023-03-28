@@ -19,33 +19,47 @@
 
 package org.apache.iotdb.db.pipe.execution.scheduler;
 
-import org.apache.iotdb.db.pipe.task.PipeTask;
+import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutor;
 
 /**
- * PipeTaskScheduler is responsible for scheduling the pipe tasks. It takes the pipe tasks and
- * executes them in the PipeTaskExecutor. It is a singleton class.
+ * PipeTaskScheduler is a singleton class that manages the numbers of threads used by
+ * PipeTaskExecutors dynamically.
  */
 public class PipeTaskScheduler {
 
-  private final PipeSubtaskScheduler assignerSubtaskScheduler;
-  private final PipeSubtaskScheduler processorSubtaskScheduler;
-  private final PipeSubtaskScheduler connectorSubtaskScheduler;
+  private PipeTaskExecutor pipeTaskExecutor;
 
-  public void createPipeTask(PipeTask pipeTask) {}
+  void setPipeTaskExecutor(PipeTaskExecutor pipeTaskExecutor) {
+    this.pipeTaskExecutor = pipeTaskExecutor;
+  }
 
-  public void dropPipeTask(String pipeName) {}
+  public void setAssignerSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutor.getAssignerSubtaskExecutor().setExecutorThreadNum(threadNum);
+  }
 
-  public void startPipeTask(String pipeName) {}
+  public int getAssignerSubtaskExecutorThreadNum() {
+    return pipeTaskExecutor.getAssignerSubtaskExecutor().getExecutorThreadNum();
+  }
 
-  public void stopPipeTask(String pipeName) {}
+  public void setConnectorSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutor.getConnectorSubtaskExecutor().setExecutorThreadNum(threadNum);
+  }
+
+  public int getConnectorSubtaskExecutorThreadNum() {
+    return pipeTaskExecutor.getConnectorSubtaskExecutor().getExecutorThreadNum();
+  }
+
+  public void setProcessorSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutor.getProcessorSubtaskExecutor().setExecutorThreadNum(threadNum);
+  }
+
+  public int getProcessorSubtaskExecutorThreadNum() {
+    return pipeTaskExecutor.getProcessorSubtaskExecutor().getExecutorThreadNum();
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeTaskScheduler() {
-    assignerSubtaskScheduler = new PipeAssignerSubtaskScheduler();
-    processorSubtaskScheduler = new PipeProcessorSubtaskScheduler();
-    connectorSubtaskScheduler = new PipeConnectorSubtaskScheduler();
-  }
+  private PipeTaskScheduler() {}
 
   private static class PipeTaskSchedulerHolder {
     private static PipeTaskScheduler instance = null;

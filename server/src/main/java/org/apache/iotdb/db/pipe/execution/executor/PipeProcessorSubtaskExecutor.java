@@ -19,4 +19,90 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-public class PipeProcessorSubtaskExecutor implements PipeSubtaskExecutor {}
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ConcurrentHashMap;
+
+public class PipeProcessorSubtaskExecutor implements PipeSubtaskExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskExecutor.class);
+  private final WrappedThreadPoolExecutor processorExecutorThreadPool;
+  private final ListeningExecutorService executorService;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static int MAX_THREAD_NUM = config.getPipeTaskExecutorMaxThreadNum();
+
+  private ConcurrentHashMap<String, PipeProcessorSubtask> subtaskMap;
+
+  public PipeProcessorSubtaskExecutor() {
+    processorExecutorThreadPool =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                MAX_THREAD_NUM, ThreadName.PIPE_ASSIGNER_EXECUTOR_POOL.getName());
+
+    executorService = MoreExecutors.listeningDecorator(processorExecutorThreadPool);
+    subtaskMap = new ConcurrentHashMap<>();
+  }
+
+  @Override
+  public void submit(PipeSubtask subtask) {
+    if (!subtaskMap.containsKey(subtask.getTaskID())) {
+      LOGGER.warn("The subtask {} is not in the subtask map", subtask.getTaskID());
+      return;
+    }
+
+    ListenableFuture<Void> nextFuture = executorService.submit(subtask);
+    Futures.addCallback(nextFuture, subtask, executorService);
+  }
+
+  @Override
+  public void stop() {
+    if (executorService != null) {
+      executorService.shutdown();
+    }
+  }
+
+  @Override
+  public void putSubtask(PipeSubtask subtask) {
+    subtaskMap.put(subtask.getTaskID(), (PipeProcessorSubtask) subtask);
+  }
+
+  @Override
+  public void removeSubtask(String taskID) {
+    subtaskMap.remove(taskID);
+  }
+
+  @Override
+  public boolean isSubtaskExist(String taskID) {
+    return subtaskMap.containsKey(taskID);
+  }
+
+  @Override
+  public void setExecutorThreadNum(int threadNum) {
+    MAX_THREAD_NUM = threadNum;
+    processorExecutorThreadPool.setCorePoolSize(threadNum);
+  }
+
+  @Override
+  public int getExecutorThreadNum() {
+    return MAX_THREAD_NUM;
+  }
+
+  @TestOnly
+  public ListeningExecutorService getExecutorService() {
+    return executorService;
+  }
+}

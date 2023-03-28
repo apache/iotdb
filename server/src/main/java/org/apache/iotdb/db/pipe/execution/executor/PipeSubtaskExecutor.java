@@ -19,4 +19,21 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-public interface PipeSubtaskExecutor {}
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+
+public interface PipeSubtaskExecutor {
+
+  void submit(PipeSubtask subtask);
+
+  void stop();
+
+  void setExecutorThreadNum(int threadNum);
+
+  int getExecutorThreadNum();
+
+  void putSubtask(PipeSubtask subtask);
+
+  void removeSubtask(String taskID);
+
+  boolean isSubtaskExist(String taskID);
+}
