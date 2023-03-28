@@ -97,6 +97,30 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "LogEntriesFromQueue");
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.IOT_CONSENSUS.toString(),
+            MetricLevel.IMPORTANT,
+            impl,
+            IoTConsensusServerImpl::getLogEntriesNum,
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesNum");
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.IOT_CONSENSUS.toString(),
+            MetricLevel.IMPORTANT,
+            impl,
+            IoTConsensusServerImpl::getLongEntriesSize,
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesSize");
   }
 
   @Override
@@ -151,5 +175,25 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "LogEntriesFromQueue");
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesNum");
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesSize");
   }
 }
