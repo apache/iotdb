@@ -27,6 +27,7 @@ def test_parse_training_request():
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
         'dataset_type': 'window',
+        'filename': 'ETTh1.csv',
         'time_embed': 'h',
         'input_len': 96,
         'pred_len': 96,
