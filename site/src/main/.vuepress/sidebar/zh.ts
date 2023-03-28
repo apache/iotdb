@@ -268,6 +268,7 @@ export const zhSidebar = sidebar({
         { text: 'Flink-IoTDB', link: 'Flink-IoTDB' },
         { text: 'Flink-TsFile', link: 'Flink-TsFile' },
         { text: 'NiFi-IoTDB', link: 'NiFi-IoTDB' },
+        { text: 'Workbench', link: 'Workbench' },
       ],
     },
     {
@@ -280,6 +281,7 @@ export const zhSidebar = sidebar({
         { text: '分布式部署', link: 'Cluster-Setup' },
         { text: '分布式运维命令', link: 'Cluster-Maintenance' },
         { text: '部署推荐', link: 'Deployment-Recommendation' },
+        { text: '集群部署工具', link: 'IoTDB-Deploy' },
       ],
     },
     {

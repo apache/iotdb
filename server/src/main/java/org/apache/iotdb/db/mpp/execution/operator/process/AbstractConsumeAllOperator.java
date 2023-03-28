@@ -59,7 +59,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     readyChildIndex = 0;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isEmpty(i)) {
+      if (!isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -82,10 +82,10 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    * @return true if results of all children are ready. Return false if some children is blocked or
    *     return null.
    */
-  protected boolean prepareInput() {
+  protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isEmpty(i)) {
+      if (!isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
@@ -103,6 +103,12 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         }
       } else {
         allReady = false;
+        if (canCallNext[i]) {
+          // canCallNext[i] == true means children.get(i).hasNext == false
+          // we can close the finished children
+          children.get(i).close();
+          children.set(i, null);
+        }
       }
     }
     return allReady;
@@ -116,11 +122,13 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
   }
 
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     return children.get(childIndex).nextWithTimer();
   }
 }

@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-public class DropSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
+import java.util.Collections;
+import java.util.List;
+
+public class DropSchemaTemplateStatement extends Statement implements IConfigStatement {
 
   private String templateName;
 
@@ -51,5 +55,10 @@ public class DropSchemaTemplateStatement extends ShowStatement implements IConfi
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
+  }
+
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 }

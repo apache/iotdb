@@ -177,6 +177,9 @@ public class MemTableFlushTask {
       encodingTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       ioTaskFuture.cancel(true);
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw e;
     }
 
@@ -283,7 +286,7 @@ public class MemTableFlushTask {
               lastIndex = storageGroup.length();
             }
             MetricService.getInstance()
-                .gaugeWithInternalReport(
+                .gaugeWithInternalReportAsync(
                     memTable.getTotalPointsNum(),
                     Metric.POINTS.toString(),
                     MetricLevel.CORE,

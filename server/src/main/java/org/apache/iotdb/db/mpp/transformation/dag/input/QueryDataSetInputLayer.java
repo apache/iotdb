@@ -113,7 +113,7 @@ public class QueryDataSetInputLayer {
     }
 
     @Override
-    public YieldableState yield() throws IOException, QueryProcessException {
+    public YieldableState yield() throws Exception {
       if (hasCachedRowRecord) {
         return YieldableState.YIELDABLE;
       }
@@ -231,7 +231,7 @@ public class QueryDataSetInputLayer {
   private class TimePointReader extends AbstractLayerPointReader {
 
     @Override
-    public YieldableState yield() throws IOException, QueryProcessException {
+    public YieldableState yield() throws Exception {
       if (hasCachedRowRecord) {
         return YieldableState.YIELDABLE;
       }

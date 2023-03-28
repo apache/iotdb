@@ -85,7 +85,7 @@ public class LastQueryOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     // we have consumed up data from children Operator, just return all remaining cached data in
     // tsBlockBuilder
@@ -111,7 +111,11 @@ public class LastQueryOperator implements ProcessOperator {
         } else if (!tsBlock.isEmpty()) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
         }
+      } else {
+        children.get(currentIndex).close();
+        children.set(currentIndex, null);
       }
+
       currentIndex++;
     }
 
@@ -121,19 +125,21 @@ public class LastQueryOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return currentIndex < inputOperatorsCount || !tsBlockBuilder.isEmpty();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
     tsBlockBuilder = null;
   }

@@ -63,7 +63,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!prepareInput()) {
       return null;
     }
@@ -106,26 +106,24 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
-    return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
+    return !isEmpty(readyChildIndex)
+        || (children.get(readyChildIndex) != null
+            && children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
-    return finished = isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
+    return finished =
+        isEmpty(readyChildIndex)
+            && (children.get(readyChildIndex) == null
+                || !children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
@@ -173,7 +171,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     inputIndex[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
   }

@@ -112,6 +112,10 @@ public class Template implements Serializable {
     return isDirectAligned;
   }
 
+  public int getMeasurementNumber() {
+    return schemaMap.size();
+  }
+
   // region construct template tree
 
   private IMeasurementSchema constructSchema(

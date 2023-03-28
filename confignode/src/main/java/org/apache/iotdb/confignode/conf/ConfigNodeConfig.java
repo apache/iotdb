@@ -101,7 +101,7 @@ public class ConfigNodeConfig {
   private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
-  private double dataRegionPerProcessor = 1.0;
+  private double dataRegionPerDataNode = 5.0;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -546,12 +546,12 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public double getDataRegionPerProcessor() {
-    return dataRegionPerProcessor;
+  public double getDataRegionPerDataNode() {
+    return dataRegionPerDataNode;
   }
 
-  public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
-    this.dataRegionPerProcessor = dataRegionPerProcessor;
+  public void setDataRegionPerDataNode(double dataRegionPerDataNode) {
+    this.dataRegionPerDataNode = dataRegionPerDataNode;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {

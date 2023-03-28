@@ -20,25 +20,25 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 
 // This class implements database path collection function.
-public abstract class DatabaseCollector<R> extends DatabaseTraverser<R> {
+public abstract class DatabaseCollector<R, N extends IMNode<N>> extends DatabaseTraverser<R, N> {
   protected DatabaseCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    collectDatabase(nextMatchedNode.getAsStorageGroupMNode());
+  protected R generateResult(N nextMatchedNode) {
+    collectDatabase(nextMatchedNode.getAsDatabaseMNode());
     return null;
   }
 
   // TODO: make collectDatabase return R
-  protected abstract void collectDatabase(IStorageGroupMNode node);
+  protected abstract void collectDatabase(IDatabaseMNode<N> node);
 }

@@ -133,6 +133,7 @@ public class SchemaUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.MODE:
       default:
         return null;
     }
@@ -192,6 +193,7 @@ public class SchemaUtils {
       case MIN_TIME:
       case MAX_TIME:
       case COUNT_IF:
+      case MODE:
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(

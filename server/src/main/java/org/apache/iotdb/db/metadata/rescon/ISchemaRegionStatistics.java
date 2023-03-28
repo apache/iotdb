@@ -28,6 +28,12 @@ public interface ISchemaRegionStatistics {
 
   long getSeriesNumber();
 
+  long getDevicesNumber();
+
+  int getTemplateActivatedNumber();
+
+  long getTemplateSeriesNumber();
+
   MemSchemaRegionStatistics getAsMemSchemaRegionStatistics();
 
   CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics();
