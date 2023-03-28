@@ -202,6 +202,24 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_WAIT_FOR_WINDOW(
+        RAFT_MEMBER_RECEIVER,
+        "receiver wait for window",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_WAIT_LOCK(
+        RAFT_MEMBER_RECEIVER,
+        "receiver wait for lock",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_APPEND_INTERNAL(
+        RAFT_MEMBER_RECEIVER,
+        "append entry (internal)",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_RECEIVER_APPEND_ENTRY(
         RAFT_MEMBER_RECEIVER,
         "append entrys",
@@ -290,15 +308,33 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_GET_LOG_FOR_COMMIT(
+        LOG_DISPATCHER,
+        "get log for commit",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_SENDER_LOG_FROM_CREATE_TO_READY_COMMIT(
         LOG_DISPATCHER,
         "from create to ready commit",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_COMMIT_HOLD_LOCK(
+        LOG_DISPATCHER,
+        "commit hold lock",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT(
         LOG_DISPATCHER,
         "from create to committed",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_APPLIER(
+        LOG_DISPATCHER,
+        "from create to applier",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

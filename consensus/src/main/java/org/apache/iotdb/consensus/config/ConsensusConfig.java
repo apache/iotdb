@@ -57,6 +57,8 @@ public class ConsensusConfig {
             .setRpcMaxConcurrentClientNum(
                 ioTConsensusConfig.getRpc().getRpcMaxConcurrentClientNum())
             .setThriftMaxFrameSize(ioTConsensusConfig.getRpc().getThriftMaxFrameSize())
+            .setCoreClientNumForEachNode(ioTConsensusConfig.getRpc().getCoreClientNumForEachNode())
+            .setMaxClientNumForEachNode(ioTConsensusConfig.getRpc().getMaxClientNumForEachNode())
             .build();
     this.properties = properties;
   }

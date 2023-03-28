@@ -55,12 +55,23 @@ public abstract class Entry implements Comparable<Entry> {
   public long committedTime;
   public long applyTime;
   public long waitEndTime;
+  private ByteBuffer serializationCache;
 
   public int getDefaultSerializationBufferSize() {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
   }
 
-  public abstract ByteBuffer serialize();
+  protected abstract ByteBuffer serializeInternal();
+
+  public ByteBuffer serialize() {
+    ByteBuffer cache = serializationCache;
+    if (cache != null) {
+      return cache.slice();
+    }
+    ByteBuffer byteBuffer = serializeInternal();
+    serializationCache = byteBuffer;
+    return byteBuffer.slice();
+  };
 
   public abstract void deserialize(ByteBuffer buffer);
 
@@ -166,5 +177,13 @@ public abstract class Entry implements Comparable<Entry> {
 
   public void setFromThisNode(boolean fromThisNode) {
     this.fromThisNode = fromThisNode;
+  }
+
+  public ByteBuffer getSerializationCache() {
+    return serializationCache;
+  }
+
+  public void setSerializationCache(ByteBuffer serializationCache) {
+    this.serializationCache = serializationCache;
   }
 }

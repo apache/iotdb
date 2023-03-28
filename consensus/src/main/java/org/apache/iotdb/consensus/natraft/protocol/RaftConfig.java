@@ -69,6 +69,8 @@ public class RaftConfig {
   private long maxSyncLogLag = 100_000;
   private int syncLeaderMaxWaitMs = 30_000;
   private boolean enableCompressedDispatching = true;
+  private boolean ignoreStateMachine = false;
+  private boolean onlyTestNetwork = false;
   private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
@@ -374,12 +376,28 @@ public class RaftConfig {
     this.enableCompressedDispatching = enableCompressedDispatching;
   }
 
+  public boolean isOnlyTestNetwork() {
+    return onlyTestNetwork;
+  }
+
+  public void setOnlyTestNetwork(boolean onlyTestNetwork) {
+    this.onlyTestNetwork = onlyTestNetwork;
+  }
+
   public CompressionType getDispatchingCompressionType() {
     return dispatchingCompressionType;
   }
 
   public void setDispatchingCompressionType(CompressionType dispatchingCompressionType) {
     this.dispatchingCompressionType = dispatchingCompressionType;
+  }
+
+  public boolean isIgnoreStateMachine() {
+    return ignoreStateMachine;
+  }
+
+  public void setIgnoreStateMachine(boolean ignoreStateMachine) {
+    this.ignoreStateMachine = ignoreStateMachine;
   }
 
   public void loadProperties(Properties properties) {
@@ -564,6 +582,15 @@ public class RaftConfig {
             CompressionType.class,
             properties.getProperty(
                 "default_boolean_encoding", this.getDispatchingCompressionType().toString())));
+
+    this.setIgnoreStateMachine(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "ignore_state_machine", String.valueOf(this.isIgnoreStateMachine()))));
+
+    this.setOnlyTestNetwork(
+        Boolean.parseBoolean(
+            properties.getProperty("only_test_network", String.valueOf(this.isOnlyTestNetwork()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

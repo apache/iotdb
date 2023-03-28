@@ -23,22 +23,18 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
 
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 
 public class VotingEntry {
 
   protected Entry entry;
   // for NB-Raft
   protected Set<Peer> weaklyAcceptedNodes;
-  private boolean hasFailed;
   private AppendEntryRequest appendEntryRequest;
-  private Future<ByteBuffer> serializedLogFuture;
   protected List<Peer> currNodes;
   protected List<Peer> newNodes;
   private boolean isStronglyAccepted;
@@ -57,15 +53,6 @@ public class VotingEntry {
     this.setAppendEntryRequest(appendEntryRequest);
     this.currNodes = currNodes;
     this.newNodes = newNodes;
-  }
-
-  public VotingEntry(VotingEntry another) {
-    this.entry = another.entry;
-    this.weaklyAcceptedNodes = another.weaklyAcceptedNodes;
-    this.setAppendEntryRequest(another.appendEntryRequest);
-    this.setSerializedLogFuture(another.getSerializedLogFuture());
-    this.currNodes = another.currNodes;
-    this.newNodes = another.newNodes;
   }
 
   public Entry getEntry() {
@@ -95,14 +82,6 @@ public class VotingEntry {
 
   public void setAppendEntryRequest(AppendEntryRequest appendEntryRequest) {
     this.appendEntryRequest = appendEntryRequest;
-  }
-
-  public Future<ByteBuffer> getSerializedLogFuture() {
-    return serializedLogFuture;
-  }
-
-  public void setSerializedLogFuture(Future<ByteBuffer> serializedLogFuture) {
-    this.serializedLogFuture = serializedLogFuture;
   }
 
   public int currNodesQuorumNum() {

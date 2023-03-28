@@ -75,8 +75,6 @@ public class LogDispatcher {
   protected Map<Peer, RateLimiter> nodesRateLimiter = new HashMap<>();
   protected Map<Peer, Double> nodesRate = new HashMap<>();
   protected Map<Peer, ExecutorService> executorServices = new HashMap<>();
-  protected ExecutorService resultHandlerThread =
-      IoTDBThreadPoolFactory.newFixedThreadPool(2, "AppendResultHandler");
   protected boolean queueOrdered;
   protected boolean enableCompressedDispatching;
   protected ICompressor compressor;
@@ -91,9 +89,6 @@ public class LogDispatcher {
     this.enableCompressedDispatching = config.isEnableCompressedDispatching();
     this.compressor = ICompressor.getCompressor(config.getDispatchingCompressionType());
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
-    if (!queueOrdered) {
-      maxBatchSize = 1;
-    }
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
     createQueueAndBindingThreads(unionNodes(allNodes, newNodes));
@@ -151,7 +146,6 @@ public class LogDispatcher {
         logger.warn("Cannot shut down dispatcher pool of {}-{}", member.getName(), entry.getKey());
       }
     }
-    resultHandlerThread.shutdownNow();
   }
 
   protected boolean addToQueue(BlockingQueue<VotingEntry> nodeLogQueue, VotingEntry request) {
@@ -238,7 +232,7 @@ public class LogDispatcher {
             VotingEntry poll = logBlockingDeque.poll();
             if (poll != null) {
               currBatch.add(poll);
-              logBlockingDeque.drainTo(currBatch, maxBatchSize);
+              logBlockingDeque.drainTo(currBatch, maxBatchSize - 1);
             } else {
               logBlockingDeque.wait(10);
               continue;
@@ -309,48 +303,28 @@ public class LogDispatcher {
       }
     }
 
-    protected AppendEntriesRequest prepareRequest(
-        List<ByteBuffer> logList, List<VotingEntry> currBatch, int firstIndex) {
+    protected AppendEntriesRequest prepareRequest(List<ByteBuffer> logList) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
       request.setLeader(member.getThisNode().getEndpoint());
       request.setLeaderId(member.getThisNode().getNodeId());
       request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
-
       request.setTerm(member.getStatus().getTerm().get());
-
       request.setEntries(logList);
-      // set index for raft
-      request.setPrevLogIndex(currBatch.get(firstIndex).getEntry().getCurrLogIndex() - 1);
-      try {
-        request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
-      } catch (Exception e) {
-        logger.error("getTerm failed for newly append entries", e);
-      }
       return request;
     }
 
-    protected AppendCompressedEntriesRequest prepareCompressedRequest(
-        List<ByteBuffer> logList, List<VotingEntry> currBatch, int firstIndex) {
+    protected AppendCompressedEntriesRequest prepareCompressedRequest(List<ByteBuffer> logList) {
       AppendCompressedEntriesRequest request = new AppendCompressedEntriesRequest();
 
       request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
       request.setLeader(member.getThisNode().getEndpoint());
       request.setLeaderId(member.getThisNode().getNodeId());
       request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
-
       request.setTerm(member.getStatus().getTerm().get());
-
       request.setEntryBytes(LogUtils.compressEntries(logList, compressor));
       request.setCompressionType((byte) compressor.getType().ordinal());
-      // set index for raft
-      request.setPrevLogIndex(currBatch.get(firstIndex).getEntry().getCurrLogIndex() - 1);
-      try {
-        request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
-      } catch (Exception e) {
-        logger.error("getTerm failed for newly append entries", e);
-      }
       return request;
     }
 
@@ -383,11 +357,10 @@ public class LogDispatcher {
         }
 
         if (!enableCompressedDispatching) {
-          AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
+          AppendEntriesRequest appendEntriesRequest = prepareRequest(logList);
           appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         } else {
-          AppendCompressedEntriesRequest appendEntriesRequest =
-              prepareCompressedRequest(logList, currBatch, prevIndex);
+          AppendCompressedEntriesRequest appendEntriesRequest = prepareCompressedRequest(logList);
           appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         }
 
@@ -401,7 +374,7 @@ public class LogDispatcher {
     public AppendNodeEntryHandler getAppendNodeEntryHandler(VotingEntry log, Peer node) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setDirectReceiver(node);
-      handler.setLog(log);
+      handler.setVotingEntry(log);
       handler.setMember(member);
       return handler;
     }

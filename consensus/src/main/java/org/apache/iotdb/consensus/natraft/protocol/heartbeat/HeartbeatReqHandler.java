@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatResponse;
@@ -92,8 +93,9 @@ public class HeartbeatReqHandler {
 
       response.setTerm(Response.RESPONSE_AGREE);
       // tell the leader the local log progress, so it may decide whether to perform a catch-up
-      response.setLastLogIndex(member.getLogManager().getLastLogIndex());
-      response.setLastLogTerm(member.getLogManager().getLastLogTerm());
+      Entry lastEntry = member.getLogManager().getLastEntryUnsafe();
+      response.setLastLogIndex(lastEntry.getCurrLogIndex());
+      response.setLastLogTerm(lastEntry.getCurrLogTerm());
       response.setCommitIndex(member.getLogManager().getCommitLogIndex());
 
       // if the snapshot apply lock is held, it means that a snapshot is installing now.

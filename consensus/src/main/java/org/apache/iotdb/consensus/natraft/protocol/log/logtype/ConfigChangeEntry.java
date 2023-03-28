@@ -40,13 +40,14 @@ public class ConfigChangeEntry extends Entry {
   }
 
   @Override
-  public ByteBuffer serialize() {
+  protected ByteBuffer serializeInternal() {
     ByteArrayOutputStream byteArrayOutputStream =
         new ByteArrayOutputStream(getDefaultSerializationBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getPrevTerm());
 
       dataOutputStream.writeInt(oldPeers.size());
       for (Peer oldPeer : oldPeers) {
@@ -66,6 +67,7 @@ public class ConfigChangeEntry extends Entry {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setPrevTerm(buffer.getLong());
 
     int size = buffer.getInt();
     oldPeers = new ArrayList<>(size);

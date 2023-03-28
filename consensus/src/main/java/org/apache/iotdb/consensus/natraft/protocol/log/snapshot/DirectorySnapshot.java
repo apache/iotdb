@@ -54,10 +54,14 @@ public class DirectorySnapshot extends Snapshot {
     serializeBase(dataOutputStream);
 
     try {
-      dataOutputStream.writeBytes(directory.getAbsolutePath());
+      byte[] bytes = directory.getAbsolutePath().getBytes(StandardCharsets.UTF_8);
+      dataOutputStream.writeInt(bytes.length);
+      dataOutputStream.write(bytes);
       dataOutputStream.writeInt(filePaths.size());
       for (Path filePath : filePaths) {
-        dataOutputStream.writeBytes(filePath.toString());
+        byte[] pathBytes = filePath.toString().getBytes(StandardCharsets.UTF_8);
+        dataOutputStream.writeInt(pathBytes.length);
+        dataOutputStream.write(pathBytes);
       }
     } catch (IOException e) {
       // unreachable

@@ -47,13 +47,14 @@ public class RequestEntry extends Entry {
   }
 
   @Override
-  public ByteBuffer serialize() {
+  protected ByteBuffer serializeInternal() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS(getDefaultSerializationBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) CLIENT_REQUEST.ordinal());
 
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getPrevTerm());
 
       ByteBuffer byteBuffer = request.serializeToByteBuffer();
       byteBuffer.rewind();
@@ -80,6 +81,7 @@ public class RequestEntry extends Entry {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setPrevTerm(buffer.getLong());
     int len = buffer.getInt();
     byte[] bytes = new byte[len];
     buffer.get(bytes);

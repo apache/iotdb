@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsyncRaftServiceClient extends RaftService.AsyncClient {
 
@@ -44,6 +45,8 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncRaftServiceClient> clientManager;
+  private static final AtomicInteger createCnt = new AtomicInteger();
+  private static final AtomicInteger closeCnt = new AtomicInteger();
 
   public AsyncRaftServiceClient(
       TProtocolFactory protocolFactory,
@@ -58,11 +61,17 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
         TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
     this.endpoint = endpoint;
     this.clientManager = clientManager;
+    if (createCnt.incrementAndGet() % 1000 == 0) {
+      logger.info("Created {} clients", createCnt.get(), new Exception());
+    }
   }
 
   public void close() {
     ___transport.close();
     ___currentMethod = null;
+    if (closeCnt.incrementAndGet() % 1000 == 0) {
+      logger.info("Closed {} clients", closeCnt.get(), new Exception());
+    }
   }
 
   /**
@@ -110,6 +119,13 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
     } catch (Exception e) {
       if (!(e.getCause() instanceof ConnectException)) {
         logger.info("Unexpected exception occurs in {} :", this, e);
+      } else {
+        logger.debug("Cannot connect: {}", e.getMessage());
+        try {
+          Thread.sleep(500);
+        } catch (InterruptedException ex) {
+          // ignore
+        }
       }
       return false;
     }
@@ -117,7 +133,7 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
 
   @Override
   public String toString() {
-    return String.format("AsyncConfigNodeIServiceClient{%s}", endpoint);
+    return String.format("AsyncRaftServiceClient{%s}", endpoint);
   }
 
   public static class Factory extends AsyncThriftClientFactory<TEndPoint, AsyncRaftServiceClient> {

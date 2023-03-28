@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import org.apache.thrift.TApplicationException;
@@ -48,7 +49,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
   protected RaftMember member;
-  protected VotingEntry log;
+  protected VotingEntry votingEntry;
   protected Peer directReceiver;
 
   public AppendNodeEntryHandler() {}
@@ -64,13 +65,16 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
             : directReceiver;
 
     logger.debug(
-        "{}: Append response {} from {} for log {}", member.getName(), response, trueReceiver, log);
+        "{}: Append response {} from {} for log {}",
+        member.getName(),
+        response,
+        trueReceiver,
+        votingEntry);
 
     long resp = response.status;
 
     if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
-      member.getVotingLogList().onStronglyAccept(log, trueReceiver);
-
+      member.getVotingLogList().onStronglyAccept(votingEntry, trueReceiver);
       member.getStatus().getPeerMap().get(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
       // a response > 0 is the follower's term
@@ -80,15 +84,18 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           member.getName(),
           trueReceiver,
           resp,
-          log);
+          votingEntry);
       member.stepDown(resp, null);
-      synchronized (log) {
-        log.notifyAll();
+      synchronized (votingEntry.getEntry()) {
+        votingEntry.getEntry().notifyAll();
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
-      synchronized (log) {
-        log.addWeaklyAcceptedNodes(trueReceiver);
-        log.notifyAll();
+      votingEntry.getEntry().acceptedTime = System.nanoTime();
+      Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.add(
+          votingEntry.getEntry().acceptedTime - votingEntry.getEntry().createTime);
+      synchronized (votingEntry.getEntry()) {
+        votingEntry.addWeaklyAcceptedNodes(trueReceiver);
+        votingEntry.getEntry().notifyAll();
       }
     } else {
       // e.g., Response.RESPONSE_LOG_MISMATCH
@@ -96,14 +103,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         logger.debug(
             "{}: The log {} is rejected by {} because: {}",
             member.getName(),
-            log,
+            votingEntry,
             trueReceiver,
             resp);
       } else {
         logger.warn(
             "{}: The log {} is rejected by {} because: {}",
             member.getName(),
-            log,
+            votingEntry,
             trueReceiver,
             resp);
       }
@@ -124,17 +131,21 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       logger.debug(
           "{}: Cannot append log {}: cannot connect to {}: {}",
           member.getName(),
-          log,
+          votingEntry,
           directReceiver,
           exception.getMessage());
     } else {
       logger.warn(
-          "{}: Cannot append log {} to {}", member.getName(), log, directReceiver, exception);
+          "{}: Cannot append log {} to {}",
+          member.getName(),
+          votingEntry,
+          directReceiver,
+          exception);
     }
   }
 
-  public void setLog(VotingEntry log) {
-    this.log = log;
+  public void setVotingEntry(VotingEntry votingEntry) {
+    this.votingEntry = votingEntry;
   }
 
   public void setMember(RaftMember member) {

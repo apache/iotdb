@@ -175,6 +175,8 @@ public class RaftMember {
   /** a thread pool that is used to do commit log tasks asynchronous in heartbeat thread */
   private ExecutorService commitLogPool;
 
+  private long lastCommitTaskTime;
+
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
    * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
@@ -448,7 +450,9 @@ public class RaftMember {
   }
 
   public void tryUpdateCommitIndex(long leaderTerm, long commitIndex, long commitTerm) {
-    if (leaderTerm >= status.term.get() && logManager.getCommitLogIndex() < commitIndex) {
+    if (leaderTerm >= status.term.get()
+        && logManager.getCommitLogIndex() < commitIndex
+        && System.currentTimeMillis() - lastCommitTaskTime > 100) {
       // there are more local logs that can be committed, commit them in a ThreadPool so the
       // heartbeat response will not be blocked
       CommitLogTask commitLogTask = new CommitLogTask(logManager, commitIndex, commitTerm);
@@ -457,18 +461,8 @@ public class RaftMember {
       // node catch up
       if (commitLogPool != null && !commitLogPool.isShutdown()) {
         commitLogPool.submit(commitLogTask);
+        lastCommitTaskTime = System.currentTimeMillis();
       }
-
-      logger.debug(
-          "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
-              + "localLast: {}-{}",
-          name,
-          commitIndex,
-          commitTerm,
-          logManager.getCommitLogIndex(),
-          logManager.getCommitLogTerm(),
-          logManager.getLastLogIndex(),
-          logManager.getLastLogTerm());
     }
   }
 
@@ -518,11 +512,9 @@ public class RaftMember {
     }
 
     AppendEntryResult response;
-    List<Entry> entries = LogUtils.parseEntries(request.entries);
+    List<Entry> entries = LogUtils.parseEntries(request.entries, stateMachine);
 
-    response =
-        logAppender.appendEntries(
-            request.prevLogIndex, request.prevLogTerm, request.leaderCommit, request.term, entries);
+    response = logAppender.appendEntries(request.leaderCommit, request.term, entries);
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -590,6 +582,10 @@ public class RaftMember {
     return allNodes;
   }
 
+  public RaftConfig getConfig() {
+    return config;
+  }
+
   protected enum AppendLogResult {
     OK,
     TIME_OUT,
@@ -609,7 +605,7 @@ public class RaftMember {
     if (!isLeader()) {
       Peer leader = getLeader();
       if (leader == null) {
-        return StatusUtils.NO_LEADER;
+        return StatusUtils.NO_LEADER.deepCopy().setMessage("No leader in: " + groupId);
       } else if (request != null) {
         return forwardRequest(request, leader.getEndpoint(), leader.getGroupId());
       } else {
@@ -655,7 +651,11 @@ public class RaftMember {
       return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
     }
 
-    return waitForEntryResult(votingEntry);
+    TSStatus tsStatus1 = waitForEntryResult(votingEntry);
+    entry.waitEndTime = System.nanoTime();
+    Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPLY_END.add(
+        entry.waitEndTime - entry.createTime);
+    return tsStatus1;
   }
 
   protected void waitApply(Entry entry) throws LogExecutionException {
@@ -672,9 +672,6 @@ public class RaftMember {
         }
       }
     }
-    entry.waitEndTime = System.nanoTime();
-    Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPLY_END.add(
-        entry.waitEndTime - entry.createTime);
     if (entry.getException() != null) {
       throw new LogExecutionException(entry.getException());
     }
@@ -974,7 +971,7 @@ public class RaftMember {
   public TSStatus forwardRequest(IConsensusRequest plan, TEndPoint node, ConsensusGroupId groupId) {
     if (node == null || node.equals(thisNode.getEndpoint())) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
-      return StatusUtils.NO_LEADER;
+      return StatusUtils.NO_LEADER.deepCopy().setMessage("No leader to forward in: " + groupId);
     }
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 

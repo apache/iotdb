@@ -58,8 +58,8 @@ public class RaftConsensusClientPool {
                   .build(),
               RAFT_CONSENSUS_CLIENT_POOL_THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncRaftServiceClient>()
-              .setMaxClientNumForEachNode(config.getMaxClientPerNode())
-              .setCoreClientNumForEachNode(config.getMaxIdleClientPerNode())
+              .setMaxClientNumForEachNode(config.getRpcConfig().getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(config.getRpcConfig().getCoreClientNumForEachNode())
               .build()
               .getConfig());
     }

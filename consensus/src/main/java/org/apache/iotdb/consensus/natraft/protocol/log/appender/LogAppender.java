@@ -30,8 +30,7 @@ import java.util.List;
  */
 public interface LogAppender {
 
-  AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, long term, List<Entry> entries);
+  AppendEntryResult appendEntries(long leaderCommit, long term, List<Entry> entries);
 
   void reset();
 }

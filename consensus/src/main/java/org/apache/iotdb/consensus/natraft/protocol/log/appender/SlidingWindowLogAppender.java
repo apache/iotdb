@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.natraft.utils.Response;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SlidingWindowLogAppender implements LogAppender {
 
@@ -42,18 +44,16 @@ public class SlidingWindowLogAppender implements LogAppender {
   private int windowLength = 0;
   private Entry[] logWindow;
   private long firstPosPrevIndex;
-  private long[] prevTerms;
-
   private RaftMember member;
   private RaftLogManager logManager;
   private RaftConfig config;
+  private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   public SlidingWindowLogAppender(RaftMember member, RaftConfig config) {
     this.member = member;
     this.logManager = member.getLogManager();
     windowCapacity = config.getMaxNumOfLogsInMem();
     logWindow = new Entry[windowCapacity];
-    prevTerms = new long[windowCapacity];
     this.config = config;
     reset();
   }
@@ -69,8 +69,8 @@ public class SlidingWindowLogAppender implements LogAppender {
 
   private void checkLogPrev(int pos) {
     // check the previous entry
-    long prevLogTerm = prevTerms[pos];
-    if (pos > 0) {
+    long prevLogTerm = logWindow[pos].getPrevTerm();
+    if (pos > 0 && logWindow[pos - 1] != null) {
       Entry prev = logWindow[pos - 1];
       if (prev != null && prev.getCurrLogTerm() != prevLogTerm) {
         logWindow[pos - 1] = null;
@@ -82,8 +82,8 @@ public class SlidingWindowLogAppender implements LogAppender {
     // check the next entry
     Entry entry = logWindow[pos];
     boolean nextMismatch = false;
-    if (pos < windowCapacity - 1) {
-      long nextPrevTerm = prevTerms[pos + 1];
+    if (logWindow[pos + 1] != null && pos < windowCapacity - 1) {
+      long nextPrevTerm = logWindow[pos + 1].getPrevTerm();
       if (nextPrevTerm != entry.getCurrLogTerm()) {
         nextMismatch = true;
       }
@@ -106,9 +106,7 @@ public class SlidingWindowLogAppender implements LogAppender {
    * Flush window range [0, flushPos) into the LogManager, where flushPos is the first null position
    * in the window.
    */
-  private long flushWindow(AppendEntryResult result, long leaderCommit) {
-    long windowPrevLogIndex = firstPosPrevIndex;
-    long windowPrevLogTerm = prevTerms[0];
+  private boolean flushWindow(AppendEntryResult result) {
 
     int flushPos = 0;
     for (; flushPos < windowCapacity; flushPos++) {
@@ -126,14 +124,12 @@ public class SlidingWindowLogAppender implements LogAppender {
         logs.get(logs.size() - 1));
 
     long startWaitingTime = System.currentTimeMillis();
-    long success;
+    boolean success;
     while (true) {
       // TODO: Consider memory footprint to execute a precise rejection
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        success = logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, logs);
-        member.tryUpdateCommitIndex(
-            member.getStatus().getTerm().get(), leaderCommit, logManager.getTerm(leaderCommit));
+        success = logManager.maybeAppend(logs);
         break;
       }
       try {
@@ -141,24 +137,25 @@ public class SlidingWindowLogAppender implements LogAppender {
         if (System.currentTimeMillis() - startWaitingTime
             > config.getMaxWaitingTimeWhenInsertBlocked()) {
           result.status = Response.RESPONSE_TOO_BUSY;
-          return -1;
+          return false;
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
     }
-    if (success != -1) {
+    if (success) {
       moveWindowRightward(flushPos, logs.get(logs.size() - 1).getCurrLogIndex());
+      result.status = Response.RESPONSE_STRONG_ACCEPT;
+      return true;
+    } else {
+      result.status = Response.RESPONSE_LOG_MISMATCH;
+      logger.warn("Cannot flush the window to log");
+      return false;
     }
-    result.status = Response.RESPONSE_STRONG_ACCEPT;
-    result.setLastLogIndex(firstPosPrevIndex);
-    result.setLastLogTerm(logManager.getLastLogTerm());
-    return success;
   }
 
   private void moveWindowRightward(int step, long newIndex) {
     System.arraycopy(logWindow, step, logWindow, 0, windowCapacity - step);
-    System.arraycopy(prevTerms, step, prevTerms, 0, windowCapacity - step);
     for (int i = 1; i <= step; i++) {
       logWindow[windowCapacity - i] = null;
     }
@@ -168,7 +165,6 @@ public class SlidingWindowLogAppender implements LogAppender {
   private void moveWindowLeftward(int step) {
     int length = Math.max(windowCapacity - step, 0);
     System.arraycopy(logWindow, 0, logWindow, step, length);
-    System.arraycopy(prevTerms, 0, prevTerms, step, length);
     for (int i = 0; i < length; i++) {
       logWindow[i] = null;
     }
@@ -176,8 +172,7 @@ public class SlidingWindowLogAppender implements LogAppender {
   }
 
   @Override
-  public AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, long term, List<Entry> entries) {
+  public AppendEntryResult appendEntries(long leaderCommit, long term, List<Entry> entries) {
     if (entries.isEmpty()) {
       return new AppendEntryResult(Response.RESPONSE_AGREE)
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
@@ -185,51 +180,44 @@ public class SlidingWindowLogAppender implements LogAppender {
 
     AppendEntryResult result = null;
     for (Entry entry : entries) {
-      result = appendEntry(prevLogIndex, prevLogTerm, leaderCommit, entry);
+      result = appendEntry(leaderCommit, entry);
 
       if (result.status != Response.RESPONSE_AGREE
           && result.status != Response.RESPONSE_STRONG_ACCEPT
           && result.status != Response.RESPONSE_WEAK_ACCEPT) {
         return result;
       }
-      prevLogIndex = entry.getCurrLogIndex();
-      prevLogTerm = entry.getCurrLogTerm();
     }
 
     return result;
   }
 
-  private AppendEntryResult appendEntry(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, Entry entry) {
-    long appendedPos = 0;
+  private AppendEntryResult appendEntry(long leaderCommit, Entry entry) {
+    boolean appended = false;
 
     AppendEntryResult result = new AppendEntryResult();
+    long prevLogIndex = entry.getCurrLogIndex() - 1;
+    long startTime = Statistic.RAFT_RECEIVER_WAIT_FOR_WINDOW.getOperationStartTime();
     synchronized (this) {
-      int windowPos = (int) (entry.getCurrLogIndex() - logManager.getLastLogIndex() - 1);
+      Statistic.RAFT_RECEIVER_WAIT_FOR_WINDOW.calOperationCostTimeFromStart(startTime);
+      int windowPos = (int) (prevLogIndex - firstPosPrevIndex);
       if (windowPos < 0) {
         // the new entry may replace an appended entry
-        appendedPos =
-            logManager.maybeAppend(prevLogIndex, prevLogTerm, Collections.singletonList(entry));
-        member.tryUpdateCommitIndex(
-            member.getStatus().getTerm().get(), leaderCommit, logManager.getTerm(leaderCommit));
-        result.status = Response.RESPONSE_STRONG_ACCEPT;
-        result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
+        appended = logManager.maybeAppend(Collections.singletonList(entry));
         moveWindowLeftward(-windowPos);
+        result.status = Response.RESPONSE_STRONG_ACCEPT;
       } else if (windowPos < windowCapacity) {
         // the new entry falls into the window
         logWindow[windowPos] = entry;
-        prevTerms[windowPos] = prevLogTerm;
         if (windowLength < windowPos + 1) {
           windowLength = windowPos + 1;
         }
         checkLog(windowPos);
         if (windowPos == 0) {
-          appendedPos = flushWindow(result, leaderCommit);
+          appended = flushWindow(result);
         } else {
           result.status = Response.RESPONSE_WEAK_ACCEPT;
         }
-
       } else {
         result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);
         result.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
@@ -237,9 +225,9 @@ public class SlidingWindowLogAppender implements LogAppender {
       }
     }
 
-    if (appendedPos == -1) {
-      // the incoming log points to an illegal position, reject it
-      result.status = Response.RESPONSE_LOG_MISMATCH;
+    if (appended) {
+      result.setLastLogIndex(logManager.getLastEntryIndexUnsafe());
+      member.tryUpdateCommitIndex(member.getStatus().getTerm().get(), leaderCommit, -1);
     }
     return result;
   }
@@ -247,9 +235,7 @@ public class SlidingWindowLogAppender implements LogAppender {
   @Override
   public void reset() {
     this.firstPosPrevIndex = logManager.getLastLogIndex();
-    this.prevTerms[0] = logManager.getLastLogTerm();
     logWindow = new Entry[windowCapacity];
-    prevTerms = new long[windowCapacity];
     windowLength = 0;
   }
 

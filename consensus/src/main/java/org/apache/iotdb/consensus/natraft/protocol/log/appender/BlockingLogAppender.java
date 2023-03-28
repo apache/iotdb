@@ -82,15 +82,12 @@ public class BlockingLogAppender implements LogAppender {
     return alreadyWait <= config.getWriteOperationTimeoutMS();
   }
 
-  protected long checkPrevLogIndex(long prevLogIndex) {
+  protected boolean checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
-    if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
-      // there are logs missing between the incoming log and the local last log, and such logs
-      // did not come within a timeout, report a mismatch to the sender and it shall fix this
-      // through catch-up
-      return Response.RESPONSE_LOG_MISMATCH;
-    }
-    return Response.RESPONSE_AGREE;
+    // there are logs missing between the incoming log and the local last log, and such logs
+    // did not come within a timeout, report a mismatch to the sender and it shall fix this
+    // through catch-up
+    return lastLogIndex >= prevLogIndex || waitForPrevLog(prevLogIndex);
   }
 
   /**
@@ -101,25 +98,19 @@ public class BlockingLogAppender implements LogAppender {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  public AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, long term, List<Entry> logs) {
-    logger.debug(
-        "{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}",
-        member.getName(),
-        prevLogIndex,
-        prevLogTerm,
-        leaderCommit);
+  public AppendEntryResult appendEntries(long leaderCommit, long term, List<Entry> logs) {
+    logger.debug("{}, entries={}, leaderCommit={}", member.getName(), logs, leaderCommit);
     if (logs.isEmpty()) {
       return new AppendEntryResult(Response.RESPONSE_AGREE)
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
     }
 
     long startTime = Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-    long resp = checkPrevLogIndex(prevLogIndex);
+    boolean resp = checkPrevLogIndex(logs.get(0).getCurrLogIndex() - 1);
     Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-    if (resp != Response.RESPONSE_AGREE) {
-      return new AppendEntryResult(resp)
+    if (!resp) {
+      return new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH)
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
     }
 
@@ -136,12 +127,11 @@ public class BlockingLogAppender implements LogAppender {
     while (true) {
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        resp =
-            lastConfigEntry == null
-                ? appendWithoutConfigChange(
-                    prevLogIndex, prevLogTerm, leaderCommit, term, logs, result)
-                : appendWithConfigChange(
-                    prevLogIndex, prevLogTerm, leaderCommit, term, logs, result, lastConfigEntry);
+        if (lastConfigEntry == null) {
+          appendWithoutConfigChange(leaderCommit, term, logs, result);
+        } else {
+          appendWithConfigChange(leaderCommit, term, logs, result, lastConfigEntry);
+        }
         break;
       }
 
@@ -161,20 +151,18 @@ public class BlockingLogAppender implements LogAppender {
     return result;
   }
 
-  protected long appendWithConfigChange(
-      long prevLogIndex,
-      long prevLogTerm,
+  protected boolean appendWithConfigChange(
       long leaderCommit,
       long term,
       List<Entry> logs,
       AppendEntryResult result,
       ConfigChangeEntry configChangeEntry) {
-    long resp;
+    boolean resp;
     try {
       logManager.getLock().writeLock().lock();
-      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, logs);
+      resp = logManager.maybeAppend(logs);
 
-      if (resp != -1) {
+      if (resp) {
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{} append a new log list {}, commit to {}", member.getName(), logs, leaderCommit);
@@ -182,9 +170,8 @@ public class BlockingLogAppender implements LogAppender {
 
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
         member.setNewNodes(configChangeEntry.getNewPeers());
-        member.tryUpdateCommitIndex(term, leaderCommit, logManager.getTerm(leaderCommit));
+        member.tryUpdateCommitIndex(term, leaderCommit, -1);
       } else {
         // the incoming log points to an illegal position, reject it
         result.status = Response.RESPONSE_LOG_MISMATCH;
@@ -195,24 +182,17 @@ public class BlockingLogAppender implements LogAppender {
     return resp;
   }
 
-  protected long appendWithoutConfigChange(
-      long prevLogIndex,
-      long prevLogTerm,
-      long leaderCommit,
-      long term,
-      List<Entry> logs,
-      AppendEntryResult result) {
-    long resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, logs);
-    if (resp != -1) {
+  protected boolean appendWithoutConfigChange(
+      long leaderCommit, long term, List<Entry> logs, AppendEntryResult result) {
+    boolean resp = logManager.maybeAppend(logs);
+    if (resp) {
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{} append a new log list {}, commit to {}", member.getName(), logs, leaderCommit);
       }
       result.status = Response.RESPONSE_STRONG_ACCEPT;
       result.setLastLogIndex(logManager.getLastLogIndex());
-      result.setLastLogTerm(logManager.getLastLogTerm());
-      member.tryUpdateCommitIndex(term, leaderCommit, logManager.getTerm(leaderCommit));
-
+      member.tryUpdateCommitIndex(term, leaderCommit, -1);
     } else {
       // the incoming log points to an illegal position, reject it
       result.status = Response.RESPONSE_LOG_MISMATCH;

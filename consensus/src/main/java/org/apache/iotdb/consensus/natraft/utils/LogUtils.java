@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.utils;
 
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
@@ -62,21 +63,12 @@ public class LogUtils {
       entry.setByteSize(byteBuffer.array().length);
       request.entry = byteBuffer;
     }
-    try {
-      if (entry.getPrevTerm() != -1) {
-        request.setPrevLogTerm(entry.getPrevTerm());
-      } else {
-        request.setPrevLogTerm(member.getLogManager().getTerm(entry.getCurrLogIndex() - 1));
-      }
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
-    }
+
     request.setLeader(member.getThisNode().getEndpoint());
     request.setLeaderId(member.getThisNode().getNodeId());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
     // logManager, the follower can handle the larger commitIndex with no effect
     request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
-    request.setPrevLogIndex(entry.getCurrLogIndex() - 1);
     request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
 
     return request;
@@ -138,14 +130,16 @@ public class LogUtils {
     return buffers;
   }
 
-  public static List<Entry> parseEntries(List<ByteBuffer> buffers) throws UnknownLogTypeException {
+  public static List<Entry> parseEntries(List<ByteBuffer> buffers, IStateMachine stateMachine)
+      throws UnknownLogTypeException {
     List<Entry> entries = new ArrayList<>();
     for (ByteBuffer buffer : buffers) {
       buffer.mark();
       Entry e;
       try {
-        e = LogParser.getINSTANCE().parse(buffer);
-        e.setByteSize(buffer.limit() - buffer.position());
+        e = LogParser.getINSTANCE().parse(buffer, stateMachine);
+        buffer.reset();
+        e.setSerializationCache(buffer);
       } catch (BufferUnderflowException ex) {
         buffer.reset();
         throw ex;

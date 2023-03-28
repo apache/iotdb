@@ -81,7 +81,7 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       throws UnknownLogTypeException {
     ConfigChangeEntry configChangeEntry = null;
     for (ByteBuffer entryBuffer : request.entries) {
-      Entry entry = LogParser.getINSTANCE().parse(entryBuffer);
+      Entry entry = LogParser.getINSTANCE().parse(entryBuffer, null);
       if (entry instanceof ConfigChangeEntry) {
         configChangeEntry = (ConfigChangeEntry) entry;
         break;
@@ -160,8 +160,6 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
     decompressedRequest
         .setTerm(request.getTerm())
         .setLeader(request.leader)
-        .setPrevLogIndex(request.prevLogIndex)
-        .setPrevLogTerm(request.prevLogTerm)
         .setLeaderCommit(request.leaderCommit)
         .setGroupId(request.groupId)
         .setLeaderId(request.leaderId);

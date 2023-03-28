@@ -24,32 +24,27 @@ struct AppendEntriesRequest {
   1: required i64 term // leader's
   2: required common.TEndPoint leader
   3: required list<binary> entries // data
-  4: required i64 prevLogIndex
-  5: required i64 prevLogTerm
-  6: required i64 leaderCommit
-  7: required common.TConsensusGroupId groupId
-  8: required i32 leaderId
+  4: required i64 leaderCommit
+  5: required common.TConsensusGroupId groupId
+  6: required i32 leaderId
 }
 
 struct AppendCompressedEntriesRequest {
   1: required i64 term // leader's
   2: required common.TEndPoint leader
   3: required binary entryBytes // data
-  4: required i64 prevLogIndex
-  5: required i64 prevLogTerm
-  6: required i64 leaderCommit
-  7: required common.TConsensusGroupId groupId
-  8: required i32 leaderId
-  9: required i8 compressionType
+  4: required i64 leaderCommit
+  5: required common.TConsensusGroupId groupId
+  6: required i32 leaderId
+  7: required i8 compressionType
 }
 
 struct AppendEntryResult {
   1: required i64 status;
-  2: optional i64 lastLogTerm;
-  3: optional i64 lastLogIndex;
-  4: optional common.TConsensusGroupId groupId;
-  5: optional common.TEndPoint receiver;
-  6: optional i32 receiverId;
+  2: optional i64 lastLogIndex;
+  3: optional common.TConsensusGroupId groupId;
+  4: optional common.TEndPoint receiver;
+  5: optional i32 receiverId;
 }
 
 // leader -> follower

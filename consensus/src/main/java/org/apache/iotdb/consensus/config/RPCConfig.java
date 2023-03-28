@@ -4,17 +4,21 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+
 import java.util.concurrent.TimeUnit;
 
 public class RPCConfig {
-  private final int rpcSelectorThreadNum;
-  private final int rpcMinConcurrentClientNum;
-  private final int rpcMaxConcurrentClientNum;
-  private final int thriftServerAwaitTimeForStopService;
-  private final boolean isRpcThriftCompressionEnabled;
-  private final int selectorNumOfClientManager;
-  private final int connectionTimeoutInMs;
-  private final int thriftMaxFrameSize;
+  private int rpcSelectorThreadNum;
+  private int rpcMinConcurrentClientNum;
+  private int rpcMaxConcurrentClientNum;
+  private int thriftServerAwaitTimeForStopService;
+  private boolean isRpcThriftCompressionEnabled;
+  private int selectorNumOfClientManager;
+  private int connectionTimeoutInMs;
+  private int thriftMaxFrameSize;
+  private int coreClientNumForEachNode;
+  private int maxClientNumForEachNode;
 
   private RPCConfig(
       int rpcSelectorThreadNum,
@@ -24,7 +28,9 @@ public class RPCConfig {
       boolean isRpcThriftCompressionEnabled,
       int selectorNumOfClientManager,
       int connectionTimeoutInMs,
-      int thriftMaxFrameSize) {
+      int thriftMaxFrameSize,
+      int coreClientNumForEachNode,
+      int maxClientNumForEachNode) {
     this.rpcSelectorThreadNum = rpcSelectorThreadNum;
     this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -33,6 +39,8 @@ public class RPCConfig {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
   public int getRpcSelectorThreadNum() {
@@ -81,6 +89,10 @@ public class RPCConfig {
     private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
     private int thriftMaxFrameSize = 536870912;
 
+    private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+    private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
     public RPCConfig.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       return this;
@@ -122,6 +134,16 @@ public class RPCConfig {
       return this;
     }
 
+    public RPCConfig.Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
+      return this;
+    }
+
+    public RPCConfig.Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
+      return this;
+    }
+
     public RPCConfig build() {
       return new RPCConfig(
           rpcSelectorThreadNum,
@@ -131,7 +153,25 @@ public class RPCConfig {
           isRpcThriftCompressionEnabled,
           selectorNumOfClientManager,
           connectionTimeoutInMs,
-          thriftMaxFrameSize);
+          thriftMaxFrameSize,
+          coreClientNumForEachNode,
+          maxClientNumForEachNode);
     }
+  }
+
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
+  }
+
+  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
+  }
+
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
+  }
+
+  public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 }

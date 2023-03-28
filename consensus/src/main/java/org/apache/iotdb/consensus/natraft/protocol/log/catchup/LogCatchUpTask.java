@@ -79,18 +79,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
     request.setTerm(raftMember.getStatus().getTerm().get());
 
     request.setEntries(logList);
-    // set index for raft
-    request.setPrevLogIndex(logs.get(startPos).getCurrLogIndex() - 1);
-    if (startPos != 0) {
-      request.setPrevLogTerm(logs.get(startPos - 1).getCurrLogTerm());
-    } else {
-      try {
-        request.setPrevLogTerm(
-            raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
-      } catch (Exception e) {
-        logger.error("getTerm failed for newly append entries", e);
-      }
-    }
     logger.debug("{}, node={} catchup request={}", raftMember.getName(), node, request);
     return request;
   }

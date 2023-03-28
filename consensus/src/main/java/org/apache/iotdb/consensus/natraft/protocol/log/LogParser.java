@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry.Types;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
@@ -43,7 +44,7 @@ public class LogParser {
     return INSTANCE;
   }
 
-  public Entry parse(ByteBuffer buffer) throws UnknownLogTypeException {
+  public Entry parse(ByteBuffer buffer, IStateMachine stateMachine) throws UnknownLogTypeException {
     if (logger.isDebugEnabled()) {
       logger.debug("Received a log buffer, pos:{}, limit:{}", buffer.position(), buffer.limit());
     }
@@ -55,11 +56,15 @@ public class LogParser {
       throw new UnknownLogTypeException(typeInt);
     }
     logger.debug("The log type is {}", type);
+    int startPos = buffer.position();
     Entry log;
     switch (type) {
       case CLIENT_REQUEST:
         RequestEntry requestLog = new RequestEntry();
         requestLog.deserialize(buffer);
+        if (stateMachine != null) {
+          requestLog.setRequest(stateMachine.deserializeRequest(requestLog.getRequest()));
+        }
         log = requestLog;
         break;
       case EMPTY:
@@ -70,6 +75,7 @@ public class LogParser {
       default:
         throw new IllegalArgumentException(type.toString());
     }
+    log.setByteSize(buffer.position() - startPos);
     logger.debug("Parsed a log {}", log);
     return log;
   }

@@ -36,13 +36,14 @@ public class EmptyEntry extends Entry {
   }
 
   @Override
-  public ByteBuffer serialize() {
+  protected ByteBuffer serializeInternal() {
     ByteArrayOutputStream byteArrayOutputStream =
         new ByteArrayOutputStream(getDefaultSerializationBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getPrevTerm());
     } catch (IOException e) {
       // unreachable
     }
@@ -53,6 +54,7 @@ public class EmptyEntry extends Entry {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setPrevTerm(buffer.getLong());
   }
 
   @Override

@@ -108,6 +108,7 @@ import java.util.Map;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
+
   // TODO @spricoder optimize the method adding metrics
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
@@ -278,13 +279,15 @@ public class StatementGenerator {
     insertStatement.setDevicePath(new PartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     insertStatement.setTimes(
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
+        QueryDataSetUtils.readTimesFromBuffer(
+            insertTabletReq.timestamps, insertTabletReq.size, insertTabletReq.compression));
     insertStatement.setColumns(
         QueryDataSetUtils.readTabletValuesFromBuffer(
             insertTabletReq.values,
             insertTabletReq.types,
             insertTabletReq.types.size(),
-            insertTabletReq.size));
+            insertTabletReq.size,
+            insertTabletReq.compression));
     insertStatement.setBitMaps(
         QueryDataSetUtils.readBitMapsFromBuffer(
             insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size));
@@ -310,13 +313,15 @@ public class StatementGenerator {
       insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       insertTabletStatement.setTimes(
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+          QueryDataSetUtils.readTimesFromBuffer(
+              req.timestampsList.get(i), req.sizeList.get(i), req.compression));
       insertTabletStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(
               req.valuesList.get(i),
               req.typesList.get(i),
               req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
+              req.sizeList.get(i),
+              req.compression));
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
               req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));

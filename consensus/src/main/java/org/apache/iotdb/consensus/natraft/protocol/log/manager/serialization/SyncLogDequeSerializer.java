@@ -1353,7 +1353,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         byte[] bytes = ReadWriteIOUtils.readBytes(bufferedInputStream, logBlockSize);
         ByteBuffer uncompressed = ByteBuffer.wrap(unCompressor.uncompress(bytes));
         while (uncompressed.remaining() > 0) {
-          Entry e = parser.parse(uncompressed);
+          Entry e = parser.parse(uncompressed, null);
           result.add(e);
         }
         currentReadOffset = currentReadOffset + Integer.BYTES + logBlockSize;

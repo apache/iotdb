@@ -21,7 +21,9 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -271,7 +273,8 @@ public class QueryDataSetUtils {
     return new Pair<>(res, !queryExecution.hasNextResult());
   }
 
-  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
+  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size, String compression) {
+    buffer = uncompressBuffer(buffer, compression);
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {
       times[i] = buffer.getLong();
@@ -324,8 +327,32 @@ public class QueryDataSetUtils {
     return bitMaps;
   }
 
+  public static ByteBuffer uncompressBuffer(ByteBuffer buffer, String compression) {
+    if (compression != null) {
+      IUnCompressor unCompressor =
+          IUnCompressor.getUnCompressor(CompressionType.valueOf(compression));
+      try {
+        int uncompressedLength =
+            unCompressor.getUncompressedLength(
+                buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+        byte[] uncompressedBuffer = new byte[uncompressedLength];
+        unCompressor.uncompress(
+            buffer.array(),
+            buffer.arrayOffset() + buffer.position(),
+            buffer.remaining(),
+            uncompressedBuffer,
+            0);
+        return ByteBuffer.wrap(uncompressedBuffer);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return buffer;
+  }
+
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, List<Integer> types, int columns, int size) {
+      ByteBuffer buffer, List<Integer> types, int columns, int size, String compression) {
+    buffer = uncompressBuffer(buffer, compression);
     TSDataType[] dataTypes = new TSDataType[types.size()];
     for (int i = 0; i < dataTypes.length; i++) {
       dataTypes[i] = TSDataType.values()[types.get(i)];

@@ -156,6 +156,9 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
+    if (config.isOnlyTestNetwork()) {
+      return ConsensusWriteResponse.newBuilder().setStatus(StatusUtils.OK).build();
+    }
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       return ConsensusWriteResponse.newBuilder()

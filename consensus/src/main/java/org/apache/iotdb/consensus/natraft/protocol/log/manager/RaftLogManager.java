@@ -249,12 +249,7 @@ public abstract class RaftLogManager {
    * @return lastIndex
    */
   public long getLastLogIndex() {
-    try {
-      lock.readLock().lock();
-      return entries.get(entries.size() - 1).getCurrLogIndex();
-    } finally {
-      lock.readLock().unlock();
-    }
+    return getLastEntry().getCurrLogIndex();
   }
 
   public Entry getLastEntry() {
@@ -263,6 +258,29 @@ public abstract class RaftLogManager {
       return entries.get(entries.size() - 1);
     } finally {
       lock.readLock().unlock();
+    }
+  }
+
+  public Entry getLastEntryUnsafe() {
+    while (true) {
+      if (entries.isEmpty()) {
+        logger.error("{} should at least have one entry", name);
+        return getLastEntry();
+      }
+      try {
+        return entries.get(entries.size() - 1);
+      } catch (IndexOutOfBoundsException e) {
+        // ignore
+      }
+    }
+  }
+
+  public long getLastEntryIndexUnsafe() {
+    Entry lastEntryUnsafe = getLastEntryUnsafe();
+    if (lastEntryUnsafe != null) {
+      return lastEntryUnsafe.getCurrLogIndex();
+    } else {
+      return getLastLogIndex();
     }
   }
 
@@ -329,17 +347,23 @@ public abstract class RaftLogManager {
    * Used by follower node to support leader's complicated log replication rpc parameters and try to
    * commit entries.
    *
-   * @param lastIndex leader's matchIndex for this follower node
-   * @param lastTerm the entry's term which index is leader's matchIndex for this follower node
    * @param entries entries sent from the leader node Note that the leader must ensure
    *     entries[0].index = lastIndex + 1
    * @return -1 if the entries cannot be appended, otherwise the last index of new entries
    */
-  public long maybeAppend(long lastIndex, long lastTerm, List<Entry> entries) {
+  public boolean maybeAppend(List<Entry> entries) {
+    if (entries.isEmpty()) {
+      return true;
+    }
+
+    long lastIndex = entries.get(0).getCurrLogIndex() - 1;
+    long lastTerm = entries.get(0).getPrevTerm();
+    long startTime = Statistic.RAFT_RECEIVER_WAIT_LOCK.getOperationStartTime();
     try {
       lock.writeLock().lock();
+      Statistic.RAFT_RECEIVER_WAIT_LOCK.calOperationCostTimeFromStart(startTime);
+      startTime = Statistic.RAFT_RECEIVER_APPEND_INTERNAL.getOperationStartTime();
       if (matchTerm(lastTerm, lastIndex)) {
-        long newLastIndex = lastIndex + entries.size();
         long ci = findConflict(entries);
         if (ci <= commitIndex) {
           if (ci != -1) {
@@ -357,14 +381,25 @@ public abstract class RaftLogManager {
                   entries.size() - 1);
             }
           }
-
         } else {
           long offset = lastIndex + 1;
-          append(entries.subList((int) (ci - offset), entries.size()), false);
+          try {
+            append(entries.subList((int) (ci - offset), entries.size()), false);
+          } catch (IllegalArgumentException e) {
+            logger.error(
+                "Appending {}, ci {}, offset {}, lastIndex {}, localLast {}",
+                entries,
+                ci,
+                offset,
+                lastIndex,
+                getLastLogIndex());
+            throw e;
+          }
         }
-        return newLastIndex;
+        Statistic.RAFT_RECEIVER_APPEND_INTERNAL.calOperationCostTimeFromStart(startTime);
+        return true;
       }
-      return -1;
+      return false;
     } finally {
       lock.writeLock().unlock();
     }
@@ -378,7 +413,7 @@ public abstract class RaftLogManager {
    * @return the newly generated lastIndex
    */
   public long append(List<Entry> appendingEntries, boolean isLeader) {
-    if (entries.isEmpty()) {
+    if (appendingEntries.isEmpty()) {
       return getLastLogIndex();
     }
 
@@ -410,7 +445,7 @@ public abstract class RaftLogManager {
       }
     }
 
-    if (!isLeader) {
+    if (!isLeader && !config.isUseFollowerSlidingWindow()) {
       // log update condition is to inform follower appending threads that the log is updated, and
       // the leader does not concern it
       Object logUpdateCondition =
@@ -427,11 +462,12 @@ public abstract class RaftLogManager {
    * Used by leader node to try to commit entries.
    *
    * @param leaderCommit leader's commitIndex
-   * @param term the entry's term which index is leaderCommit in leader's log module
+   * @param term the entry's term which index is leaderCommit in leader's log module, if term is -1,
+   *     the commit is after a successful appending and unnecessary to check term
    * @return true or false
    */
   public boolean maybeCommit(long leaderCommit, long term) {
-    if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
+    if (leaderCommit > commitIndex && (term == -1 || matchTerm(term, leaderCommit))) {
       try {
         commitTo(leaderCommit);
       } catch (LogExecutionException e) {
@@ -597,6 +633,7 @@ public abstract class RaftLogManager {
         entry.committedTime = System.nanoTime();
         Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.add(entry.committedTime - entry.createTime);
       }
+      entry.setSerializationCache(null);
     }
   }
 
@@ -612,9 +649,12 @@ public abstract class RaftLogManager {
 
     try {
       lock.writeLock().lock();
+      long startTime = Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.getOperationStartTime();
       long lo = commitIndex + 1;
       long hi = newCommitIndex + 1;
+      long getLogStart = Statistic.RAFT_SENDER_GET_LOG_FOR_COMMIT.getOperationStartTime();
       List<Entry> entries = new ArrayList<>(getEntries(lo, hi));
+      Statistic.RAFT_SENDER_GET_LOG_FOR_COMMIT.calOperationCostTimeFromStart(getLogStart);
 
       if (entries.isEmpty()) {
         return;
@@ -629,6 +669,7 @@ public abstract class RaftLogManager {
       checkCompaction(entries);
       commitEntries(entries);
       applyEntries(entries);
+      Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.calOperationCostTimeFromStart(startTime);
     } finally {
       lock.writeLock().unlock();
     }
@@ -686,6 +727,9 @@ public abstract class RaftLogManager {
     }
     try {
       logApplier.apply(entry);
+      if (entry.createTime != 0) {
+        Statistic.LOG_DISPATCHER_FROM_CREATE_TO_APPLIER.add(System.nanoTime() - entry.createTime);
+      }
     } catch (Exception e) {
       entry.setException(e);
       entry.setApplied(true);

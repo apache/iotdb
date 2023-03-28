@@ -53,9 +53,11 @@ public class BaseApplier implements LogApplier {
       if (e instanceof RequestEntry) {
         RequestEntry requestLog = (RequestEntry) e;
         IConsensusRequest request = requestLog.getRequest();
-        TSStatus status = applyRequest(request);
-        if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          e.setException(new ConsensusException(status.message + ":" + status.code));
+        if (!member.getConfig().isIgnoreStateMachine()) {
+          TSStatus status = applyRequest(request);
+          if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            e.setException(new ConsensusException(status.message + ":" + status.code));
+          }
         }
       } else if (e instanceof ConfigChangeEntry) {
         member.applyConfigChange(((ConfigChangeEntry) e));

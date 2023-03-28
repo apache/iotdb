@@ -699,7 +699,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
 
     rowCount = buffer.getInt();
     times = new long[rowCount];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, null);
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
@@ -969,7 +969,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
 
     rowCount = buffer.getInt();
     times = new long[rowCount];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, null);
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
