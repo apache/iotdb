@@ -30,13 +30,13 @@ class ConfigParser(object):
     def parse_configs(self, config):
         conf_dict = vars(self.parser.parse_args([]))
         args = []
+        for k in self.required_list:
+            if k not in config.keys():
+                raise MissingConfigError(k)
         for k, v in config.items():
             if k in conf_dict.keys():
                 args.append("--{}".format(k))
                 args.append(eval(v) if type(conf_dict[k]) is list and type(v) is not list else v)
-            else:
-                if k in self.required_list:
-                    raise MissingConfigError(k)
         return vars(self.parser.parse_args(args))
 
 
@@ -96,6 +96,9 @@ class DLinearConfigParser(ConfigParser):
         self.parser.add_argument('--d_model', type=int, default=128)
         self.parser.add_argument('--inner_layers', type=int, default=4)
         self.parser.add_argument('--outer_layers', type=int, default=4)
+        self.argument_list = ['model_name', 'input_len', 'pred_len', 'input_vars', 'output_vars',
+                              'task_type', 'kernel_size', 'block_type', 'd_model', 'inner_layers', 'outer_layers']
+        self.required_list = ['model_name', 'input_vars', 'output_vars']
 
 
 class ConfigManager(object):
