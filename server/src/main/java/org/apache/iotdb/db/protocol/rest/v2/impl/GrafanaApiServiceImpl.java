@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.impl;
+package org.apache.iotdb.db.protocol.rest.v2.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,15 +31,14 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
-import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
-import org.apache.iotdb.db.protocol.rest.NotFoundException;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
-import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
-import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
-import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
-import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.protocol.rest.v2.GrafanaApiService;
+import org.apache.iotdb.db.protocol.rest.v2.handler.ExceptionHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.QueryDataSetHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.RequestValidationHandler;
+import org.apache.iotdb.db.protocol.rest.v2.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.v2.model.ExpressionRequest;
+import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -136,8 +135,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   }
 
   @Override
-  public Response expression(ExpressionRequest expressionRequest, SecurityContext securityContext)
-      throws NotFoundException {
+  public Response expression(ExpressionRequest expressionRequest, SecurityContext securityContext) {
     try {
       RequestValidationHandler.validateExpressionRequest(expressionRequest);
 
@@ -203,7 +201,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   }
 
   @Override
-  public Response login(SecurityContext securityContext) throws NotFoundException {
+  public Response login(SecurityContext securityContext) {
     return Response.ok()
         .entity(
             new ExecutionStatus()
@@ -213,8 +211,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   }
 
   @Override
-  public Response node(List<String> requestBody, SecurityContext securityContext)
-      throws NotFoundException {
+  public Response node(List<String> requestBody, SecurityContext securityContext) {
     try {
       if (requestBody != null && !requestBody.isEmpty()) {
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));

@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.handler;
+package org.apache.iotdb.db.protocol.rest.v2.handler;
 
-import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
-import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
-import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.protocol.rest.v2.model.ExpressionRequest;
+import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
+import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 
 import org.apache.commons.lang3.Validate;
 
