@@ -66,6 +66,8 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
+  private static final String ML_METRICS_STORAGE_GROUP = "root.__system.ml.exp";
+
   private final IPartitionFetcher PARTITION_FETCHER;
 
   private final ISchemaFetcher SCHEMA_FETCHER;
@@ -174,7 +176,8 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
   @Override
   public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
     try {
-      InsertRowStatement insertRowStatement = StatementGenerator.createStatement(req);
+      InsertRowStatement insertRowStatement =
+          StatementGenerator.createStatement(req, ML_METRICS_STORAGE_GROUP);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

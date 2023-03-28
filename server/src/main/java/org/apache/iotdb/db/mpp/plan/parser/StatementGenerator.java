@@ -807,17 +807,16 @@ public class StatementGenerator {
     return databasePath;
   }
 
-  public static InsertRowStatement createStatement(TRecordModelMetricsReq recordModelMetricsReq)
-      throws IllegalPathException {
-    String prefix = "root.__ml.exp";
-    prefix =
+  public static InsertRowStatement createStatement(
+      TRecordModelMetricsReq recordModelMetricsReq, String prefix) throws IllegalPathException {
+    String path =
         prefix
-            + "."
+            + TsFileConstant.PATH_SEPARATOR
             + recordModelMetricsReq.getModelId()
-            + "."
+            + TsFileConstant.PATH_SEPARATOR
             + recordModelMetricsReq.getTrialId();
     InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setDevicePath(new PartialPath(prefix));
+    insertRowStatement.setDevicePath(new PartialPath(path));
     insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
     insertRowStatement.setMeasurements(recordModelMetricsReq.getMetrics().toArray(new String[0]));
     insertRowStatement.setAligned(true);

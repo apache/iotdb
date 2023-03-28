@@ -34,7 +34,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceMBean {
 
-  MLNodeRPCServiceImpl impl;
+  private MLNodeRPCServiceImpl impl;
 
   private MLNodeRPCService() {}
 
@@ -78,12 +78,12 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getMlNodeAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getMlNodePort();
+    return IoTDBDescriptor.getInstance().getConfig().getMLNodePort();
   }
 
   private static class MLNodeRPCServiceHolder {

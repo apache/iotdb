@@ -863,9 +863,6 @@ public class IoTDBConfig {
   /** Internal port for coordinator */
   private int internalPort = 10730;
 
-  /** Address for MLNode */
-  private String mlNodeAddress = "127.0.0.1";
-
   /** Port for MLNode */
   private int mlNodePort = 10780;
 
@@ -2943,19 +2940,11 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
-  public String getMlNodeAddress() {
-    return mlNodeAddress;
-  }
-
-  public void setMlNodeAddress(String mlNodeAddress) {
-    this.mlNodeAddress = mlNodeAddress;
-  }
-
-  public int getMlNodePort() {
+  public int getMLNodePort() {
     return mlNodePort;
   }
 
-  public void setMlNodePort(int mlNodePort) {
+  public void setMLNodePort(int mlNodePort) {
     this.mlNodePort = mlNodePort;
   }
 
