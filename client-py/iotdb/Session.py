@@ -600,7 +600,7 @@ class Session(object):
                 raise e
 
     def insert_records(
-        self, device_ids, times, measurements_lst, types_lst, values_lst
+        self, device_ids: list, times, measurements_lst, types_lst, values_lst
     ):
         """
         insert multiple rows of data, records are independent to each other, in other words, there's no relationship
@@ -615,21 +615,55 @@ class Session(object):
         for types in types_lst:
             data_types = [data_type.value for data_type in types]
             type_values_lst.append(data_types)
-        request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst
-        )
-        try:
-            return Session.verify_success(self.__client.insertRecords(request))
-        except TTransport.TException as e:
-            if self.reconnect():
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(device_ids)):
+                client = self.get_client(device_ids[i])
+                request = request_group.setdefault(client, TSInsertRecordsReq())
+                request.sessionId = self.__session_id
+                request.prefixPaths.append(device_ids[i])
+                request.timestamps.append(times[i])
+                request.measurementsList.append(measurements_lst[i])
+                request.valuesList.append(
+                    Session.value_to_bytes(type_values_lst[i], values_lst)
+                )
+            for client, request in request_group.items():
                 try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertRecords(request))
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertRecords(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertRecords(request))
+                        except TTransport.TException as e1:
+                            logger.exception("insert fails because: ", e1)
+                            raise e1
+                    else:
+                        raise e
+            return 0
+        else:
+            request = self.gen_insert_records_req(
+                device_ids, times, measurements_lst, type_values_lst, values_lst
+            )
+            try:
+                return Session.verify_success(self.__client.insertRecords(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertRecords(request)
+                        )
+                    except TTransport.TException as e1:
+                        logger.exception("insert fails because: ", e1)
+                        raise e1
+                else:
+                    raise e
 
     def insert_aligned_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -682,21 +716,56 @@ class Session(object):
         for types in types_lst:
             data_types = [data_type.value for data_type in types]
             type_values_lst.append(data_types)
-        request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst, True
-        )
-        try:
-            return Session.verify_success(self.__client.insertRecords(request))
-        except TTransport.TException as e:
-            if self.reconnect():
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(device_ids)):
+                client = self.get_client(device_ids[i])
+                request = request_group.setdefault(client, TSInsertRecordsReq())
+                request.isAligned = True
+                request.sessionId = self.__session_id
+                request.prefixPaths.append(device_ids[i])
+                request.timestamps.append(times[i])
+                request.measurementsList.append(measurements_lst[i])
+                request.valuesList.append(
+                    Session.value_to_bytes(type_values_lst[i], values_lst)
+                )
+            for client, request in request_group.items():
                 try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertRecords(request))
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertRecords(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertRecords(request))
+                        except TTransport.TException as e1:
+                            logger.exception("insert fails because: ", e1)
+                            raise e1
+                    else:
+                        raise e
+            return 0
+        else:
+            request = self.gen_insert_records_req(
+                device_ids, times, measurements_lst, type_values_lst, values_lst, True
+            )
+            try:
+                return Session.verify_success(self.__client.insertRecords(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertRecords(request)
+                        )
+                    except TTransport.TException as e1:
+                        logger.exception("insert fails because: ", e1)
+                        raise e1
+                else:
+                    raise e
 
     def test_insert_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -715,11 +784,7 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         try:
-            return Session.verify_success_with_redirection(
-                self.get_client(device_id).testInsertRecord(request)
-            )
-        except RedirectException as e:
-            return self.handle_redirection(device_id, e.redirect_node)
+            return Session.verify_success(self.__client.testInsertRecord(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -867,19 +932,52 @@ class Session(object):
         insert multiple tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        request = self.gen_insert_tablets_req(tablet_lst)
-        try:
-            return Session.verify_success(self.__client.insertTablets(request))
-        except TTransport.TException as e:
-            if self.reconnect():
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(tablet_lst)):
+                client = self.get_client(tablet_lst[i].get_device_id())
+                request = request_group.setdefault(client, TSInsertTabletsReq())
+                request.isAligned = False
+                request.sessionId = self.__session_id
+                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
+                request.measurementsList.append(tablet_lst[i].get_measurements())
+                request.valuesList.append(tablet_lst[i].get_binary_values())
+            for client, request in request_group.items():
                 try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertTablets(request))
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertTablets(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertTablets(request))
+                        except TTransport.TException as e1:
+                            logger.exception("insert fails because: ", e1)
+                            raise e1
+                    else:
+                        raise e
+            return 0
+        else:
+            request = self.gen_insert_tablets_req(tablet_lst)
+            try:
+                return Session.verify_success(self.__client.insertTablets(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertTablets(request)
+                        )
+                    except TTransport.TException as e1:
+                        logger.exception("insert fails because: ", e1)
+                        raise e1
+                else:
+                    raise e
 
     def insert_aligned_tablet(self, tablet):
         """
@@ -916,19 +1014,52 @@ class Session(object):
         insert multiple aligned tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        request = self.gen_insert_tablets_req(tablet_lst, True)
-        try:
-            return Session.verify_success(self.__client.insertTablets(request))
-        except TTransport.TException as e:
-            if self.reconnect():
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(tablet_lst)):
+                client = self.get_client(tablet_lst[i].get_device_id())
+                request = request_group.setdefault(client, TSInsertTabletsReq())
+                request.isAligned = False
+                request.sessionId = self.__session_id
+                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
+                request.measurementsList.append(tablet_lst[i].get_measurements())
+                request.valuesList.append(tablet_lst[i].get_binary_values())
+            for client, request in request_group.items():
                 try:
-                    request.sessionId = self.__session_id
-                    return Session.verify_success(self.__client.insertTablets(request))
-                except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
-            else:
-                raise e
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertTablets(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertTablets(request))
+                        except TTransport.TException as e1:
+                            logger.exception("insert fails because: ", e1)
+                            raise e1
+                    else:
+                        raise e
+            return 0
+        else:
+            request = self.gen_insert_tablets_req(tablet_lst, True)
+            try:
+                return Session.verify_success(self.__client.insertTablets(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertTablets(request)
+                        )
+                    except TTransport.TException as e1:
+                        logger.exception("insert fails because: ", e1)
+                        raise e1
+                else:
+                    raise e
 
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -959,7 +1090,6 @@ class Session(object):
         :param measurements_list: measurements list
         :param types_list: types list
         :param values_list: values list
-        :param have_sorted: have these list been sorted by timestamp
         """
         # check parameter
         size = len(times_list)
@@ -1109,11 +1239,7 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            return Session.verify_success_with_redirection(
-                self.get_client(tablet.get_device_id()).testInsertTablet(request)
-            )
-        except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return Session.verify_success(self.__client.testInsertTablet(request))
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1398,6 +1524,21 @@ class Session(object):
         if status.redirectNode is not None:
             raise RedirectException(status.redirectNode)
         return 0
+
+    @staticmethod
+    def verify_success_with_redirection_for_multi_devices(
+        status: TSStatus, devices: list
+    ):
+        Session.verify_success(status)
+        if (
+            status.code == Session.MULTIPLE_ERROR
+            or status.code == Session.REDIRECTION_RECOMMEND
+        ):
+            device_to_endpoint = {}
+            for i in range(len(status.subStatus)):
+                if status.subStatus[i].redirectNode is not None:
+                    device_to_endpoint[devices[i]] = status.subStatus[i].redirectNode
+            raise RedirectException(device_to_endpoint)
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
@@ -2039,6 +2180,9 @@ class SessionConnection(object):
 
 
 class RedirectException(Exception):
-    def __init__(self, redirect_node: TEndPoint):
+    def __init__(self, redirect_info: TEndPoint | dict):
         Exception.__init__(self)
-        self.redirect_node = redirect_node
+        if isinstance(redirect_info, TEndPoint):
+            self.redirect_node = redirect_info
+        else:
+            self.device_to_endpoint = redirect_info
