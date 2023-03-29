@@ -26,22 +26,11 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.0
 servers:
-- url: http://127.0.0.1:18080/
-  description: api
+  - url: http://127.0.0.1:18080/
+    description: api
 security:
-- basic: []
+  - basic: []
 paths:
-  /ping:
-    get:
-      responses:
-        "200":
-          description: ExecutionStatus
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExecutionStatus'
-      operationId: tryPing
-
   /rest/v1/insertTablet:
     post:
       summary: insertTablet
@@ -174,7 +163,7 @@ components:
       properties:
         sql:
           type: string
-        row_limit:
+        rowLimit:
           type: integer
           format: int32
 
@@ -191,7 +180,7 @@ components:
           type: array
           items:
             type: string
-        data_types:
+        dataTypes:
           type: array
           items:
             type: string
@@ -201,9 +190,9 @@ components:
             type: array
             items:
               type: object
-        is_aligned:
+        isAligned:
           type: boolean
-        device:
+        deviceId:
           type: string
 
     ExecutionStatus:
@@ -222,7 +211,7 @@ components:
           type: array
           items:
             type: string
-        column_names:
+        columnNames:
           type: array
           items:
             type: string
@@ -245,17 +234,17 @@ components:
           type: array
           items:
             type: string
-        prefix_path:
+        prefixPath:
           type: array
           items:
             type: string
         condition:
           type: string
         control:
-           type: string
-        start_time:
+          type: string
+        startTime:
           type: number
-        end_time:
+        endTime:
           type: number
 
     VariablesResult:
