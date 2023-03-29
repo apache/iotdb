@@ -21,15 +21,6 @@
 
 # Apache IoTDB 0.13.4
 
-## New Feature
-
-* [IOTDB-3662] Add audit log
-* [IOTDB-4675] Support load mlog.bin
-* [IOTDB-4767] Support get all connection info in session api
-* [IOTDB-4967] Fix slidingTimeWindow stops when encounter an empty window
-* [IOTDB-5133] Export schema tool
-* [IOTDB-5173] Add the statistics of flush point
-
 ## Improvements
 
 * [IOTDB-4230] Modify the start script for flexible startup: add iotdb.in.sh, add pid file
@@ -40,7 +31,6 @@
 * [IOTDB-5127] Separate ISession as a module
 * [IOTDB-5128] Perfect the usage of `-p pid`, `-v version` feature for start-server.sh
 * [IOTDB-5232] Add Schema Memory Usage metric monitor
-* [IOTDB-5346] Fix log error in MemtableFlushTask when recovering
 
 
 ## Bug Fix
@@ -51,7 +41,6 @@
 * [IOTDB-4781] Fix the NOT LIKE value filter does not work
 * [IOTDB-4842] Fix String number inserting bug
 * [IOTDB-4938] Fix data are lost when meets exception `storage group not ready`
-* [IOTDB-4939] Remove unsupport compress type
 * [IOTDB-5136] NPE when use a null as username in session
 * [IOTDB-5184] Fix CompressionType ArrayIndexOutOfBounds
 * [IOTDB-5157] Fix "Invalid ID for ZoneOffset, invalid format:"
@@ -64,7 +53,9 @@
 * [IOTDB-5286] Fix target files should not be select to participate in other compaction task
 * [IOTDB-5296] Fix close session npe when session is null
 * [IOTDB-5307] Fix failed to get TsFile input of file: NoSuchFileException
-* [IOTDB-5311] Fix RunTimeException and NoSuchFile Exception when selecting files causing compaction scheduled thread to get stuck
+* [IOTDB-5311] Fix RunTimeException and NoSuchFile Exception when selecting files causing compaction scheduled thread to
+  get stuck
+* [IOTDB-5346] Fix log error in MemtableFlushTask when recovering
 
 # Apache IoTDB 0.13.3
 
