@@ -17,9 +17,12 @@
 #
 
 
+import argparse
+
 from torch.utils.data import Dataset
 from iotdb.mlnode.datats.utils.timefeatures import time_features
 from iotdb.mlnode.datats.offline.data_source import DataSource
+
 
 # currently support for multivariate forecasting only
 
@@ -98,3 +101,16 @@ class WindowDataset(TimeSeriesDataset):
     def __len__(self):
         return len(self.data) - self.input_len - self.pred_len + 1
 
+
+def get_timeseries_dataset(data_config: argparse.Namespace) -> TimeSeriesDataset:
+    # TODO (@lcy)
+    # init datasource
+    # init dataset
+    pass
+
+
+def get_window_dataset(data_config: argparse.Namespace) -> WindowDataset:
+    # TODO (@lcy)
+    # init datasource
+    # init dataset
+    pass
