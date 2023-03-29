@@ -20,9 +20,9 @@
 import argparse
 
 from torch.utils.data import Dataset
-from iotdb.mlnode.datats.utils.timefeatures import time_features
-from iotdb.mlnode.datats.offline.data_source import DataSource
 
+from iotdb.mlnode.datats.offline.data_source import DataSource
+from iotdb.mlnode.datats.utils.timefeatures import time_features
 
 # currently support for multivariate forecasting only
 
