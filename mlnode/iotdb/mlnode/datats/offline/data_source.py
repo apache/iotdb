@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
 import pandas as pd
 
 from iotdb.mlnode import serde
@@ -50,6 +48,7 @@ class FileDataSource(DataSource):
     def __init__(self, filename: str = None):
         super(FileDataSource, self).__init__()
         self.filename = filename
+        self._read_data()
 
     def _read_data(self):
         try:
@@ -62,12 +61,11 @@ class FileDataSource(DataSource):
 
 
 class ThriftDataSource(DataSource):
-    def __init__(self,
-                 query_expressions: list = None,
-                 query_filter: str = None, ):
-        super(FileDataSource, self).__init__()
+    def __init__(self, query_expressions: list = None, query_filter: str = None):
+        super(DataSource, self).__init__()
         self.query_expressions = query_expressions
         self.query_filter = query_filter
+        self._read_data()
 
     def _read_data(self):
         try:
