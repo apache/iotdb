@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
 public class SetPipeStatusPlan extends ConfigPhysicalPlan {
   private String pipeName;
 
-  private PipeStatus status;
+  private PipeStatus pipeStatus;
 
   public SetPipeStatusPlan() {
     super(ConfigPhysicalPlanType.SetPipeStatus);
@@ -41,7 +41,7 @@ public class SetPipeStatusPlan extends ConfigPhysicalPlan {
   public SetPipeStatusPlan(String pipeName, PipeStatus status) {
     super(ConfigPhysicalPlanType.SetPipeStatus);
     this.pipeName = pipeName;
-    this.status = status;
+    this.pipeStatus = status;
   }
 
   public String getPipeName() {
@@ -49,19 +49,19 @@ public class SetPipeStatusPlan extends ConfigPhysicalPlan {
   }
 
   public PipeStatus getPipeStatus() {
-    return status;
+    return pipeStatus;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(pipeName, stream);
-    ReadWriteIOUtils.write(status.getType(), stream);
+    ReadWriteIOUtils.write((byte) pipeStatus.ordinal(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = ReadWriteIOUtils.readString(buffer);
-    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+    pipeStatus = PipeStatus.values()[ReadWriteIOUtils.readByte(buffer)];
   }
 }
