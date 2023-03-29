@@ -44,7 +44,6 @@ public class PipeConnectorPluginRuntimeWrapper {
   }
 
   public void runOnce() {
-    System.out.println("PipeConnector#transfer is called.");
     if (queue.isEmpty()) {
       return;
     }

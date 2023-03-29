@@ -71,9 +71,9 @@ public class PipeTask {
   }
 
   public void start() {
-    connectorStage.start();
-    processorStage.start();
     collectorStage.start();
+    processorStage.start();
+    connectorStage.start();
   }
 
   public void stop() {
