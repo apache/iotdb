@@ -18,10 +18,9 @@
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.parser import ConfigManager
 from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
-from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import ConfigManager
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:

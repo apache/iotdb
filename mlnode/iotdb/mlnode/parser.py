@@ -1,7 +1,3 @@
-import argparse
-from iotdb.mlnode.exception import ModelNotSupportedError, MissingConfigError, WrongTypeError
-
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -19,6 +15,10 @@ from iotdb.mlnode.exception import ModelNotSupportedError, MissingConfigError, W
 # specific language governing permissions and limitations
 # under the License.
 #
+import argparse
+
+from iotdb.mlnode.exception import (MissingConfigError, ModelNotSupportedError,
+                                    WrongTypeError)
 
 
 class ConfigParser(object):
@@ -119,9 +119,10 @@ class ConfigManager(object):
         self.model_conf_parser = get_model_config_parser(config['model_name'])
 
     def get_configs(self):
-        return self.data_conf_parser.parse_configs(self.config), \
-            self.task_conf_parser.parse_configs(self.config), \
-            self.model_conf_parser.parse_configs(self.config)
+        data_conf = self.data_conf_parser.parse_configs(self.config)
+        task_conf = self.task_conf_parser.parse_configs(self.config)
+        model_conf = self.model_conf_parser.parse_configs(self.config)
+        return data_conf, task_conf, model_conf
 
 
 def get_model_config_parser(model_name):
