@@ -60,6 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -710,6 +711,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           throw new DifferentTemplateException(activatePath.getFullPath(), template.getName());
         }
       }
+      DataNodeSchemaQuotaManager.getInstance()
+          .checkMeasurementLevel(template.getMeasurementNumber());
 
       if (cur.isEntity()) {
         entityMNode = cur.getAsEntityMNode();
@@ -823,6 +826,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(templateId);
+    regionStatistics.activateTemplate(templateId);
   }
 
   @Override
