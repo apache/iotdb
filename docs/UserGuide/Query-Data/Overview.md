@@ -287,7 +287,7 @@ Data query statements can be used in SQL command-line terminals, JDBC, JAVA / C+
    SessionDataSet executeQueryStatement(String sql)
    ````
 
-- Used in RESTful API, see [HTTP API](../API/RestService.md) for details.
+- Used in RESTful API, see [HTTP API V1](../API/RestServiceV1.md) or [HTTP API V2](../API/RestServiceV2.md) for details.
 
 ### Efficient execution interfaces
 
