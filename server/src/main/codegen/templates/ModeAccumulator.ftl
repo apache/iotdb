@@ -104,7 +104,7 @@ public class ${className} implements Accumulator {
 
     // Step of ModeAccumulator is STATIC,
     // countMap only need to record one entry which key is finalResult
-    countMap.put(finalResult.get${type.dataType?cap_first}(0), new Pair<>(0L, 0L));
+    countMap.put(finalResult.get${type.dataType?cap_first}(0), new Pair<>(0L, Long.MIN_VALUE));
   }
 
   @Override
