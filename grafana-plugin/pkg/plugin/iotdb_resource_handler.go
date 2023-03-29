@@ -29,11 +29,11 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 )
 
-func iotdbResourceHandler(authorization string) backend.CallResourceHandler {
+func iotdbResourceHandler(authorization string, httpClient *http.Client) backend.CallResourceHandler {
 	mux := http.NewServeMux()
 
-	mux.Handle("/getVariables", getVariables(authorization))
-	mux.Handle("/getNodes", getNodes(authorization))
+	mux.Handle("/getVariables", getVariables(authorization, httpClient))
+	mux.Handle("/getNodes", getNodes(authorization, httpClient))
 
 	return httpadapter.New(mux)
 }
@@ -43,7 +43,7 @@ type queryReq struct {
 }
 type nodeReq struct {
 	Data []string `json:"data"`
-	Url string `json:"url"`
+	Url  string   `json:"url"`
 }
 
 type queryResp struct {
@@ -51,15 +51,15 @@ type queryResp struct {
 	Message string `json:"message"`
 }
 
-func getVariables(authorization string) http.Handler{
+func getVariables(authorization string, httpClient *http.Client) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		var url=r.FormValue("url")
-		var sql=r.FormValue("sql")
+		var url = r.FormValue("url")
+		var sql = r.FormValue("sql")
 		if r.Method != http.MethodGet {
 			http.NotFound(w, r)
 			return
 		}
-		var queryReq=&queryReq{Sql: sql}
+		var queryReq = &queryReq{Sql: sql}
 		qpJson, _ := json.Marshal(queryReq)
 		reader := bytes.NewReader(qpJson)
 		client := &http.Client{}
@@ -90,7 +90,7 @@ func getVariables(authorization string) http.Handler{
 				return
 			}
 
-		}else{
+		} else {
 			defer rsp.Body.Close()
 			j, err := json.Marshal(dataResp)
 			if err != nil {
@@ -108,9 +108,9 @@ func getVariables(authorization string) http.Handler{
 	return http.HandlerFunc(fn)
 }
 
-func getNodes(authorization string) http.Handler{
+func getNodes(authorization string, client *http.Client) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		s, _:=ioutil.ReadAll(r.Body)
+		s, _ := ioutil.ReadAll(r.Body)
 		if r.Method != http.MethodPost {
 			http.NotFound(w, r)
 			return
@@ -123,7 +123,7 @@ func getNodes(authorization string) http.Handler{
 		}
 		qpJson, _ := json.Marshal(nodeReq.Data)
 		reader := bytes.NewReader(qpJson)
-		client := &http.Client{}
+
 		request, _ := http.NewRequest(http.MethodPost, nodeReq.Url+"/grafana/v1/node", reader)
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Add("Authorization", authorization)
@@ -151,7 +151,7 @@ func getNodes(authorization string) http.Handler{
 				return
 			}
 
-		}else{
+		} else {
 			defer rsp.Body.Close()
 			j, err := json.Marshal(dataResp)
 			if err != nil {
