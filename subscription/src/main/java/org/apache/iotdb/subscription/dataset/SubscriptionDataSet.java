@@ -20,7 +20,9 @@
 package org.apache.iotdb.subscription.dataset;
 
 import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
+import org.apache.iotdb.subscription.rpc.thrift.TSubscriptionDataSet;
 
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
@@ -29,8 +31,17 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
   private Long time;
   private List<String> columnNames;
   private List<String> columnTypes;
-  private List<Object> dataResult;
+  private List<ByteBuffer> dataResult;
   private IDataGetter dataGetter;
+
+  public SubscriptionDataSet() {}
+
+  public SubscriptionDataSet(TSubscriptionDataSet subscriptionDataSet) {
+    this.time = subscriptionDataSet.getTime();
+    this.columnNames = subscriptionDataSet.getColumnNames();
+    this.columnTypes = subscriptionDataSet.getColumnTypes();
+    this.dataResult = subscriptionDataSet.getDataResult();
+  }
 
   public Long getTime() {
     return time;
@@ -58,12 +69,12 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     return columnTypes;
   }
 
-  public void setDataResult(List<Object> dataResult) {
+  public void setDataResult(List<ByteBuffer> dataResult) {
     this.dataResult = dataResult;
   }
 
   @Override
-  public List<Object> getDataResult() {
+  public List<ByteBuffer> getDataResult() {
     return this.dataResult;
   }
 

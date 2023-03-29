@@ -23,9 +23,10 @@ import org.apache.iotdb.subscription.api.SubscriptionConfiguration;
 import org.apache.iotdb.subscription.api.consumer.push.DataArrivalListener;
 import org.apache.iotdb.subscription.api.consumer.push.ExceptionListener;
 import org.apache.iotdb.subscription.api.consumer.push.IPushConsumer;
-import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 import org.apache.iotdb.subscription.consumer.Consumer;
+import org.apache.iotdb.subscription.rpc.thrift.TSubscriptionDataSet;
+import org.apache.iotdb.subscription.service.thrift.impl.PushSubscriptionService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,10 @@ public class PushConsumer extends Consumer implements IPushConsumer {
 
   public PushConsumer(SubscriptionConfiguration subscriptionConfiguration) {
     super(subscriptionConfiguration);
+    subscriptionService =
+        new PushSubscriptionService(
+            subscriptionConfiguration.getLocalHost(), subscriptionConfiguration.getLocalPort());
+    subscriptionService.registerConsumer(this);
   }
 
   /**
@@ -123,7 +128,7 @@ public class PushConsumer extends Consumer implements IPushConsumer {
    *
    * @param subscriptionDataSets Received source data
    */
-  public void handleDataArrival(List<ISubscriptionDataSet> subscriptionDataSets) {
+  public void handleDataArrival(List<TSubscriptionDataSet> subscriptionDataSets) {
     if (subscriptionDataSets != null && subscriptionDataSets.size() != 0) {
       if (this.dataArrivalListener != null) {
         try {

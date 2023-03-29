@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.subscription.api.dataset;
 
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.List;
 
@@ -29,7 +30,7 @@ public interface ISubscriptionDataSet {
 
   List<String> getColumnNames();
 
-  List<Object> getDataResult();
+  List<ByteBuffer> getDataResult();
 
   IDataGetter Data();
 

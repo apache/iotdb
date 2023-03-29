@@ -28,6 +28,8 @@ import org.apache.iotdb.subscription.api.consumer.IConsumer;
 import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 import org.apache.iotdb.subscription.dataset.SubscriptionDataSet;
+import org.apache.iotdb.subscription.rpc.thrift.TSubscriptionDataSet;
+import org.apache.iotdb.subscription.service.SubscriptionService;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class Consumer implements IConsumer {
   private SubscriptionConfiguration subscriptionConfiguration;
   private boolean isClosed = true;
+  public SubscriptionService subscriptionService;
   /**
    * lastValueTimeTags for watermark, eg. [{ key: "root.db1.d1.s1", value: 1679645059 }] key:
    * timeseries path, value: timestamp
@@ -71,6 +74,7 @@ public abstract class Consumer implements IConsumer {
     }
     // TODO Open
     // createPipe();
+    subscriptionService.start();
     isClosed = false;
   }
 
@@ -79,6 +83,7 @@ public abstract class Consumer implements IConsumer {
     if (isClosed) {
       return;
     }
+    subscriptionService.stop();
     // TODO Close
     isClosed = true;
   }
@@ -123,7 +128,7 @@ public abstract class Consumer implements IConsumer {
    * @param subscriptionDataSets
    */
   public List<ISubscriptionDataSet> handleDataOnWatermark(
-      List<ISubscriptionDataSet> subscriptionDataSets) {
+      List<TSubscriptionDataSet> subscriptionDataSets) {
     if (lastValueTimeTags == null) {
       lastValueTimeTags = new ConcurrentHashMap<>();
     }

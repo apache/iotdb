@@ -87,6 +87,7 @@
         <module>thrift-iot-consensus</module>
         <module>thrift-influxdb</module>
         <module>thrift-mlnode</module>
+        <module>thrift-subscription</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -851,6 +852,7 @@
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-subscription/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
