@@ -295,7 +295,7 @@ It costs 0.016s
   SessionDataSet executeQueryStatement(String sql);
   ```
 
-- 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。
+- 在 RESTful API 中使用，详见 [HTTP API V1](../API/RestServiceV1.md) 或者 [HTTP API V2](../API/RestServiceV2.md)。
 
 #### 常用查询的高效执行接口
 

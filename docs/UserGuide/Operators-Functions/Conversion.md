@@ -26,7 +26,7 @@ The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE
 Syntax example:
 
 ```sql
-SELECT cast(s1 as INT32)from root.sg
+SELECT cast(s1 as INT32) from root.sg
 ```
 
 The syntax of the cast function is consistent with that of PostgreSQL. The data type specified after AS indicates the target type to be converted. Currently, all six data types supported by IoTDB can be used in the cast function. The conversion rules to be followed are shown in the following table. The row represents the original data type, and the column represents the target data type to be converted into:
