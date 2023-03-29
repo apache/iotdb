@@ -46,7 +46,7 @@ public class PipeConnectorSubtaskExecutor implements PipeSubtaskExecutor {
   private final ConcurrentHashMap<String, PipeConnectorSubtask> subtaskMap;
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static int MAX_THREAD_NUM = config.getPipeTaskExecutorMaxThreadNum();
+  private static int MAX_THREAD_NUM = config.getPipeSubtaskExecutorMaxThreadNum();
 
   public PipeConnectorSubtaskExecutor() {
     connectorExecutorThreadPool =

@@ -3667,11 +3667,11 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setPipeTaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
+  public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
     this.pipeMaxThreadNum = pipeMaxThreadNum;
   }
 
-  public int getPipeTaskExecutorMaxThreadNum() {
+  public int getPipeSubtaskExecutorMaxThreadNum() {
     return pipeMaxThreadNum;
   }
 }

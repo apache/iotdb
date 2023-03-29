@@ -44,7 +44,7 @@ public class PipeProcessorSubtaskExecutor implements PipeSubtaskExecutor {
   private final ListeningExecutorService executorService;
   private final ConcurrentHashMap<String, PipeProcessorSubtask> subtaskMap;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static int MAX_THREAD_NUM = config.getPipeTaskExecutorMaxThreadNum();
+  private static int MAX_THREAD_NUM = config.getPipeSubtaskExecutorMaxThreadNum();
 
   public PipeProcessorSubtaskExecutor() {
     processorExecutorThreadPool =
