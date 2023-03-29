@@ -24,9 +24,6 @@ from iotdb.mlnode.datats.offline.data_source import DataSource
 # currently support for multivariate forecasting only
 
 
-__all__ = ['TimeSeriesDataset', 'WindowDataset']
-
-
 class TimeSeriesDataset(Dataset):
     """
     Build Row-by-Row dataset (with each element as multivariable time series at
@@ -40,7 +37,7 @@ class TimeSeriesDataset(Dataset):
         Random accessible dataset
     """
 
-    def __init__(self, data_source: DataSource, time_embed: str = 'h', **kwargs):
+    def __init__(self, data_source: DataSource, time_embed: str = 'h'):
         self.time_embed = time_embed
         self.data = data_source.get_data()
         self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
@@ -78,16 +75,14 @@ class WindowDataset(TimeSeriesDataset):
                  data_source: DataSource = None,
                  input_len: int = 96,
                  pred_len: int = 96,
-                 time_embed: str = 'h',
-                 **kwargs):
-        self.time_embed = time_embed
+                 time_embed: str = 'h'):
         self.input_len = input_len
         self.pred_len = pred_len
-        self.data = data_source.get_data()
-        assert input_len <= self.data.shape[0], 'input_len should not be larger than the number of time series points'
-        assert pred_len <= self.data.shape[0], 'pred_len should not be larger than the number of time series points'
-        self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
-        self.n_vars = self.data.shape[-1]
+        if input_len <= self.data.shape[0]:
+            raise RuntimeError('input_len should not be larger than the number of time series points')
+        if pred_len <= self.data.shape[0]:
+            raise RuntimeError('pred_len should not be larger than the number of time series points')
+        super(WindowDataset, self).__init__(data_source, time_embed)
 
     def __getitem__(self, index):
         s_begin = index
