@@ -189,7 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getClusterName(), conf.getDataNodeId(), NodeType.DATANODE);
+            .updateRpcInstance(conf.getClusterName(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
@@ -229,8 +229,7 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
-    if (properties.getProperty("dn_core_client_count_for_each_node_in_client_manager", null)
-        != null) {
+    if (properties.getProperty("dn_core_connection_for_internal_service", null) != null) {
       conf.setCoreClientNumForEachNode(
           Integer.parseInt(
               properties.getProperty("dn_core_connection_for_internal_service").trim()));
@@ -245,15 +244,12 @@ public class IoTDBDescriptor {
                     String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
-    if (properties.getProperty("dn_max_client_count_for_each_node_in_client_manager", null)
-        != null) {
+    if (properties.getProperty("dn_max_connection_for_internal_service", null) != null) {
       conf.setMaxClientNumForEachNode(
           Integer.parseInt(
-              properties
-                  .getProperty("dn_max_client_count_for_each_node_in_client_manager")
-                  .trim()));
+              properties.getProperty("dn_max_connection_for_internal_service").trim()));
       logger.warn(
-          "The parameter dn_max_client_count_for_each_node_in_client_manager is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
     }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -567,6 +563,15 @@ public class IoTDBDescriptor {
 
     if (conf.getDegreeOfParallelism() <= 0) {
       conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
+    conf.setModeMapSizeThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+
+    if (conf.getModeMapSizeThreshold() <= 0) {
+      conf.setModeMapSizeThreshold(10000);
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -996,6 +1001,9 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
+
+    // Pipe
+    loadPipeProps(properties);
 
     // cluster
     loadClusterProps(properties);
@@ -1778,6 +1786,10 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
+  private void loadPipeProps(Properties properties) {
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+  }
+
   private void loadCQProps(Properties properties) {
     conf.setContinuousQueryThreadNum(
         Integer.parseInt(
@@ -1798,6 +1810,7 @@ public class IoTDBDescriptor {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
     if (configNodeUrls != null) {
       try {
+        configNodeUrls = configNodeUrls.trim();
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
@@ -1806,29 +1819,39 @@ public class IoTDBDescriptor {
     }
 
     conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
+        properties
+            .getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress())
+            .trim());
 
     conf.setInternalPort(
         Integer.parseInt(
-            properties.getProperty(
-                IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
+            properties
+                .getProperty(
+                    IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))
+                .trim()));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty(
-                "dn_data_region_consensus_port",
-                Integer.toString(conf.getDataRegionConsensusPort()))));
+            properties
+                .getProperty(
+                    "dn_data_region_consensus_port",
+                    Integer.toString(conf.getDataRegionConsensusPort()))
+                .trim()));
 
     conf.setSchemaRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty(
-                "dn_schema_region_consensus_port",
-                Integer.toString(conf.getSchemaRegionConsensusPort()))));
+            properties
+                .getProperty(
+                    "dn_schema_region_consensus_port",
+                    Integer.toString(conf.getSchemaRegionConsensusPort()))
+                .trim()));
     conf.setJoinClusterRetryIntervalMs(
         Long.parseLong(
-            properties.getProperty(
-                "dn_join_cluster_retry_interval_ms",
-                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
+            properties
+                .getProperty(
+                    "dn_join_cluster_retry_interval_ms",
+                    Long.toString(conf.getJoinClusterRetryIntervalMs()))
+                .trim()));
   }
 
   public void loadShuffleProps(Properties properties) {

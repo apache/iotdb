@@ -64,7 +64,7 @@ public class SchemaQueryScanOperatorTest {
   private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
 
   @Test
-  public void testDeviceSchemaScan() {
+  public void testDeviceSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -156,7 +156,7 @@ public class SchemaQueryScanOperatorTest {
   }
 
   @Test
-  public void testTimeSeriesSchemaScan() {
+  public void testTimeSeriesSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {

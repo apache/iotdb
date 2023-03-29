@@ -303,8 +303,12 @@ public class QueryStatement extends Statement {
         && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
   }
 
+  private boolean isGroupByCount() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
+  }
+
   public boolean hasGroupByExpression() {
-    return isGroupByVariation() || isGroupByCondition();
+    return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
 
   public boolean isAlignByTime() {

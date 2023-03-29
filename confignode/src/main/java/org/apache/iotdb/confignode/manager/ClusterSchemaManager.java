@@ -103,7 +103,7 @@ public class ClusterSchemaManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
+  private static final double DATA_REGION_PER_DATA_NODE = CONF.getDataRegionPerDataNode();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -376,7 +376,6 @@ public class ClusterSchemaManager {
     }
 
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
-    int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int databaseNum = databaseSchemaMap.size();
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
@@ -389,8 +388,8 @@ public class ClusterSchemaManager {
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       try {
-        // Adjust maxSchemaRegionGroupNum for each StorageGroup.
-        // All StorageGroups share the DataNodes equally.
+        // Adjust maxSchemaRegionGroupNum for each Database.
+        // All Databases share the DataNodes equally.
         // The allocated SchemaRegionGroups will not be shrunk.
         int allocatedSchemaRegionGroupCount;
         try {
@@ -415,8 +414,8 @@ public class ClusterSchemaManager {
             databaseSchema.getName(),
             maxSchemaRegionGroupNum);
 
-        // Adjust maxDataRegionGroupNum for each StorageGroup.
-        // All StorageGroups divide the total cpu cores equally.
+        // Adjust maxDataRegionGroupNum for each Database.
+        // All Databases share the DataNodes equally.
         // The allocated DataRegionGroups will not be shrunk.
         int allocatedDataRegionGroupCount =
             getPartitionManager()
@@ -424,8 +423,8 @@ public class ClusterSchemaManager {
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
                 databaseSchema.getMinDataRegionGroupNum(),
-                DATA_REGION_PER_PROCESSOR,
-                totalCpuCoreNum,
+                DATA_REGION_PER_DATA_NODE,
+                dataNodeNum,
                 databaseNum,
                 databaseSchema.getDataReplicationFactor(),
                 allocatedDataRegionGroupCount);
@@ -447,7 +446,7 @@ public class ClusterSchemaManager {
       int minRegionGroupNum,
       double resourceWeight,
       int resource,
-      int storageGroupNum,
+      int databaseNum,
       int replicationFactor,
       int allocatedRegionGroupCount) {
     return Math.max(
@@ -460,7 +459,7 @@ public class ClusterSchemaManager {
                 Math.ceil(
                     // The maxRegionGroupNum of the current StorageGroup is expected to be:
                     // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-                    resourceWeight * resource / (double) (storageGroupNum * replicationFactor)),
+                    resourceWeight * resource / (databaseNum * replicationFactor)),
             // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
             allocatedRegionGroupCount));
   }

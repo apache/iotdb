@@ -16,7 +16,6 @@
 # under the License.
 #
 
-
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -27,6 +26,6 @@ class BadNodeUrlError(_BaseError):
         self.message = "Bad node url: {}".format(node_url)
 
 
-class BadConfigError(_BaseError):
-    def __init__(self, msg):
-        self.message = "Bad config: {}".format(msg)
+class ModelNotExistError(_BaseError):
+    def __init__(self, file_path: str):
+        self.message = "Model path: ({}) not exists".format(file_path)

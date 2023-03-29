@@ -59,7 +59,11 @@ public enum ProcedureType {
 
   /** Ml Model */
   CREATE_MODEL_PROCEDURE((short) 800),
-  DROP_MODEL_PROCEDURE((short) 801);
+  DROP_MODEL_PROCEDURE((short) 801),
+
+  /** Pipe Plugin */
+  CREATE_PIPE_PLUGIN_PROCEDURE((short) 900),
+  DROP_PIPE_PLUGIN_PROCEDURE((short) 901);
 
   private final short typeCode;
 

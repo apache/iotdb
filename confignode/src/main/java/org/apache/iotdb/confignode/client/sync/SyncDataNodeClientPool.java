@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -153,12 +154,13 @@ public class SyncDataNodeClientPool {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
+      Thread.currentThread().interrupt();
     }
   }
 
   /**
    * change a region leader from the datanode to other datanode, other datanode should be in same
-   * raft group
+   * raft group.
    *
    * @param regionId the region which will changer leader
    * @param dataNode data node server, change regions leader from it

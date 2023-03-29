@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -364,5 +365,11 @@ public class ClusterTemplateManager implements ITemplateManager {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  @TestOnly
+  public void putTemplate(Template template) {
+    templateIdMap.put(template.getId(), template);
+    templateNameMap.put(template.getName(), template.getId());
   }
 }

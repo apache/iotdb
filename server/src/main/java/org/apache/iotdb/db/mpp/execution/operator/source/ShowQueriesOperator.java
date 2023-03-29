@@ -60,7 +60,7 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock res = tsBlock;
     hasConsumed = true;
     tsBlock = null;
@@ -68,7 +68,7 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (hasConsumed) {
       return false;
     }
@@ -79,7 +79,7 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return hasConsumed;
   }
 

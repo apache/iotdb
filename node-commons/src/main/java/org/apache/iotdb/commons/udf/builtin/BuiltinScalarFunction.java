@@ -29,7 +29,9 @@ import java.util.stream.Collectors;
 public enum BuiltinScalarFunction {
   DIFF("diff"),
   CAST("cast"),
+  ROUND("round"),
   REPLACE("replace"),
+  SUBSTRING("substring"),
   ;
 
   private final String functionName;
