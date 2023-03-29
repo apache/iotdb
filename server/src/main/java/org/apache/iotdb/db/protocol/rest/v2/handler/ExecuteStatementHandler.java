@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.handler;
+package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;

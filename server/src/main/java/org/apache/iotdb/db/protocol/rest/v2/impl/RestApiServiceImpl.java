@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.impl;
+package org.apache.iotdb.db.protocol.rest.v2.impl;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,16 +30,16 @@ import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
-import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
-import org.apache.iotdb.db.protocol.rest.handler.ExecuteStatementHandler;
-import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
-import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
-import org.apache.iotdb.db.protocol.rest.handler.StatementConstructionHandler;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
-import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.protocol.rest.v2.RestApiService;
+import org.apache.iotdb.db.protocol.rest.v2.handler.ExceptionHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.ExecuteStatementHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.QueryDataSetHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.RequestValidationHandler;
+import org.apache.iotdb.db.protocol.rest.v2.handler.StatementConstructionHandler;
+import org.apache.iotdb.db.protocol.rest.v2.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
+import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;

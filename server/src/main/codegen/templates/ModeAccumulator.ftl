@@ -25,6 +25,8 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.commons.collections4.comparators.ComparatorChain;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -32,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayInputStream;
@@ -49,7 +52,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 */
 @SuppressWarnings("unused")
 public class ${className} implements Accumulator {
-  private final Map<${type.javaBoxName}, Long> countMap = new HashMap<>();
+  // pair left records count of element, pair right records min time of element
+  private final Map<${type.javaBoxName}, Pair<Long, Long>> countMap = new HashMap<>();
 
   <#if type.dataType != "boolean">
   private final int MAP_SIZE_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
@@ -62,7 +66,11 @@ public class ${className} implements Accumulator {
         continue;
       }
       if (!column[1].isNull(i)) {
-        countMap.compute(column[1].get${type.dataType?cap_first}(i), (k, v) -> v == null ? 1 : v + 1);
+          final long time = column[0].getLong(i);
+        countMap.compute(
+            column[1].get${type.dataType?cap_first}(i),
+            (k, v) ->
+                v == null ? new Pair<>(1L, time) : new Pair<>(v.left + 1, Math.min(v.right, time)));
         <#if type.dataType != "boolean">
 
         if (countMap.size() > MAP_SIZE_THRESHOLD) {
@@ -96,7 +104,7 @@ public class ${className} implements Accumulator {
 
     // Step of ModeAccumulator is STATIC,
     // countMap only need to record one entry which key is finalResult
-    countMap.put(finalResult.get${type.dataType?cap_first}(0), 0L);
+    countMap.put(finalResult.get${type.dataType?cap_first}(0), new Pair<>(0L, Long.MIN_VALUE));
   }
 
   @Override
@@ -110,7 +118,14 @@ public class ${className} implements Accumulator {
       tsBlockBuilder.appendNull();
     } else {
       tsBlockBuilder.write${type.dataType?cap_first}(
-          Collections.max(countMap.entrySet(), Map.Entry.comparingByValue()).getKey());
+          Collections.max(
+                  countMap.entrySet(),
+                  Map.Entry.comparingByValue(
+                      new ComparatorChain<>(
+                          ImmutableList.of(
+                              (v1, v2) -> v1.left.compareTo(v2.left),
+                              (v1, v2) -> v2.right.compareTo(v1.right)))))
+              .getKey());
     }
   }
 
@@ -138,9 +153,10 @@ public class ${className} implements Accumulator {
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(countMap.size(), stream);
-      for (Map.Entry<${type.javaBoxName}, Long> entry : countMap.entrySet()) {
+      for (Map.Entry<${type.javaBoxName}, Pair<Long, Long>> entry : countMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), stream);
-        ReadWriteIOUtils.write(entry.getValue(), stream);
+        ReadWriteIOUtils.write(entry.getValue().left, stream);
+        ReadWriteIOUtils.write(entry.getValue().right, stream);
       }
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
@@ -153,13 +169,20 @@ public class ${className} implements Accumulator {
     try {
       int size = ReadWriteIOUtils.readInt(stream);
       for (int i = 0; i < size; i++) {
-        countMap.compute(ReadWriteIOUtils.read${type.dataType?cap_first}(stream), (k, v) -> {
-          try {
-            return v == null ? ReadWriteIOUtils.readLong(stream) : v + ReadWriteIOUtils.readLong(stream);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+        countMap.compute(
+            ReadWriteIOUtils.read${type.dataType?cap_first}(stream),
+            (k, v) -> {
+              try {
+                return v == null
+                    ? new Pair<>(
+                        ReadWriteIOUtils.readLong(stream), ReadWriteIOUtils.readLong(stream))
+                    : new Pair<>(
+                        v.left + ReadWriteIOUtils.readLong(stream),
+                        Math.min(v.right, ReadWriteIOUtils.readLong(stream)));
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         <#if type.dataType != "boolean">
 
         if (countMap.size() > MAP_SIZE_THRESHOLD) {

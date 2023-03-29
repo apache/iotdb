@@ -66,6 +66,13 @@ public class IoTDBModeIT {
         "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000001, 2, 2, false, 2, 2, \"2\")",
         "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000002, 2, 2, false, 2, 2, \"2\")",
         "INSERT INTO root.db.d2(timestamp,s1,s2,s3,s4,s5,s6) values(10000000003, 2, 2, false, 2, 2, \"2\")",
+        "INSERT INTO root.test.d1(timestamp,s1) values(1, 5)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(2, 5)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(3, 2)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(4, 2)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(5, 8)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(6, 8)",
+        "INSERT INTO root.test.d1(timestamp,s1) values(7, 1)",
         "flush"
       };
 
@@ -145,7 +152,7 @@ public class IoTDBModeIT {
         };
     String[] retArray = new String[] {"2,2,false,2.0,2.0,2,"};
     resultSetEqualTest(
-        "select mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6) from root.** group by level = 0",
+        "select mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6) from root.db.* group by level = 0",
         expectedHeader,
         retArray);
   }
@@ -156,5 +163,20 @@ public class IoTDBModeIT {
         "select mode(s1) from root.db.d1 group by time([1,10),3ms,2ms)",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
             + ": MODE with slidingWindow is not supported now");
+  }
+
+  @Test
+  public void testNoMode() {
+    String[] expectedHeader = new String[] {mode("root.test.d1.s1")};
+    String[] retArray = new String[] {"5.0,"};
+    resultSetEqualTest(
+        "select mode(s1) from root.test.d1 where time <= 6", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testManyModes() {
+    String[] expectedHeader = new String[] {mode("root.test.d1.s1")};
+    String[] retArray = new String[] {"5.0,"};
+    resultSetEqualTest("select mode(s1) from root.test.d1", expectedHeader, retArray);
   }
 }
