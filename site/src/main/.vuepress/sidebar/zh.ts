@@ -97,7 +97,7 @@ export const zhSidebar = sidebar({
         { text: 'Go 原生接口', link: 'Programming-Go-Native-API' },
         { text: 'JDBC (不推荐)', link: 'Programming-JDBC' },
         { text: 'MQTT', link: 'Programming-MQTT' },
-        { text: 'REST API V1', link: 'RestServiceV1' },
+        { text: 'REST API V1 (不推荐)', link: 'RestServiceV1' },
         { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
         { text: 'InfluxDB 协议适配器', link: 'InfluxDB-Protocol' },

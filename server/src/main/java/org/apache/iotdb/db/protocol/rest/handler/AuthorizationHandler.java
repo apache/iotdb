@@ -41,10 +41,12 @@ public class AuthorizationHandler {
             .build();
       }
     } catch (AuthException e) {
-      ExecutionStatus responseResult = new ExecutionStatus();
-      responseResult.setMessage(e.getMessage());
-      responseResult.setCode(Status.BAD_REQUEST.getStatusCode());
-      return Response.ok().entity(responseResult).build();
+      return Response.ok()
+          .entity(
+              new ExecutionStatus()
+                  .message(e.getMessage())
+                  .code(Status.BAD_REQUEST.getStatusCode()))
+          .build();
     }
     return null;
   }
