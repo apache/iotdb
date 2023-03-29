@@ -163,6 +163,7 @@ public class MemMTreeStore implements IMTreeStore {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     regionStatistics.addDevice();
     if (result != node) {
+      regionStatistics.addDevice();
       requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
 
@@ -177,6 +178,7 @@ public class MemMTreeStore implements IMTreeStore {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     regionStatistics.deleteDevice();
     if (result != entityMNode) {
+      regionStatistics.deleteDevice();
       releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     if (result.isStorageGroup()) {

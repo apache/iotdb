@@ -332,6 +332,7 @@ public class CachedMTreeStore implements IMTreeStore {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     regionStatistics.addDevice();
     if (result != node) {
+      regionStatistics.addDevice();
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     updateMNode(result);
@@ -343,6 +344,7 @@ public class CachedMTreeStore implements IMTreeStore {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     regionStatistics.deleteDevice();
     if (result != entityMNode) {
+      regionStatistics.deleteDevice();
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     updateMNode(result);
