@@ -36,7 +36,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 
-import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 public class SubPlanTypeExtractor {
 
@@ -86,19 +87,19 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitAggregation(AggregationNode node, Void context) {
-      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList());
+      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList().stream());
       return visitPlan(node, context);
     }
 
     @Override
     public Void visitSlidingWindowAggregation(SlidingWindowAggregationNode node, Void context) {
-      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList());
+      updateTypeProviderByAggregationDescriptor(node.getAggregationDescriptorList().stream());
       return visitPlan(node, context);
     }
 
     @Override
     public Void visitGroupByLevel(GroupByLevelNode node, Void context) {
-      updateTypeProviderByAggregationDescriptor(node.getGroupByLevelDescriptors());
+      updateTypeProviderByAggregationDescriptor(node.getGroupByLevelDescriptors().stream());
       return visitPlan(node, context);
     }
 
@@ -106,28 +107,34 @@ public class SubPlanTypeExtractor {
     public Void visitGroupByTag(GroupByTagNode node, Void context) {
       node.getTagValuesToAggregationDescriptors()
           .values()
-          .forEach(this::updateTypeProviderByAggregationDescriptor);
+          .forEach(
+              v -> updateTypeProviderByAggregationDescriptor(v.stream().filter(Objects::nonNull)));
       return visitPlan(node, context);
     }
 
     // region PlanNode of last query
     // No need to deal with type of last query
+    @Override
     public Void visitLastQueryScan(LastQueryScanNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitAlignedLastQueryScan(AlignedLastQueryScanNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQuery(LastQueryNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQueryMerge(LastQueryMergeNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
       return null;
     }
@@ -135,8 +142,8 @@ public class SubPlanTypeExtractor {
     // end region PlanNode of last query
 
     private void updateTypeProviderByAggregationDescriptor(
-        List<? extends AggregationDescriptor> aggregationDescriptorList) {
-      aggregationDescriptorList.stream()
+        Stream<? extends AggregationDescriptor> aggregationDescriptorList) {
+      aggregationDescriptorList
           .flatMap(aggregationDescriptor -> aggregationDescriptor.getInputExpressions().stream())
           .forEach(
               expression -> {

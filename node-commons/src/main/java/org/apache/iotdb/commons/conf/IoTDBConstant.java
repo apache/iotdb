@@ -71,6 +71,14 @@ public class IoTDBConstant {
 
   public static final String CLUSTER_NAME = "cluster_name";
   public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
+  public static final String LOGO =
+      ""
+          + " _____       _________  ______   ______    \n"
+          + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+          + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+          + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+          + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+          + "|_____|'.__.' |_____|  |______.'|_______/  ";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -113,14 +121,13 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-  public static final Set<String> reservedWords =
-      new HashSet<String>() {
-        {
-          add("TIME");
-          add("TIMESTAMP");
-          add("ROOT");
-        }
-      };
+  public static final Set<String> reservedWords = new HashSet<>();
+
+  static {
+    reservedWords.add("TIME");
+    reservedWords.add("TIMESTAMP");
+    reservedWords.add("ROOT");
+  }
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -160,6 +167,7 @@ public class IoTDBConstant {
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
@@ -204,7 +212,7 @@ public class IoTDBConstant {
               MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + DN_ROLE;
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -221,11 +229,10 @@ public class IoTDBConstant {
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
-  public static final String TRACING_FOLDER_NAME = "tracing";
-  public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";
@@ -274,7 +281,8 @@ public class IoTDBConstant {
   // client version number
   public enum ClientVersion {
     V_0_12,
-    V_0_13
+    V_0_13,
+    V_1_0
   }
 
   // select into

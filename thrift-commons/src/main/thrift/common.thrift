@@ -36,7 +36,7 @@ struct TSStatus {
 }
 
 enum TConsensusGroupType {
-  ConfigNodeRegion,
+  ConfigRegion,
   DataRegion,
   SchemaRegion
 }
@@ -102,6 +102,10 @@ struct TFlushReq {
    2: optional list<string> storageGroups
 }
 
+struct TSettleReq {
+   1: required list<string> paths
+}
+
 // for node management
 struct TSchemaNode {
   1: required string nodeName
@@ -122,4 +126,39 @@ struct TFile {
 struct TFilesResp {
   1: required TSStatus status
   2: required list<TFile> files
+}
+
+enum TAggregationType {
+  COUNT,
+  AVG,
+  SUM,
+  FIRST_VALUE,
+  LAST_VALUE,
+  MAX_TIME,
+  MIN_TIME,
+  MAX_VALUE,
+  MIN_VALUE,
+  EXTREME,
+  COUNT_IF,
+  TIME_DURATION,
+  MODE
+}
+
+// for MLNode
+enum TrainingState {
+  PENDING,
+  RUNNING,
+  FINISHED,
+  FAILED,
+  DROPPING
+}
+
+enum ModelTask {
+  FORECAST
+}
+
+enum EvaluateMetric {
+  MSE,
+  MAE,
+  RMSE
 }

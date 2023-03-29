@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -34,7 +36,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -47,10 +51,24 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SourceHandleTest {
+  private static final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
+
+  private static long maxBytesPerFI;
+
+  @BeforeClass
+  public static void beforeClass() {
+    maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+  }
+
+  @AfterClass
+  public static void afterClass() {
+    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+  }
+
   @Test
   public void testNonBlockedOneTimeReceive() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -88,7 +106,7 @@ public class SourceHandleTest {
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
-    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
 
     SourceHandle sourceHandle =
         new SourceHandle(
@@ -96,6 +114,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -109,7 +128,7 @@ public class SourceHandleTest {
     // New data blocks event arrived.
     sourceHandle.updatePendingDataBlockInfo(
         0,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
@@ -135,7 +154,7 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
-        numOfMockTsBlock * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
+        numOfMockTsBlock * MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
@@ -148,7 +167,7 @@ public class SourceHandleTest {
       Assert.assertFalse(sourceHandle.isAborted());
       Assert.assertFalse(sourceHandle.isFinished());
       Assert.assertEquals(
-          (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
+          (numOfMockTsBlock - 1 - i) * MOCK_TSBLOCK_SIZE,
           sourceHandle.getBufferRetainedSizeInBytes());
     }
 
@@ -165,7 +184,6 @@ public class SourceHandleTest {
   @Test
   public void testBlockedOneTimeReceive() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -173,10 +191,10 @@ public class SourceHandleTest {
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
+    // Construct a mock LocalMemoryManager with capacity 5 * MOCK_TSBLOCK_SIZE per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool =
-        Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
+        Mockito.spy(new MemoryPool("test", 10 * MOCK_TSBLOCK_SIZE, 5 * MOCK_TSBLOCK_SIZE));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
@@ -204,7 +222,7 @@ public class SourceHandleTest {
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
-    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
 
     SourceHandle sourceHandle =
         new SourceHandle(
@@ -212,12 +230,17 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
             mockSourceHandleListener,
             mockClientManager);
-    sourceHandle.setMaxBytesCanReserve(5 * mockTsBlockSize);
+    long maxBytesCanReserve =
+        Math.min(
+            5 * MOCK_TSBLOCK_SIZE,
+            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+    sourceHandle.setMaxBytesCanReserve(maxBytesCanReserve);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
@@ -226,17 +249,18 @@ public class SourceHandleTest {
     // New data blocks event arrived.
     sourceHandle.updatePendingDataBlockInfo(
         0,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
           .reserve(
               queryId,
-              localFragmentInstanceId.getInstanceId(),
+              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                  localFragmentInstanceId),
               localPlanNodeId,
-              mockTsBlockSize,
-              5 * mockTsBlockSize);
+              MOCK_TSBLOCK_SIZE,
+              maxBytesCanReserve);
       Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .getDataBlock(
               Mockito.argThat(
@@ -258,17 +282,22 @@ public class SourceHandleTest {
     Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
-    Assert.assertEquals(6 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(6 * MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_0000).times(i))
-          .free(queryId, localFragmentInstanceId.getInstanceId(), localPlanNodeId, mockTsBlockSize);
+          .free(
+              queryId,
+              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                  localFragmentInstanceId),
+              localPlanNodeId,
+              MOCK_TSBLOCK_SIZE);
       sourceHandle.receive();
       try {
         if (i < 5) {
           Assert.assertEquals(
-              i == 4 ? 5 * mockTsBlockSize : 6 * mockTsBlockSize,
+              i == 4 ? 5 * MOCK_TSBLOCK_SIZE : 6 * MOCK_TSBLOCK_SIZE,
               sourceHandle.getBufferRetainedSizeInBytes());
           final int startSequenceId = 5 + i;
           Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
@@ -287,7 +316,7 @@ public class SourceHandleTest {
                               && startSequenceId + 1 == e.getEndSequenceId()));
         } else {
           Assert.assertEquals(
-              (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
+              (numOfMockTsBlock - 1 - i) * MOCK_TSBLOCK_SIZE,
               sourceHandle.getBufferRetainedSizeInBytes());
         }
       } catch (TException e) {
@@ -316,7 +345,7 @@ public class SourceHandleTest {
   @Test
   public void testMultiTimesReceive() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -331,7 +360,7 @@ public class SourceHandleTest {
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
-    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
     IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
@@ -362,6 +391,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -375,7 +405,7 @@ public class SourceHandleTest {
     // New data blocks event arrived in unordered manner.
     sourceHandle.updatePendingDataBlockInfo(
         numOfMockTsBlock,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
@@ -394,7 +424,7 @@ public class SourceHandleTest {
 
     sourceHandle.updatePendingDataBlockInfo(
         0,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
@@ -420,7 +450,7 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
-        numOfMockTsBlock * 2 * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
+        numOfMockTsBlock * 2 * MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < 2 * numOfMockTsBlock; i++) {
@@ -433,14 +463,14 @@ public class SourceHandleTest {
       Assert.assertFalse(sourceHandle.isAborted());
       Assert.assertFalse(sourceHandle.isFinished());
       Assert.assertEquals(
-          (2 * numOfMockTsBlock - 1 - i) * mockTsBlockSize,
+          (2 * numOfMockTsBlock - 1 - i) * MOCK_TSBLOCK_SIZE,
           sourceHandle.getBufferRetainedSizeInBytes());
     }
 
     // New data blocks event arrived.
     sourceHandle.updatePendingDataBlockInfo(
         numOfMockTsBlock * 2,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
@@ -466,7 +496,7 @@ public class SourceHandleTest {
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(
-        numOfMockTsBlock * mockTsBlockSize, sourceHandle.getBufferRetainedSizeInBytes());
+        numOfMockTsBlock * MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
@@ -479,7 +509,7 @@ public class SourceHandleTest {
       Assert.assertFalse(sourceHandle.isAborted());
       Assert.assertFalse(sourceHandle.isFinished());
       Assert.assertEquals(
-          (numOfMockTsBlock - 1 - i) * mockTsBlockSize,
+          (numOfMockTsBlock - 1 - i) * MOCK_TSBLOCK_SIZE,
           sourceHandle.getBufferRetainedSizeInBytes());
     }
 
@@ -496,7 +526,7 @@ public class SourceHandleTest {
   @Test
   public void testFailedReceive() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -511,7 +541,7 @@ public class SourceHandleTest {
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
-    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
     IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);
     // Construct a mock client.
@@ -534,6 +564,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -549,7 +580,7 @@ public class SourceHandleTest {
     // New data blocks event arrived.
     sourceHandle.updatePendingDataBlockInfo(
         0,
-        Stream.generate(() -> mockTsBlockSize)
+        Stream.generate(() -> MOCK_TSBLOCK_SIZE)
             .limit(numOfMockTsBlock)
             .collect(Collectors.toList()));
     try {
@@ -576,7 +607,7 @@ public class SourceHandleTest {
   @Test
   public void testForceClose() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -613,7 +644,7 @@ public class SourceHandleTest {
     // Construct a mock SourceHandleListener.
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
-    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
 
     SourceHandle sourceHandle =
         new SourceHandle(
@@ -621,6 +652,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,

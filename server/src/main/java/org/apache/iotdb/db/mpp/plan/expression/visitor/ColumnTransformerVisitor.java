@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -71,6 +72,8 @@ import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.mpp.plan.expression.ExpressionType.BETWEEN;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -216,6 +219,9 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
+        } else if (functionExpression.isBuiltInScalarFunction()) {
+          context.cache.put(
+              functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -250,6 +256,14 @@ public class ColumnTransformerVisitor
     ColumnTransformer res = context.cache.get(functionExpression);
     res.addReferenceCount();
     return res;
+  }
+
+  private ColumnTransformer getBuiltInScalarFunctionTransformer(
+      FunctionExpression expression, ColumnTransformerVisitorContext context) {
+    ColumnTransformer childColumnTransformer =
+        this.process(expression.getExpressions().get(0), context);
+    return BuiltInScalarFunctionHelperFactory.createHelper(expression.getFunctionName())
+        .getBuiltInScalarFunctionColumnTransformer(expression, childColumnTransformer);
   }
 
   @Override
@@ -409,18 +423,17 @@ public class ColumnTransformerVisitor
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer,
       Type returnType) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        BetweenExpression betweenExpression = (BetweenExpression) expression;
-        return new BetweenColumnTransformer(
-            returnType,
-            firstColumnTransformer,
-            secondColumnTransformer,
-            thirdColumnTransformer,
-            betweenExpression.isNotBetween());
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+    if (expression.getExpressionType() == BETWEEN) {
+      BetweenExpression betweenExpression = (BetweenExpression) expression;
+      return new BetweenColumnTransformer(
+          returnType,
+          firstColumnTransformer,
+          secondColumnTransformer,
+          thirdColumnTransformer,
+          betweenExpression.isNotBetween());
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported Expression Type: " + expression.getExpressionType());
     }
   }
 

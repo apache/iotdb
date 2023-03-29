@@ -37,7 +37,7 @@ import java.util.concurrent.Callable;
 
 public class FastCompactionPerformerSubTask implements Callable<Void> {
 
-  private SubCompactionTaskSummary summary;
+  private FastCompactionTaskSummary summary;
 
   private AbstractCompactionWriter compactionWriter;
 
@@ -73,7 +73,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<TsFileResource> sortedSourceFiles,
       List<String> measurements,
       String deviceId,
-      SubCompactionTaskSummary summary,
+      FastCompactionTaskSummary summary,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
@@ -96,7 +96,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       String deviceId,
-      SubCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;

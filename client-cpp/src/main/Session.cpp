@@ -20,8 +20,16 @@
 #include "Session.h"
 #include <algorithm>
 #include <memory>
+#include <time.h>
 
 using namespace std;
+
+/**
+* Timeout of query can be set by users.
+* A negative number means using the default configuration of server.
+* And value 0 will disable the function of query timeout.
+*/
+static const int64_t QUERY_TIMEOUT_MS = -1;
 
 LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
@@ -44,7 +52,7 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
     }
     if (status.code != TSStatusCode::SUCCESS_STATUS
         && status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
-        throw ExecutionException(to_string(status.code) + ": " + status.message);
+        throw ExecutionException(to_string(status.code) + ": " + status.message, status);
     }
 }
 
@@ -382,15 +390,17 @@ string SessionUtils::getValue(const Tablet &tablet) {
     return valueBuffer.str;
 }
 
-int SessionDataSet::getBatchSize() {
-    return batchSize;
+int SessionDataSet::getFetchSize() {
+    return fetchSize;
 }
 
-void SessionDataSet::setBatchSize(int batchSize) {
-    this->batchSize = batchSize;
+void SessionDataSet::setFetchSize(int fetchSize) {
+    this->fetchSize = fetchSize;
 }
 
 vector<string> SessionDataSet::getColumnNames() { return this->columnNameList; }
+
+vector<string> SessionDataSet::getColumnTypeList() { return this->columnTypeList; }
 
 bool SessionDataSet::hasNext() {
     if (hasCachedRecord) {
@@ -400,9 +410,10 @@ bool SessionDataSet::hasNext() {
         TSFetchResultsReq req;
         req.__set_sessionId(sessionId);
         req.__set_statement(sql);
-        req.__set_fetchSize(batchSize);
+        req.__set_fetchSize(fetchSize);
         req.__set_queryId(queryId);
         req.__set_isAlign(true);
+        req.__set_timeout(-1);
         try {
             TSFetchResultsResp resp;
             client->fetchResults(resp, req);
@@ -411,24 +422,31 @@ bool SessionDataSet::hasNext() {
             if (!resp.hasResultSet) {
                 return false;
             } else {
-                tsQueryDataSet = make_shared<TSQueryDataSet>(resp.queryDataSet);
+                TSQueryDataSet *tsQueryDataSet = &(resp.queryDataSet);
                 tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
                 tsQueryDataSetTimeBuffer.pos = 0;
-                for (size_t i = 0; i < columnNameList.size(); i++) {
-                    valueBuffers.pop_back();
-                    bitmapBuffers.pop_back();
-                }
-                for (size_t i = 0; i < columnNameList.size(); i++) {
+
+                valueBuffers.clear();
+                bitmapBuffers.clear();
+
+                for (size_t i = columnFieldStartIndex; i < columnNameList.size(); i++) {
+                    if (duplicateLocation.find(i) != duplicateLocation.end()) {
+                        continue;
+                    }
                     std::string name = columnNameList[i];
-                    valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->valueList[columnMap[name]])));
-                    bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->bitmapList[columnMap[name]])));
+                    int valueIndex = columnMap[name];
+                    valueBuffers.emplace_back(new MyStringBuffer(tsQueryDataSet->valueList[valueIndex]));
+                    bitmapBuffers.emplace_back(new MyStringBuffer(tsQueryDataSet->bitmapList[valueIndex]));
                 }
                 rowsIndex = 0;
             }
-        }
-        catch (IoTDBException &e) {
+        } catch (const TTransportException &e) {
+            log_debug(e.what());
+            throw IoTDBConnectionException(e.what());
+        } catch (const IoTDBException &e) {
+            log_debug(e.what());
+            throw;
+        } catch (exception &e) {
             throw IoTDBException(string("Cannot fetch result from server: ") + e.what());
         }
     }
@@ -441,7 +459,7 @@ bool SessionDataSet::hasNext() {
 void SessionDataSet::constructOneRow() {
     vector<Field> outFields;
     int loc = 0;
-    for (int i = 0; i < columnSize; i++) {
+    for (size_t i = columnFieldStartIndex; i < columnNameList.size(); i++) {
         Field field;
         if (duplicateLocation.find(i) != duplicateLocation.end()) {
             field = outFields[duplicateLocation[i]];
@@ -454,7 +472,7 @@ void SessionDataSet::constructOneRow() {
 
             if (!isNull(loc, rowsIndex)) {
                 MyStringBuffer *valueBuffer = valueBuffers[loc].get();
-                TSDataType::TSDataType dataType = getTSDataTypeFromString(columnTypeDeduplicatedList[loc]);
+                TSDataType::TSDataType dataType = getTSDataTypeFromString(columnTypeList[i]);
                 field.dataType = dataType;
                 switch (dataType) {
                     case TSDataType::BOOLEAN: {
@@ -489,7 +507,7 @@ void SessionDataSet::constructOneRow() {
                     }
                     default: {
                         throw UnSupportedDataTypeException(
-                                string("Data type ") + columnTypeDeduplicatedList[i] + " is not supported.");
+                                string("Data type ") + columnTypeList[i] + " is not supported.");
                     }
                 }
             } else {
@@ -540,8 +558,13 @@ void SessionDataSet::closeOperationHandle(bool forceClose) {
     try {
         client->closeOperation(tsStatus, closeReq);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (IoTDBException &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -793,9 +816,29 @@ string Session::getVersionString(Version::Version version) {
             return "V_0_12";
         case Version::V_0_13:
             return "V_0_13";
+        case Version::V_1_0:
+            return "V_1_0";
         default:
             return "V_0_12";
     }
+}
+
+void Session::initZoneId() {
+    if (!zoneId.empty()) {
+        return;
+    }
+
+    time_t ts = 0;
+    struct tm tmv;
+#if defined(_WIN64) || defined (WIN32) || defined (_WIN32)
+    localtime_s(&tmv, &ts);
+#else
+    localtime_r(&ts, &tmv);
+#endif
+
+    char zoneStr[32];
+    strftime(zoneStr, sizeof(zoneStr), "%z", &tmv);
+    zoneId = zoneStr;
 }
 
 void Session::open() {
@@ -859,8 +902,15 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         } else {
             zoneId = getTimeZone();
         }
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        transport->close();
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        transport->close();
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         transport->close();
         throw IoTDBException(e.what());
@@ -883,8 +933,10 @@ void Session::close() {
         req.__set_sessionId(sessionId);
         TSStatus tsStatus;
         client->closeSession(tsStatus, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         errMsg = errMsg + "Session::close() client->closeSession() error, maybe remote server is down. " + e.what() + "\n" ;
         needThrowException = true;
@@ -921,8 +973,13 @@ void Session::insertRecord(const string &deviceId, int64_t time,
     try {
         client->insertStringRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -945,6 +1002,12 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
     try {
         client->insertRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -965,8 +1028,13 @@ void Session::insertAlignedRecord(const string &deviceId, int64_t time,
     try {
         client->insertStringRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -989,6 +1057,12 @@ void Session::insertAlignedRecord(const string &prefixPath, int64_t time,
     try {
         client->insertRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -1016,8 +1090,13 @@ void Session::insertRecords(const vector<string> &deviceIds,
         TSStatus respStatus;
         client->insertStringRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    }   catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1051,6 +1130,12 @@ void Session::insertRecords(const vector<string> &deviceIds,
         TSStatus respStatus;
         client->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -1078,8 +1163,13 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
         TSStatus respStatus;
         client->insertStringRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    }  catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1113,6 +1203,12 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
         TSStatus respStatus;
         client->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -1165,6 +1261,12 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         TSStatus respStatus;
         client->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -1217,6 +1319,12 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
         TSStatus respStatus;
         client->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
     } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
@@ -1260,8 +1368,13 @@ void Session::insertTablet(const TSInsertTabletReq &request){
         TSStatus respStatus;
         client->insertTablet(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1333,8 +1446,13 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
         TSStatus respStatus;
         client->insertTablets(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1367,8 +1485,13 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
     try {
         client->insertStringRecord(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1390,8 +1513,13 @@ void Session::testInsertTablet(const Tablet &tablet) {
         TSStatus tsStatus;
         client->testInsertTablet(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1417,8 +1545,13 @@ void Session::testInsertRecords(const vector<string> &deviceIds,
         TSStatus tsStatus;
         client->insertStringRecords(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1436,30 +1569,45 @@ void Session::deleteTimeseries(const vector<string> &paths) {
     try {
         client->deleteTimeseries(tsStatus, sessionId, paths);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
 }
 
-void Session::deleteData(const string &path, int64_t time) {
+void Session::deleteData(const string &path, int64_t endTime) {
     vector<string> paths;
     paths.push_back(path);
-    deleteData(paths, time);
+    deleteData(paths, LONG_LONG_MIN, endTime);
 }
 
-void Session::deleteData(const vector<string> &deviceId, int64_t time) {
+void Session::deleteData(const vector<string> &paths, int64_t endTime) {
+    deleteData(paths, LONG_LONG_MIN, endTime);
+}
+
+void Session::deleteData(const vector<string> &paths, int64_t startTime, int64_t endTime) {
     TSDeleteDataReq req;
     req.__set_sessionId(sessionId);
-    req.__set_paths(deviceId);
-    req.__set_endTime(time);
+    req.__set_paths(paths);
+    req.__set_startTime(startTime);
+    req.__set_endTime(endTime);
     TSStatus tsStatus;
     try {
         client->deleteData(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1470,8 +1618,13 @@ void Session::setStorageGroup(const string &storageGroupId) {
     try {
         client->setStorageGroup(tsStatus, sessionId, storageGroupId);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1488,8 +1641,13 @@ void Session::deleteStorageGroups(const vector<string> &storageGroups) {
     try {
         client->deleteStorageGroups(tsStatus, sessionId, storageGroups);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1508,7 +1666,6 @@ void Session::createTimeseries(const string &path,
     }
 }
 
-// TODO:
 void Session::createTimeseries(const string &path,
                                TSDataType::TSDataType dataType,
                                TSEncoding::TSEncoding encoding,
@@ -1541,8 +1698,13 @@ void Session::createTimeseries(const string &path,
     try {
         client->createTimeseries(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1599,8 +1761,13 @@ void Session::createMultiTimeseries(const vector<string> &paths,
         TSStatus tsStatus;
         client->createMultiTimeseries(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1641,8 +1808,13 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
         TSStatus tsStatus;
         client->createAlignedTimeseries(tsStatus, request);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1673,8 +1845,13 @@ string Session::getTimeZone() {
     try {
         client->getTimeZone(resp, sessionId);
         RpcUtils::verifySuccess(resp.status);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1688,27 +1865,42 @@ void Session::setTimeZone(const string &zoneId) {
     TSStatus tsStatus;
     try {
         client->setTimeZone(tsStatus, req);
-    }
-    catch (const exception &e) {
+        RpcUtils::verifySuccess(tsStatus);
+        this->zoneId = zoneId;
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
-    RpcUtils::verifySuccess(tsStatus);
-    this->zoneId = zoneId;
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
+    return executeQueryStatement(sql, QUERY_TIMEOUT_MS);
+}
+
+unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
     TSExecuteStatementReq req;
     req.__set_sessionId(sessionId);
     req.__set_statementId(statementId);
     req.__set_statement(sql);
+    req.__set_timeout(timeoutInMs);
     req.__set_fetchSize(fetchSize);
     TSExecuteStatementResp resp;
     try {
         client->executeStatement(resp, req);
         RpcUtils::verifySuccess(resp.status);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    }  catch (const exception &e) {
         throw IoTDBException(e.what());
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
@@ -1722,14 +1914,78 @@ void Session::executeNonQueryStatement(const string &sql) {
     req.__set_sessionId(sessionId);
     req.__set_statementId(statementId);
     req.__set_statement(sql);
+    req.__set_timeout(0);  //0 means no timeout. This value keep consistent to JAVA SDK.
     TSExecuteStatementResp resp;
     try {
         client->executeUpdateStatement(resp, req);
         RpcUtils::verifySuccess(resp.status);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         throw IoTDBException(e.what());
     }
+}
+
+unique_ptr<SessionDataSet> Session::executeRawDataQuery(const vector<string> &paths, int64_t startTime, int64_t endTime) {
+    TSRawDataQueryReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementId(statementId);
+    req.__set_fetchSize(fetchSize);
+    req.__set_paths(paths);
+    req.__set_startTime(startTime);
+    req.__set_endTime(endTime);
+    TSExecuteStatementResp resp;
+    try {
+        client->executeRawDataQuery(resp, req);
+        RpcUtils::verifySuccess(resp.status);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        throw IoTDBException(e.what());
+    }
+    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
+    return unique_ptr<SessionDataSet>(
+            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
+                               resp.queryId, statementId, client, sessionId, queryDataSet));
+}
+
+
+unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string> &paths) {
+    return executeLastDataQuery(paths, LONG_LONG_MIN);
+}
+unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string> &paths, int64_t lastTime) {
+    TSLastDataQueryReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementId(statementId);
+    req.__set_fetchSize(fetchSize);
+    req.__set_paths(paths);
+    req.__set_time(lastTime);
+
+    TSExecuteStatementResp resp;
+    try {
+        client->executeLastDataQuery(resp, req);
+        RpcUtils::verifySuccess(resp.status);
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
+        throw IoTDBException(e.what());
+    }
+    shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
+    return unique_ptr<SessionDataSet>(
+            new SessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.ignoreTimeStamp,
+                               resp.queryId, statementId, client, sessionId, queryDataSet));
 }
 
 void Session::createSchemaTemplate(const Template &templ) {
@@ -1741,8 +1997,13 @@ void Session::createSchemaTemplate(const Template &templ) {
     try {
         client->createSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1757,8 +2018,13 @@ void Session::setSchemaTemplate(const string &template_name, const string &prefi
     try {
         client->setSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1773,8 +2039,13 @@ void Session::unsetSchemaTemplate(const string &prefix_path, const string &templ
     try {
         client->unsetSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1815,8 +2086,13 @@ void Session::addAlignedMeasurementsInTemplate(const string &template_name, cons
     try {
         client->appendSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1867,8 +2143,13 @@ void Session::addUnalignedMeasurementsInTemplate(const string &template_name, co
     try {
         client->appendSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1893,8 +2174,13 @@ void Session::deleteNodeInTemplate(const string &template_name, const string &pa
     try {
         client->pruneSchemaTemplate(tsStatus, req);
         RpcUtils::verifySuccess(tsStatus);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const IoTDBException &e) {
+        log_debug(e.what());
+        throw;
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1908,8 +2194,10 @@ int Session::countMeasurementsInTemplate(const string &template_name) {
     TSQueryTemplateResp resp;
     try {
         client->querySchemaTemplate(resp, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1925,8 +2213,10 @@ bool Session::isMeasurementInTemplate(const string &template_name, const string 
     TSQueryTemplateResp resp;
     try {
         client->querySchemaTemplate(resp, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1942,8 +2232,10 @@ bool Session::isPathExistInTemplate(const string &template_name, const string &p
     TSQueryTemplateResp resp;
     try {
         client->querySchemaTemplate(resp, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1959,8 +2251,10 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
     TSQueryTemplateResp resp;
     try {
         client->querySchemaTemplate(resp, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }
@@ -1976,8 +2270,10 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
     TSQueryTemplateResp resp;
     try {
         client->querySchemaTemplate(resp, req);
-    }
-    catch (const exception &e) {
+    } catch (const TTransportException &e) {
+        log_debug(e.what());
+        throw IoTDBConnectionException(e.what());
+    } catch (const exception &e) {
         log_debug(e.what());
         throw IoTDBException(e.what());
     }

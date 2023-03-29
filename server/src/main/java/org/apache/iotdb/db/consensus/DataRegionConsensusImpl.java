@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -31,7 +32,9 @@ import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
+import org.apache.iotdb.db.consensus.statemachine.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
@@ -43,11 +46,14 @@ import java.util.concurrent.TimeUnit;
  * dataRegion's reading and writing
  */
 public class DataRegionConsensusImpl {
+
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   private static IConsensus INSTANCE = null;
 
-  private DataRegionConsensusImpl() {}
+  private DataRegionConsensusImpl() {
+    // do nothing
+  }
 
   // need to create instance before calling this method
   public static IConsensus getInstance() {
@@ -82,8 +88,9 @@ public class DataRegionConsensusImpl {
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
-                                      .setMaxConnectionForInternalService(
-                                          conf.getMaxConnectionForInternalService())
+                                      .setCoreClientNumForEachNode(
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                                       .build())
                               .setReplication(
                                   IoTConsensusConfig.Replication.newBuilder()
@@ -144,13 +151,8 @@ public class DataRegionConsensusImpl {
                                               conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
-                              .setLeaderLogAppender(
-                                  RatisConfig.LeaderLogAppender.newBuilder()
-                                      .setBufferByteLimit(
-                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
-                                      .build())
-                              .setRatisConsensus(
-                                  RatisConfig.Impl.newBuilder()
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -159,13 +161,22 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           conf.getDataRatisConsensusMaxSleepTimeMs())
+                                      .setCoreClientNumForEachNode(
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
                                       .setTriggerSnapshotFileSize(conf.getDataRatisLogMax())
+                                      .build())
+                              .setLeaderLogAppender(
+                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                      .setBufferByteLimit(
+                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .build())
                       .build(),
-                  gid ->
-                      new DataRegionStateMachine(
-                          StorageEngine.getInstance().getDataRegion((DataRegionId) gid)))
+                  DataRegionConsensusImpl::createDataRegionStateMachine)
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
@@ -174,5 +185,14 @@ public class DataRegionConsensusImpl {
                               conf.getDataRegionConsensusProtocolClass())));
     }
     return INSTANCE;
+  }
+
+  private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
+    DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
+    if (ConsensusFactory.IOT_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
+      return new IoTConsensusDataRegionStateMachine(dataRegion);
+    } else {
+      return new DataRegionStateMachine(dataRegion);
+    }
   }
 }

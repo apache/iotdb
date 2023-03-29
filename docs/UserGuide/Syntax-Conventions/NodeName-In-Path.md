@@ -31,7 +31,7 @@ Node name is a special identifier, it can also be wildcard `*` and `**`. When cr
 
 As `*` can also be used in expressions of select clause to represent multiplication, below are examples to help you better understand the usage of `* `:
 
-```SQL
+```sql
 # create timeseries root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 
@@ -61,17 +61,17 @@ When node name is not wildcard, it is a identifier, which means the constraints 
 
 - Create timeseries statement:
 
-```SQL
+```sql
 # Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
 # Node name is a real number.
-create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
+create timeseries root.sg.`111`.a with datatype=FLOAT,encoding=PLAIN;
 ```
 
 After executing above statments, execute "show timeseries"，below is the result：
 
-```SQL
+```sql
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -82,7 +82,7 @@ After executing above statments, execute "show timeseries"，below is the result
 
 - Insert statment:
 
-```SQL
+```sql
 # Node name contains special characters like . and `
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
@@ -92,7 +92,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 
 - Query statement:
 
-```SQL
+```sql
 # Node name contains special characters like . and `
 select a from root.sg.`www.``baidu.com`;
 
@@ -102,7 +102,7 @@ select `111` from root.sg
 
 Results:
 
-```SQL
+```sql
 # select a from root.sg.`www.``baidu.com`
 +-----------------------------+---------------------------+
 |                         Time|root.sg.`www.``baidu.com`.a|

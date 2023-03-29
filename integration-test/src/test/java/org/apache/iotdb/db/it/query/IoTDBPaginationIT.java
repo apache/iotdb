@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -34,7 +33,6 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
@@ -81,20 +79,15 @@ public class IoTDBPaginationIT {
         "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)"
       };
 
-  private static int maxQueryDeduplicatedPathNum;
-
   @BeforeClass
   public static void setUp() throws InterruptedException {
-    maxQueryDeduplicatedPathNum = ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -141,12 +134,5 @@ public class IoTDBPaginationIT {
     for (int i = 0; i < querySQLs.size(); i++) {
       resultSetEqualTest(querySQLs.get(0), expectHeaders.get(0), retArrays.get(0));
     }
-  }
-
-  @Test
-  public void pathNumOverLimitTest() {
-    assertTestFail(
-        "select * from root.vehicle.d0",
-        "Too many paths in one query! Currently allowed max deduplicated path number is 2.");
   }
 }

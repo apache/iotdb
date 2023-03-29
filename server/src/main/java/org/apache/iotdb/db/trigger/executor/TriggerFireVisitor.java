@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.trigger.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -68,16 +68,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
 
-  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      INTERNAL_SERVICE_CLIENT_MANAGER =
-          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-              .createClientManager(
-                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
-
-  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   /**
    * How many times should we retry when error occurred during firing a trigger on another datanode
@@ -295,7 +287,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         TriggerManagementService.getInstance().getMatchedTriggerListForPath(device, measurements);
     boolean isAllEmpty = true;
     for (List<String> triggerNameList : triggerNameLists) {
-      if (triggerNameList.size() != 0) {
+      if (!triggerNameList.isEmpty()) {
         isAllEmpty = false;
         break;
       }
@@ -328,7 +320,9 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
             TriggerManagementService.getInstance()
                 .getDataNodeLocationOfStatefulTrigger(triggerName);
         try (SyncDataNodeInternalServiceClient client =
-            INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(tDataNodeLocation.getInternalEndPoint())) {
+            Coordinator.getInstance()
+                .getInternalServiceClientManager()
+                .borrowClient(tDataNodeLocation.getInternalEndPoint())) {
           TFireTriggerReq req = new TFireTriggerReq(triggerName, tablet.serialize(), event.getId());
           TFireTriggerResp resp = client.fireTrigger(req);
           if (resp.foundExecutor) {
@@ -350,7 +344,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              tDataNodeLocation.getInternalEndPoint().toString(),
+              tDataNodeLocation.getInternalEndPoint(),
               e);
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
@@ -361,7 +355,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              tDataNodeLocation.getInternalEndPoint().toString(),
+              tDataNodeLocation.getInternalEndPoint(),
               e);
           // do not retry if it is not due to bad network or no executor found
           return TriggerManagementService.getInstance()
@@ -404,16 +398,15 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   /** Return true if the config node returns a new TDataNodeLocation */
   private boolean updateLocationOfStatefulTrigger(String triggerName, int currentDataNodeId) {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TDataNodeLocation newTDataNodeLocation =
           configNodeClient.getLocationOfStatefulTrigger(triggerName).getDataNodeLocation();
-      if (newTDataNodeLocation != null) {
-        if (currentDataNodeId != newTDataNodeLocation.getDataNodeId()) {
-          // indicates that the location of this stateful trigger has changed
-          TriggerManagementService.getInstance()
-              .updateLocationOfStatefulTrigger(triggerName, newTDataNodeLocation);
-          return true;
-        }
+      if (newTDataNodeLocation != null
+          && currentDataNodeId != newTDataNodeLocation.getDataNodeId()) {
+        // indicates that the location of this stateful trigger has changed
+        TriggerManagementService.getInstance()
+            .updateLocationOfStatefulTrigger(triggerName, newTDataNodeLocation);
+        return true;
       }
       return false;
     } catch (ClientManagerException | TException | IOException e) {

@@ -39,7 +39,7 @@ public interface IRegionGroupAllocator {
    */
   TRegionReplicaSet generateOptimalRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      Map<Integer, Long> freeDiskSpaceMap,
+      Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);

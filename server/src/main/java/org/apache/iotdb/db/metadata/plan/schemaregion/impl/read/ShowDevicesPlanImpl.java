@@ -31,7 +31,7 @@ public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements I
   private final int schemaTemplateId;
 
   ShowDevicesPlanImpl(
-      PartialPath path, int limit, int offset, boolean isPrefixMatch, int schemaTemplateId) {
+      PartialPath path, long limit, long offset, boolean isPrefixMatch, int schemaTemplateId) {
     super(path, limit, offset, isPrefixMatch);
     this.schemaTemplateId = schemaTemplateId;
   }

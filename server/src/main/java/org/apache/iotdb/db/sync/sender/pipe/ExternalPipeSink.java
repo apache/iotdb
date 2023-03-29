@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 public class ExternalPipeSink implements PipeSink {
   private static final Logger logger = LoggerFactory.getLogger(ExternalPipeSink.class);
 
-  private final PipeSinkType pipeSinkType = PipeSinkType.ExternalPipe;
+  private static final PipeSinkType pipeSinkType = PipeSinkType.ExternalPipe;
 
   private String pipeSinkName;
   private String extPipeSinkTypeName;

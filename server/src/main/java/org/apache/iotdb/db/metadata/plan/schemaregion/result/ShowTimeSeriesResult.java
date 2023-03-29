@@ -22,7 +22,6 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
@@ -37,17 +36,21 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   private Map<String, String> tags;
   private Map<String, String> attributes;
 
+  private boolean isUnderAlignedDevice;
+
   public ShowTimeSeriesResult(
       String name,
       String alias,
       MeasurementSchema measurementSchema,
       Map<String, String> tags,
-      Map<String, String> attributes) {
+      Map<String, String> attributes,
+      boolean isUnderAlignedDevice) {
     super(name);
     this.alias = alias;
     this.measurementSchema = measurementSchema;
     this.tags = tags;
     this.attributes = attributes;
+    this.isUnderAlignedDevice = isUnderAlignedDevice;
   }
 
   public ShowTimeSeriesResult() {
@@ -64,8 +67,18 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   }
 
   @Override
-  public Pair<Map<String, String>, Map<String, String>> getTagAndAttribute() {
-    return new Pair<>(tags, attributes);
+  public Map<String, String> getTags() {
+    return tags;
+  }
+
+  @Override
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
+  @Override
+  public boolean isUnderAlignedDevice() {
+    return isUnderAlignedDevice;
   }
 
   public TSDataType getDataType() {

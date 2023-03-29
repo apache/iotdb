@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -41,8 +42,9 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
-import org.apache.iotdb.confignode.consensus.response.PipeResp;
-import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
+import org.apache.iotdb.confignode.consensus.response.pipe.PipeResp;
+import org.apache.iotdb.confignode.consensus.response.pipe.PipeSinkResp;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
@@ -300,9 +302,5 @@ public class SyncManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
-  }
-
-  private ProcedureManager getProcedureManager() {
-    return configManager.getProcedureManager();
   }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.template.TemplateNode;
@@ -57,8 +56,7 @@ public class IoTDBSessionSchemaTemplateIT {
 
   @Before
   public void setUp() throws Exception {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     session = EnvFactory.getEnv().getSessionConnection();
   }
 
@@ -67,7 +65,7 @@ public class IoTDBSessionSchemaTemplateIT {
     if (session != null) {
       session.close();
     }
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -225,5 +223,66 @@ public class IoTDBSessionSchemaTemplateIT {
     sessionTemplate.addToTemplate(mNodeY);
 
     return sessionTemplate;
+  }
+
+  @Test
+  public void testBatchActivateTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    Template temp2 = getTemplate("template2");
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+    session.createSchemaTemplate(temp2);
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("template1", "template2")),
+        new HashSet<>(session.showAllTemplates()));
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+    session.setSchemaTemplate("template1", "root.db.v2");
+    session.setSchemaTemplate("template1", "root.db.v3");
+
+    assertEquals(
+        new HashSet<>(Collections.emptyList()),
+        new HashSet<>(session.showPathsTemplateUsingOn("template1")));
+
+    session.setSchemaTemplate("template2", "root.db.v4");
+    session.setSchemaTemplate("template2", "root.db.v5");
+    session.setSchemaTemplate("template2", "root.db.v6");
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.db.v4", "root.db.v5", "root.db.v6")),
+        new HashSet<>(session.showPathsTemplateSetOn("template2")));
+
+    session.createTimeseriesOfSchemaTemplate(Collections.singletonList("root.db.v1.GPS"));
+
+    assertEquals(
+        new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template1")));
+
+    session.createTimeseriesOfSchemaTemplate(Collections.singletonList("root.db.v5.GPS"));
+
+    assertEquals(
+        new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template1")));
+
+    assertEquals(
+        new HashSet<>(Collections.singletonList("root.db.v5.GPS")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template2")));
+
+    session.createTimeseriesOfSchemaTemplate(
+        Arrays.asList("root.db.v2.GPS", "root.db.v3.GPS", "root.db.v4.GPS", "root.db.v6.GPS"));
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.db.v1.GPS", "root.db.v2.GPS", "root.db.v3.GPS")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template1")));
+
+    assertEquals(
+        new HashSet<>(Arrays.asList("root.db.v4.GPS", "root.db.v5.GPS", "root.db.v6.GPS")),
+        new HashSet<>(session.showPathsTemplateUsingOn("template2")));
   }
 }

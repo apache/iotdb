@@ -58,7 +58,7 @@ public class MetricConfigTest {
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
 
-    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
+    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());
@@ -66,7 +66,6 @@ public class MetricConfigTest {
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
     assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
-    assertEquals(InternalReporterType.MEMORY, metricConfig.getInternalReportType());
   }
 
   @Test
@@ -98,7 +97,7 @@ public class MetricConfigTest {
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
 
-    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
+    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());

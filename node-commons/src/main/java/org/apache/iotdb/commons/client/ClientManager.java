@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -45,6 +46,9 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
+    if (node == null) {
+      throw new BorrowNullClientManagerException();
+    }
     try {
       return pool.borrowObject(node);
     } catch (Exception e) {
@@ -53,9 +57,10 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   /**
-   * return a client V for node K to the ClientManager Note: We do not define this interface in
-   * IClientManager to make you aware that the return of a client is automatic whenever a particular
-   * client is used.
+   * return a client V for node K to the ClientManager.
+   *
+   * <p>Note: We do not define this interface in IClientManager to make you aware that the return of
+   * a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
     Optional.ofNullable(node)
@@ -64,7 +69,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
               try {
                 pool.returnObject(node, client);
               } catch (Exception e) {
-                logger.error(
+                logger.warn(
                     String.format("Return client %s for node %s to pool failed.", client, node), e);
               }
             });
@@ -78,18 +83,13 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
               try {
                 pool.clear(node);
               } catch (Exception e) {
-                logger.error(
-                    String.format("Clear all client in pool for node %s failed.", node), e);
+                logger.warn(String.format("Clear all client in pool for node %s failed.", node), e);
               }
             });
   }
 
   @Override
   public void close() {
-    try {
-      pool.close();
-    } catch (Exception e) {
-      logger.error("Close client pool failed", e);
-    }
+    pool.close();
   }
 }

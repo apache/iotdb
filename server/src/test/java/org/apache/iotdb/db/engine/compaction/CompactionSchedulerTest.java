@@ -87,7 +87,7 @@ public class CompactionSchedulerTest {
     EnvironmentUtils.cleanAllDir();
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
 
-    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.BALANCE);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
@@ -100,6 +100,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.READ_POINT);
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -1331,6 +1332,9 @@ public class CompactionSchedulerTest {
           }
         } catch (InterruptedException e) {
           e.printStackTrace();
+        } catch (NullPointerException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());

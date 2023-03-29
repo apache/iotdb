@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -28,7 +29,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -57,10 +57,12 @@ public class IoTDBSnapshotTransferIT {
 
   @Before
   public void setUp() throws Exception {
-    ConfigFactory.getConfig()
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(2)
         .setDataRatisTriggerSnapshotThreshold(snapshotMagic)
@@ -71,7 +73,7 @@ public class IoTDBSnapshotTransferIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -142,9 +144,7 @@ public class IoTDBSnapshotTransferIT {
           registerResult.getRegionInfoList().stream()
               .filter(
                   info ->
-                      info.getConsensusGroupId()
-                          .getType()
-                          .equals(TConsensusGroupType.ConfigNodeRegion))
+                      info.getConsensusGroupId().getType().equals(TConsensusGroupType.ConfigRegion))
               .count();
       Assert.assertEquals(4, configNodeGroupCount);
     }

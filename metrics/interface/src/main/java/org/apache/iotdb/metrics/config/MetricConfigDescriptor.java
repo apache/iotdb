@@ -27,16 +27,16 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-/** The utils class to load properties */
+/** The utils class to load properties. */
 public class MetricConfigDescriptor {
-  /** The metric config of metric service */
+  /** The metric config of metric service. */
   private final MetricConfig metricConfig;
 
   private MetricConfigDescriptor() {
     metricConfig = new MetricConfig();
   }
 
-  /** Load properties into metric config */
+  /** Load properties into metric config. */
   public void loadProps(Properties properties) {
     MetricConfig loadConfig = generateFromProperties(properties);
     metricConfig.copy(loadConfig);
@@ -72,7 +72,7 @@ public class MetricConfigDescriptor {
     return reloadLevel;
   }
 
-  /** Load properties into metric config */
+  /** Load properties into metric config. */
   private MetricConfig generateFromProperties(Properties properties) {
     MetricConfig loadConfig = new MetricConfig();
 
@@ -110,7 +110,7 @@ public class MetricConfigDescriptor {
                 String.valueOf(loadConfig.getPrometheusReporterPort()),
                 properties)));
 
-    MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
+    MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
     reporterConfig.setHost(
         getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
 
@@ -143,7 +143,6 @@ public class MetricConfigDescriptor {
                 "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
-
     loadConfig.setInternalReportType(
         InternalReporterType.valueOf(
             properties.getProperty(
@@ -153,7 +152,7 @@ public class MetricConfigDescriptor {
     return loadConfig;
   }
 
-  /** Get property from confignode or datanode */
+  /** Get property from confignode or datanode. */
   private String getProperty(String target, String defaultValue, Properties properties) {
     return properties.getProperty(
         "dn_" + target, properties.getProperty("cn_" + target, defaultValue));

@@ -32,7 +32,7 @@ public abstract class ColumnTransformer {
 
   protected int referenceCount;
 
-  public ColumnTransformer(Type returnType) {
+  protected ColumnTransformer(Type returnType) {
     this.returnType = returnType;
     this.columnCache = new ColumnCache();
     referenceCount = 0;

@@ -61,6 +61,7 @@ class TSEncoding(Enum):
     GORILLA = 8
     ZIGZAG = 9
     FREQ = 10
+    CHIMP = 11
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545
@@ -81,6 +82,7 @@ class Compressor(Enum):
     PAA = 5
     PLA = 6
     LZ4 = 7
+    ZSTD = 8
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

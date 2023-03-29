@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -61,7 +62,7 @@ public class IoTDBClusterAuthorityIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void cleanUserAndRole(IConfigNodeRPCService.Iface client) throws TException {

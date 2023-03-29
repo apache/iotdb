@@ -45,6 +45,7 @@ public class TestConstant {
   public static final String s5 = "s5";
   public static final String d1 = "root.vehicle.d1";
   public static final String TIMESTAMP_STR = ColumnHeaderConstant.TIME;
+  public static final String DEVICE = ColumnHeaderConstant.DEVICE;
   public static boolean testFlag = true;
   public static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
   public static String[] booleanValue = new String[] {"true", "false"};
@@ -108,6 +109,14 @@ public class TestConstant {
 
   public static String minValue(String path) {
     return String.format("min_value(%s)", path);
+  }
+
+  public static String timeDuration(String path) {
+    return String.format("time_duration(%s)", path);
+  }
+
+  public static String mode(String path) {
+    return String.format("mode(%s)", path);
   }
 
   public static String recordToInsert(TSRecord record) {

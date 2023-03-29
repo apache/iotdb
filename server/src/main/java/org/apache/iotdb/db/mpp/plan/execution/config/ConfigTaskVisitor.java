@@ -19,29 +19,32 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreatePipePluginTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropFunctionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropPipePluginTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.MigrateRegionTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
@@ -57,42 +60,46 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.UnsetSche
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.SetSystemStatusTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.CreatePipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.DropPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.StartPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.StopPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.StartPipeTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.StopPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropPipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
@@ -108,17 +115,18 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -136,26 +144,29 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
-    return new SetStorageGroupTask(statement);
+  public IConfigTask visitSetDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+    return new DatabaseSchemaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitAlterDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+    return new DatabaseSchemaTask(statement);
   }
 
   @Override
   public IConfigTask visitDeleteStorageGroup(
-      DeleteStorageGroupStatement statement, TaskContext context) {
+      DeleteDatabaseStatement statement, TaskContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(
-      ShowStorageGroupStatement statement, TaskContext context) {
-    return new ShowStorageGroupTask(statement);
+  public IConfigTask visitShowStorageGroup(ShowDatabaseStatement statement, TaskContext context) {
+    return new ShowDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitCountStorageGroup(
-      CountStorageGroupStatement statement, TaskContext context) {
-    return new CountStorageGroupTask(statement);
+  public IConfigTask visitCountStorageGroup(CountDatabaseStatement statement, TaskContext context) {
+    return new CountDatabaseTask(statement);
   }
 
   @Override
@@ -222,6 +233,11 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitKillQuery(KillQueryStatement killQueryStatement, TaskContext context) {
+    return new KillQueryTask(killQueryStatement);
+  }
+
+  @Override
   public IConfigTask visitCreateFunction(
       CreateFunctionStatement createFunctionStatement, TaskContext context) {
     return new CreateFunctionTask(createFunctionStatement);
@@ -255,6 +271,24 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowTriggers(
       ShowTriggersStatement showTriggersStatement, TaskContext context) {
     return new ShowTriggersTask();
+  }
+
+  @Override
+  public IConfigTask visitCreatePipePlugin(
+      CreatePipePluginStatement createPipePluginStatement, TaskContext context) {
+    return new CreatePipePluginTask(createPipePluginStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropPipePlugin(
+      DropPipePluginStatement dropPipePluginStatement, TaskContext context) {
+    return new DropPipePluginTask(dropPipePluginStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowPipePlugins(
+      ShowPipePluginsStatement showPipePluginStatement, TaskContext context) {
+    return new ShowPipePluginsTask();
   }
 
   @Override

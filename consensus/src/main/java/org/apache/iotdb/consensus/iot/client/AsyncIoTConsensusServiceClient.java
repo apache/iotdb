@@ -20,77 +20,88 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncClient {
+public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncClient
+    implements ThriftClient {
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncIoTConsensusServiceClient.class);
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
 
   public AsyncIoTConsensusServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager)
       throws IOException {
     super(
-        protocolFactory,
+        property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
+        TNonblockingSocketWrapper.wrap(
+            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
 
-  public void close() {
-    ___transport.close();
-    ___currentMethod = null;
-  }
-
-  /**
-   * return self if clientManager is not null, the method doesn't need to call by user, it will
-   * trigger once client transport complete.
-   */
-  private void returnSelf() {
-    if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
-    }
-  }
-
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onComplete() {
     super.onComplete();
     returnSelf();
   }
 
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onError(Exception e) {
     super.onError(e);
+    ThriftClient.resolveException(e, this);
     returnSelf();
+  }
+
+  @Override
+  public void invalidate() {
+    if (!hasError()) {
+      super.onError(new Exception("This client has been invalidated"));
+    }
+  }
+
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endpoint);
+  }
+
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  /**
+   * return self, the method doesn't need to be called by the user and will be triggered after the
+   * RPC is finished.
+   */
+  private void returnSelf() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  private void close() {
+    ___transport.close();
+    ___currentMethod = null;
   }
 
   public boolean isReady() {
@@ -109,13 +120,13 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   }
 
   public static class Factory
-      extends AsyncBaseClientFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty,
+        ThriftClientProperty thriftClientProperty,
         String threadName) {
-      super(clientManager, clientFactoryProperty, threadName);
+      super(clientManager, thriftClientProperty, threadName);
     }
 
     @Override
@@ -127,21 +138,18 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
     @Override
     public PooledObject<AsyncIoTConsensusServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      TAsyncClientManager tManager = tManagers[clientCnt.incrementAndGet() % tManagers.length];
-      tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
           new AsyncIoTConsensusServiceClient(
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              thriftClientProperty,
               endPoint,
-              tManager,
+              tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endPoint, PooledObject<AsyncIoTConsensusServiceClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().isReady();
+      return pooledObject.getObject().isReady();
     }
   }
 }

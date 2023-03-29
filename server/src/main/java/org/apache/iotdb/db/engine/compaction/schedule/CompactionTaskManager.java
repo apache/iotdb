@@ -31,8 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionTaskStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -59,6 +58,8 @@ public class CompactionTaskManager implements IService {
 
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
   private WrappedThreadPoolExecutor taskExecutionPool;
@@ -68,7 +69,8 @@ public class CompactionTaskManager implements IService {
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
+      new FixedPriorityBlockingQueue<>(
+          config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
   // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
@@ -77,7 +79,6 @@ public class CompactionTaskManager implements IService {
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private volatile boolean init = false;
 
   public static CompactionTaskManager getInstance() {
@@ -97,8 +98,8 @@ public class CompactionTaskManager implements IService {
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
           x ->
-              CompactionMetricsRecorder.recordTaskInfo(
-                  x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
+              CompactionMetricsManager.getInstance()
+                  .reportPollTaskFromWaitingQueue(x.isCrossTask(), x.isInnerSeqTask()));
       init = true;
     }
     logger.info("Compaction task manager started.");
@@ -225,8 +226,9 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
-      CompactionMetricsRecorder.recordTaskInfo(
-          compactionTask, CompactionTaskStatus.ADD_TO_QUEUE, candidateCompactionTaskQueue.size());
+      CompactionMetricsManager.getInstance()
+          .reportAddTaskToWaitingQueue(
+              compactionTask.isCrossTask(), compactionTask.isInnerSeqTask());
 
       return true;
     }
@@ -240,8 +242,9 @@ public class CompactionTaskManager implements IService {
         .containsKey(task);
   }
 
-  public RateLimiter getCompactionIORateLimiter() {
-    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getCompactionIORatePerSec());
+  public RateLimiter getMergeWriteRateLimiter() {
+    setWriteMergeRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 
@@ -255,15 +258,22 @@ public class CompactionTaskManager implements IService {
       mergeWriteRateLimiter.setRate(throughout);
     }
   }
+  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
+  public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
+    while (bytesLength >= Integer.MAX_VALUE) {
+      limiter.acquire(Integer.MAX_VALUE);
+      bytesLength -= Integer.MAX_VALUE;
+    }
+    if (bytesLength > 0) {
+      limiter.acquire((int) bytesLength);
+    }
+  }
 
   public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
     String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     if (storageGroupTasks.containsKey(regionWithSG)) {
       storageGroupTasks.get(regionWithSG).remove(task);
     }
-    // add metrics
-    CompactionMetricsRecorder.recordTaskInfo(
-        task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
     finishedTaskNum.incrementAndGet();
   }
 
@@ -314,6 +324,10 @@ public class CompactionTaskManager implements IService {
 
   public int getTotalTaskCount() {
     return getExecutingTaskCount() + candidateCompactionTaskQueue.size();
+  }
+
+  public int getCompactionCandidateTaskCount() {
+    return candidateCompactionTaskQueue.size();
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {

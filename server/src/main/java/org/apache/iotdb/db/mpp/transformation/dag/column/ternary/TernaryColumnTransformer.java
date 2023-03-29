@@ -30,7 +30,7 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
 
   protected ColumnTransformer thirdColumnTransformer;
 
-  public TernaryColumnTransformer(
+  protected TernaryColumnTransformer(
       Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,

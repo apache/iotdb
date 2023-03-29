@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -39,17 +39,17 @@ public class ThriftConfigNodeSerDeUtilsTest {
 
   @Test
   public void readWriteTStorageGroupSchemaTest() {
-    TStorageGroupSchema storageGroupSchema0 = new TStorageGroupSchema();
+    TDatabaseSchema storageGroupSchema0 = new TDatabaseSchema();
     storageGroupSchema0.setName("root.sg");
     storageGroupSchema0.setTTL(Long.MAX_VALUE);
     storageGroupSchema0.setSchemaReplicationFactor(3);
     storageGroupSchema0.setDataReplicationFactor(3);
     storageGroupSchema0.setTimePartitionInterval(604800);
 
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroupSchema0, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(storageGroupSchema0, buffer);
     buffer.flip();
-    TStorageGroupSchema storageGroupSchema1 =
-        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
+    TDatabaseSchema storageGroupSchema1 =
+        ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
   }
 

@@ -242,19 +242,19 @@ public class ValuePageReader {
   }
 
   public void writeColumnBuilderWithNextBatch(
-      long[] timeBatch,
+      int readEndIndex,
       ColumnBuilder columnBuilder,
       boolean[] keepCurrentRow,
       boolean[] isDeleted) {
     if (valueBuffer == null) {
-      for (int i = 0, n = timeBatch.length; i < n; i++) {
+      for (int i = 0; i < readEndIndex; i++) {
         if (keepCurrentRow[i]) {
           columnBuilder.appendNull();
         }
       }
       return;
     }
-    for (int i = 0, n = timeBatch.length; i < n; i++) {
+    for (int i = 0; i < readEndIndex; i++) {
       if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
         if (keepCurrentRow[i]) {
           columnBuilder.appendNull();

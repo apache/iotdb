@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
-  private static final int seed = 131;
+  private static final int SEED = 131;
 
   public BKDRHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
@@ -34,7 +34,7 @@ public class BKDRHashExecutor extends SeriesPartitionExecutor {
     int hash = 0;
 
     for (int i = 0; i < device.length(); i++) {
-      hash = hash * seed + (int) device.charAt(i);
+      hash = hash * SEED + (int) device.charAt(i);
     }
     hash &= Integer.MAX_VALUE;
 

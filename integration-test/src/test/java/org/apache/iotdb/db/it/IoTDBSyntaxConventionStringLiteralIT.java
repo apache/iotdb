@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.BuiltinScalarFunctionEnum;
 import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,12 +50,12 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /** Legal cases of using StringLiteral with single quote in insert and select clause. */
@@ -334,7 +335,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           }
           ++count;
         }
-        Assert.assertEquals(1 + BuiltinTimeSeriesGeneratingFunctionEnum.values().length, count);
+        Assert.assertEquals(
+            1
+                + BuiltinTimeSeriesGeneratingFunctionEnum.values().length
+                + BuiltinScalarFunctionEnum.values().length,
+            count);
       }
       statement.execute("drop function udf");
 

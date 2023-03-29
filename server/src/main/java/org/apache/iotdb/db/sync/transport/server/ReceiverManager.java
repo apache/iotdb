@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
@@ -422,8 +422,9 @@ public class ReceiverManager {
       return true;
     }
     try {
-      SetStorageGroupStatement statement = new SetStorageGroupStatement();
-      statement.setStorageGroupPath(new PartialPath(database));
+      DatabaseSchemaStatement statement =
+          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+      statement.setDatabasePath(new PartialPath(database));
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
@@ -437,8 +438,8 @@ public class ReceiverManager {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        logger.error(String.format("Create Database error, statement: %s.", statement));
-        logger.error(String.format("Create database result status : %s.", result.status));
+        logger.error("Create Database error, statement: {}.", statement);
+        logger.error("Create database result status : {}.", result.status);
         return false;
       }
     } catch (IllegalPathException e) {

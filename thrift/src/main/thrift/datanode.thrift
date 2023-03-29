@@ -63,6 +63,8 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkChannel
+  4: required i32 index
 }
 
 struct TGetDataBlockResponse {
@@ -73,6 +75,14 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkChannel
+  4: required i32 index
+}
+
+struct TCloseSinkChannelEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  // index of upstream SinkChannel
+  2: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -206,6 +216,16 @@ struct TFireTriggerResp {
   2: required i32 fireResult
 }
 
+struct TCreatePipePluginInstanceReq {
+  1: required binary pipePluginMeta
+  2: required binary jarFile
+}
+
+struct TDropPipePluginInstanceReq {
+  1: required string pipePluginName
+  2: required bool needToDeleteJar
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -227,14 +247,14 @@ struct THeartbeatResp {
 
 struct TLoadSample {
   // Percentage of occupied cpu in DataNode
-  1: required i16 cpuUsageRate
+  1: required double cpuUsageRate
   // Percentage of occupied memory space in DataNode
   2: required double memoryUsageRate
   // Percentage of occupied disk space in DataNode
   3: required double diskUsageRate
   // The size of free disk space
   // Unit: Byte
-  4: required i64 freeDiskSpace
+  4: required double freeDiskSpace
 }
 
 struct TRegionRouteReq {
@@ -409,7 +429,7 @@ struct TFetchWindowBatchResp {
 struct TRecordModelMetricsReq {
   1: required string modelId
   2: required string trialId
-  3: required list<string> metrics
+  3: required list<common.EvaluateMetric> metrics
   4: required i64 timestamp
   5: required list<double> values
 }
@@ -605,17 +625,35 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /**
+   * Config node will create a pipe plugin on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createPipePlugin(TCreatePipePluginInstanceReq req)
+
+  /**
+   * Config node will drop a pipe plugin on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
 
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus settle(common.TSettleReq req)
+
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
+
+  common.TSStatus killQueryInstance(string queryId)
 
   /**
    * Config node will Set the TTL for the database on a list of data nodes.
@@ -733,6 +771,8 @@ service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
+
+  void onCloseSinkChannelEvent(TCloseSinkChannelEvent e);
 
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 

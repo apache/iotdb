@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -198,6 +199,8 @@ public class IntermediateLayerVisitor
             new TransparentTransformer(
                 context.rawTimeSeriesInputLayer.constructValuePointReader(
                     functionExpression.getInputColumnIndex()));
+      } else if (functionExpression.isBuiltInScalarFunction()) {
+        transformer = getBuiltInScalarFunctionTransformer(functionExpression, context);
       } else {
         try {
           IntermediateLayer udfInputIntermediateLayer =
@@ -217,6 +220,15 @@ public class IntermediateLayerVisitor
     }
 
     return context.expressionIntermediateLayerMap.get(functionExpression);
+  }
+
+  private Transformer getBuiltInScalarFunctionTransformer(
+      FunctionExpression expression, IntermediateLayerVisitorContext context) {
+
+    LayerPointReader childPointReader =
+        this.process(expression.getExpressions().get(0), context).constructPointReader();
+    return BuiltInScalarFunctionHelperFactory.createHelper(expression.getFunctionName())
+        .getBuiltInScalarFunctionTransformer(expression, childPointReader);
   }
 
   @Override

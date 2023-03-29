@@ -321,7 +321,7 @@ public class TracedBufferedReader extends Reader {
             nextChar++;
           }
         }
-        long d = nChars - nextChar;
+        long d = (long) nChars - nextChar;
         if (r <= d) {
           nextChar += r;
           r = 0;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -34,13 +35,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.env.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.MppCommonConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -50,37 +51,30 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterNodeErrorStartUpIT {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBClusterNodeErrorStartUpIT.class);
-  private static final BaseConfig CONF = ConfigFactory.getConfig();
-
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
-  private static final int testNodeNum = testConfigNodeNum + testDataNodeNum;
-
-  protected static String originalConfigNodeConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
-  private static final int maxRetryTimes = 60;
+
+  private static final int START_RETRY_NUM = 10;
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsensusProtocolClass();
-    CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
 
     // Init 3C1D environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -88,8 +82,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -102,8 +95,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Register with error cluster name */
       TConfigNodeRegisterReq configNodeRegisterReq =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(configNodeWrapper);
-      configNodeRegisterReq.getClusterParameters().setClusterName(ERROR_CLUSTER_NAME);
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(ERROR_CLUSTER_NAME, configNodeWrapper);
       configNodeRegisterReq
           .getClusterParameters()
           .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
@@ -116,8 +108,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
           configNodeRegisterResp.getStatus().getMessage().contains("cluster are inconsistent"));
 
       TDataNodeRegisterReq dataNodeRegisterReq =
-          ConfigNodeTestUtils.generateTDataNodeRegisterReq(dataNodeWrapper);
-      dataNodeRegisterReq.setClusterName(ERROR_CLUSTER_NAME);
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(ERROR_CLUSTER_NAME, dataNodeWrapper);
       TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(),
@@ -137,13 +128,17 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().generateRandomConfigNodeWrapper();
     conflictConfigNodeWrapper.setConsensusPort(
         EnvFactory.getEnv().getConfigNodeWrapper(1).getConsensusPort());
-    conflictConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+    conflictConfigNodeWrapper.changeConfig(
+        (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TConfigNodeRegisterReq req =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(conflictConfigNodeWrapper);
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(
+              TEST_CLUSTER_NAME, conflictConfigNodeWrapper);
       req.getClusterParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
@@ -164,13 +159,17 @@ public class IoTDBClusterNodeErrorStartUpIT {
     DataNodeWrapper conflictDataNodeWrapper = EnvFactory.getEnv().generateRandomDataNodeWrapper();
     conflictDataNodeWrapper.setInternalPort(
         EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort());
-    conflictDataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+    conflictDataNodeWrapper.changeConfig(
+        (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TDataNodeRegisterReq req =
-          ConfigNodeTestUtils.generateTDataNodeRegisterReq(conflictDataNodeWrapper);
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(
+              TEST_CLUSTER_NAME, conflictDataNodeWrapper);
       TDataNodeRegisterResp resp = client.registerDataNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());
@@ -233,8 +232,18 @@ public class IoTDBClusterNodeErrorStartUpIT {
           dataNodeRestartResp.getStatus().getCode());
       Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("whose nodeId="));
 
-      /* Restart an alive Node */
+      // Shutdown and check
+      EnvFactory.getEnv().shutdownConfigNode(1);
+      EnvFactory.getEnv().shutdownDataNode(0);
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
 
+      /* Restart and updatePeer */
+      // TODO: Delete this IT after enable modify internal TEndPoints
       int registeredConfigNodeId = -1;
       TShowClusterResp showClusterResp = client.showCluster();
       for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
@@ -245,16 +254,16 @@ public class IoTDBClusterNodeErrorStartUpIT {
         }
       }
       Assert.assertNotEquals(-1, registeredConfigNodeId);
+      int originPort = registeredConfigNodeWrapper.getConsensusPort();
+      registeredConfigNodeWrapper.setConsensusPort(-12345);
       configNodeRestartReq =
           ConfigNodeTestUtils.generateTConfigNodeRestartReq(
               TEST_CLUSTER_NAME, registeredConfigNodeId, registeredConfigNodeWrapper);
       configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(
-          configNodeRestartStatus
-              .getMessage()
-              .contains("exists an alive Node with the same nodeId"));
+      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("the internal TEndPoints"));
+      registeredConfigNodeWrapper.setConsensusPort(originPort);
 
       int registeredDataNodeId = -1;
       showClusterResp = client.showCluster();
@@ -266,59 +275,6 @@ public class IoTDBClusterNodeErrorStartUpIT {
         }
       }
       Assert.assertNotEquals(-1, registeredDataNodeId);
-      dataNodeRestartReq =
-          ConfigNodeTestUtils.generateTDataNodeRestartReq(
-              TEST_CLUSTER_NAME, registeredDataNodeId, registeredDataNodeWrapper);
-      dataNodeRestartResp = client.restartDataNode(dataNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(),
-          dataNodeRestartResp.getStatus().getCode());
-      Assert.assertTrue(
-          dataNodeRestartResp
-              .getStatus()
-              .getMessage()
-              .contains("exists an alive Node with the same nodeId"));
-
-      // Shutdown and check
-      EnvFactory.getEnv().shutdownConfigNode(1);
-      EnvFactory.getEnv().shutdownDataNode(0);
-      int retryTimes;
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger unknownCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Unknown.equals(NodeStatus.parse(status))) {
-                    unknownCnt.getAndIncrement();
-                  }
-                });
-
-        if (unknownCnt.get() == testNodeNum - 2) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
-
-      /* Restart and updatePeer */
-      // TODO: @Itami-sho, enable this test and delete it
-      int originPort = registeredConfigNodeWrapper.getConsensusPort();
-      registeredConfigNodeWrapper.setConsensusPort(-12345);
-      configNodeRestartReq =
-          ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              TEST_CLUSTER_NAME, registeredConfigNodeId, registeredConfigNodeWrapper);
-      configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("have been changed"));
-      registeredConfigNodeWrapper.setConsensusPort(originPort);
-
       originPort = registeredDataNodeWrapper.getInternalPort();
       registeredDataNodeWrapper.setInternalPort(-12345);
       dataNodeRestartReq =
@@ -328,57 +284,64 @@ public class IoTDBClusterNodeErrorStartUpIT {
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(),
           dataNodeRestartResp.getStatus().getCode());
-      Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("have been changed"));
+      Assert.assertTrue(
+          dataNodeRestartResp.getStatus().getMessage().contains("the internal TEndPoints"));
       registeredDataNodeWrapper.setInternalPort(originPort);
 
       // Restart and check
       EnvFactory.getEnv().startConfigNode(1);
       EnvFactory.getEnv().startDataNode(0);
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger runningCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Running.equals(NodeStatus.parse(status))) {
-                    runningCnt.getAndIncrement();
-                  }
-                });
-
-        if (runningCnt.get() == testNodeNum) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Running, NodeStatus.Running));
     }
   }
 
-  private String showClusterStatus(TShowClusterResp showClusterResp) {
-    StringBuilder sb = new StringBuilder();
-    showClusterResp
-        .getConfigNodeList()
-        .forEach(
-            d ->
-                sb.append("ConfigNode")
-                    .append(d.getInternalEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getConfigNodeId()))
-                    .append("\n"));
-    showClusterResp
-        .getDataNodeList()
-        .forEach(
-            d ->
-                sb.append("DataNode")
-                    .append(d.getClientRpcEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getDataNodeId()))
-                    .append("\n"));
-    return sb.toString();
+  @Test
+  public void testIllegalNodeStartUp()
+      throws IOException, ClientManagerException, InterruptedException, TException {
+    ConfigNodeWrapper portConflictConfigNodeWrapper =
+        EnvFactory.getEnv().generateRandomConfigNodeWrapper();
+    DataNodeWrapper portConflictDataNodeWrapper =
+        EnvFactory.getEnv().generateRandomDataNodeWrapper();
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TShowClusterResp showClusterResp = client.showCluster();
+      int beforeStartConfigNodes = showClusterResp.getConfigNodeListSize();
+      int beforeStartDataNodes = showClusterResp.getDataNodeListSize();
+      // set ConfigNode port repeat
+      portConflictConfigNodeWrapper.setConsensusPort(portConflictConfigNodeWrapper.getPort());
+      portConflictConfigNodeWrapper.changeConfig(
+          (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
+          (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
+          null);
+      portConflictConfigNodeWrapper.start();
+      int afterStartConfigNodes;
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
+        Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
+        Thread.sleep(1000);
+      }
+
+      // set datanode port repeat
+      portConflictDataNodeWrapper.setMppDataExchangePort(
+          portConflictDataNodeWrapper.getDataRegionConsensusPort());
+      portConflictDataNodeWrapper.changeConfig(
+          (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+          (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+          null);
+      portConflictDataNodeWrapper.start();
+      int afterStartDataNodes;
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        afterStartDataNodes = showClusterResp.getDataNodeListSize();
+        Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
+        Thread.sleep(1000);
+      }
+    }
   }
 }

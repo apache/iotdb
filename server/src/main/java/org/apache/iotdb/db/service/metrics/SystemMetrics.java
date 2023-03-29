@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -47,17 +48,17 @@ import java.util.concurrent.TimeUnit;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
-  private com.sun.management.OperatingSystemMXBean osMXBean;
+  private final com.sun.management.OperatingSystemMXBean osMxBean;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
   private final Set<FileStore> fileStores = new HashSet<>();
-  private boolean isDataNode = false;
+  private final boolean isDataNode;
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
   public SystemMetrics(boolean isDataNode) {
     this.isDataNode = isDataNode;
-    this.osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
   @Override
@@ -99,15 +100,15 @@ public class SystemMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
-        osMXBean,
-        a -> (long) (osMXBean.getSystemCpuLoad() * 100),
+        osMxBean,
+        a -> osMxBean.getSystemCpuLoad() * 100,
         Tag.NAME.toString(),
         "system");
 
     metricService
         .getOrCreateGauge(
             Metric.SYS_CPU_CORES.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
-        .set(osMXBean.getAvailableProcessors());
+        .set(osMxBean.getAvailableProcessors());
   }
 
   private void removeSystemCpuInfo(AbstractMetricService metricService) {
@@ -125,33 +126,33 @@ public class SystemMetrics implements IMetricSet {
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "system")
-        .set(osMXBean.getTotalPhysicalMemorySize());
+        .set(osMxBean.getTotalPhysicalMemorySize());
     metricService.createAutoGauge(
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
         MetricLevel.CORE,
-        osMXBean,
-        a -> osMXBean.getFreePhysicalMemorySize(),
+        osMxBean,
+        a -> osMxBean.getFreePhysicalMemorySize(),
         Tag.NAME.toString(),
         "system");
     metricService.createAutoGauge(
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
-        osMXBean,
-        a -> osMXBean.getTotalSwapSpaceSize(),
+        osMxBean,
+        a -> osMxBean.getTotalSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
     metricService.createAutoGauge(
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
         MetricLevel.CORE,
-        osMXBean,
-        a -> osMXBean.getFreeSwapSpaceSize(),
+        osMxBean,
+        a -> osMxBean.getFreeSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
     metricService.createAutoGauge(
         Metric.SYS_COMMITTED_VM_SIZE.toString(),
         MetricLevel.CORE,
-        osMXBean,
-        a -> osMXBean.getCommittedVirtualMemorySize(),
+        osMxBean,
+        a -> osMxBean.getCommittedVirtualMemorySize(),
         Tag.NAME.toString(),
         "system");
   }
@@ -205,14 +206,14 @@ public class SystemMetrics implements IMetricSet {
       }
     }
 
-    metricService.createAutoGaugeWithInternalReport(
+    metricService.createAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
         SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
-    metricService.createAutoGaugeWithInternalReport(
+    metricService.createAutoGauge(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,
@@ -255,15 +256,7 @@ public class SystemMetrics implements IMetricSet {
     return systemDiskTotalSpace;
   }
 
-  public void setSystemDiskTotalSpace(long systemDiskTotalSpace) {
-    this.systemDiskTotalSpace = systemDiskTotalSpace;
-  }
-
   public long getSystemDiskFreeSpace() {
     return systemDiskFreeSpace;
-  }
-
-  public void setSystemDiskFreeSpace(long systemDiskFreeSpace) {
-    this.systemDiskFreeSpace = systemDiskFreeSpace;
   }
 }

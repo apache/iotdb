@@ -19,17 +19,14 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -48,9 +45,12 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchIT {
+public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
+
+  public IoTDBMetadataFetchIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -85,21 +85,22 @@ public class IoTDBMetadataFetchIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -355,19 +356,14 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
             "COUNT TIMESERIES where tag1 = v1",
             "COUNT TIMESERIES where tag3 = v3"
           };
@@ -497,16 +493,11 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
             "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
@@ -516,31 +507,10 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,0,",
-                    "root.ln.wf01.wt02,0,",
-                    "root.ln1.wf01.wt01,0,",
-                    "root.ln2.wf01.wt01,0,",
-                    "root.sg.d.status,1,",
-                    "root.sg1.d.status,0,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,1,",
-                    "root.sg1.d,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,0,",
-                    "root.sg1.d,0,")),
+            new HashSet<>(Arrays.asList("root.ln1,1,", "root.ln2,1,")),
+            new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
+            new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+            Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

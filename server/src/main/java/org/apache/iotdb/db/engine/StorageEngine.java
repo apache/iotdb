@@ -36,6 +36,9 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -53,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -98,6 +102,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval = -1;
@@ -341,7 +346,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
@@ -354,7 +359,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
@@ -392,9 +397,9 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
     ThreadUtils.stopThreadPool(
-        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
-        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE);
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
@@ -456,6 +461,8 @@ public class StorageEngine implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
+    WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
     dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
@@ -559,7 +566,7 @@ public class StorageEngine implements IService {
     dataRegionMap.values().forEach(DataRegion::compact);
   }
 
-  public TSStatus operateFlush(TFlushReq req) {
+  public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().deleteOutdatedWALFiles();
@@ -574,7 +581,12 @@ public class StorageEngine implements IService {
         }
       }
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public void clearCache() {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
@@ -646,6 +658,8 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       region.markDeleted();
+      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();

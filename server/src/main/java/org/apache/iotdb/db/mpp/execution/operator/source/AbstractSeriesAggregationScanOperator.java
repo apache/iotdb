@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -43,14 +42,11 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
-public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
+public abstract class AbstractSeriesAggregationScanOperator extends AbstractDataSourceOperator {
 
-  protected final PlanNodeId sourceId;
-  protected final OperatorContext operatorContext;
   protected final boolean ascending;
   protected final boolean isGroupByQuery;
 
-  protected SeriesScanUtil seriesScanUtil;
   protected int subSensorSize;
 
   protected TsBlock inputTsBlock;
@@ -68,10 +64,10 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   protected boolean finished = false;
 
-  private final long maxRetainedSize;
+  private final long cachedRawDataSize;
   private final long maxReturnSize;
 
-  public AbstractSeriesAggregationScanOperator(
+  protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       SeriesScanUtil seriesScanUtil,
@@ -96,29 +92,14 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
-    this.maxRetainedSize =
+    this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
   }
 
   @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
-  }
-
-  @Override
   public long calculateMaxPeekMemory() {
-    return maxRetainedSize + maxReturnSize;
+    return cachedRawDataSize + maxReturnSize;
   }
 
   @Override
@@ -128,16 +109,16 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return maxRetainedSize;
+    return isGroupByQuery ? cachedRawDataSize : 0;
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -150,7 +131,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
       // clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
+        aggregator.reset();
       }
 
       // calculate aggregation result on current time window
@@ -167,7 +148,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished || (finished = !hasNextWithTimer());
   }
 
@@ -350,14 +331,14 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   protected boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
     return !seriesScanUtil.isFileOverlapped()
-        && fileStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && fileStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentFileModified();
   }
 
   protected boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
     return !seriesScanUtil.isChunkOverlapped()
-        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentChunkModified();
   }
 
@@ -367,7 +348,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
       return false;
     }
     return !seriesScanUtil.isPageOverlapped()
-        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentPageModified();
   }
 }

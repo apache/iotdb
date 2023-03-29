@@ -159,4 +159,9 @@ public class IntColumn implements Column {
       }
     }
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

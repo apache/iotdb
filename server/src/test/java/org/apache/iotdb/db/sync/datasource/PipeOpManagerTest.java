@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.sync.externalpipe.operation.DeleteOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.InsertOperation;
 import org.apache.iotdb.db.sync.externalpipe.operation.Operation;
@@ -77,7 +76,6 @@ public class PipeOpManagerTest {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
     EnvironmentUtils.envSetUp();
-    LocalConfigNode.getInstance().init();
 
     createSeqTsfile(seqTsFileName1);
     delFileList.add(seqTsFileName1);
@@ -106,7 +104,6 @@ public class PipeOpManagerTest {
       }
     }
 
-    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanAllDir();
 

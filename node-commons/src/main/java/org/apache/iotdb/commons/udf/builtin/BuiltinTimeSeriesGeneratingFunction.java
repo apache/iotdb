@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFStartsWith;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrCompare;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLength;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLocate;
-import org.apache.iotdb.commons.udf.builtin.String.UDTFSubstr;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
 
@@ -50,7 +49,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   SIGN("SIGN", UDTFSign.class),
   CEIL("CEIL", UDTFCeil.class),
   FLOOR("FLOOR", UDTFFloor.class),
-  ROUND("ROUND", UDTFRound.class),
   EXP("EXP", UDTFExp.class),
   LN("LN", UDTFLog.class),
   LOG10("LOG10", UDTFLog10.class),
@@ -62,7 +60,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   STRING_STARTS_WITH("STARTSWITH", UDTFStartsWith.class),
   STRING_ENDS_WITH("ENDSWITH", UDTFEndsWith.class),
   STRING_CONCAT("CONCAT", UDTFConcat.class),
-  STRING_SUBSTR("SUBSTR", UDTFSubstr.class),
   STRING_UPPER("UPPER", UDTFUpper.class),
   STRING_LOWER("LOWER", UDTFLower.class),
   STRING_TRIM("TRIM", UDTFTrim.class),
@@ -75,7 +72,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
-  CAST("CAST", UDTFCast.class),
   IN_RANGE("IN_RANGE", UDTFInRange.class),
   ON_OFF("ON_OFF", UDTFOnOff.class),
   ZERO_DURATION("ZERO_DURATION", UDTFZeroDuration.class),

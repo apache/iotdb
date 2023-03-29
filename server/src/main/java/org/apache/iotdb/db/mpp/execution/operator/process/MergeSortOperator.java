@@ -34,17 +34,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class MergeSortOperator implements ProcessOperator {
+public class MergeSortOperator extends AbstractConsumeAllOperator {
 
-  private final OperatorContext operatorContext;
-  private final List<Operator> inputOperators;
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
-  private final int inputOperatorsCount;
-  private final TsBlock[] inputTsBlocks;
   private final boolean[] noMoreTsBlocks;
   private final MergeSortHeap mergeSortHeap;
   private final Comparator<MergeSortKey> comparator;
@@ -56,53 +53,44 @@ public class MergeSortOperator implements ProcessOperator {
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
       Comparator<MergeSortKey> comparator) {
-    this.operatorContext = operatorContext;
-    this.inputOperators = inputOperators;
+    super(operatorContext, inputOperators);
     this.dataTypes = dataTypes;
-    this.inputOperatorsCount = inputOperators.size();
     this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
     this.comparator = comparator;
-    this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
   public ListenableFuture<?> isBlocked() {
+    boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i)) {
-        ListenableFuture<?> blocked = inputOperators.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          listenableFutures.add(blocked);
-        }
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      ListenableFuture<?> blocked = children.get(i).isBlocked();
+      if (blocked.isDone()) {
+        hasReadyChild = true;
+        canCallNext[i] = true;
+      } else {
+        listenableFutures.add(blocked);
       }
     }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
-  }
-
-  /** If the tsBlock is null or has no more data in the tsBlock, return true; else return false; */
-  private boolean isTsBlockEmpty(int tsBlockIndex) {
-    return inputTsBlocks[tsBlockIndex] == null
-        || inputTsBlocks[tsBlockIndex].getPositionCount() == 0;
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
+    // start stopwatch
+    long startTime = System.nanoTime();
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
     // 1. fill consumed up TsBlock
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && inputOperators.get(i).hasNextWithTimer()) {
-        inputTsBlocks[i] = inputOperators.get(i).nextWithTimer();
-        if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
-          return null;
-        }
-        mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
-      }
+    if (!prepareInput()) {
+      return null;
     }
 
     // 2. check if we can directly return the original TsBlock instead of merging way
@@ -147,22 +135,28 @@ public class MergeSortOperator implements ProcessOperator {
         mergeSortKey.rowIndex++;
         mergeSortHeap.push(mergeSortKey);
       }
+      // break if time is out or tsBlockBuilder is full
+      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
+        break;
+      }
     }
     return tsBlockBuilder.build();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isTsBlockEmpty(i)) {
+      if (!isEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (inputOperators.get(i).hasNextWithTimer()) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
+          children.get(i).close();
+          children.set(i, null);
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
         }
@@ -172,21 +166,14 @@ public class MergeSortOperator implements ProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator operator : inputOperators) {
-      operator.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
     finished = true;
 
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] || !isTsBlockEmpty(i)) {
+      if (!noMoreTsBlocks[i] || !isEmpty(i)) {
         finished = false;
         break;
       }
@@ -199,11 +186,11 @@ public class MergeSortOperator implements ProcessOperator {
     // MergeToolKit will cache startKey and endKey
     long maxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     // inputTsBlocks will cache all the tsBlocks returned by inputOperators
-    for (Operator operator : inputOperators) {
+    for (Operator operator : children) {
       maxPeekMemory += operator.calculateMaxReturnSize();
       maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
     }
-    for (Operator operator : inputOperators) {
+    for (Operator operator : children) {
       maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
     }
     return Math.max(maxPeekMemory, calculateMaxReturnSize());
@@ -217,11 +204,44 @@ public class MergeSortOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
-    for (Operator child : inputOperators) {
+    for (Operator child : children) {
       long maxReturnSize = child.calculateMaxReturnSize();
       minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
       currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
     }
     return currentRetainedSize - minChildReturnSize;
+  }
+
+  /**
+   * Try to cache one result of each child.
+   *
+   * @return true if results of all children are ready or have no more TsBlocks. Return false if
+   *     some children is blocked or return null.
+   */
+  @Override
+  protected boolean prepareInput() throws Exception {
+    boolean allReady = true;
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      if (canCallNext[i]) {
+        if (children.get(i).hasNextWithTimer()) {
+          inputTsBlocks[i] = getNextTsBlock(i);
+          canCallNext[i] = false;
+          if (isEmpty(i)) {
+            allReady = false;
+          } else {
+            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
+          }
+        } else {
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+        }
+      } else {
+        allReady = false;
+      }
+    }
+    return allReady;
   }
 }

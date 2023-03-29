@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,10 @@ public abstract class AbstractCompactionTask {
   protected final TsFileManager tsFileManager;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
-  protected CompactionTaskSummary summary = new CompactionTaskSummary();
+  protected CompactionTaskSummary summary;
   protected long serialId;
+  protected boolean crossTask;
+  protected boolean innerSeqTask;
 
   public AbstractCompactionTask(
       String storageGroupName,
@@ -71,6 +74,7 @@ public abstract class AbstractCompactionTask {
   public void start() {
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
+    CompactionMetricsManager.getInstance().reportTaskStartRunning(crossTask, innerSeqTask);
     try {
       summary.start();
       doCompaction();
@@ -79,6 +83,8 @@ public abstract class AbstractCompactionTask {
       this.currentTaskNum.decrementAndGet();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
+      CompactionMetricsManager.getInstance()
+          .reportTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
     }
   }
 
@@ -147,5 +153,15 @@ public abstract class AbstractCompactionTask {
 
   public long getSerialId() {
     return serialId;
+  }
+
+  protected abstract void createSummary();
+
+  public boolean isCrossTask() {
+    return crossTask;
+  }
+
+  public boolean isInnerSeqTask() {
+    return innerSeqTask;
   }
 }

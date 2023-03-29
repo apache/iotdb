@@ -87,11 +87,15 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     return getQueue().size();
   }
 
+  @Override
   protected void afterExecute(Runnable r, Throwable t) {
     super.afterExecute(r, t);
     if (t == null && r instanceof Future<?>) {
       try {
-        ((Future<?>) r).get();
+        Future<?> future = (Future<?>) r;
+        if (future.isDone()) {
+          future.get();
+        }
       } catch (CancellationException ce) {
         t = ce;
       } catch (ExecutionException ee) {

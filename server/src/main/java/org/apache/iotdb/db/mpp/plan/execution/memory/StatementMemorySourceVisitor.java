@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -92,8 +92,11 @@ public class StatementMemorySourceVisitor
             .plan(context.getAnalysis());
     DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
     PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
+    PlanNode optimizedRootWithExchange = planner.optimize(rootWithExchange);
+
     List<String> lines =
-        rootWithExchange.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+        optimizedRootWithExchange.accept(
+            new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(

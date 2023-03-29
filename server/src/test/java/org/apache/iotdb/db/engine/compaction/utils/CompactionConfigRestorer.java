@@ -55,6 +55,9 @@ public class CompactionConfigRestorer {
   private InnerUnseqCompactionPerformer oldInnerUnseqPerformer =
       IoTDBDescriptor.getInstance().getConfig().getInnerUnseqCompactionPerformer();
 
+  private int oldMinCrossCompactionUnseqLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
   public CompactionConfigRestorer() {}
 
   public void restoreCompactionConfig() {
@@ -75,9 +78,10 @@ public class CompactionConfigRestorer {
     config.setCompactionThreadCount(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
-    config.setCompactionIORatePerSec(compactionWriteThroughputMbPerSec);
+    config.setCompactionWriteThroughputMbPerSec(compactionWriteThroughputMbPerSec);
     config.setCrossCompactionPerformer(oldCrossPerformer);
     config.setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
     config.setInnerUnseqCompactionPerformer(oldInnerUnseqPerformer);
+    config.setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
   }
 }

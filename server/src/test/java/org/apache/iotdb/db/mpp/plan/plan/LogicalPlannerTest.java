@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -82,7 +82,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 @Ignore
-@Deprecated
 public class LogicalPlannerTest {
 
   @Test
@@ -281,7 +280,7 @@ public class LogicalPlannerTest {
             }
           });
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
-          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
+          StatementGenerator.createStatement(req);
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       Analyzer analyzer =
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
@@ -648,7 +647,7 @@ public class LogicalPlannerTest {
       Assert.assertEquals(1, descriptors.size());
       CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
       Assert.assertEquals("s1", descriptor.getOutputExpression().toString());
-      Assert.assertEquals(AggregationType.MAX_VALUE, descriptor.getAggregationType());
+      Assert.assertEquals(TAggregationType.MAX_VALUE, descriptor.getAggregationType());
       Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
       Assert.assertEquals(3, descriptor.getInputExpressions().size());
       for (Expression expression : descriptor.getInputExpressions()) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -163,6 +164,10 @@ public class SchemaLogReader<T> implements AutoCloseable {
       isFileCorrupted = true;
       LOGGER.error("Fail to truncate log file to size {}", currentIndex, e);
     }
+  }
+
+  public void skip(long n) throws IOException {
+    ReadWriteIOUtils.skip(inputStream, n);
   }
 
   /** This class provides the ability to record the num of read bytes from the nested InputStream */

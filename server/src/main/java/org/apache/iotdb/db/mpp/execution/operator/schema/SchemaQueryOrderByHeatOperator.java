@@ -70,7 +70,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -132,10 +132,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         Object[] line = tsBlockRowIterator.next();
         String timeseries = line[0].toString();
         long time = timeseriesToLastTimestamp.getOrDefault(timeseries, 0L);
-        if (!lastTimestampToTsSchema.containsKey(time)) {
-          lastTimestampToTsSchema.put(time, new ArrayList<>());
-        }
-        lastTimestampToTsSchema.get(time).add(line);
+        lastTimestampToTsSchema.computeIfAbsent(time, key -> new ArrayList<>()).add(line);
       }
     }
 
@@ -190,7 +187,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
@@ -202,7 +199,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

@@ -56,29 +56,40 @@ DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinali
 
 * FREQ
 
-FREQ encoding is lossy. It transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. It is more suitable for sequence with obvious periodicity.
+FREQ encoding is lossy. Based on the idea of transform coding, it transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. Thus, it greatly improves the space efficiency with little accuracy loss. It is suitable for data with high energy concentration (especially those with obvious periodicity), not suitable for data with uniformly distributed energy (such as white noise).
 
-> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
+> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). There is a mathematical relationship between SNR and NRMSE as $NRMSE = 10^{-SNR/20}$. Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
 
 * ZIGZAG 
   
 ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
+* CHIMP
+
+CHIMP encoding is lossless. It is the state-of-the-art compression algorithm for streaming floating point data, providing impressive savings compared to earlier approaches. It is suitable for any numerical sequence with similar values and works best for sequence data without large fluctuations and/or random noise.
+
+Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using CHIMP to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
+
 ## Correspondence between data type and encoding
 
-The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
+The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. 
 
-<div style="text-align: center;"> 
+The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-**The correspondence between the data type and its supported encodings**
+| Data Type | Supported Encoding                          |
+|:---------:|:-------------------------------------------:|
+| BOOLEAN   | PLAIN, RLE                                  |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| FLOAT     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| DOUBLE    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| TEXT      | PLAIN, DICTIONARY                           |
 
-|Data Type	|Supported Encoding|
-|:---:|:---:|
-|BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|TEXT	|PLAIN, DICTIONARY|
+When the data type specified by the user does not correspond to the encoding method, the system will prompt an error. 
 
-</div>
+As shown below, the second-order difference encoding does not support the Boolean type:
+
+```
+IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
+Msg: 507: encoding TS_2DIFF does not support BOOLEAN
+```

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -35,11 +35,13 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -89,10 +91,14 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
+  // handle timeout interruption during reading
+  private File pmtFile;
+  private FileChannel readChannel;
+
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
 
-  PageManager(FileChannel channel, int lastPageIndex, String logPath)
+  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     this.dirtyPages = new ConcurrentHashMap<>();
@@ -102,6 +108,8 @@ public abstract class PageManager implements IPageManager {
         lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     this.treeTrace = new int[16];
     this.channel = channel;
+    this.pmtFile = pmtFile;
+    this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
 
     // recover if log exists
     int pageAcc = (int) recoverFromLog(logPath) / PAGE_LENGTH;
@@ -130,28 +138,28 @@ public abstract class PageManager implements IPageManager {
     reader.close();
 
     // complete log file
-    if (res.size() != 0) {
-      FileOutputStream outputStream = new FileOutputStream(logPath, true);
-      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-      long length = outputStream.getChannel().size();
-      outputStream.close();
-      return length;
+    if (!res.isEmpty()) {
+      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
+        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+        long length = outputStream.getChannel().size();
+        return length;
+      }
     }
     return 0L;
   }
 
   // region Framework Methods
   @Override
-  public void writeNewChildren(IMNode node) throws MetadataException, IOException {
+  public void writeNewChildren(ICachedMNode node) throws MetadataException, IOException {
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
-    IMNode child;
+    ICachedMNode child;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     String alias;
     // TODO: reserve order of insert in container may be better
-    for (Map.Entry<String, IMNode> entry :
+    for (Map.Entry<String, ICachedMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
@@ -196,7 +204,7 @@ public abstract class PageManager implements IPageManager {
           multiPageInsertOverflowOperation(curPage, entry.getKey(), childBuffer);
 
           subIndex = subIndexRootPage(curSegAddr);
-          if (node.isEntity() && subIndex < 0) {
+          if (node.isDevice() && subIndex < 0) {
             // the record occurred overflow had been inserted already
             buildSubIndex(node);
           } else if (alias != null) {
@@ -230,16 +238,16 @@ public abstract class PageManager implements IPageManager {
   }
 
   @Override
-  public void writeUpdatedChildren(IMNode node) throws MetadataException, IOException {
+  public void writeUpdatedChildren(ICachedMNode node) throws MetadataException, IOException {
     boolean removeOldSubEntry = false, insertNewSubEntry = false;
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
     String alias, oldAlias; // key of the sub-index entry now
-    IMNode child, oldChild;
+    ICachedMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
-    for (Map.Entry<String, IMNode> entry :
+    for (Map.Entry<String, ICachedMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey());
@@ -258,7 +266,7 @@ public abstract class PageManager implements IPageManager {
       } else {
         alias = null;
       }
-      if (node.isEntity()) {
+      if (node.isDevice()) {
         oldChild = curPage.getAsSegmentedPage().read(getSegIndex(actualAddress), entry.getKey());
         oldAlias = oldChild.isMeasurement() ? oldChild.getAsMeasurementMNode().getAlias() : null;
       } else {
@@ -304,7 +312,7 @@ public abstract class PageManager implements IPageManager {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer);
 
           subIndex = subIndexRootPage(curSegAddr);
-          if (node.isEntity() && subIndex < 0) {
+          if (node.isDevice() && subIndex < 0) {
             buildSubIndex(node);
           } else if (insertNewSubEntry || removeOldSubEntry) {
             if (removeOldSubEntry) {
@@ -368,7 +376,7 @@ public abstract class PageManager implements IPageManager {
    *
    * @param parNode node needs to build subordinate index.
    */
-  protected abstract void buildSubIndex(IMNode parNode) throws MetadataException, IOException;
+  protected abstract void buildSubIndex(ICachedMNode parNode) throws MetadataException, IOException;
 
   /**
    * Insert an entry of subordinate index of the target node.
@@ -555,14 +563,17 @@ public abstract class PageManager implements IPageManager {
     return page;
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+  private synchronized int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
     dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
+    if (!readChannel.isOpen()) {
+      readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
+    }
+    return readChannel.read(dst, getPageAddress(pageIndex));
   }
 
-  private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
+  private void updateParentalRecord(ICachedMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
-    if (parent == null || parent.getChild(key).isStorageGroup()) {
+    if (parent == null || parent.getChild(key).isDatabase()) {
       throw new MetadataException("Root page shall not be migrated.");
     }
     long parSegAddr = parent.getParent() == null ? 0L : getNodeAddress(parent);
@@ -590,12 +601,12 @@ public abstract class PageManager implements IPageManager {
    * @param node
    * @return
    */
-  private static short estimateSegmentSize(IMNode node) {
+  private static short estimateSegmentSize(ICachedMNode node) {
     int childNum = node.getChildren().size();
     if (childNum < SEG_SIZE_METRIC[0]) {
       // for record offset, length of string key
       int totalSize = SEG_HEADER_SIZE + 6 * childNum;
-      for (IMNode child : node.getChildren().values()) {
+      for (ICachedMNode child : node.getChildren().values()) {
         totalSize += child.getName().getBytes().length;
         if (child.isMeasurement()) {
           totalSize +=
@@ -629,7 +640,7 @@ public abstract class PageManager implements IPageManager {
    * here. Supposed to merge with SchemaFile#reEstimateSegSize.
    *
    * @param expSize expected size calculated from next new record
-   * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
+   * @param batchSize size of children within one {@linkplain #writeNewChildren(ICachedMNode)}
    * @return estimated size
    * @throws MetadataException
    */

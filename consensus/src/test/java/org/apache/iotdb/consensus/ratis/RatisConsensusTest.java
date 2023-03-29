@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -76,7 +77,14 @@ public class RatisConsensusTest {
                       .setAutoTriggerThreshold(100)
                       .setCreationGap(10)
                       .build())
-              .setRatisConsensus(
+              .setRpc(
+                  RatisConfig.Rpc.newBuilder()
+                      .setFirstElectionTimeoutMin(TimeDuration.valueOf(1, TimeUnit.SECONDS))
+                      .setFirstElectionTimeoutMax(TimeDuration.valueOf(4, TimeUnit.SECONDS))
+                      .setTimeoutMin(TimeDuration.valueOf(1, TimeUnit.SECONDS))
+                      .setTimeoutMax(TimeDuration.valueOf(4, TimeUnit.SECONDS))
+                      .build())
+              .setImpl(
                   RatisConfig.Impl.newBuilder()
                       .setTriggerSnapshotFileSize(1)
                       .setTriggerSnapshotTime(4)

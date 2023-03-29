@@ -52,7 +52,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationByLevelIT {
 
-  private static final String[] dataSet =
+  protected static final String[] dataSet =
       new String[] {
         "CREATE DATABASE root.sg1",
         "CREATE DATABASE root.sg2",
@@ -79,13 +79,13 @@ public class IoTDBAggregationByLevelIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -695,7 +695,7 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
-  private static void prepareData() {
+  protected static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

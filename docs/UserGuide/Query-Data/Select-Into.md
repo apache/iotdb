@@ -269,7 +269,7 @@ This statement specifies that `root.sg_copy.d1` is an unaligned device and `root
 ### Other points to note
 
 - For general aggregation queries, the timestamp is meaningless, and the convention is to use 0 to store.
-- When the target time series exists, the metadata information such as the data type, compression,  encoding, and whether it belongs to the aligned device of the source time series and the target time series must be consistent.
+- When the target time-series exists, the data type of the source column and the target time-series must be compatible. About data type compatibility, see the document [Data Type](../Data-Concept/Data-Type.md#Data Type Compatibility).
 - When the target time series does not exist, the system automatically creates it (including the database).
 - When the queried time series does not exist, or the queried sequence does not have data, the target time series will not be created automatically.
 
@@ -278,18 +278,18 @@ This statement specifies that `root.sg_copy.d1` is an unaligned device and `root
 ### Implement IoTDB internal ETL
 ETL the original data and write a new time series.
 ```shell
-IOTDB > SELECT preprocess_udf(*) INTO ::(preprocessed_${3}) FROM root.sg.*;
-+-------------------------------+---------------------------+--------+
-|                  source column|          target timeseries| written|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s1)| root.sg.d1.preprocessed_s1|    8000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s2)| root.sg.d1.preprocessed_s1|   10000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s1)| root.sg.d2.preprocessed_s1|   11000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s2)| root.sg.d2.preprocessed_s1|    9000|
-+-------------------------------+---------------------------+--------+
+IOTDB > SELECT preprocess_udf(s1, s2) INTO ::(preprocessed_s1, preprocessed_s2) FROM root.sg.* ALIGN BY DEIVCE;
++--------------+-------------------+---------------------------+--------+
+| source device|      source column|          target timeseries| written|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s1)| root.sg.d1.preprocessed_s1|    8000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s2)| root.sg.d1.preprocessed_s2|   10000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s1)| root.sg.d2.preprocessed_s1|   11000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s2)| root.sg.d2.preprocessed_s2|    9000|
++--------------+-------------------+---------------------------+--------+
 ```
 
 ### Query result storage

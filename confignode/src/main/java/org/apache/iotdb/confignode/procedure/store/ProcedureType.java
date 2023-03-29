@@ -55,7 +55,15 @@ public enum ProcedureType {
 
   /** Template */
   DEACTIVATE_TEMPLATE_PROCEDURE((short) 700),
-  UNSET_TEMPLATE_PROCEDURE((short) 701);
+  UNSET_TEMPLATE_PROCEDURE((short) 701),
+
+  /** Ml Model */
+  CREATE_MODEL_PROCEDURE((short) 800),
+  DROP_MODEL_PROCEDURE((short) 801),
+
+  /** Pipe Plugin */
+  CREATE_PIPE_PLUGIN_PROCEDURE((short) 900),
+  DROP_PIPE_PLUGIN_PROCEDURE((short) 901);
 
   private final short typeCode;
 

@@ -26,10 +26,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -56,11 +58,8 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.BloomFilterCache;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -103,6 +102,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
@@ -129,6 +129,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
@@ -137,6 +138,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
@@ -200,7 +202,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -341,7 +346,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
-    LOGGER.info(String.format("Receive load node from uuid %s.", req.uuid));
+    LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -397,7 +402,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().invalidateAll();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -405,71 +410,58 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    int preDeletedNum = 0;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      String storageGroup =
-          schemaEngine
-              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-              .getStorageGroupFullPath();
-      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
-      if (filteredPatternTree.isEmpty()) {
-        continue;
-      }
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
-              .execute(
-                  new SchemaRegionId(consensusGroupId.getId()),
-                  new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
-              .getStatus();
-      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        preDeletedNum += Integer.parseInt(status.getMessage());
-      } else {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
+    AtomicInteger preDeletedNum = new AtomicInteger(0);
+    TSStatus executionResult =
+        executeSchemaDeletionTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              String storageGroup =
+                  schemaEngine
+                      .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                      .getStorageGroupFullPath();
+              PathPatternTree filteredPatternTree =
+                  filterPathPatternTree(patternTree, storageGroup);
+              if (filteredPatternTree.isEmpty()) {
+                return RpcUtils.SUCCESS_STATUS;
+              }
+              RegionWriteExecutor executor = new RegionWriteExecutor();
+              TSStatus status =
+                  executor
+                      .execute(
+                          new SchemaRegionId(consensusGroupId.getId()),
+                          new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
+                      .getStatus();
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                preDeletedNum.getAndAdd(Integer.parseInt(status.getMessage()));
+              }
+              return status;
+            });
+    executionResult.setMessage(String.valueOf(preDeletedNum.get()));
+    return executionResult;
   }
 
   @Override
   public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      String storageGroup =
-          schemaEngine
-              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-              .getStorageGroupFullPath();
-      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
-      if (filteredPatternTree.isEmpty()) {
-        continue;
-      }
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
+    return executeSchemaDeletionTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          String storageGroup =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getStorageGroupFullPath();
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new RollbackSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
+        });
   }
 
   @Override
@@ -479,7 +471,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     cache.takeWriteLock();
     try {
       // todo implement precise timeseries clean rather than clean all
-      cache.cleanUp();
+      cache.invalidateAll();
     } finally {
       cache.releaseWriteLock();
     }
@@ -529,97 +521,73 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<PartialPath> pathList = patternTree.getAllPathPatterns();
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    for (TConsensusGroupId consensusGroupId : req.getDataRegionIdList()) {
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
+    return executeSchemaDeletionTask(
+        req.getDataRegionIdList(),
+        consensusGroupId -> {
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
               .execute(
                   new DataRegionId(consensusGroupId.getId()),
                   new DeleteDataNode(new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
+        });
   }
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      String storageGroup =
-          schemaEngine
-              .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-              .getStorageGroupFullPath();
-      PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
-      if (filteredPatternTree.isEmpty()) {
-        continue;
-      }
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
+    return executeSchemaDeletionTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          String storageGroup =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getStorageGroupFullPath();
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
+        });
   }
 
   @Override
   public TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
       throws TException {
+    AtomicInteger preDeactivateTemplateNum = new AtomicInteger(0);
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    int preDeactivateTemplateNum = 0;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
-          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
-      if (filteredTemplateSetInfo.isEmpty()) {
-        continue;
-      }
+    TSStatus executionResult =
+        executeSchemaDeletionTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+                  filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+              if (filteredTemplateSetInfo.isEmpty()) {
+                return RpcUtils.SUCCESS_STATUS;
+              }
 
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
-              .execute(
-                  new SchemaRegionId(consensusGroupId.getId()),
-                  new PreDeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
-              .getStatus();
-      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        preDeactivateTemplateNum += Integer.parseInt(status.getMessage());
-      } else {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.getStatus(
-        TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateTemplateNum));
+              RegionWriteExecutor executor = new RegionWriteExecutor();
+              TSStatus status =
+                  executor
+                      .execute(
+                          new SchemaRegionId(consensusGroupId.getId()),
+                          new PreDeactivateTemplateNode(
+                              new PlanNodeId(""), filteredTemplateSetInfo))
+                      .getStatus();
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                preDeactivateTemplateNum.getAndAdd(Integer.parseInt(status.getMessage()));
+              }
+              return status;
+            });
+    executionResult.setMessage(String.valueOf(preDeactivateTemplateNum.get()));
+    return executionResult;
   }
 
   private Map<PartialPath, List<Integer>> transformTemplateSetInfo(
@@ -670,65 +638,45 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
-          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
-      if (filteredTemplateSetInfo.isEmpty()) {
-        continue;
-      }
+    return executeSchemaDeletionTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+              filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+          if (filteredTemplateSetInfo.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
 
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new RollbackPreDeactivateTemplateNode(
                       new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
+        });
   }
 
   @Override
   public TSStatus deactivateTemplate(TDeactivateTemplateReq req) throws TException {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
-    List<TSStatus> failureList = new ArrayList<>();
-    TSStatus status;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
-          filterTemplateSetInfo(templateSetInfo, consensusGroupId);
-      if (filteredTemplateSetInfo.isEmpty()) {
-        continue;
-      }
+    return executeSchemaDeletionTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
+              filterTemplateSetInfo(templateSetInfo, consensusGroupId);
+          if (filteredTemplateSetInfo.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
 
-      RegionWriteExecutor executor = new RegionWriteExecutor();
-      status =
-          executor
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        failureList.add(status);
-      }
-    }
-
-    if (!failureList.isEmpty()) {
-      return RpcUtils.getStatus(failureList);
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
+        });
   }
 
   @Override
@@ -736,33 +684,55 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
-    long result = 0;
-    for (TConsensusGroupId consensusGroupId : req.getSchemaRegionIdList()) {
-      // todo implement as consensus layer read request
-      ReadWriteLock readWriteLock =
-          regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-      // count paths using template for unset template shall block all template activation
-      readWriteLock.writeLock().lock();
-      try {
-        ISchemaRegion schemaRegion =
-            schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-        PathPatternTree filteredPatternTree =
-            filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
-        if (filteredPatternTree.isEmpty()) {
-          continue;
-        }
-        result += schemaRegion.countPathsUsingTemplate(req.getTemplateId(), filteredPatternTree);
-      } catch (MetadataException e) {
-        LOGGER.warn(e.getMessage(), e);
-        resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        return resp;
-      } finally {
-        readWriteLock.writeLock().unlock();
-      }
-    }
-    resp.setStatus(RpcUtils.SUCCESS_STATUS);
-    resp.setCount(result);
+    AtomicLong result = new AtomicLong(0);
+    resp.setStatus(
+        executeSchemaDeletionTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              ReadWriteLock readWriteLock =
+                  regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
+              // count paths using template for unset template shall block all template activation
+              readWriteLock.writeLock().lock();
+              try {
+                ISchemaRegion schemaRegion =
+                    schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+                PathPatternTree filteredPatternTree =
+                    filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+                if (filteredPatternTree.isEmpty()) {
+                  return RpcUtils.SUCCESS_STATUS;
+                }
+                result.getAndAdd(
+                    schemaRegion.countPathsUsingTemplate(req.getTemplateId(), filteredPatternTree));
+                return RpcUtils.SUCCESS_STATUS;
+              } catch (MetadataException e) {
+                LOGGER.warn(e.getMessage(), e);
+                return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+              } finally {
+                readWriteLock.writeLock().unlock();
+              }
+            }));
+    resp.setCount(result.get());
     return resp;
+  }
+
+  private TSStatus executeSchemaDeletionTask(
+      List<TConsensusGroupId> consensusGroupIdList,
+      Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
+    List<TSStatus> statusList = new ArrayList<>();
+    TSStatus status;
+    boolean hasFailure = false;
+    for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {
+      status = executeOnOneRegion.apply(consensusGroupId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        hasFailure = true;
+      }
+      statusList.add(status);
+    }
+    if (hasFailure) {
+      return RpcUtils.getStatus(statusList);
+    } else {
+      return RpcUtils.SUCCESS_STATUS;
+    }
   }
 
   @Override
@@ -826,8 +796,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session, req.getUsername(), req.getZoneId(), IoTDBConstant.ClientVersion.V_0_13);
+    SESSION_MANAGER.supplySession(session, req.getUsername(), req.getZoneId(), ClientVersion.V_1_0);
 
     String executedSQL = req.queryBody;
 
@@ -957,20 +926,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TLoadSample loadSample = new TLoadSample();
 
       // Sample cpu load
-      long cpuLoad =
+      double cpuLoad =
           MetricService.getInstance()
               .getAutoGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
-        loadSample.setCpuUsageRate((short) cpuLoad);
+        loadSample.setCpuUsageRate(cpuLoad);
       }
 
       // Sample memory load
-      long usedMemory = getMemory("jvm.memory.used.bytes");
-      long maxMemory = getMemory("jvm.memory.max.bytes");
+      double usedMemory = getMemory("jvm.memory.used.bytes");
+      double maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        loadSample.setMemoryUsageRate((double) usedMemory * 100 / maxMemory);
+        loadSample.setMemoryUsageRate(usedMemory * 100 / maxMemory);
       }
 
       // Sample disk load
@@ -1023,8 +992,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private long getMemory(String gaugeName) {
-    long result = 0;
+  private double getMemory(String gaugeName) {
+    double result = 0d;
     try {
       //
       List<String> heapIds = Arrays.asList("PS Eden Space", "PS Old Eden", "Ps Survivor Space");
@@ -1044,7 +1013,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     } catch (Exception e) {
       LOGGER.warn("Failed to get memory from metric because: ", e);
-      return 0;
+      return 0d;
     }
     return result;
   }
@@ -1052,7 +1021,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private void sampleDiskLoad(TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-    long freeDisk =
+    double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
                 Metric.SYS_DISK_FREE_SPACE.toString(),
@@ -1060,7 +1029,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 Tag.NAME.toString(),
                 "system")
             .value();
-    long totalDisk =
+    double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
                 Metric.SYS_DISK_TOTAL_SPACE.toString(),
@@ -1070,11 +1039,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .value();
 
     if (freeDisk != 0 && totalDisk != 0) {
-      double freeDiskRatio = (double) freeDisk / totalDisk;
+      double freeDiskRatio = freeDisk / totalDisk;
       loadSample.setFreeDiskSpace(freeDisk);
-      loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
+      loadSample.setDiskUsageRate(1d - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+        LOGGER.warn(
+            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            freeDiskRatio,
+            commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       }
@@ -1101,22 +1074,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    return storageEngine.operateFlush(req);
+    try {
+      storageEngine.operateFlush(req);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus clearCache() throws TException {
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
-    BloomFilterCache.getInstance().clear();
+    try {
+      storageEngine.clearCache();
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus settle(TSettleReq req) throws TException {
+    return SettleRequestHandler.getInstance().handleSettleRequest(req);
   }
 
   @Override
   public TSStatus loadConfiguration() throws TException {
     try {
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
-    } catch (QueryProcessException e) {
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -1130,6 +1115,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus killQueryInstance(String queryId) {
+    Coordinator coordinator = Coordinator.getInstance();
+    if (queryId == null) {
+      coordinator.getAllQueryExecutions().forEach(IQueryExecution::cancel);
+    } else {
+      Optional<IQueryExecution> queryExecution =
+          coordinator.getAllQueryExecutions().stream()
+              .filter(iQueryExecution -> iQueryExecution.getQueryId().equals(queryId))
+              .findAny();
+      if (queryExecution.isPresent()) {
+        queryExecution.get().cancel();
+      } else {
+        return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such query");
+      }
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -1472,6 +1476,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return nodeLocation.getDataRegionConsensusEndPoint();
     }
     return nodeLocation.getSchemaRegionConsensusEndPoint();
+  }
+
+  @Override
+  public TSStatus createPipePlugin(TCreatePipePluginInstanceReq req) {
+    try {
+      PipePluginMeta pipePluginMeta = PipePluginMeta.deserialize(req.pipePluginMeta);
+      PipeAgent.plugin().register(pipePluginMeta, req.jarFile);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus dropPipePlugin(TDropPipePluginInstanceReq req) {
+    try {
+      PipeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
   }
 
   private boolean isSucceed(TSStatus status) {

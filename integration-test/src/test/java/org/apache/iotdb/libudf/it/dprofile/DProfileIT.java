@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.libudf.it.dprofile;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -45,11 +44,8 @@ public class DProfileIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(5)
-        .setUdfTransformerMemoryBudgetInMB(5)
-        .setUdfReaderMemoryBudgetInMB(5);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
     registerUDF();
@@ -121,7 +117,6 @@ public class DProfileIT {
           "create function integralavg as 'org.apache.iotdb.library.dprofile.UDAFIntegralAvg'");
       statement.execute("create function mad as 'org.apache.iotdb.library.dprofile.UDAFMad'");
       statement.execute("create function median as 'org.apache.iotdb.library.dprofile.UDAFMedian'");
-      statement.execute("create function mode as 'org.apache.iotdb.library.dprofile.UDAFMode'");
       statement.execute(
           "create function percentile as 'org.apache.iotdb.library.dprofile.UDAFPercentile'");
       statement.execute("create function period as 'org.apache.iotdb.library.dprofile.UDAFPeriod'");
@@ -153,7 +148,7 @@ public class DProfileIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -262,7 +257,7 @@ public class DProfileIT {
   }
 
   @Test
-  public void testMode1() {
+  public void testConsistency1() {
     String sqlStr = "select consistency(d1.s1) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

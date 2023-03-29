@@ -212,7 +212,7 @@ def test_session():
         ]
         values_list_ = [
             [False, 22, 33, 4.4, 55.1, "test_records01"],
-            [True, 77, 88, 1.25, 8.125, "test_records02"],
+            [True, 77, 88, 1.25, 8.125, bytes("test_records02", "utf-8")],
         ]
         data_type_list_ = [data_types_, data_types_]
         device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
@@ -311,7 +311,12 @@ def test_session():
         np_bitmaps_[4].mark(3)
         np_bitmaps_[5].mark(3)
         np_tablet_ = NumpyTablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+            "root.sg_test_01.d_01",
+            measurements_,
+            data_types_,
+            np_values_,
+            np_timestamps_,
+            np_bitmaps_,
         )
         if session.insert_tablet(np_tablet_) < 0:
             test_fail()
@@ -345,12 +350,11 @@ def test_session():
             print_message("insert records of one device failed")
 
         # execute non-query sql statement
-        if (
+        try:
             session.execute_non_query_statement(
                 "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message(
                 "execute 'insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)' failed"

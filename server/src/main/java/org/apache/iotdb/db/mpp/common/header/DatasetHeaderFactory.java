@@ -53,8 +53,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowStorageGroupHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showStorageGroupColumnHeaders, true);
+  public static DatasetHeader getShowStorageGroupHeader(boolean isDetailed) {
+    return isDetailed
+        ? new DatasetHeader(ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders, true)
+        : new DatasetHeader(ColumnHeaderConstant.showStorageGroupsColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTTLHeader() {
@@ -95,6 +97,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowTriggersHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTriggersColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowPipePluginsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipePluginsColumnHeaders, true);
   }
 
   public static DatasetHeader getShowRegionHeader() {

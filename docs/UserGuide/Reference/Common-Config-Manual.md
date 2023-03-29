@@ -102,6 +102,24 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |  Effective  | Only allowed to be modified in first start up                     |
 
+* schema\_region\_group\_extension\_policy
+
+|    Name     | schema\_region\_group\_extension\_policy  |
+|:-----------:|:------------------------------------------|
+| Description | The extension policy of SchemaRegionGroup |
+|    Type     | string                                    |
+|   Default   | AUTO                                      |
+|  Effective  | After restarting system                   |
+
+* default\_schema\_region\_group\_num\_per\_database
+
+|    Name     | default\_schema\_region\_group\_num\_per\_database                                                                                                                                                                                      |
+|:-----------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The number of SchemaRegionGroups that each Database has when using the CUSTOM-SchemaRegionGroup extension policy. The least number of SchemaRegionGroups that each Database has when using the AUTO-SchemaRegionGroup extension policy. |
+|    Type     | int                                                                                                                                                                                                                                     |
+|   Default   | 1                                                                                                                                                                                                                                       |
+|  Effective  | After restarting system                                                                                                                                                                                                                 |
+
 * schema\_region\_per\_data\_node
 
 |    Name     | schema\_region\_per\_data\_node                                            |
@@ -120,14 +138,14 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | AUTO                                    |
 |  Effective  | After restarting system                 |
 
-* data\_region\_group\_per\_database
+* default\_data\_region\_group\_num\_per\_database
 
-|    Name     | data\_region\_group\_per\_database                                                                           |
-|:-----------:|:-------------------------------------------------------------------------------------------------------------|
-| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy |
-|    Type     | int                                                                                                          |
-|   Default   | 1                                                                                                            |
-|  Effective  | After restarting system                                                                                      |
+|    Name     | default\_data\_region\_group\_num\_per\_database                                                                                                                                                                                |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy. The least number of DataRegionGroups that each Database has when using the AUTO-DataRegionGroup extension policy. |
+|    Type     | int                                                                                                                                                                                                                             |
+|   Default   | 1                                                                                                                                                                                                                               |
+|  Effective  | After restarting system                                                                                                                                                                                                         |
 
 * data\_region\_per\_processor
 
@@ -137,15 +155,6 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | double                                                                    |
 |   Default   | 1.0                                                                       |
 |  Effective  | After restarting system                                                   |
-
-* least\_data\_region\_group\_num
-
-|    Name     | least\_data\_region\_group\_num                       |
-|:-----------:|:------------------------------------------------------|
-| Description | The least number of DataRegionGroup for each Database |
-|    Type     | int                                                   |
-|   Default   | 5                                                     |
-|  Effective  | After restarting system                               |
 
 * enable\_data\_partition\_inherit\_policy
 
@@ -188,7 +197,7 @@ Different configuration parameters take effect in the following three ways:
 * time\_partition\_interval
 
 |    Name     | time\_partition\_interval                                     |
-| :---------: | :------------------------------------------------------------ |
+|:-----------:|:--------------------------------------------------------------|
 | Description | Time partition interval of data when ConfigNode allocate data |
 |    Type     | Long                                                          |
 |    Unit     | ms                                                            |
@@ -198,7 +207,7 @@ Different configuration parameters take effect in the following three ways:
 * heartbeat\_interval\_in\_ms
 
 |    Name     | heartbeat\_interval\_in\_ms             |
-| :---------: | :-------------------------------------- |
+|:-----------:|:----------------------------------------|
 | Description | Heartbeat interval in the cluster nodes |
 |    Type     | Long                                    |
 |    Unit     | ms                                      |
@@ -208,7 +217,7 @@ Different configuration parameters take effect in the following three ways:
 * disk\_space\_warning\_threshold
 
 |    Name     | disk\_space\_warning\_threshold |
-| :---------: | :------------------------------ |
+|:-----------:|:--------------------------------|
 | Description | Disk remaining threshold        |
 |    Type     | double(percentage)              |
 |   Default   | 0.05                            |
@@ -265,7 +274,7 @@ Different configuration parameters take effect in the following three ways:
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a database can be inserted concurrently <br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -478,7 +487,7 @@ Different configuration parameters take effect in the following three ways:
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 |:-----------:|:---------------------------------------------|
-| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+| Description | The read consistency level, <br>1. strong(Default, read from the leader replica) <br>2. weak(Read from a random replica) |
 |    Type     | string                                          |
 |   Default   | strong                                           |
 |  Effective  | After restarting system                      |
@@ -990,14 +999,14 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 60000                                    |
 |  Effective  | After restart system                     |
 
-* compaction\_io\_rate\_per\_sec
+* compaction\_write\_throughput\_mb\_per\_sec
 
-|Name| compaction\_io\_rate\_per\_sec                 |
-|:---:|:-----------------------------------------------|
-|Description| The io rate of all compaction tasks per second |
-|Type| int32                                          |
-|Default| 50                                             |
-|Effective| After restart system                           |
+|Name| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| int32 |
+|Default| 16 |
+|Effective|After restart system|
 
 * sub\_compaction\_thread\_count
 
@@ -1017,6 +1026,14 @@ Different configuration parameters take effect in the following three ways:
 |Default| true                                                            |
 |Effective| After restart system                                            |
 
+* candidate\_compaction\_task\_queue\_size
+
+|Name| candidate\_compaction\_task\_queue\_size    |
+|:---:|:--------------------------------------------|
+|Description| The size of candidate compaction task queue |
+|Type| Int32                                       |
+|Default| 50                                          |
+|Effective| After restart system                        |
 
 ### Write Ahead Log Configuration
 
@@ -1195,12 +1212,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                            |
+|:-----------:|:------------------------------------------------------|
+| Description | Data compression method                               |
+|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4", "ZSTD" |
+|   Default   | SNAPPY                                                |
+|  Effective  | hot-load                                              |
 
 * bloomFilterErrorRate
 

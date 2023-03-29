@@ -19,43 +19,39 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.PathNumOverLimitException;
-
 /** apply MaxQueryDeduplicatedPathNum and SLIMIT & SOFFSET */
 public class ColumnPaginationController {
-
-  private int curLimit =
-      IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
-  private int curOffset;
-
-  // records the path number that the SchemaProcessor totally returned
-  private int consumed = 0;
 
   // for ALIGN BY DEVICE / DISABLE ALIGN / GROUP BY LEVEL / LAST, controller does is disabled
   private final boolean isDisabled;
 
-  public ColumnPaginationController(int seriesLimit, int seriesOffset, boolean isDisabled) {
+  private final boolean hasLimit;
+
+  private long curLimit;
+  private long curOffset;
+
+  public ColumnPaginationController(long seriesLimit, long seriesOffset, boolean isDisabled) {
+    this.isDisabled = isDisabled;
+
     // for series limit, the default value is 0, which means no limit
-    this.curLimit = seriesLimit == 0 ? this.curLimit : Math.min(seriesLimit, this.curLimit);
+    this.hasLimit = seriesLimit > 0;
+    this.curLimit = seriesLimit;
+
     // series offset for result set. The default value is 0
     this.curOffset = seriesOffset;
-    this.isDisabled = isDisabled;
   }
 
   public boolean hasCurOffset() {
     if (isDisabled) {
       return false;
     }
-
     return curOffset != 0;
   }
 
   public boolean hasCurLimit() {
-    if (isDisabled) {
+    if (isDisabled || !hasLimit) {
       return true;
     }
-
     return curLimit != 0;
   }
 
@@ -63,17 +59,11 @@ public class ColumnPaginationController {
     if (isDisabled) {
       return;
     }
-
     curOffset--;
   }
 
   public void consumeLimit() {
-    consumed++;
-    if (consumed > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
-      throw new PathNumOverLimitException();
-    }
-
-    if (isDisabled) {
+    if (isDisabled || !hasLimit) {
       return;
     }
     curLimit--;

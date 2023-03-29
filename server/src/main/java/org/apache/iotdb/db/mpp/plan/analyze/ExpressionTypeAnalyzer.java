@@ -255,6 +255,12 @@ public class ExpressionTypeAnalyzer {
             TypeInferenceUtils.getAggrDataType(
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+      }
+      if (functionExpression.isBuiltInScalarFunction()) {
+        return setExpressionType(
+            functionExpression,
+            TypeInferenceUtils.getBuiltInScalarFunctionDataType(
+                functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       } else {
         return setExpressionType(
             functionExpression,

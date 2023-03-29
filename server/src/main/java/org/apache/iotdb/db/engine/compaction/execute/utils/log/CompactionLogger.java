@@ -38,6 +38,8 @@ public class CompactionLogger implements AutoCloseable {
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
 
+  public static final String STR_DELETED_TARGET_FILES = "empty";
+
   public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
   public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
   public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
@@ -67,6 +69,16 @@ public class CompactionLogger implements AutoCloseable {
                   .toString());
       logStream.newLine();
     }
+    logStream.flush();
+  }
+
+  public void logFile(TsFileResource tsFile, String flag) throws IOException {
+    logStream.write(
+        flag
+            + TsFileIdentifier.INFO_SEPARATOR
+            + TsFileIdentifier.getFileIdentifierFromFilePath(tsFile.getTsFile().getAbsolutePath())
+                .toString());
+    logStream.newLine();
     logStream.flush();
   }
 

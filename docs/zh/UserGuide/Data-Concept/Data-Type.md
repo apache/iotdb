@@ -19,11 +19,11 @@
 
 -->
 
-# 数据类型
+## 数据类型
 
-## 基本数据类型
+### 基本数据类型
 
-IoTDB 支持：
+IoTDB 支持以下六种数据类型：
 
 * BOOLEAN（布尔值）
 * INT32（整型）
@@ -32,22 +32,39 @@ IoTDB 支持：
 * DOUBLE（双精度浮点数）
 * TEXT（字符串）
 
-一共六种数据类型。
+#### 浮点数精度配置
 
-其中 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) 可以指定 MAX_POINT_NUMBER，该项为浮点数的小数点后位数，若不指定则系统会根据配置文件`iotdb-common.properties`文件中的 [float_precision 项](../Reference/DataNode-Config-Manual.md) 配置。
+对于 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) ，可以在创建序列时通过 `MAX_POINT_NUMBER` 属性指定浮点数的小数点后位数。
 
-当系统中用户输入的数据类型与该时间序列的数据类型不对应时，系统会提醒类型错误，如下所示，二阶差分编码不支持布尔类型：
-
-```
-IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
-error: encoding TS_2DIFF does not support BOOLEAN
+例如，
+```sql
+CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=FLOAT, ENCODING=RLE, 'MAX_POINT_NUMBER'='2';
 ```
 
-## 时间戳类型
+若不指定，系统会按照配置文件 `iotdb-common.properties` 中的 [float_precision](../Reference/Common-Config-Manual.md) 项配置（默认为 2 位）。
+
+#### 数据类型兼容性
+
+当写入数据的类型与序列注册的数据类型不一致时，
+- 如果序列数据类型不兼容写入数据类型，系统会给出错误提示。
+- 如果序列数据类型兼容写入数据类型，系统会进行数据类型的自动转换，将写入的数据类型更正为注册序列的类型。
+
+各数据类型的兼容情况如下表所示：
+
+| 序列数据类型 | 支持的写入数据类型       |
+|--------------|--------------------------|
+| BOOLEAN      | BOOLEAN                  |
+| INT32        | INT32                    |
+| INT64        | INT32 INT64              |
+| FLOAT        | INT32 FLOAT              |
+| DOUBLE       | INT32 INT64 FLOAT DOUBLE |
+| TEXT         | TEXT                     |
+
+### 时间戳类型
 
 时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳。
 
-### 绝对时间戳
+#### 绝对时间戳
 
 IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIME 类型（包含 DATETIME-INPUT, DATETIME-DISPLAY 两个小类）。
 
@@ -119,7 +136,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
 
 </div>
 
-### 相对时间戳
+#### 相对时间戳
 
   相对时间是指与服务器时间```now()```和```DATETIME```类型时间相差一定时间间隔的时间。
   形式化定义为：

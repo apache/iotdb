@@ -19,11 +19,12 @@
 
 -->
 
-# 概述
+# 数据查询
+## 概述
 
 在 IoTDB 中，使用 `SELECT` 语句从一条或多条时间序列中查询数据。
 
-## 语法定义
+### 语法定义
 
 ```sql
 SELECT [LAST] selectExpr [, selectExpr] ...
@@ -33,7 +34,11 @@ SELECT [LAST] selectExpr [, selectExpr] ...
     [GROUP BY {
         ([startTime, endTime), interval [, slidingStep]) |
         LEVEL = levelNum [, levelNum] ... |
-        TAGS(tagKey [, tagKey] ... )
+        TAGS(tagKey [, tagKey] ... |
+        VARIATION(expression[,delta][,ignoreNull=true/false]) |
+        CONDITION(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false]) |
+        SESSION(timeInterval) |
+        COUNT(expression, size[,ignoreNull=true/false])
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
@@ -43,9 +48,9 @@ SELECT [LAST] selectExpr [, selectExpr] ...
     [ALIGN BY {TIME | DEVICE}]
 ```
 
-## 语法说明
+### 语法说明
 
-### `SELECT` 子句
+#### `SELECT` 子句
 
 - `SELECT` 子句指定查询的输出，由若干个 `selectExpr` 组成。
 - 每个 `selectExpr` 定义查询结果中的一列或多列，它是一个由时间序列路径后缀、常量、函数和运算符组成的表达式。
@@ -53,69 +58,69 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 - 在 `SELECT` 子句中使用 `LAST` 关键词可以指定查询为最新点查询，详细说明及示例见文档 [最新点查询](./Last-Query.md) 。
 - 详细说明及示例见文档 [选择表达式](./Select-Expression.md) 。
 
-### `INTO` 子句
+#### `INTO` 子句
 
 - `SELECT INTO` 用于将查询结果写入一系列指定的时间序列中。`INTO` 子句指定了查询结果写入的目标时间序列。
 - 详细说明及示例见文档 [SELECT INTO（查询写回）](Select-Into.md) 。
 
-### `FROM` 子句
+#### `FROM` 子句
 
 - `FROM` 子句包含要查询的一个或多个时间序列的路径前缀，支持使用通配符。
 - 在执行查询时，会将 `FROM` 子句中的路径前缀和 `SELECT` 子句中的后缀进行拼接得到完整的查询目标序列。
 
-### `WHERE` 子句
+#### `WHERE` 子句
 
 - `WHERE` 子句指定了对数据行的筛选条件，由一个 `whereCondition` 组成。
 - `whereCondition` 是一个逻辑表达式，对于要选择的每一行，其计算结果为真。如果没有 `WHERE` 子句，将选择所有行。
 - 在 `whereCondition` 中，可以使用除聚合函数之外的任何 IOTDB 支持的函数和运算符。
 - 详细说明及示例见文档 [查询过滤条件](./Where-Condition.md) 。
 
-### `GROUP BY` 子句
+#### `GROUP BY` 子句
 
 - `GROUP BY` 子句指定对序列进行分段或分组聚合的方式。
-- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前仅支持**按时间区间分段**，未来将支持更多分段方式。
+- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前支持**时间区间分段**、**差值分段**、**条件分段**、**会话分段**和**点数分段**，未来将支持更多分段方式。
 - 分组聚合是指针对不同时间序列，在时间序列的潜在业务属性上分组，每个组包含若干条时间序列，每个组得到一个聚合值。支持**按路径层级分组**和**按序列标签分组**两种分组方式。
 - 分段聚合和分组聚合可以混合使用。
 - 详细说明及示例见文档 [分段分组聚合](./Group-By.md) 。
 
-### `HAVING` 子句
+#### `HAVING` 子句
 
 - `HAVING` 子句指定了对聚合结果的筛选条件，由一个 `havingCondition` 组成。
 - `havingCondition` 是一个逻辑表达式，对于要选择的聚合结果，其计算结果为真。如果没有 `HAVING` 子句，将选择所有聚合结果。
 - `HAVING` 要和聚合函数以及 `GROUP BY` 子句一起使用。
 - 详细说明及示例见文档 [聚合结果过滤](./Having-Condition.md) 。
 
-### `ORDER BY` 子句
+#### `ORDER BY` 子句
 
 - `ORDER BY` 子句用于指定结果集的排序方式。
 - 按时间对齐模式下：默认按照时间戳大小升序排列，可以通过 `ORDER BY TIME DESC` 指定结果集按照时间戳大小降序排列。
 - 按设备对齐模式下：默认按照设备名的字典序升序排列，每个设备内部按照时间戳大小升序排列，可以通过 `ORDER BY` 子句调整设备列和时间列的排序优先级。
 - 详细说明及示例见文档 [结果集排序](./Order-By.md)。
 
-### `FILL` 子句
+#### `FILL` 子句
 
 - `FILL` 子句用于指定数据缺失情况下的填充模式，允许用户按照特定的方法对任何查询的结果集填充空值。
 - 详细说明及示例见文档 [结果集补空值](./Fill.md) 。
 
-### `SLIMIT` 和 `SOFFSET` 子句
+#### `SLIMIT` 和 `SOFFSET` 子句
 
 - `SLIMIT` 指定查询结果的列数，`SOFFSET` 指定查询结果显示的起始列位置。`SLIMIT` 和 `SOFFSET` 仅用于控制值列，对时间列和设备列无效。
 - 关于查询结果分页，详细说明及示例见文档 [结果集分页](./Pagination.md) 。
 
-### `LIMIT` 和 `OFFSET` 子句
+#### `LIMIT` 和 `OFFSET` 子句
 
 - `LIMIT` 指定查询结果的行数，`OFFSET` 指定查询结果显示的起始行位置。
 - 关于查询结果分页，详细说明及示例见文档 [结果集分页](./Pagination.md) 。
 
-### `ALIGN BY` 子句
+#### `ALIGN BY` 子句
 
 - 查询结果集默认**按时间对齐**，包含一列时间列和若干个值列，每一行数据各列的时间戳相同。
 - 除按时间对齐之外，还支持**按设备对齐**，查询结果集包含一列时间列、一列设备列和若干个值列。
 - 详细说明及示例见文档 [查询对齐模式](./Align-By.md) 。
 
-## SQL 示例
+### SQL 示例
 
-### 示例1：根据一个时间区间选择一列数据
+#### 示例1：根据一个时间区间选择一列数据
 
 SQL 语句为：
 
@@ -146,7 +151,7 @@ Total line number = 8
 It costs 0.026s
 ```
 
-### 示例2：根据一个时间区间选择多列数据
+#### 示例2：根据一个时间区间选择多列数据
 
 SQL 语句为：
 
@@ -175,7 +180,7 @@ Total line number = 6
 It costs 0.018s
 ```
 
-### 示例3：按照多个时间区间选择同一设备的多列数据
+#### 示例3：按照多个时间区间选择同一设备的多列数据
 
 IoTDB 支持在一次查询中指定多个时间区间条件，用户可以根据需求随意组合时间区间条件。例如，
 
@@ -209,7 +214,7 @@ Total line number = 9
 It costs 0.018s
 ```
 
-### 示例4：按照多个时间区间选择不同设备的多列数据
+#### 示例4：按照多个时间区间选择不同设备的多列数据
 
 该系统支持在一次查询中选择任意列的数据，也就是说，被选择的列可以来源于不同的设备。例如，SQL 语句为：
 
@@ -241,7 +246,7 @@ Total line number = 9
 It costs 0.014s
 ```
 
-### 示例5：根据时间降序返回结果集
+#### 示例5：根据时间降序返回结果集
 
 IoTDB 支持 `order by time` 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 
@@ -270,7 +275,13 @@ Total line number = 10
 It costs 0.016s
 ```
 
-## 使用方式
+### 查询执行接口
+
+在 IoTDB 中，提供两种方式执行数据查询操作：
+- 使用 IoTDB-SQL 执行查询。
+- 常用查询的高效执行接口，包括时间序列原始数据范围查询、最新点查询、简单聚合查询。
+
+#### 使用 IoTDB-SQL 执行查询
 
 数据查询语句支持在 SQL 命令行终端、JDBC、JAVA / C++ / Python / Go 等编程语言 API、RESTful API 中使用。
 
@@ -284,4 +295,48 @@ It costs 0.016s
   SessionDataSet executeQueryStatement(String sql);
   ```
 
-- 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。
+- 在 RESTful API 中使用，详见 [HTTP API V1](../API/RestServiceV1.md) 或者 [HTTP API V2](../API/RestServiceV2.md)。
+
+#### 常用查询的高效执行接口
+
+各编程语言的 API 为常用的查询提供了高效执行接口，可以省去 SQL 解析等操作的耗时。包括：
+
+* 时间序列原始数据范围查询：
+  - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+
+```java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
+```
+
+* 最新点查询：
+  - 查询最后一条时间戳大于等于某个时间点的数据。
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
+```
+
+* 聚合查询：
+  - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+  - 支持按照时间区间分段查询。
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
+```

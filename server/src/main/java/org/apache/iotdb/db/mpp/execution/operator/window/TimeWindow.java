@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -28,8 +27,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 public class TimeWindow implements IWindow {
 
   private TimeRange curTimeRange;
-
-  public TimeWindow() {}
 
   public TimeWindow(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
@@ -59,13 +56,8 @@ public class TimeWindow implements IWindow {
   }
 
   @Override
-  public void mergeOnePoint() {
+  public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
     // do nothing
-  }
-
-  @Override
-  public boolean hasFinalResult(Accumulator accumulator) {
-    return accumulator.hasFinalResult();
   }
 
   @Override

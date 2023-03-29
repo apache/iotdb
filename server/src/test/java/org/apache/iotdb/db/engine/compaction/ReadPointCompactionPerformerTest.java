@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.reader.IDataBlockRead
 import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -103,7 +104,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -136,7 +136,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
@@ -182,7 +181,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -250,7 +248,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -307,7 +304,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -383,7 +379,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -432,7 +427,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -473,7 +467,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -522,7 +515,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -582,7 +574,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -665,7 +656,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -720,7 +710,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -793,7 +782,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -848,7 +836,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -923,7 +910,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -962,7 +948,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -1003,7 +988,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1050,7 +1034,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1104,7 +1087,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1162,7 +1144,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1226,7 +1207,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1284,7 +1264,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1348,7 +1327,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1411,7 +1389,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1520,7 +1497,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1588,7 +1564,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1680,7 +1655,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1744,12 +1718,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 schemas);
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
-                path,
-                TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
-                seqResources,
-                unseqResources,
-                true);
+                path, EnvironmentUtils.TEST_QUERY_FI_CONTEXT, seqResources, unseqResources, true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
           TsBlock block = tsBlockReader.nextBatch();
@@ -1807,7 +1776,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1853,7 +1821,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
@@ -1901,7 +1868,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -1938,7 +1904,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
@@ -1997,7 +1962,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -2094,7 +2058,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2181,7 +2144,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -2286,7 +2248,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2385,7 +2346,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -2483,7 +2443,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2584,7 +2543,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -2676,7 +2634,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2775,7 +2732,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -2825,12 +2781,12 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     for (int i = 0; i < targetResources.size(); i++) {
       TsFileResource resource = targetResources.get(i);
       if (i < 2) {
-        Assert.assertEquals(null, resource);
+        Assert.assertEquals(TsFileResourceStatus.DELETED, resource.getStatus());
       } else {
         Assert.assertTrue(resource.getTsFile().exists());
       }
     }
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
     for (int i = 0; i < 2; i++) {
@@ -2859,7 +2815,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2949,7 +2904,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3061,7 +3015,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3142,7 +3095,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.VECTOR,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -3182,7 +3134,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
@@ -3249,7 +3200,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3323,7 +3273,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3448,7 +3397,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3556,7 +3504,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3687,7 +3634,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3766,7 +3712,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3867,7 +3812,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3914,7 +3859,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                tsDataType,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -4055,7 +3999,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -4172,7 +4115,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -4301,7 +4243,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
@@ -4441,7 +4382,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
@@ -4551,7 +4491,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -4670,7 +4610,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                tsDataType,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -4941,7 +4880,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -5127,7 +5065,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -5313,7 +5250,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -5527,7 +5463,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 targetResources,
                 new ArrayList<>(),
@@ -5665,7 +5600,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -5745,7 +5679,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -5843,7 +5776,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -5890,7 +5823,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                tsDataType,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -5974,7 +5906,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -6027,7 +5959,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -6205,7 +6136,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
           IDataBlockReader tsBlockReader =
               new SeriesDataBlockReader(
                   path,
-                  TSDataType.INT64,
                   FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                       EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                   targetResources,

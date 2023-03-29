@@ -20,6 +20,7 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
@@ -50,7 +51,6 @@ public class SnapshotStorage implements StateMachineStorage {
   private static final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
-
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
 
@@ -167,29 +167,32 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
       throws IOException {
-    Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
-    if (sortedSnapshotDirs == null || sortedSnapshotDirs.length == 0) {
+    final Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
+    if (ArrayUtils.isEmpty(sortedSnapshotDirs)) {
       return;
     }
-    for (int i = 0; i < sortedSnapshotDirs.length - 1; i++) {
+
+    final int cleanIndex =
+        Math.max(0, sortedSnapshotDirs.length - snapshotRetentionPolicy.getNumSnapshotsRetained());
+    for (int i = 0; i < cleanIndex; i++) {
       FileUtils.deleteFully(sortedSnapshotDirs[i]);
     }
   }
 
-  public File getStateMachineDir() {
+  File getStateMachineDir() {
     return stateMachineDir;
   }
 
-  public File getSnapshotDir(String snapshotMetadata) {
+  File getSnapshotDir(String snapshotMetadata) {
     return new File(getStateMachineDir().getAbsolutePath() + File.separator + snapshotMetadata);
   }
 
-  public File getSnapshotTmpDir(String snapshotMetadata) {
+  File getSnapshotTmpDir(String snapshotMetadata) {
     return new File(
         getStateMachineDir().getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
   }
 
-  public String getSnapshotTmpId(String snapshotMetadata) {
+  String getSnapshotTmpId(String snapshotMetadata) {
     return TMP_PREFIX + snapshotMetadata;
   }
 

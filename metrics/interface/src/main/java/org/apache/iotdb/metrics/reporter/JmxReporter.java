@@ -22,6 +22,6 @@ package org.apache.iotdb.metrics.reporter;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 
 public interface JmxReporter extends Reporter {
-  /** Set metric manager into reporter */
+  /** Set metric manager into reporter. */
   void setMetricManager(AbstractMetricManager metricManager);
 }

@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -30,42 +31,41 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
 public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.Client
-    implements SyncThriftClient, AutoCloseable {
+    implements ThriftClient, AutoCloseable {
 
-  private final TEndPoint endPoint;
+  private final boolean printLogWhenEncounterException;
+  private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager;
 
   public SyncDataNodeMPPDataExchangeServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
-      TEndPoint endPoint,
+      ThriftClientProperty property,
+      TEndPoint endpoint,
       ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager)
       throws TTransportException {
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    endPoint.getIp(),
-                    endPoint.getPort(),
-                    connectionTimeout))));
-    this.endPoint = endPoint;
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endpoint.getIp(),
+                        endpoint.getPort(),
+                        property.getConnectionTimeoutMs()))));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
+    this.endpoint = endpoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
-  public void close() {
-    if (clientManager != null) {
-      clientManager.returnClient(endPoint, this);
-    }
+  public int getTimeout() throws SocketException {
+    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   public void setTimeout(int timeout) {
@@ -73,31 +73,38 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
+  @Override
+  public void close() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  @Override
   public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(endPoint);
+    clientManager.clear(endpoint);
   }
 
-  public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
   }
 
   @Override
   public String toString() {
-    return String.format("SyncDataNodeMPPDataExchangeServiceClient{%s}", endPoint);
+    return String.format("SyncDataNodeMPPDataExchangeServiceClient{%s}", endpoint);
   }
 
   public static class Factory
-      extends BaseClientFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
+      extends ThriftClientFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
@@ -109,15 +116,12 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
     @Override
     public PooledObject<SyncDataNodeMPPDataExchangeServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      Constructor<SyncDataNodeMPPDataExchangeServiceClient> constructor =
-          SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
-              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeMPPDataExchangeServiceClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
               endpoint,
               clientManager));
     }
@@ -125,8 +129,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
     @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
-      return pooledObject.getObject() != null
-          && pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+      return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
     }
   }
 }

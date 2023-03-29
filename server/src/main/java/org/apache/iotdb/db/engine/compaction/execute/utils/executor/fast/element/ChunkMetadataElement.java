@@ -28,8 +28,6 @@ public class ChunkMetadataElement {
 
   public long priority;
 
-  public boolean isSelected = false;
-
   public long startTime;
 
   public boolean isLastChunk;

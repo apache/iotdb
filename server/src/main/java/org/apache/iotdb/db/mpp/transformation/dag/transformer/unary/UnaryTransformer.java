@@ -33,7 +33,7 @@ public abstract class UnaryTransformer extends Transformer {
   protected final TSDataType layerPointReaderDataType;
   protected final boolean isLayerPointReaderConstant;
 
-  public UnaryTransformer(LayerPointReader layerPointReader) {
+  protected UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
     layerPointReaderDataType = layerPointReader.getDataType();
     isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
@@ -45,7 +45,7 @@ public abstract class UnaryTransformer extends Transformer {
   }
 
   @Override
-  public YieldableState yieldValue() throws IOException, QueryProcessException {
+  public YieldableState yieldValue() throws Exception {
     final YieldableState yieldableState = layerPointReader.yield();
     if (!YieldableState.YIELDABLE.equals(yieldableState)) {
       return yieldableState;

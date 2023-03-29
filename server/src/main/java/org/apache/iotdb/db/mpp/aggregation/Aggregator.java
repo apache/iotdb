@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
-import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.Collections;
 import java.util.List;
@@ -44,8 +42,6 @@ public class Aggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-
-  protected IWindow curWindow;
 
   protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -66,25 +62,21 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public int processTsBlock(TsBlock tsBlock) {
+  public void processTsBlock(TsBlock tsBlock, BitMap bitMap, int lastIndex) {
     long startTime = System.nanoTime();
     try {
       checkArgument(
           step.isInputRaw(),
           "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-      int lastReadReadIndex = 0;
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
             inputLocations[0].getTsBlockIndex() == 0,
             "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] controlTimeAndValueColumn = new Column[3];
-        controlTimeAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
-        controlTimeAndValueColumn[1] = tsBlock.getTimeColumn();
-        controlTimeAndValueColumn[2] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        lastReadReadIndex =
-            Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
+        Column[] timeAndValueColumn = new Column[2];
+        timeAndValueColumn[0] = tsBlock.getTimeColumn();
+        timeAndValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
       }
-      return lastReadReadIndex;
     } finally {
       QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
@@ -147,21 +139,10 @@ public class Aggregator {
   }
 
   public void reset() {
-    curWindow = null;
     accumulator.reset();
   }
 
   public boolean hasFinalResult() {
-    return curWindow.hasFinalResult(accumulator);
-  }
-
-  public void updateTimeRange(TimeRange curTimeRange) {
-    reset();
-    this.curWindow = new TimeWindow(curTimeRange);
-  }
-
-  public void updateWindow(IWindow curWindow) {
-    reset();
-    this.curWindow = curWindow;
+    return accumulator.hasFinalResult();
   }
 }

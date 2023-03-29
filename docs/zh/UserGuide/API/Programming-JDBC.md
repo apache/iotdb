@@ -56,7 +56,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 **注意：为了更快地插入，建议使用 executeBatch()**
 
-```Java
+```java
 import java.sql.*;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
@@ -203,6 +203,6 @@ public class JDBCExample {
 
 可以在 url 中指定 version 参数：
 ```java
-String url = "jdbc:iotdb://127.0.0.1:6667?version=V_0_12";
+String url = "jdbc:iotdb://127.0.0.1:6667?version=V_1_0";
 ```
-version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`。
+version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`、`V_1_0`。

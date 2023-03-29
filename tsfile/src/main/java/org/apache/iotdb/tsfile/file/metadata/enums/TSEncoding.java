@@ -29,7 +29,8 @@ public enum TSEncoding {
   REGULAR((byte) 7),
   GORILLA((byte) 8),
   ZIGZAG((byte) 9),
-  FREQ((byte) 10);
+  FREQ((byte) 10),
+  CHIMP((byte) 11);
 
   private final byte type;
 
@@ -71,6 +72,8 @@ public enum TSEncoding {
         return TSEncoding.ZIGZAG;
       case 10:
         return TSEncoding.FREQ;
+      case 11:
+        return TSEncoding.CHIMP;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

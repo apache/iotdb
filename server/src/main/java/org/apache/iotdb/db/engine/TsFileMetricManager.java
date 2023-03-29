@@ -32,6 +32,10 @@ public class TsFileMetricManager {
   private final AtomicInteger seqFileNum = new AtomicInteger(0);
   private final AtomicInteger unseqFileNum = new AtomicInteger(0);
 
+  private final AtomicInteger modFileNum = new AtomicInteger(0);
+
+  private final AtomicLong modFileSize = new AtomicLong(0);
+
   // compaction temporal files
   private final AtomicLong innerSeqCompactionTempFileSize = new AtomicLong(0);
   private final AtomicLong innerUnseqCompactionTempFileSize = new AtomicLong(0);
@@ -74,6 +78,30 @@ public class TsFileMetricManager {
     return seq ? seqFileNum.get() : unseqFileNum.get();
   }
 
+  public int getModFileNum() {
+    return modFileNum.get();
+  }
+
+  public long getModFileSize() {
+    return modFileSize.get();
+  }
+
+  public void increaseModFileNum(int num) {
+    modFileNum.addAndGet(num);
+  }
+
+  public void decreaseModFileNum(int num) {
+    modFileNum.addAndGet(-num);
+  }
+
+  public void increaseModFileSize(long size) {
+    modFileSize.addAndGet(size);
+  }
+
+  public void decreaseModFileSize(long size) {
+    modFileSize.addAndGet(-size);
+  }
+
   public void addCompactionTempFileSize(boolean innerSpace, boolean seq, long delta) {
     if (innerSpace) {
       long unused =
@@ -96,19 +124,19 @@ public class TsFileMetricManager {
     }
   }
 
-  public long getCompactionTempFileSize(boolean innerSpace, boolean seq) {
-    if (innerSpace) {
-      return seq ? innerSeqCompactionTempFileSize.get() : innerUnseqCompactionTempFileSize.get();
-    } else {
-      return crossCompactionTempFileSize.get();
-    }
+  public long getInnerCompactionTempFileSize(boolean seq) {
+    return seq ? innerSeqCompactionTempFileSize.get() : innerUnseqCompactionTempFileSize.get();
   }
 
-  public int getCompactionTempFileNum(boolean innerSpace, boolean seq) {
-    if (innerSpace) {
-      return seq ? innerSeqCompactionTempFileNum.get() : innerUnseqCompactionTempFileNum.get();
-    } else {
-      return crossCompactionTempFileNum.get();
-    }
+  public long getCrossCompactionTempFileSize() {
+    return crossCompactionTempFileSize.get();
+  }
+
+  public long getInnerCompactionTempFileNum(boolean seq) {
+    return seq ? innerSeqCompactionTempFileNum.get() : innerUnseqCompactionTempFileNum.get();
+  }
+
+  public long getCrossCompactionTempFileNum() {
+    return crossCompactionTempFileNum.get();
   }
 }

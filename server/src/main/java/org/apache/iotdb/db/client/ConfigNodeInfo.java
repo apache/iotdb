@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -44,18 +44,18 @@ public class ConfigNodeInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeInfo.class);
 
-  private final String CONFIG_NODE_LIST = "config_node_list";
+  private static final String CONFIG_NODE_LIST = "config_node_list";
 
   private static final String PROPERTIES_FILE_NAME = "system.properties";
 
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
 
-  // latest config nodes
+  /** latest config nodes. */
   private final Set<TEndPoint> onlineConfigNodes;
 
-  public static ConfigNodeRegionId configNodeRegionId = new ConfigNodeRegionId(0);
+  public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
-  private File propertiesFile;
+  private final File propertiesFile;
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();

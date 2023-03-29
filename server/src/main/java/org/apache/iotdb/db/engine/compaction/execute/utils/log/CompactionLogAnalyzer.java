@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_MERGE_START_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
@@ -43,13 +44,14 @@ public class CompactionLogAnalyzer {
   private final File logFile;
   private final List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
+  private final List<TsFileIdentifier> deletedTargetFileInfos = new ArrayList<>();
   private boolean isLogFromOld = false;
 
   public CompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
-  /** @return analyze (source file list, target file) */
+  /** @return analyze (source files, target files, deleted target files) */
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
@@ -57,10 +59,14 @@ public class CompactionLogAnalyzer {
         String fileInfo;
         if (currLine.startsWith(STR_SOURCE_FILES)) {
           fileInfo = currLine.replace(STR_SOURCE_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
-          analyzeFilePath(false, fileInfo);
-        } else {
+          sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
+        } else if (currLine.startsWith(STR_TARGET_FILES)) {
           fileInfo = currLine.replace(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
-          analyzeFilePath(true, fileInfo);
+          targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
+        } else {
+          fileInfo =
+              currLine.replace(STR_DELETED_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+          deletedTargetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
         }
       }
     }
@@ -120,14 +126,6 @@ public class CompactionLogAnalyzer {
     }
   }
 
-  private void analyzeFilePath(boolean isTargetFile, String filePath) {
-    if (isTargetFile) {
-      targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(filePath));
-    } else {
-      sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(filePath));
-    }
-  }
-
   private void analyzeOldFilePath(boolean isSeqSource, String oldFilePath) {
     if (oldFilePath.startsWith("root")) {
       sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(oldFilePath));
@@ -154,6 +152,10 @@ public class CompactionLogAnalyzer {
 
   public List<TsFileIdentifier> getTargetFileInfos() {
     return targetFileInfos;
+  }
+
+  public List<TsFileIdentifier> getDeletedTargetFileInfos() {
+    return deletedTargetFileInfos;
   }
 
   public boolean isLogFromOld() {

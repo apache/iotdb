@@ -46,8 +46,9 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
@@ -107,17 +108,16 @@ public class IoTDBAggregationIT {
   private final String d0s3 = "root.vehicle.d0.s3";
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // add test for part of points in page don't satisfy filter
@@ -973,5 +973,12 @@ public class IoTDBAggregationIT {
     String[] retArray = new String[] {"0,null,"};
     resultSetEqualWithDescOrderTest(
         "select count(s1), sum(s1) from root.test.noDataRegion", expectedHeader, retArray);
+
+    expectedHeader = new String[] {DEVICE, count("s1"), sum("s1")};
+    retArray = new String[] {"root.test.noDataRegion,0,null,"};
+    resultSetEqualTest(
+        "select count(s1), sum(s1) from root.test.noDataRegion align by device",
+        expectedHeader,
+        retArray);
   }
 }

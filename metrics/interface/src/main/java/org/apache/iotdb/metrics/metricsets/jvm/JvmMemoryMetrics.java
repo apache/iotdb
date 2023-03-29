@@ -38,7 +38,7 @@ public class JvmMemoryMetrics implements IMetricSet {
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.createAutoGauge(
           "jvm_buffer_count_buffers",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getCount,
           "id",
@@ -46,7 +46,7 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.createAutoGauge(
           "jvm_buffer_memory_used_bytes",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getMemoryUsed,
           "id",
@@ -54,7 +54,7 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.createAutoGauge(
           "jvm_buffer_total_capacity_bytes",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getTotalCapacity,
           "id",
@@ -67,7 +67,7 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.createAutoGauge(
           "jvm_memory_used_bytes",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getUsed),
           "id",
@@ -77,7 +77,7 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.createAutoGauge(
           "jvm_memory_committed_bytes",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getCommitted),
           "id",
@@ -87,7 +87,7 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.createAutoGauge(
           "jvm_memory_max_bytes",
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getMax),
           "id",

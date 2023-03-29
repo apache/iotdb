@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -26,10 +27,21 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 public interface IClientManager<K, V> {
 
-  /** get a client V for node K from the IClientManager. */
+  /**
+   * get a client V for node K from the IClientManager.
+   *
+   * @param node target node
+   * @return client
+   * @throws BorrowNullClientManagerException if node is null
+   * @throws ClientManagerException for other exceptions
+   */
   V borrowClient(K node) throws ClientManagerException;
 
-  /** clear all clients for node K. */
+  /**
+   * clear all clients for node K.
+   *
+   * @param node target node
+   */
   void clear(K node);
 
   /** close IClientManager, which means closing all clients for all nodes. */

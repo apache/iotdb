@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBlockReader;
@@ -112,7 +112,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -141,7 +140,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -150,7 +149,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
@@ -209,7 +207,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -258,7 +255,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -307,7 +304,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -405,7 +401,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -456,7 +451,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -504,7 +499,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -604,7 +598,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -651,7 +644,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -697,7 +690,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -795,7 +787,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -836,13 +827,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
@@ -872,7 +863,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -963,7 +953,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1014,7 +1003,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1076,7 +1065,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1145,7 +1133,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       ICompactionPerformer performer =
           new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1222,7 +1210,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       ICompactionPerformer performer =
           new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1267,7 +1255,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           IDataBlockReader tsBlockReader =
               new SeriesDataBlockReader(
                   path,
-                  TSDataType.INT64,
                   FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                       EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                   targetResources,
@@ -1331,7 +1318,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.VECTOR,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -1363,7 +1349,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1372,7 +1358,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
@@ -1439,7 +1424,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1494,7 +1478,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1514,7 +1498,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1639,7 +1622,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1699,7 +1681,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1748,7 +1730,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -1879,7 +1860,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1939,7 +1919,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1960,7 +1940,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2057,12 +2036,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2109,7 +2088,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                tsDataType,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2186,7 +2164,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -2251,7 +2229,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2328,7 +2305,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -2369,7 +2346,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2449,7 +2425,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -2498,7 +2474,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     TEST_QUERY_JOB_ID),
                 targetResources,
@@ -2589,7 +2564,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -2639,7 +2614,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     TEST_QUERY_JOB_ID),
                 targetResources,
@@ -2752,12 +2726,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2909,7 +2883,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                tsDataType,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -2998,7 +2971,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -3181,7 +3154,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3269,7 +3241,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -3368,7 +3340,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.TEXT,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3462,7 +3433,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -3584,7 +3555,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3723,7 +3693,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3784,7 +3753,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -3805,7 +3774,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
@@ -3895,7 +3863,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -3952,7 +3919,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -4001,7 +3968,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,

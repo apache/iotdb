@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -36,14 +36,14 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplateP
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,8 +60,6 @@ import java.util.Set;
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
  *       <ol>
- *         <li>Interfaces for metadata count
- *         <li>Interfaces for level Node info Query
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
@@ -78,6 +76,11 @@ public interface ISchemaRegion {
   void clear();
 
   void forceMlog();
+
+  @TestOnly
+  ISchemaRegionStatistics getSchemaRegionStatistics();
+
+  ISchemaRegionMetric createSchemaRegionMetric();
   // endregion
 
   // region Interfaces for schema region Info query and operation
@@ -125,19 +128,6 @@ public interface ISchemaRegion {
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
   /**
-   * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
-   * is used to match prefix path. All timeseries start with the matched prefix path will be
-   * deleted.
-   *
-   * @param pathPattern path to be deleted
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return deletion failed Timeseries
-   */
-  @Deprecated
-  Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
-  /**
    * Construct schema black list via setting matched timeseries to pre deleted.
    *
    * @param patternTree
@@ -174,142 +164,12 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for metadata count
-
-  /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
-   * path. All timeseries start with the matched prefix path will be counted.
-   */
-  long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException;
-
-  long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException;
-
-  /**
-   * The measurements will be grouped by the node in given level and then counted for each group. If
-   * no measurements found, but the path is contained in the group, then this path will also be
-   * returned with measurements count zero.
-   *
-   * @param pathPattern
-   * @param level the level you want to group by
-   * @param isPrefixMatch using pathPattern as prefix matched path if set true
-   * @return return a map from PartialPath to the count of matched measurements
-   */
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
-
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException;
-
-  /**
-   * To calculate the count of devices for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   *
-   * @param pathPattern
-   * @param isPrefixMatch
-   */
-  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
-  // endregion
-
-  // region Interfaces for level Node info Query
-  /**
-   * Get paths of nodes in given level and matching the pathPattern.
-   *
-   * @param pathPattern
-   * @param nodeLevel
-   * @param isPrefixMatch
-   * @throws MetadataException
-   * @return returns a list of PartialPath.
-   */
-  List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
-
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
-  // endregion
-
-  // region Interfaces for Entity/Device info Query
-
-  /**
-   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
-   * to match prefix path. All timeseries start with the matched prefix path will be collected.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  @Deprecated
-  Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
-  /**
-   * Get all device paths and corresponding database paths as ShowDevicesResult.
-   *
-   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult
-   */
-  List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException;
-  // endregion
-
   // region Interfaces for timeseries, measurement and schema info Query
-  /**
-   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
-   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
-   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
-   * with the matched prefix path will be collected.
-   *
-   * @param pathPattern can be a pattern or a full path of timeseries.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @param withTags whether returns tag kvs in the result list.
-   */
-  @Deprecated
-  List<MeasurementPath> getMeasurementPaths(
-      PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
-
-  /**
-   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
-   * timeseries start with the matched prefix path will be collected.
-   *
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Deprecated
-  Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException;
 
   List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
-  /**
-   * Show timeseries.
-   *
-   * @param plan
-   * @throws MetadataException
-   */
-  List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan) throws MetadataException;
   // endregion
   // endregion
 
@@ -403,45 +263,18 @@ public interface ISchemaRegion {
 
   // region Interfaces for SchemaReader
 
-  default ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
-      throws MetadataException {
-    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan);
-    Iterator<ShowDevicesResult> iterator = showDevicesResultList.iterator();
-    return new ISchemaReader<IDeviceSchemaInfo>() {
-      @Override
-      public void close() throws Exception {}
+  ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException;
 
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
+  /**
+   * The iterated result shall be consumed before calling reader.hasNext() or reader.next(). Its
+   * implementation is based on the reader's process context.
+   */
+  ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
+      throws MetadataException;
 
-      @Override
-      public IDeviceSchemaInfo next() {
-        return iterator.next();
-      }
-    };
-  }
-
-  default ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
-      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan);
-    Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      @Override
-      public void close() throws Exception {}
-
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
-
-      @Override
-      public ITimeSeriesSchemaInfo next() {
-        return iterator.next();
-      }
-    };
-  }
+  ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+      throws MetadataException;
 
   // endregion
 }

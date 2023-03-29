@@ -32,8 +32,6 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
-import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -349,7 +347,7 @@ public class SyncService implements IService {
 
   public void recordMessage(String pipeName, PipeMessage message) {
     if (!pipes.containsKey(pipeName)) {
-      logger.warn(String.format("No running PIPE for message %s.", message));
+      logger.warn("No running PIPE for message {}.", message);
       return;
     }
     TSStatus status = null;
@@ -365,10 +363,10 @@ public class SyncService implements IService {
         status = syncInfoFetcher.recordMsg(pipeName, message);
         break;
       default:
-        logger.error(String.format("Unknown message type: %s", message));
+        logger.error("Unknown message type: {}", message);
     }
     if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(String.format("Failed to record message: %s", message));
+      logger.error("Failed to record message: {}", message);
     }
   }
 
@@ -382,33 +380,6 @@ public class SyncService implements IService {
         list.add(pipe.getTShowPipeInfo());
       }
     }
-    list.addAll(showPipeForReceiver(pipeName));
-    return list;
-  }
-
-  /**
-   * // show pipe in receiver
-   *
-   * @param pipeName null means show all pipe
-   */
-  public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
-    boolean showAll = StringUtils.isEmpty(pipeName);
-    List<TShowPipeInfo> list = new ArrayList<>();
-    for (SyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
-      if (showAll || pipeName.equals(identityInfo.getPipeName())) {
-        TShowPipeInfo tPipeInfo =
-            new TShowPipeInfo(
-                identityInfo.getCreateTime(),
-                identityInfo.getPipeName(),
-                SyncConstant.ROLE_RECEIVER,
-                identityInfo.getRemoteAddress(),
-                PipeStatus.RUNNING.name(),
-                String.format("Database='%s'", identityInfo.getDatabase()),
-                // TODO: implement receiver message
-                PipeMessage.PipeMessageType.NORMAL.name());
-        list.add(tPipeInfo);
-      }
-    }
     return list;
   }
 
@@ -420,13 +391,13 @@ public class SyncService implements IService {
   private void startExternalPipeManager(String pipeName, boolean startExtPipe)
       throws PipeException {
     if (!(pipes.get(pipeName) instanceof TsFilePipe)) {
-      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. " + pipeName);
+      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. {}", pipeName);
       return;
     }
 
     PipeSink pipeSink = pipes.get(pipeName).getPipeSink();
     if (!(pipeSink instanceof ExternalPipeSink)) {
-      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink." + pipeSink);
+      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink. {}", pipeSink);
       return;
     }
 
@@ -435,9 +406,8 @@ public class SyncService implements IService {
         ExtPipePluginRegister.getInstance().getWriteFactory(extPipeSinkTypeName);
     if (externalPipeSinkWriterFactory == null) {
       logger.error(
-          String.format(
-              "startExternalPipeManager(), can not found ExternalPipe plugin for %s.",
-              extPipeSinkTypeName));
+          "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+          extPipeSinkTypeName);
       throw new PipeException("Can not found ExternalPipe plugin for " + extPipeSinkTypeName + ".");
     }
 
