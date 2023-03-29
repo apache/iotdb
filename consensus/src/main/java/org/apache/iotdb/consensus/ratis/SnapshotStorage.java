@@ -172,9 +172,9 @@ public class SnapshotStorage implements StateMachineStorage {
       return;
     }
 
-    final int retainIndex =
-        snapshotRetentionPolicy.getNumSnapshotsRetained() - 1; // snapshot rank starts from 0
-    for (int i = retainIndex; i < sortedSnapshotDirs.length - 1; i++) {
+    final int cleanIndex =
+        Math.max(0, sortedSnapshotDirs.length - snapshotRetentionPolicy.getNumSnapshotsRetained());
+    for (int i = 0; i < cleanIndex; i++) {
       FileUtils.deleteFully(sortedSnapshotDirs[i]);
     }
   }
