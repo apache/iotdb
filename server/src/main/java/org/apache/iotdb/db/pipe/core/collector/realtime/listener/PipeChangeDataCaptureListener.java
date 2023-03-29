@@ -19,4 +19,21 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
-public class TsFileGenerationListener {}
+import java.io.File;
+
+public class PipeChangeDataCaptureListener {
+  private PipeChangeDataCaptureListener() {}
+
+  public void collectTsFile(File tsFile) {
+
+  }
+
+  public static PipeChangeDataCaptureListener getInstance() {
+    return PipeChangeDataCaptureListenerHolder.INSTANCE;
+  }
+
+  private static class PipeChangeDataCaptureListenerHolder {
+    private static final PipeChangeDataCaptureListener INSTANCE =
+        new PipeChangeDataCaptureListener();
+  }
+}

@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
+package org.apache.iotdb.db.pipe.core.event;
 
-public class RatisLogListener {}
+public class PipeCollectorEvent {}

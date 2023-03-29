@@ -17,6 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.indexer;
+package org.apache.iotdb.db.pipe;
 
-public class PipeRatisEventIndexer {}
+public class PipeConfig {
+  private PipeConfig() {}
+
+  public static PipeConfig getInstance() {
+    return PipeConfigHolder.INSTANCE;
+  }
+
+  private static class PipeConfigHolder {
+    private static final PipeConfig INSTANCE = new PipeConfig();
+  }
+}

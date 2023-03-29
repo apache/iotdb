@@ -17,6 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.indexer;
+package org.apache.iotdb.db.pipe.core.event.factory;
 
-public interface PipeEventIndexer {}
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.PipeTsFileInsertionEvent;
+
+import java.io.File;
+
+public class PipeEventFactory { // TODO: object pool
+  public static PipeTabletInsertionEvent createTabletInsertEvent(PlanNode planNode) {
+    return new PipeTabletInsertionEvent(planNode);
+  }
+
+  public static PipeTsFileInsertionEvent createTsFileInsertionEvent(File tsFile) {
+    return new PipeTsFileInsertionEvent(tsFile);
+  }
+}

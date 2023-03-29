@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.indexer;
+package org.apache.iotdb.db.pipe.core.collector.realtime;
 
-public class PipeIoTEventIndexer {}
+public class PipeRealtimeCollectorManager {}

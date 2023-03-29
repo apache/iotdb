@@ -22,7 +22,14 @@ package org.apache.iotdb.db.pipe.core.event;
 import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 
+import java.io.File;
+
 public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
+  private final File tsFile;
+
+  public PipeTsFileInsertionEvent(File tsFile) {
+    this.tsFile = tsFile;
+  }
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
