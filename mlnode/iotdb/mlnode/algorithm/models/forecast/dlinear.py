@@ -16,11 +16,9 @@
 # under the License.
 #
 import math
-
+import argparse
 import torch
 import torch.nn as nn
-
-__all__ = ['DLinear', 'dlinear', 'dlinear_individual']
 
 
 class MovingAverageBlock(nn.Module):
@@ -129,11 +127,11 @@ class DLinearIndividual(nn.Module):
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-def dlinear(model_config: dict) -> DLinear:
+def dlinear(model_config: argparse.Namespace) -> DLinear:
     # TODO (@lcy)
     pass
 
 
-def dlinear_individual(model_config: dict) -> DLinearIndividual:
+def dlinear_individual(model_config: argparse.Namespace) -> DLinearIndividual:
     # TODO (@lcy)
     pass

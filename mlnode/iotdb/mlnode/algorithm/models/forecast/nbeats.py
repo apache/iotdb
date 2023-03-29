@@ -16,13 +16,11 @@
 # under the License.
 #
 
-
 from typing import Tuple
 
+import argparse
 import torch
 import torch.nn as nn
-
-__all__ = ['NBeats', 'nbeats']
 
 
 class GenericBasis(nn.Module):
@@ -40,7 +38,7 @@ class GenericBasis(nn.Module):
 block_dict = {
     'generic': GenericBasis,
 
-    # TODO(@ly) support more block type
+    # TODO(@lcy) support more block type
     # 'trend': TrendBasis,
     # 'seasonality': SeasonalityBasis,
 }
@@ -135,6 +133,6 @@ class NBeats(nn.Module):
         return torch.stack(res, dim=-1)  # to [Batch, Output length, Channel]
 
 
-def nbeats(model_config: dict) -> NBeats:
+def nbeats(model_config: argparse.Namespace) -> NBeats:
     # TODO (@lcy)
     pass
