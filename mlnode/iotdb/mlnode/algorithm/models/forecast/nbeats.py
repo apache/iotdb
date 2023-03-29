@@ -16,9 +16,9 @@
 # under the License.
 #
 
+import argparse
 from typing import Tuple
 
-import argparse
 import torch
 import torch.nn as nn
 
