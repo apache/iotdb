@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
 
 import java.util.List;
 
@@ -151,8 +150,10 @@ public class DeviceViewOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     for (int i = deviceIndex, n = deviceOperators.size(); i < n; i++) {
-      Validate.notNull(deviceOperators.get(i));
-      deviceOperators.get(i).close();
+      Operator currentChild = deviceOperators.get(i);
+      if (currentChild != null) {
+        deviceOperators.get(i).close();
+      }
     }
   }
 
