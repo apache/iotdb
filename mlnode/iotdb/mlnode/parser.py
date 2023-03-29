@@ -1,5 +1,5 @@
 import argparse
-from iotdb.mlnode.exception import ModelNotSupportedError, MissingConfigError
+from iotdb.mlnode.exception import ModelNotSupportedError, MissingConfigError, WrongTypeError
 
 
 # Licensed to the Apache Software Foundation (ASF) under one
@@ -37,14 +37,21 @@ class ConfigParser(object):
             if k in conf_dict.keys():
                 args.append("--{}".format(k))
                 args.append(eval(v) if type(conf_dict[k]) is list and type(v) is not list else v)
+                if type(conf_dict[k]) is int or type(conf_dict[k]) is float:
+                    if (type(eval(args[-1])) is int) and (type(conf_dict[k]) is float) or \
+                            (type(eval(args[-1])) is float) and (type(conf_dict[k]) is int):
+                        raise WrongTypeError(k, type(conf_dict[k]), type(eval(args[-1])))
+
         return vars(self.parser.parse_args(args))
 
 
 class DataConfigParser(ConfigParser):
     def __init__(self):
         super().__init__()
-        self.parser.add_argument('--source_type', type=str)
-        self.parser.add_argument('--filename', type=str)
+        self.parser.add_argument('--query_expressions', type=list, default=[])
+        self.parser.add_argument('--query_filter', type=str, default='')
+        self.parser.add_argument('--source_type', type=str, default='')
+        self.parser.add_argument('--filename', type=str, default='')
         self.parser.add_argument('--dataset_type', type=str, default='window')
         self.parser.add_argument('--time_embed', type=str, default='h')
         self.parser.add_argument('--input_len', type=int, default=96)
@@ -52,14 +59,15 @@ class DataConfigParser(ConfigParser):
         self.parser.add_argument('--input_vars', type=int, default=7)
         self.parser.add_argument('--output_vars', type=int, default=7)
         self.argument_list = ['source_type', 'filename', 'dataset_type', 'time_embed',
-                              'input_len', 'pred_len', 'input_vars', 'output_vars']
-        self.required_list = ['source_type', 'filename', 'input_vars', 'output_vars']
+                              'input_len', 'pred_len', 'input_vars', 'output_vars', 'query_expressions', 'query_filter']
+        self.required_list = ['source_type', 'filename', 'input_vars',
+                              'output_vars', 'query_expressions', 'query_filter']
 
 
 class TaskConfigParser(ConfigParser):
     def __init__(self):
         super().__init__()
-        self.parser.add_argument('--model_id', type=str)
+        self.parser.add_argument('--model_id', type=str, default='')
         self.parser.add_argument('--tuning', type=bool, default=False)
         self.parser.add_argument('--task_type', type=str, default='m')
         self.parser.add_argument('--task_class', type=str, default='forecast_training_task')

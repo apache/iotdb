@@ -62,5 +62,7 @@ def parse_training_request(req: TCreateTrainingTaskReq):
     config = req.modelConfigs
     config.update(model_id=req.modelId)
     config.update(tuning=req.isAuto)
+    config.update(query_expressions=req.queryExpressions)
+    config.update(query_filter=req.queryFilter)
     config_manager = ConfigManager(config)
     return config_manager.get_configs()

@@ -42,10 +42,14 @@ def test_parse_training_request():
         'epochs': 10,
         'metric_names': ['MSE', 'MAE']
     }
+    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    queryFilter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
         modelId=str(modelId),
         isAuto=isAuto,
         modelConfigs={k: str(v) for k, v in modelConfigs.items()},
+        queryExpressions=[str(query) for query in queryExpressions],
+        queryFilter=str(queryFilter),
     )
     data_conf, model_conf, task_conf = parse_training_request(req)
     for config in modelConfigs:
@@ -55,3 +59,80 @@ def test_parse_training_request():
             assert model_conf[config] == modelConfigs[config]
         if config in task_conf:
             assert task_conf[config] == modelConfigs[config]
+
+
+def test_missing_argument():
+    # missing model_name
+    modelId = 'mid_etth1_dlinear_default'
+    isAuto = False
+    modelConfigs = {
+        'task_class': 'forecast_training_task',
+        'source_type': 'thrift',
+        'dataset_type': 'window',
+        'filename': 'ETTh1.csv',
+        'time_embed': 'h',
+        'input_len': 96,
+        'pred_len': 96,
+        'input_vars': 7,
+        'output_vars': 7,
+        'task_type': 'm',
+        'kernel_size': 25,
+        'learning_rate': 1e-3,
+        'batch_size': 32,
+        'num_workers': 0,
+        'epochs': 10,
+        'metric_names': ['MSE', 'MAE']
+    }
+    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    queryFilter = '0,1501516800000'
+    req = TCreateTrainingTaskReq(
+        modelId=str(modelId),
+        isAuto=isAuto,
+        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
+        queryExpressions=[str(query) for query in queryExpressions],
+        queryFilter=str(queryFilter),
+    )
+    try:
+        parse_training_request(req)
+    except Exception as e:
+        assert e.message == 'Missing config: (model_name)'
+
+
+def test_wrong_argument_type():
+    modelId = 'mid_etth1_dlinear_default'
+    isAuto = False
+    modelConfigs = {
+        'task_class': 'forecast_training_task',
+        'source_type': 'thrift',
+        'dataset_type': 'window',
+        'filename': 'ETTh1.csv',
+        'time_embed': 'h',
+        'input_len': 96.7,
+        'pred_len': 96,
+        'model_name': 'dlinear',
+        'input_vars': 7,
+        'output_vars': 7,
+        'task_type': 'm',
+        'kernel_size': 25,
+        'learning_rate': 1e-3,
+        'batch_size': 32,
+        'num_workers': 0,
+        'epochs': 10,
+        'metric_names': ['MSE', 'MAE']
+    }
+    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    queryFilter = '0,1501516800000'
+    req = TCreateTrainingTaskReq(
+        modelId=str(modelId),
+        isAuto=isAuto,
+        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
+        queryExpressions=[str(query) for query in queryExpressions],
+        queryFilter=str(queryFilter),
+    )
+    try:
+        data_conf, model_conf, task_conf = parse_training_request(req)
+    except Exception as e:
+        message = "Wrong type for config: ({})".format('input_len')
+        message += ", expected: ({})".format(int)
+        message += ", actual: ({})".format(float)
+        assert e.message == message

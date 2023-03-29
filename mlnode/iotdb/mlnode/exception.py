@@ -39,3 +39,10 @@ class ModelNotSupportedError(_BaseError):
 class MissingConfigError(_BaseError):
     def __init__(self, config_name: str):
         self.message = "Missing config: ({})".format(config_name)
+
+
+class WrongTypeError(_BaseError):
+    def __init__(self, config_name: str, expected_type: str, actual_type: str):
+        self.message = "Wrong type for config: ({})".format(config_name)
+        self.message += ", expected: ({})".format(expected_type)
+        self.message += ", actual: ({})".format(actual_type)
