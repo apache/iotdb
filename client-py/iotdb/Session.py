@@ -83,7 +83,7 @@ class Session(object):
         enable_redirection=True,
     ):
         self.__host = host
-        self.__port = str(port)
+        self.__port = port
         self.__hosts = None
         self.__ports = None
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
@@ -153,7 +153,7 @@ class Session(object):
             self.__endpoint_to_connection = {
                 self.__default_endpoint.ip
                 + ":"
-                + self.__default_endpoint.port: self.__default_connection
+                + str(self.__default_endpoint.port): self.__default_connection
             }
 
     def init_connection(self, endpoint):
@@ -178,7 +178,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_1_0"},
+            configuration={"version": "V_0_13"},
         )
 
         try:
@@ -1749,9 +1749,9 @@ class Session(object):
             and device_id in self.__device_id_to_endpoint
         ):
             endpoint = self.__device_id_to_endpoint.get(device_id)
-            if str(endpoint.ip + ":" + endpoint.port) in self.__endpoint_to_connection:
+            if endpoint.ip + ":" + str(endpoint.port) in self.__endpoint_to_connection:
                 return self.__endpoint_to_connection[
-                    endpoint.ip + ":" + endpoint.port
+                    endpoint.ip + ":" + str(endpoint.port)
                 ].client
         return self.__client
 
@@ -1764,9 +1764,9 @@ class Session(object):
                 or self.__device_id_to_endpoint.get(device_id) != endpoint
             ):
                 self.__device_id_to_endpoint[device_id] = endpoint
-            if str(endpoint.ip + ":" + endpoint.port) in self.__endpoint_to_connection:
+            if endpoint.ip + ":" + str(endpoint.port) in self.__endpoint_to_connection:
                 connection = self.__endpoint_to_connection[
-                    endpoint.ip + ":" + endpoint.port
+                    endpoint.ip + ":" + str(endpoint.port)
                 ]
             else:
                 try:
@@ -1774,7 +1774,7 @@ class Session(object):
                 except Exception:
                     connection = None
                 self.__endpoint_to_connection[
-                    endpoint.ip + ":" + endpoint.port
+                    endpoint.ip + ":" + str(endpoint.port)
                 ] = connection
             if connection is None:
                 self.__device_id_to_endpoint.pop(device_id)
