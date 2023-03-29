@@ -43,6 +43,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -197,6 +198,36 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(2, schemaRegion1.getSchemaRegionStatistics().getSeriesNumber());
     Assert.assertEquals(2, schemaRegion2.getSchemaRegionStatistics().getSeriesNumber());
     Assert.assertEquals(4, engineStatistics.getTotalSeriesNumber());
+  }
+
+  @Test
+  public void testDeviceNumStatistics() throws Exception {
+    ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
+    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
+    ISchemaEngineStatistics engineStatistics =
+        SchemaEngine.getInstance().getSchemaEngineStatistics();
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion2, Collections.singletonList("root.sg2.s1"));
+    // check series number
+    Assert.assertEquals(3, schemaRegion1.getSchemaRegionStatistics().getDevicesNumber());
+    Assert.assertEquals(3, schemaRegion2.getSchemaRegionStatistics().getDevicesNumber());
+
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+    Assert.assertTrue(schemaRegion1.constructSchemaBlackList(patternTree) >= 1);
+    Assert.assertTrue(schemaRegion2.constructSchemaBlackList(patternTree) >= 1);
+    schemaRegion1.deleteTimeseriesInBlackList(patternTree);
+    schemaRegion2.deleteTimeseriesInBlackList(patternTree);
+
+    // check series number
+    Assert.assertEquals(2, schemaRegion1.getSchemaRegionStatistics().getDevicesNumber());
+    Assert.assertEquals(2, schemaRegion2.getSchemaRegionStatistics().getDevicesNumber());
   }
 
   @Test
