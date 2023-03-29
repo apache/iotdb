@@ -21,22 +21,17 @@ package org.apache.iotdb.db.pipe.task.callable;
 
 import org.apache.iotdb.db.pipe.core.connector.PipeConnectorPluginRuntimeWrapper;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-
 public class PipeConnectorSubtask extends PipeSubtask {
 
   private final PipeConnectorPluginRuntimeWrapper pipeConnector;
 
-  public PipeConnectorSubtask(
-      String taskID,
-      ListeningExecutorService listeningExecutorService,
-      PipeConnectorPluginRuntimeWrapper pipeConnector) {
-    super(taskID, listeningExecutorService);
+  public PipeConnectorSubtask(String taskID, PipeConnectorPluginRuntimeWrapper pipeConnector) {
+    super(taskID);
     this.pipeConnector = pipeConnector;
   }
 
   @Override
-  protected void execute() throws Exception {
-    pipeConnector.runOnce();
+  protected void executeForAWhile() {
+    pipeConnector.executeForAWhile();
   }
 }

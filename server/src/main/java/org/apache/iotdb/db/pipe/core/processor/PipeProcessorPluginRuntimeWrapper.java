@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,38 +36,42 @@ public class PipeProcessorPluginRuntimeWrapper {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeProcessorPluginRuntimeWrapper.class);
-  private final PipeProcessor pipeProcessor;
-  private final EventCollector eventCollector;
 
-  private final Queue<Event> queue;
+  private final Queue<Event> inputEventQueue;
+  private final PipeProcessor pipeProcessor;
+  private final EventCollector outputEventCollector;
 
   public PipeProcessorPluginRuntimeWrapper(
-      PipeProcessor pipeProcessor, EventCollector eventCollector, Queue<Event> queue) {
+      Queue<Event> inputEventQueue,
+      PipeProcessor pipeProcessor,
+      EventCollector outputEventCollector) {
+    this.inputEventQueue = inputEventQueue;
     this.pipeProcessor = pipeProcessor;
-    this.eventCollector = eventCollector;
-    this.queue = queue;
+    this.outputEventCollector = outputEventCollector;
   }
 
-  public void runOnce() {
-    if (queue.isEmpty()) {
+  public void executeForAWhile() {
+    if (inputEventQueue.isEmpty()) {
       return;
     }
 
-    Event event = queue.poll();
+    final Event event = inputEventQueue.poll();
+
     try {
       if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, eventCollector);
+        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
       } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, eventCollector);
+        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
       } else if (event instanceof DeletionEvent) {
-        pipeProcessor.process((DeletionEvent) event, eventCollector);
+        pipeProcessor.process((DeletionEvent) event, outputEventCollector);
       } else {
         throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
       }
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description."
-              + e);
+      e.printStackTrace();
+      throw new PipeException(
+          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          e);
     }
   }
 }

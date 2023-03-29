@@ -24,6 +24,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,21 +35,23 @@ public class PipeConnectorPluginRuntimeWrapper {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConnectorPluginRuntimeWrapper.class);
+
+  private final Queue<Event> inputEventQueue;
   private final PipeConnector pipeConnector;
 
-  private Queue<Event> queue;
-
-  public PipeConnectorPluginRuntimeWrapper(PipeConnector pipeConnector, Queue<Event> queue) {
+  public PipeConnectorPluginRuntimeWrapper(
+      Queue<Event> inputEventQueue, PipeConnector pipeConnector) {
+    this.inputEventQueue = inputEventQueue;
     this.pipeConnector = pipeConnector;
-    this.queue = queue;
   }
 
-  public void runOnce() {
-    if (queue.isEmpty()) {
+  // TODO: for a while
+  public void executeForAWhile() {
+    if (inputEventQueue.isEmpty()) {
       return;
     }
 
-    Event event = queue.poll();
+    final Event event = inputEventQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {
@@ -61,9 +64,10 @@ public class PipeConnectorPluginRuntimeWrapper {
         throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
       }
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description."
-              + e);
+      e.printStackTrace();
+      throw new PipeException(
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          e);
     }
   }
 }

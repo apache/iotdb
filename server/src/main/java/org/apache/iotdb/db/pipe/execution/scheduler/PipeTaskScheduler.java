@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.execution.scheduler;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutorManager;
 
 /**
  * PipeTaskScheduler is a singleton class that manages the numbers of threads used by
@@ -27,34 +27,34 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutor;
  */
 public class PipeTaskScheduler {
 
-  private PipeTaskExecutor pipeTaskExecutor;
+  private PipeTaskExecutorManager pipeTaskExecutorManager;
 
-  void setPipeTaskExecutor(PipeTaskExecutor pipeTaskExecutor) {
-    this.pipeTaskExecutor = pipeTaskExecutor;
+  void setPipeTaskExecutor(PipeTaskExecutorManager pipeTaskExecutorManager) {
+    this.pipeTaskExecutorManager = pipeTaskExecutorManager;
   }
 
   public void setAssignerSubtaskExecutorThreadNum(int threadNum) {
-    pipeTaskExecutor.getAssignerSubtaskExecutor().setExecutorThreadNum(threadNum);
+    pipeTaskExecutorManager.getAssignerSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 
   public int getAssignerSubtaskExecutorThreadNum() {
-    return pipeTaskExecutor.getAssignerSubtaskExecutor().getExecutorThreadNum();
+    return pipeTaskExecutorManager.getAssignerSubtaskExecutor().getExecutorThreadNumber();
   }
 
   public void setConnectorSubtaskExecutorThreadNum(int threadNum) {
-    pipeTaskExecutor.getConnectorSubtaskExecutor().setExecutorThreadNum(threadNum);
+    pipeTaskExecutorManager.getConnectorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 
   public int getConnectorSubtaskExecutorThreadNum() {
-    return pipeTaskExecutor.getConnectorSubtaskExecutor().getExecutorThreadNum();
+    return pipeTaskExecutorManager.getConnectorSubtaskExecutor().getExecutorThreadNumber();
   }
 
   public void setProcessorSubtaskExecutorThreadNum(int threadNum) {
-    pipeTaskExecutor.getProcessorSubtaskExecutor().setExecutorThreadNum(threadNum);
+    pipeTaskExecutorManager.getProcessorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 
   public int getProcessorSubtaskExecutorThreadNum() {
-    return pipeTaskExecutor.getProcessorSubtaskExecutor().getExecutorThreadNum();
+    return pipeTaskExecutorManager.getProcessorSubtaskExecutor().getExecutorThreadNumber();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

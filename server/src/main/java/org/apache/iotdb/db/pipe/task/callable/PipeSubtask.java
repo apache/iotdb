@@ -36,25 +36,30 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
+  private final DecoratingLock decoratingLock = new DecoratingLock();
+
   private final String taskID;
 
-  private final ListeningExecutorService executorService;
+  private ListeningExecutorService executorService;
   private Throwable lastFailedCause;
 
   private static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
 
-  private final DecoratingLock decoratingLock = new DecoratingLock();
+  private volatile boolean shouldStopSubmittingSelf = true;
 
-  public PipeSubtask(String taskID, ListeningExecutorService executorService) {
+  public PipeSubtask(String taskID) {
     super();
     this.taskID = taskID;
+  }
+
+  public void bindExecutorService(ListeningExecutorService executorService) {
     this.executorService = executorService;
   }
 
   @Override
   public Void call() throws Exception {
-    execute();
+    executeForAWhile();
 
     // wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
@@ -63,7 +68,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     return null;
   }
 
-  protected abstract void execute() throws Exception;
+  protected abstract void executeForAWhile() throws Exception;
 
   @Override
   public void onSuccess(Void result) {
@@ -91,14 +96,32 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
    * this may cause RejectedExecutionException when the executorService is shutdown. we just ignore
    * it.
    */
-  private void submitSelf() {
+  public void submitSelf() {
+    if (shouldStopSubmittingSelf) {
+      // we change the flag to false to make sure that the subtask can be submitted again
+      shouldStopSubmittingSelf = false;
+      return;
+    }
+
     decoratingLock.markAsDecorating();
     try {
-      ListenableFuture<Void> nextFuture = executorService.submit(this);
+      final ListenableFuture<Void> nextFuture = executorService.submit(this);
       Futures.addCallback(nextFuture, this, executorService);
     } finally {
       decoratingLock.markAsDecorated();
     }
+  }
+
+  public void allowSubmittingSelf() {
+    shouldStopSubmittingSelf = false;
+  }
+
+  public void disallowSubmittingSelf() {
+    shouldStopSubmittingSelf = true;
+  }
+
+  public boolean isSubmittingSelf() {
+    return !shouldStopSubmittingSelf;
   }
 
   public String getTaskID() {

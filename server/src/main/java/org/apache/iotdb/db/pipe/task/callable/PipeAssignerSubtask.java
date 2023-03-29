@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-
 public class PipeAssignerSubtask extends PipeSubtask {
 
-  public PipeAssignerSubtask(String taskID, ListeningExecutorService listeningExecutorService) {
-    super(taskID, listeningExecutorService);
+  public PipeAssignerSubtask(String taskID) {
+    super(taskID);
   }
 
   @Override
-  protected void execute() throws Exception {
+  protected void executeForAWhile() {
     // do nothing
   }
 }

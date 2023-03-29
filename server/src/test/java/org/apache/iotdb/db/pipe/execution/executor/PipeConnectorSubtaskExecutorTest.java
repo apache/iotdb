@@ -40,13 +40,13 @@ public class PipeConnectorSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeConnectorSubtaskExecutor();
+    executor = PipeTaskExecutorManager.setupAndGetInstance().getConnectorSubtaskExecutor();
   }
 
   @After
   public void tearDown() throws Exception {
-    if (!executor.getExecutorService().isShutdown()) {
-      executor.stop();
+    if (!executor.getListeningExecutorService().isShutdown()) {
+      executor.shutdown();
     }
   }
 
@@ -55,16 +55,14 @@ public class PipeConnectorSubtaskExecutorTest {
 
     PipeConnectorSubtask subtask =
         new PipeConnectorSubtask(
-            "testConnectorSubtask",
-            executor.getExecutorService(),
-            mock(PipeConnectorPluginRuntimeWrapper.class)) {
+            "testConnectorSubtask", mock(PipeConnectorPluginRuntimeWrapper.class)) {
           @Override
-          public void execute() {}
+          public void executeForAWhile() {}
         };
     PipeConnectorSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map
-    executor.submit(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -73,8 +71,8 @@ public class PipeConnectorSubtaskExecutorTest {
     verify(spySubtask, times(0)).call();
 
     // test submit a subtask which is in the map
-    executor.putSubtask(spySubtask);
-    executor.submit(spySubtask);
+    executor.register(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -87,9 +85,9 @@ public class PipeConnectorSubtaskExecutorTest {
   @Test
   public void testStop() {
     // test stop a running executor
-    executor.stop();
+    executor.shutdown();
 
-    ListeningExecutorService executorService = executor.getExecutorService();
+    ListeningExecutorService executorService = executor.getListeningExecutorService();
     Assert.assertTrue(executorService.isShutdown());
   }
 }

@@ -33,17 +33,18 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class PipeAssignerSubtaskExecutorTest {
+
   private PipeAssignerSubtaskExecutor executor;
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeAssignerSubtaskExecutor();
+    executor = PipeTaskExecutorManager.setupAndGetInstance().getAssignerSubtaskExecutor();
   }
 
   @After
   public void tearDown() throws Exception {
-    if (!executor.getExecutorService().isShutdown()) {
-      executor.stop();
+    if (!executor.getListeningExecutorService().isShutdown()) {
+      executor.shutdown();
     }
   }
 
@@ -51,14 +52,14 @@ public class PipeAssignerSubtaskExecutorTest {
   public void testSubmit() throws Exception {
 
     PipeAssignerSubtask subtask =
-        new PipeAssignerSubtask("testProcessorSubtask", executor.getExecutorService()) {
+        new PipeAssignerSubtask("testProcessorSubtask") {
           @Override
-          public void execute() {}
+          public void executeForAWhile() {}
         };
     PipeAssignerSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map
-    executor.submit(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -67,8 +68,8 @@ public class PipeAssignerSubtaskExecutorTest {
     verify(spySubtask, times(0)).call();
 
     // test submit a subtask which is in the map
-    executor.putSubtask(spySubtask);
-    executor.submit(spySubtask);
+    executor.register(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -80,9 +81,9 @@ public class PipeAssignerSubtaskExecutorTest {
   @Test
   public void testStop() {
     // test stop a running executor
-    executor.stop();
+    executor.shutdown();
 
-    ListeningExecutorService executorService = executor.getExecutorService();
+    ListeningExecutorService executorService = executor.getListeningExecutorService();
     Assert.assertTrue(executorService.isShutdown());
   }
 }

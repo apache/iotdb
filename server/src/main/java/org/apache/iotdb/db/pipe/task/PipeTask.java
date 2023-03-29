@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.db.pipe.task.metrics.PipeTaskRuntimeRecorder;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskStage;
 
 public class PipeTask {
@@ -29,8 +28,6 @@ public class PipeTask {
   private final PipeTaskStage collectorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
-
-  private final PipeTaskRuntimeRecorder runtimeRecorder;
 
   public PipeTask(
       String pipeName,
@@ -42,20 +39,6 @@ public class PipeTask {
     this.collectorStage = collectorStage;
     this.processorStage = processorStage;
     this.connectorStage = connectorStage;
-
-    runtimeRecorder = new PipeTaskRuntimeRecorder();
-  }
-
-  public PipeTaskStage getCollectorStage() {
-    return collectorStage;
-  }
-
-  public PipeTaskStage getProcessorStage() {
-    return processorStage;
-  }
-
-  public PipeTaskStage getConnectorStage() {
-    return connectorStage;
   }
 
   public void create() {

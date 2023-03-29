@@ -29,8 +29,11 @@ public class PipeRuntimeAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
 
   public void report(PipeSubtask subtask) {
-    // TODO: implement the report logic
-    LOGGER.warn("SubtaskID{} failed.", subtask.getTaskID());
+    // TODO: terminate the task by the given taskID
+    LOGGER.warn(
+        "Failed to execute task {} after many retries, last failed cause by {}",
+        subtask.getTaskID(),
+        subtask.getLastFailedCause());
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

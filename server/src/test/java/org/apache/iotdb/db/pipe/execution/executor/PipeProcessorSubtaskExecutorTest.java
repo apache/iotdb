@@ -40,12 +40,12 @@ public class PipeProcessorSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeProcessorSubtaskExecutor();
+    executor = PipeTaskExecutorManager.setupAndGetInstance().getProcessorSubtaskExecutor();
   }
 
   @After
   public void tearDown() throws Exception {
-    executor.stop();
+    executor.shutdown();
   }
 
   @Test
@@ -53,16 +53,14 @@ public class PipeProcessorSubtaskExecutorTest {
 
     PipeProcessorSubtask subtask =
         new PipeProcessorSubtask(
-            "testProcessorSubtask",
-            executor.getExecutorService(),
-            mock(PipeProcessorPluginRuntimeWrapper.class)) {
+            "testProcessorSubtask", mock(PipeProcessorPluginRuntimeWrapper.class)) {
           @Override
-          public void execute() {}
+          public void executeForAWhile() {}
         };
     PipeProcessorSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map
-    executor.submit(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -71,8 +69,8 @@ public class PipeProcessorSubtaskExecutorTest {
     verify(spySubtask, times(0)).call();
 
     // test submit a subtask which is in the map
-    executor.putSubtask(spySubtask);
-    executor.submit(spySubtask);
+    executor.register(spySubtask);
+    executor.start(spySubtask.getTaskID());
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -85,9 +83,9 @@ public class PipeProcessorSubtaskExecutorTest {
   @Test
   public void testStop() {
     // test stop a running executor
-    executor.stop();
+    executor.shutdown();
 
-    ListeningExecutorService executorService = executor.getExecutorService();
+    ListeningExecutorService executorService = executor.getListeningExecutorService();
     Assert.assertTrue(executorService.isShutdown());
   }
 }
