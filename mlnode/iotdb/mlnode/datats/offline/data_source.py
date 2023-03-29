@@ -19,7 +19,7 @@
 
 import pandas as pd
 from iotdb.mlnode import serde
-from iotdb.mlnode.client import DataNodeClient
+from iotdb.mlnode.client import client_manager
 
 
 class DataSource(object):
@@ -70,9 +70,9 @@ class ThriftDataSource(DataSource):
 
     def _read_data(self):
         try:
-            data_client = DataNodeClient(host='127.0.0.1', port=10730) # TODO: try to read from config when merged
-        except Exception:
-            raise RuntimeError('Fail to establish connection with DataNode ("127.0.0.1", 10730)')
+            data_client = client_manager.borrow_data_node_client()
+        except Exception:  # is this exception catch needed???
+            raise RuntimeError('Fail to establish connection with DataNode')
 
         try:
             res = data_client.fetch_timeseries(
