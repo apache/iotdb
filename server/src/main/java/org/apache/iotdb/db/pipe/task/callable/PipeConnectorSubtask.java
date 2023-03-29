@@ -31,10 +31,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  public Void call() throws Exception {
-    if (!Thread.currentThread().isInterrupted()) {
-      pipeConnector.runOnce();
-    }
-    return null;
+  protected void execute() throws Exception {
+    pipeConnector.runOnce();
   }
 }

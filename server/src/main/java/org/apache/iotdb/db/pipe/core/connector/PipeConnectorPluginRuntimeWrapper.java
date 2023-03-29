@@ -63,8 +63,8 @@ public class PipeConnectorPluginRuntimeWrapper {
       }
     } catch (Exception e) {
       throw new RuntimeException(
-                "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description."
-                          + e);
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description."
+              + e);
     }
   }
 }

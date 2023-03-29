@@ -31,6 +31,7 @@ import org.mockito.Mockito;
 
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class PipeConnectorSubtaskExecutorTest {
@@ -56,15 +57,23 @@ public class PipeConnectorSubtaskExecutorTest {
         new PipeConnectorSubtask(
             "testConnectorSubtask", mock(PipeConnectorPluginRuntimeWrapper.class)) {
           @Override
-          public Void call() {
-            return null;
-          }
+          public void execute() {}
         };
     subtask.setListeningExecutorService(executor.getExecutorService());
     PipeConnectorSubtask spySubtask = Mockito.spy(subtask);
 
+    // test submit a subtask which is not in the map
     executor.submit(spySubtask);
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    verify(spySubtask, times(0)).call();
 
+    // test submit a subtask which is in the map
+    executor.putSubtask(spySubtask);
+    executor.submit(spySubtask);
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {
@@ -76,7 +85,9 @@ public class PipeConnectorSubtaskExecutorTest {
 
   @Test
   public void testStop() {
+    // test stop a running executor
     executor.stop();
+
     ListeningExecutorService executorService = executor.getExecutorService();
     Assert.assertTrue(executorService.isShutdown());
   }

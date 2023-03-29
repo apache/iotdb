@@ -34,6 +34,4 @@ public interface PipeSubtaskExecutor {
   void putSubtask(PipeSubtask subtask);
 
   void removeSubtask(String taskID);
-
-  boolean isSubtaskExist(String taskID);
 }

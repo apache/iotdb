@@ -65,8 +65,8 @@ public class PipeProcessorPluginRuntimeWrapper {
       }
     } catch (Exception e) {
       throw new RuntimeException(
-                "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description."
-                          + e);
+          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description."
+              + e);
     }
   }
 }

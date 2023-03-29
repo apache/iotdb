@@ -40,19 +40,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeAssignerSubtaskExecutor implements PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAssignerSubtaskExecutor.class);
+
   private final WrappedThreadPoolExecutor assignerExecutorThreadPool;
   private final ListeningExecutorService executorService;
+  private final ConcurrentHashMap<String, PipeAssignerSubtask> subtaskMap;
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static int MAX_THREAD_NUM = config.getPipeTaskExecutorMaxThreadNum();
-
-  private final ConcurrentHashMap<String, PipeAssignerSubtask> subtaskMap;
 
   public PipeAssignerSubtaskExecutor() {
     assignerExecutorThreadPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 MAX_THREAD_NUM, ThreadName.PIPE_ASSIGNER_EXECUTOR_POOL.getName());
-
     executorService = MoreExecutors.listeningDecorator(assignerExecutorThreadPool);
     subtaskMap = new ConcurrentHashMap<>();
   }
@@ -83,11 +83,6 @@ public class PipeAssignerSubtaskExecutor implements PipeSubtaskExecutor {
   @Override
   public void removeSubtask(String taskID) {
     subtaskMap.remove(taskID);
-  }
-
-  @Override
-  public boolean isSubtaskExist(String taskID) {
-    return subtaskMap.containsKey(taskID);
   }
 
   @Override

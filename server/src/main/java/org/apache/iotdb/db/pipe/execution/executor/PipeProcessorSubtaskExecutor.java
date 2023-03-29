@@ -42,17 +42,15 @@ public class PipeProcessorSubtaskExecutor implements PipeSubtaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskExecutor.class);
   private final WrappedThreadPoolExecutor processorExecutorThreadPool;
   private final ListeningExecutorService executorService;
+  private final ConcurrentHashMap<String, PipeProcessorSubtask> subtaskMap;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static int MAX_THREAD_NUM = config.getPipeTaskExecutorMaxThreadNum();
-
-  private ConcurrentHashMap<String, PipeProcessorSubtask> subtaskMap;
 
   public PipeProcessorSubtaskExecutor() {
     processorExecutorThreadPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 MAX_THREAD_NUM, ThreadName.PIPE_ASSIGNER_EXECUTOR_POOL.getName());
-
     executorService = MoreExecutors.listeningDecorator(processorExecutorThreadPool);
     subtaskMap = new ConcurrentHashMap<>();
   }
@@ -83,11 +81,6 @@ public class PipeProcessorSubtaskExecutor implements PipeSubtaskExecutor {
   @Override
   public void removeSubtask(String taskID) {
     subtaskMap.remove(taskID);
-  }
-
-  @Override
-  public boolean isSubtaskExist(String taskID) {
-    return subtaskMap.containsKey(taskID);
   }
 
   @Override

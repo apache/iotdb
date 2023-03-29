@@ -34,9 +34,13 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
+
   private final String taskID;
   private ListeningExecutorService executorService;
+
+  private final DecoratingLock decoratingLock = new DecoratingLock();
   private final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
 
@@ -54,12 +58,21 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     return this;
   }
 
-  public void stop() {
-    Thread.currentThread().interrupt();
+  @Override
+  public Void call() throws Exception {
+    if (executorService.isShutdown() || Thread.currentThread().isInterrupted()) {
+      LOGGER.warn(
+          "Thread {} is interrupted, stop the subtask {}",
+          Thread.currentThread().getName(),
+          taskID);
+      return null;
+    }
+    execute();
+    decoratingLock.waitForDecorated();
+    return null;
   }
 
-  @Override
-  public abstract Void call() throws Exception;
+  protected abstract void execute() throws Exception;
 
   @Override
   public void onSuccess(Void result) {
@@ -75,13 +88,29 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     } else {
       LOGGER.warn("Subtask {} failed, retry {} times", taskID, retryCount);
       PipeRuntimeAgent.setupAndGetInstance().report(this);
-      stop();
     }
   }
 
-  void submitSelf() {
-    ListenableFuture<Void> nextFuture = executorService.submit(this);
-    Futures.addCallback(nextFuture, this, executorService);
+  private void submitSelf() {
+    // if the thread is interrupted, stop the task. we clean the interrupted flag here, because we
+    // want to reuse the thread.
+    if (executorService.isShutdown() || Thread.currentThread().isInterrupted()) {
+      LOGGER.warn(
+          "Thread {} is interrupted, stop the subtask {}",
+          Thread.currentThread().getName(),
+          taskID);
+      return;
+    }
+
+    decoratingLock.markAsDecorating();
+    try {
+      if (!executorService.isShutdown()) {
+        ListenableFuture<Void> nextFuture = executorService.submit(this);
+        Futures.addCallback(nextFuture, this, executorService);
+      }
+    } finally {
+      decoratingLock.markAsDecorated();
+    }
   }
 
   public String getSubtaskID() {

@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
+public class DecoratingLock {
+  private volatile boolean isDecorating = false;
 
-public class PipeProcessorSubtask extends PipeSubtask {
-
-  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
-
-  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
-    super(taskID);
-    this.pipeProcessor = pipeProcessor;
+  public void waitForDecorated() {
+    while (isDecorating) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
-  @Override
-  protected void execute() throws Exception {
-    pipeProcessor.runOnce();
+  public void markAsDecorating() {
+    isDecorating = true;
+  }
+
+  public void markAsDecorated() {
+    isDecorating = false;
   }
 }

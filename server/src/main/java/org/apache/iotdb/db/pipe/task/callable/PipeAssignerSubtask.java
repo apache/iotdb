@@ -26,8 +26,7 @@ public class PipeAssignerSubtask extends PipeSubtask {
   }
 
   @Override
-  public Void call() throws Exception {
-    // TODO: implement PipeCollector
-    return null;
+  protected void execute() throws Exception {
+    // do nothing
   }
 }
