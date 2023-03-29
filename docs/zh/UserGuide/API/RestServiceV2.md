@@ -127,7 +127,7 @@ query 接口可以用于处理数据查询和元数据查询。
 
 请求头：`application/json`
 
-请求路径：http://ip:port/rest/v1/query
+请求路径：http://ip:port/rest/v2/query
 
 参数说明:
 
@@ -151,7 +151,7 @@ query 接口可以用于处理数据查询和元数据查询。
 
 请求示例 表达式查询:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -187,7 +187,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show child paths:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -210,7 +210,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show child nodes:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -233,7 +233,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show all ttl:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -261,7 +261,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show ttl:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -287,7 +287,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show functions:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -326,7 +326,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show timeseries:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -400,7 +400,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show latest timeseries:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -474,7 +474,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 count timeseries:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -496,7 +496,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 count nodes:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -518,7 +518,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show devices:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -546,7 +546,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 show devices with database:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -579,7 +579,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 list user:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -601,7 +601,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 原始聚合查询:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -629,7 +629,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 group by level:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -655,7 +655,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 group by:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -710,7 +710,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 last:
 ```shell
-curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -742,7 +742,7 @@ curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -
 
 请求示例 disable align:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -756,7 +756,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 align by device:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -770,7 +770,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例 select into:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 响应示例:
@@ -788,7 +788,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求头：`application/json`
 
-请求路径：http://ip:port/rest/v1/nonQuery
+请求路径：http://ip:port/rest/v2/nonQuery
 
 参数说明:
 
@@ -798,7 +798,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v2/nonQuery
 ```
 
 响应参数:
@@ -824,7 +824,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求头：`application/json`
 
-请求路径：http://ip:port/rest/v1/insertTablet
+请求路径：http://ip:port/rest/v2/insertTablet
 
 参数说明:
 
@@ -839,7 +839,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 请求示例：
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v2/insertTablet
 ```
 
 响应参数：
