@@ -57,6 +57,10 @@ public class FragmentInstanceId {
     return instanceId;
   }
 
+  public String getFragmentInstanceId() {
+    return fragmentId + "." + instanceId;
+  }
+
   public String toString() {
     return fullId;
   }
