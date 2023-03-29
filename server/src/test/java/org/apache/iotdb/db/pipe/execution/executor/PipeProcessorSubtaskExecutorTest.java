@@ -53,11 +53,12 @@ public class PipeProcessorSubtaskExecutorTest {
 
     PipeProcessorSubtask subtask =
         new PipeProcessorSubtask(
-            "testProcessorSubtask", mock(PipeProcessorPluginRuntimeWrapper.class)) {
+            "testProcessorSubtask",
+            executor.getExecutorService(),
+            mock(PipeProcessorPluginRuntimeWrapper.class)) {
           @Override
           public void execute() {}
         };
-    subtask.setListeningExecutorService(executor.getExecutorService());
     PipeProcessorSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map

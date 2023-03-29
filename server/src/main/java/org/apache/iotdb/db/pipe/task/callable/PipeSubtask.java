@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -38,37 +37,29 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
   private final String taskID;
-  private ListeningExecutorService executorService;
 
-  private final DecoratingLock decoratingLock = new DecoratingLock();
-  private final int MAX_RETRY_TIMES = 5;
+  private final ListeningExecutorService executorService;
+  private Throwable lastFailedCause;
+
+  private static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
 
-  public PipeSubtask(String taskID) {
+  private final DecoratingLock decoratingLock = new DecoratingLock();
+
+  public PipeSubtask(String taskID, ListeningExecutorService executorService) {
     super();
     this.taskID = taskID;
-  }
-
-  public String getTaskID() {
-    return taskID;
-  }
-
-  public PipeSubtask setListeningExecutorService(ListeningExecutorService executorService) {
     this.executorService = executorService;
-    return this;
   }
 
   @Override
   public Void call() throws Exception {
-    if (executorService.isShutdown() || Thread.currentThread().isInterrupted()) {
-      LOGGER.warn(
-          "Thread {} is interrupted, stop the subtask {}",
-          Thread.currentThread().getName(),
-          taskID);
-      return null;
-    }
     execute();
+
+    // wait for the callable to be decorated by Futures.addCallback in the executorService
+    // to make sure that the callback can be submitted again on success or failure.
     decoratingLock.waitForDecorated();
+
     return null;
   }
 
@@ -86,39 +77,35 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
       retryCount.incrementAndGet();
       submitSelf();
     } else {
-      LOGGER.warn("Subtask {} failed, retry {} times", taskID, retryCount);
+      LOGGER.warn(
+          "Subtask {} failed, has been retried for {} times, last failed because of {}",
+          taskID,
+          retryCount,
+          throwable);
+      lastFailedCause = throwable;
       PipeRuntimeAgent.setupAndGetInstance().report(this);
     }
   }
 
+  /**
+   * this may cause RejectedExecutionException when the executorService is shutdown. we just ignore
+   * it.
+   */
   private void submitSelf() {
-    // if the thread is interrupted, stop the task. we clean the interrupted flag here, because we
-    // want to reuse the thread.
-    if (executorService.isShutdown() || Thread.currentThread().isInterrupted()) {
-      LOGGER.warn(
-          "Thread {} is interrupted, stop the subtask {}",
-          Thread.currentThread().getName(),
-          taskID);
-      return;
-    }
-
     decoratingLock.markAsDecorating();
     try {
-      if (!executorService.isShutdown()) {
-        ListenableFuture<Void> nextFuture = executorService.submit(this);
-        Futures.addCallback(nextFuture, this, executorService);
-      }
+      ListenableFuture<Void> nextFuture = executorService.submit(this);
+      Futures.addCallback(nextFuture, this, executorService);
     } finally {
       decoratingLock.markAsDecorated();
     }
   }
 
-  public String getSubtaskID() {
+  public String getTaskID() {
     return taskID;
   }
 
-  @TestOnly
-  public int getRetryCount() {
-    return retryCount.get();
+  public Throwable getLastFailedCause() {
+    return lastFailedCause;
   }
 }

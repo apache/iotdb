@@ -51,11 +51,10 @@ public class PipeAssignerSubtaskExecutorTest {
   public void testSubmit() throws Exception {
 
     PipeAssignerSubtask subtask =
-        new PipeAssignerSubtask("testProcessorSubtask") {
+        new PipeAssignerSubtask("testProcessorSubtask", executor.getExecutorService()) {
           @Override
           public void execute() {}
         };
-    subtask.setListeningExecutorService(executor.getExecutorService());
     PipeAssignerSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map

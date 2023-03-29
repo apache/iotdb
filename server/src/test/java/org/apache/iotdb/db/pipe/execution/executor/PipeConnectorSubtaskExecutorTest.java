@@ -55,11 +55,12 @@ public class PipeConnectorSubtaskExecutorTest {
 
     PipeConnectorSubtask subtask =
         new PipeConnectorSubtask(
-            "testConnectorSubtask", mock(PipeConnectorPluginRuntimeWrapper.class)) {
+            "testConnectorSubtask",
+            executor.getExecutorService(),
+            mock(PipeConnectorPluginRuntimeWrapper.class)) {
           @Override
           public void execute() {}
         };
-    subtask.setListeningExecutorService(executor.getExecutorService());
     PipeConnectorSubtask spySubtask = Mockito.spy(subtask);
 
     // test submit a subtask which is not in the map

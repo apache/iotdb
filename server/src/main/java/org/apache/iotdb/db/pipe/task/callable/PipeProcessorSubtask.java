@@ -21,12 +21,17 @@ package org.apache.iotdb.db.pipe.task.callable;
 
 import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 
+import com.google.common.util.concurrent.ListeningExecutorService;
+
 public class PipeProcessorSubtask extends PipeSubtask {
 
   private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
 
-  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
-    super(taskID);
+  public PipeProcessorSubtask(
+      String taskID,
+      ListeningExecutorService listeningExecutorService,
+      PipeProcessorPluginRuntimeWrapper pipeProcessor) {
+    super(taskID, listeningExecutorService);
     this.pipeProcessor = pipeProcessor;
   }
 

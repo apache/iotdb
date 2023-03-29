@@ -30,7 +30,7 @@ public class PipeRuntimeAgent {
 
   public void report(PipeSubtask subtask) {
     // TODO: implement the report logic
-    LOGGER.warn("SubtaskID{} failed.", subtask.getSubtaskID());
+    LOGGER.warn("SubtaskID{} failed.", subtask.getTaskID());
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
