@@ -1152,6 +1152,8 @@ public class IoTDBConfig {
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    pipeDir = addDataHomeDir(pipeDir);
+    pipeTemporaryLibDir = addDataHomeDir(pipeDir);
     mqttDir = addDataHomeDir(mqttDir);
 
     extPipeDir = addDataHomeDir(extPipeDir);
