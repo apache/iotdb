@@ -108,6 +108,13 @@ public class SnapshotTest {
 
     final Predicate<String> snapshotExists = s -> new File(s).exists();
 
+    proxy.notifyTermIndexUpdated(215, 72);
+    final String snapshotFilename0 =
+        TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "215_72");
+    final long index0 = proxy.takeSnapshot();
+    Assert.assertEquals(72, index0);
+    Assert.assertTrue(snapshotExists.test(snapshotFilename0));
+
     // take a snapshot at 421-616
     proxy.notifyTermIndexUpdated(421, 616);
     final String snapshotFilename =
@@ -139,6 +146,7 @@ public class SnapshotTest {
                 return 2;
               }
             });
+    Assert.assertFalse(snapshotExists.test(snapshotFilename0));
     Assert.assertTrue(snapshotExists.test(snapshotFilename));
     Assert.assertTrue(snapshotExists.test(snapshotFilenameLatest));
   }
