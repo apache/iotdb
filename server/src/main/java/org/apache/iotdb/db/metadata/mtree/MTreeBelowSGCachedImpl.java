@@ -121,6 +121,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback,
       Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IEntityMNode> deviceProcess,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
@@ -132,14 +133,17 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
 
-    // recover measurement
-    try (MeasurementCollector<?> collector =
-        new MeasurementCollector<Void>(
+    // recover MNode
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
           @Override
-          protected Void collectMeasurement(IMeasurementMNode node) {
-            measurementProcess.accept(node);
-            regionStatistics.addTimeseries(1L);
+          protected Void collectMNode(IMNode node) {
+            if (node.isMeasurement()) {
+              measurementProcess.accept(node.getAsMeasurementMNode());
+            } else if (node.isEntity()) {
+              deviceProcess.accept(node.getAsEntityMNode());
+            }
             return null;
           }
         }) {
@@ -163,7 +167,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
 
-    // recover measurement
+    // recover MNode
     try (MNodeCollector<?> collector =
         new MNodeCollector<Void>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
