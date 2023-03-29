@@ -74,6 +74,16 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   public static final String FOLLOWER_APPEND_ENTRIES_LATENCY = "follower_append_entry_latency";
   /** Time taken to process write requests from client. */
   public static final String RAFT_CLIENT_WRITE_REQUEST = "clientWriteRequest";
+  /** Applied index of state machine */
+  public static final String STATEMACHINE_APPLIED_INDEX_GAUGE = "appliedIndex";
+  /** Last log index which completely applied to the state machine */
+  public static final String STATEMACHINE_APPLY_COMPLETED_GAUGE = "applyCompletedIndex";
+  /** Next index of peer */
+  public static final String FOLLOWER_NEXT_INDEX = "_next_index";
+  /** Match index of peer */
+  public static final String FOLLOWER_MATCH_INDEX = "_match_index";
+  /** Commit index of peer */
+  public static final String LEADER_METRIC_PEER_COMMIT_INDEX = "peerCommitIndex";
 
   private static final List<String> RATIS_METRICS = new ArrayList<>();
 
@@ -87,6 +97,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     RATIS_METRICS.add(RAFT_LOG_TASK_EXECUTION_TIME);
     RATIS_METRICS.add(FOLLOWER_APPEND_ENTRIES_LATENCY);
     RATIS_METRICS.add(RAFT_CLIENT_WRITE_REQUEST);
+    RATIS_METRICS.add(STATEMACHINE_APPLIED_INDEX_GAUGE);
+    RATIS_METRICS.add(STATEMACHINE_APPLY_COMPLETED_GAUGE);
+    RATIS_METRICS.add(LEADER_METRIC_PEER_COMMIT_INDEX);
+    RATIS_METRICS.add(FOLLOWER_NEXT_INDEX);
+    RATIS_METRICS.add(FOLLOWER_MATCH_INDEX);
   }
 
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
