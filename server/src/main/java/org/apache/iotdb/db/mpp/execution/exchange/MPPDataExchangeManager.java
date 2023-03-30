@@ -178,6 +178,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           return;
         }
         sinkHandle.getChannel(e.getIndex()).close();
+        // if all the channels of the ShuffleSinkHandle are closed, we close the ShuffleSinkHandle directly so that we can finish the FI.
+        if(sinkHandle.isClosed()){
+          sinkHandle.close();
+        }
       } catch (Throwable t) {
         LOGGER.warn(
             "Close channel of ShuffleSinkHandle {}, index {} failed.",
