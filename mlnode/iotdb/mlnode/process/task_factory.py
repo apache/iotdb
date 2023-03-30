@@ -24,7 +24,7 @@ support_task_types = {
 }
 
 
-def create_task(task_configs, model_configs, data_configs, task_trial_map):
+def create_task(task_configs, model_configs, model, dataset, task_trial_map):
     task_class = task_configs["task_class"]
     if task_class not in support_task_types:
         raise RuntimeError(f'Unknown task type: ({task_class}), which'
@@ -33,7 +33,8 @@ def create_task(task_configs, model_configs, data_configs, task_trial_map):
     task = task_fn(
         task_configs,
         model_configs,
-        data_configs,
+        model,
+        dataset,
         task_trial_map
     )
     return task

@@ -60,7 +60,7 @@ class Manager(object):
         # leave to the os to clean up zombie processes
         self.training_pool = mp.Pool(pool_num)
 
-    def submit_training_task(self, data_configs, model_configs, task_configs):
+    def submit_training_task(self, task_configs, model_configs, model, dataset):
         assert 'model_id' in task_configs.keys(), 'Task config should contain model_id'
         model_id = task_configs['model_id']
         self.task_trial_map[model_id] = self.resource_manager.dict()
@@ -68,7 +68,8 @@ class Manager(object):
             task = create_task(
                 task_configs,
                 model_configs,
-                data_configs,
+                model,
+                dataset,
                 self.task_trial_map
             )
         except Exception as e:

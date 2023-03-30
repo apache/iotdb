@@ -27,8 +27,8 @@ from torch.utils.data import Dataset, DataLoader
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.client import DataNodeClient
-from iotdb.mlnode.algorithm.utils.metric import *
-from iotdb.mlnode.storage.model_storager import modelStorager
+from iotdb.mlnode.algorithm.metric import *
+from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 
 
@@ -222,7 +222,7 @@ class ForecastingTrainingTrial(BasicTrial):
             if val_loss < best_loss:
                 best_loss = val_loss
                 # TODO: generate trial id
-                modelStorager.save_model(self.model, self.model_configs,
+                model_storage.save_model(self.model, self.model_configs,
                                          model_id=self.model_id, trial_id=self.trial_id)
         logger.info(f'Trail: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
         return best_loss
@@ -241,7 +241,7 @@ class ForecastingInferenceTrial(BasicTrial):
         self.output_len = args.pred_len
         self.data, self.data_stamp = data_transform(
             data_raw)  # suppose data is in pandas.dataframe format, col 0 is timestamp
-        self.model = modelStorager.load_best_model_by_id(self.model_id)
+        self.model = model_storage.load_best_model_by_id(self.model_id)
 
     def data_align(self, data, data_stamp):
         """
