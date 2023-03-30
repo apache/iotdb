@@ -1748,7 +1748,7 @@ class Session(object):
             and len(self.__device_id_to_endpoint) != 0
             and device_id in self.__device_id_to_endpoint
         ):
-            endpoint = self.__device_id_to_endpoint.get(device_id)
+            endpoint = self.__device_id_to_endpoint[device_id]
             if endpoint.ip + ":" + str(endpoint.port) in self.__endpoint_to_connection:
                 return self.__endpoint_to_connection[
                     endpoint.ip + ":" + str(endpoint.port)
@@ -1761,7 +1761,7 @@ class Session(object):
                 return 0
             if (
                 device_id not in self.__device_id_to_endpoint
-                or self.__device_id_to_endpoint.get(device_id) != endpoint
+                or self.__device_id_to_endpoint[device_id] != endpoint
             ):
                 self.__device_id_to_endpoint[device_id] = endpoint
             if endpoint.ip + ":" + str(endpoint.port) in self.__endpoint_to_connection:
@@ -2186,7 +2186,7 @@ class SessionConnection(object):
 
 
 class RedirectException(Exception):
-    def __init__(self, redirect_info: TEndPoint | dict):
+    def __init__(self, redirect_info):
         Exception.__init__(self)
         if isinstance(redirect_info, TEndPoint):
             self.redirect_node = redirect_info
