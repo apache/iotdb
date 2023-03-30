@@ -56,6 +56,8 @@ class ConfigParser(argparse.ArgumentParser):
             argument = re.findall(r'argument --(\w+):', message)[0]
             expected_type = re.findall(r'invalid (\w+) value:', message)[0]
             raise WrongTypeError(argument, expected_type)
+        else:
+            raise Exception(message)
 
         sys.exit()
 
