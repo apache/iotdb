@@ -34,7 +34,7 @@ def test_parse_training_request():
         'model_name': 'dlinear',
         'input_vars': 7,
         'output_vars': 7,
-        'task_type': 'm',
+        'forecast_type': 'm',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -51,14 +51,14 @@ def test_parse_training_request():
         queryExpressions=[str(query) for query in queryExpressions],
         queryFilter=str(queryFilter),
     )
-    data_conf, model_conf, task_conf = parse_training_request(req)
+    data_config, model_config, task_config = parse_training_request(req)
     for config in modelConfigs:
-        if config in data_conf:
-            assert data_conf[config] == modelConfigs[config]
-        if config in model_conf:
-            assert model_conf[config] == modelConfigs[config]
-        if config in task_conf:
-            assert task_conf[config] == modelConfigs[config]
+        if config in data_config:
+            assert data_config[config] == modelConfigs[config]
+        if config in model_config:
+            assert model_config[config] == modelConfigs[config]
+        if config in task_config:
+            assert task_config[config] == modelConfigs[config]
 
 
 def test_missing_argument():
@@ -75,7 +75,7 @@ def test_missing_argument():
         'pred_len': 96,
         'input_vars': 7,
         'output_vars': 7,
-        'task_type': 'm',
+        'forecast_type': 'm',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -93,7 +93,7 @@ def test_missing_argument():
         queryFilter=str(queryFilter),
     )
     try:
-        parse_training_request(req)
+        data_config, model_config, task_config = parse_training_request(req)
     except Exception as e:
         assert e.message == 'Missing config: (model_name)'
 
@@ -112,7 +112,7 @@ def test_wrong_argument_type():
         'model_name': 'dlinear',
         'input_vars': 7,
         'output_vars': 7,
-        'task_type': 'm',
+        'forecast_type': 'm',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -130,7 +130,7 @@ def test_wrong_argument_type():
         queryFilter=str(queryFilter),
     )
     try:
-        data_conf, model_conf, task_conf = parse_training_request(req)
+        data_config, model_config, task_config = parse_training_request(req)
     except Exception as e:
         message = "Wrong type for config: ({})".format('input_len')
         message += ", expected: ({})".format('int')

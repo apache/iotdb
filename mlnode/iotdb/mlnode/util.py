@@ -16,11 +16,11 @@
 # under the License.
 #
 
-
+from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ConfigParser
-from iotdb.thrift.common.ttypes import TEndPoint
+from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
@@ -48,15 +48,27 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         raise BadNodeUrlError(endpoint_url)
 
 
+def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
+    status = TSStatus(status_code.get_status_code())
+    status.message = message
+    return status
+
+
+def verify_success(status: TSStatus, err_msg: str) -> None:
+    if status.code != TSStatusCode.SUCCESS_STATUS:
+        logger.warn(err_msg + ", error status is ", status)
+        raise RuntimeError(str(status.code) + ": " + status.message)
+
+
 def parse_training_request(req: TCreateTrainingTaskReq):
     """
     Parse TCreateTrainingTaskReq with given yaml template
     Args:
         req: TCreateTrainingTaskReq
     Returns:
-        data_conf: configurations related to data
-        model_conf: configurations related to model
-        task_conf: configurations related to task
+        data_config: configurations related to data
+        model_config: configurations related to model
+        task_config: configurations related to task
     """
     config = req.modelConfigs
     config.update(model_id=req.modelId)
@@ -88,16 +100,16 @@ def _get_data_config_parser():
         output_vars: number of output variables
     """
     data_config_parser = ConfigParser()
+    data_config_parser.add_argument('--source_type', type=str, required=True)
+    data_config_parser.add_argument('--dataset_type', type=str, required=True)
+    data_config_parser.add_argument('--filename', type=str, default='')
     data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
     data_config_parser.add_argument('--query_filter', type=str, default='')
-    data_config_parser.add_argument('--source_type', type=str, default='')
-    data_config_parser.add_argument('--filename', type=str, default='')
-    data_config_parser.add_argument('--dataset_type', type=str, default='window')
     data_config_parser.add_argument('--time_embed', type=str, default='h')
     data_config_parser.add_argument('--input_len', type=int, default=96)
     data_config_parser.add_argument('--pred_len', type=int, default=96)
-    data_config_parser.add_argument('--input_vars', type=int, required=True)
-    data_config_parser.add_argument('--output_vars', type=int, required=True)
+    data_config_parser.add_argument('--input_vars', type=int, default=1)
+    data_config_parser.add_argument('--output_vars', type=int, default=1)
     return data_config_parser
 
 
@@ -124,11 +136,11 @@ def _get_model_config_parser():
     model_config_parser.add_argument('--model_name', type=str, required=True)
     model_config_parser.add_argument('--input_len', type=int, default=96)
     model_config_parser.add_argument('--pred_len', type=int, default=96)
-    model_config_parser.add_argument('--input_vars', type=int, required=True)
-    model_config_parser.add_argument('--output_vars', type=int, required=True)
-    model_config_parser.add_argument('--task_type', type=str, default='m')
+    model_config_parser.add_argument('--input_vars', type=int, default=1)
+    model_config_parser.add_argument('--output_vars', type=int, default=1)
+    model_config_parser.add_argument('--forecast_type', type=str, default='m')
     model_config_parser.add_argument('--kernel_size', type=int, default=25)
-    model_config_parser.add_argument('--block_type', type=str, default='g')
+    model_config_parser.add_argument('--block_type', type=str, default='generic')
     model_config_parser.add_argument('--d_model', type=int, default=128)
     model_config_parser.add_argument('--inner_layers', type=int, default=4)
     model_config_parser.add_argument('--outer_layers', type=int, default=4)
@@ -160,14 +172,14 @@ def _get_task_config_parser():
         metric_names: metric to use
     """
     task_config_parser = ConfigParser()
-    task_config_parser.add_argument('--model_id', type=str, default='')
+    task_config_parser.add_argument('--task_class', type=str, required=True)
+    task_config_parser.add_argument('--model_id', type=str, required=True)
     task_config_parser.add_argument('--tuning', type=bool, default=False)
-    task_config_parser.add_argument('--task_type', type=str, default='m')
-    task_config_parser.add_argument('--task_class', type=str, default='forecast_training_task', required=True)
+    task_config_parser.add_argument('--forecast_type', type=str, default='m')
     task_config_parser.add_argument('--input_len', type=int, default=96)
     task_config_parser.add_argument('--pred_len', type=int, default=96)
-    task_config_parser.add_argument('--input_vars', type=int, default=7, required=True)
-    task_config_parser.add_argument('--output_vars', type=int, default=7, required=True)
+    task_config_parser.add_argument('--input_vars', type=int, default=1)
+    task_config_parser.add_argument('--output_vars', type=int, default=1)
     task_config_parser.add_argument('--learning_rate', type=float, default=0.0001)
     task_config_parser.add_argument('--batch_size', type=int, default=32)
     task_config_parser.add_argument('--num_workers', type=int, default=0)

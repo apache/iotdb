@@ -20,7 +20,7 @@
 import re
 import sys
 import argparse
-from iotdb.mlnode.exception import MissingConfigError, WrongTypeError
+from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
 
 
 class ConfigParser(argparse.ArgumentParser):
@@ -69,7 +69,7 @@ class ConfigParser(argparse.ArgumentParser):
         elif re.match(r'argument --\w+: invalid \w+ value:', message):
             argument = re.findall(r'argument --(\w+):', message)[0]
             expected_type = re.findall(r'invalid (\w+) value:', message)[0]
-            raise WrongTypeError(argument, expected_type)
+            raise WrongTypeConfigError(argument, expected_type)
         else:
             raise Exception(message)
 

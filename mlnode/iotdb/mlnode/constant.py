@@ -27,6 +27,7 @@ MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
     REDIRECTION_RECOMMEND = 400
+    FAIL_STATUS = 404
 
     def get_status_code(self) -> int:
         return self.value
