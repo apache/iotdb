@@ -192,7 +192,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "Start to rollback from write config node consensus for create pipe task [{}]", req.getPipeName());
+        "Start to rollback from write config node consensus for create pipe task [{}]",
+        req.getPipeName());
 
     // Drop pipe
     final ConfigManager configNodeManager = env.getConfigManager();

@@ -159,7 +159,8 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from write config node consensus for start pipe task [{}]", pipeName);
+    LOGGER.info(
+        "Start to rollback from write config node consensus for start pipe task [{}]", pipeName);
 
     // Stop pipe
     final ConfigManager configNodeManager = env.getConfigManager();
