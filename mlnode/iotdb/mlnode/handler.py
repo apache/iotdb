@@ -15,26 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
 
-from iotdb.thrift.common.ttypes import TSStatus
+from iotdb.mlnode.constant import TSStatusCode
+from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
                                         TForecastResp)
-
-
-class TSStatusCode(Enum):
-    SUCCESS_STATUS = 200
-
-    def get_status_code(self) -> int:
-        return self.value
-
-
-def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
-    status = TSStatus(status_code.get_status_code())
-    status.message = message
-    return status
 
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
