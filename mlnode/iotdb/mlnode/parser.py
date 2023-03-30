@@ -24,15 +24,28 @@ from iotdb.mlnode.exception import MissingConfigError, WrongTypeError
 
 
 class ConfigParser(argparse.ArgumentParser):
+    """
+    A parser for parsing configs from configs: dict
+    """
     def __init__(self):
         super().__init__()
 
     def parse_configs(self, configs):
+        """
+        Parse configs from a dict
+        Args:configs: a dict of all configs which contains all required arguments
+        Returns: a dict of parsed configs
+        """
         args = self.parse_dict(configs)
         return vars(self.parse_known_args(args)[0])
 
     @staticmethod
     def parse_dict(config_dict):
+        """
+        Parse a dict of configs to a list of arguments
+        Args:config_dict: a dict of configs
+        Returns: a list of arguments which can be parsed by argparse
+        """
         args = []
         for k, v in config_dict.items():
             args.append("--{}".format(k))
@@ -47,7 +60,9 @@ class ConfigParser(argparse.ArgumentParser):
         return args
 
     def error(self, message: str):
-        # required arguments are missing
+        """
+        Override the error method to raise exceptions instead of exiting
+        """
         if message.startswith('the following arguments are required:'):
             missing_arg = re.findall(r': --(\w+)', message)[0]
             raise MissingConfigError(missing_arg)
