@@ -1,10 +1,3 @@
-import argparse
-import re
-import sys
-
-from iotdb.mlnode.exception import MissingConfigError, WrongTypeError
-
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -22,6 +15,12 @@ from iotdb.mlnode.exception import MissingConfigError, WrongTypeError
 # specific language governing permissions and limitations
 # under the License.
 #
+
+
+import re
+import sys
+import argparse
+from iotdb.mlnode.exception import MissingConfigError, WrongTypeError
 
 
 class ConfigParser(argparse.ArgumentParser):
@@ -60,53 +59,3 @@ class ConfigParser(argparse.ArgumentParser):
             raise Exception(message)
 
         sys.exit()
-
-
-def get_configs(config):
-    data_config_parser = ConfigParser()
-    model_config_parser = ConfigParser()
-    task_config_parser = ConfigParser()
-    data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
-    data_config_parser.add_argument('--query_filter', type=str, default='')
-    data_config_parser.add_argument('--source_type', type=str, default='')
-    data_config_parser.add_argument('--filename', type=str, default='')
-    data_config_parser.add_argument('--dataset_type', type=str, default='window')
-    data_config_parser.add_argument('--time_embed', type=str, default='h')
-    data_config_parser.add_argument('--input_len', type=int, default=96)
-    data_config_parser.add_argument('--pred_len', type=int, default=96)
-    data_config_parser.add_argument('--input_vars', type=int, required=True)
-    data_config_parser.add_argument('--output_vars', type=int, required=True)
-
-    model_config_parser.add_argument('--model_name', type=str, required=True)
-    model_config_parser.add_argument('--input_len', type=int, default=96)
-    model_config_parser.add_argument('--pred_len', type=int, default=96)
-    model_config_parser.add_argument('--input_vars', type=int, required=True)
-    model_config_parser.add_argument('--output_vars', type=int, required=True)
-    model_config_parser.add_argument('--task_type', type=str, default='m')
-    model_config_parser.add_argument('--kernel_size', type=int, default=25)
-    model_config_parser.add_argument('--block_type', type=str, default='g')
-    model_config_parser.add_argument('--d_model', type=int, default=128)
-    model_config_parser.add_argument('--inner_layers', type=int, default=4)
-    model_config_parser.add_argument('--outer_layers', type=int, default=4)
-
-    task_config_parser.add_argument('--model_id', type=str, default='')
-    task_config_parser.add_argument('--tuning', type=bool, default=False)
-    task_config_parser.add_argument('--task_type', type=str, default='m')
-    task_config_parser.add_argument('--task_class', type=str, default='forecast_training_task', required=True)
-    task_config_parser.add_argument('--input_len', type=int, default=96)
-    task_config_parser.add_argument('--pred_len', type=int, default=96)
-    task_config_parser.add_argument('--input_vars', type=int, default=7, required=True)
-    task_config_parser.add_argument('--output_vars', type=int, default=7, required=True)
-    task_config_parser.add_argument('--learning_rate', type=float, default=0.0001)
-    task_config_parser.add_argument('--batch_size', type=int, default=32)
-    task_config_parser.add_argument('--num_workers', type=int, default=0)
-    task_config_parser.add_argument('--epochs', type=int, default=10)
-    task_config_parser.add_argument('--use_gpu', type=bool, default=False)
-    task_config_parser.add_argument('--gpu', type=int, default=0)
-    task_config_parser.add_argument('--use_multi_gpu', type=bool, default=False)
-    task_config_parser.add_argument('--devices', type=list, default=[0])
-    task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE', 'MAE'])
-
-    return data_config_parser.parse_configs(config), \
-        model_config_parser.parse_configs(config), \
-        task_config_parser.parse_configs(config)
