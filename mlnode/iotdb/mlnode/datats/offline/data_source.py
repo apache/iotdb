@@ -33,6 +33,7 @@ class DataSource(object):
     def __init__(self):
         self.data = None
         self.timestamp = None
+        self._read_data()
 
     def _read_data(self):
         raise NotImplementedError
@@ -46,9 +47,8 @@ class DataSource(object):
 
 class FileDataSource(DataSource):
     def __init__(self, filename: str = None):
-        super(FileDataSource, self).__init__()
         self.filename = filename
-        self._read_data()
+        super(FileDataSource, self).__init__()
 
     def _read_data(self):
         try:
@@ -62,10 +62,9 @@ class FileDataSource(DataSource):
 
 class ThriftDataSource(DataSource):
     def __init__(self, query_expressions: list = None, query_filter: str = None):
-        super(DataSource, self).__init__()
         self.query_expressions = query_expressions
         self.query_filter = query_filter
-        self._read_data()
+        super(ThriftDataSource, self).__init__()
 
     def _read_data(self):
         try:

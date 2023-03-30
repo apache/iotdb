@@ -17,7 +17,10 @@
 #
 
 from iotdb.mlnode.constant import TSStatusCode
-from iotdb.mlnode.util import get_status
+from iotdb.mlnode.util import get_status, parse_training_request
+from iotdb.mlnode.algorithm.model_factory import create_forecast_model
+from iotdb.mlnode.datats.data_factory import create_forecast_data
+from iotdb.mlnode.log import logger
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
@@ -32,7 +35,28 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        # parse request stage (check required config and config type)
+        data_config, model_config, task_config = parse_training_request(req)
+
+        # create model stage (check model config legitimacy)
+        try:
+            model, model_config = create_forecast_model(**model_config)
+        except Exception as e: # Create model failed
+            return get_status(TSStatusCode.FAIL_STATUS, str(e))
+        logger.info('model config: ' + str(model_config))
+
+        # create data stage (check data config legitimacy)
+        try:
+            data, data_config = create_forecast_data(**data_config)
+        except Exception as e:  # Create data failed
+            return get_status(TSStatusCode.FAIL_STATUS, str(e))
+        logger.info('data config: ' + str(data_config))
+
+        # create task stage (check task config legitimacy)
+
+        # submit task stage (check resource and decide pending/start)
+
+        return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
 
     def forecast(self, req: TForecastReq):
         status = get_status(TSStatusCode.SUCCESS_STATUS, "")

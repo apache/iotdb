@@ -81,11 +81,11 @@ class WindowDataset(TimeSeriesDataset):
                  time_embed: str = 'h'):
         self.input_len = input_len
         self.pred_len = pred_len
-        if input_len <= self.data.shape[0]:
-            raise RuntimeError('input_len should not be larger than the number of time series points')
-        if pred_len <= self.data.shape[0]:
-            raise RuntimeError('pred_len should not be larger than the number of time series points')
         super(WindowDataset, self).__init__(data_source, time_embed)
+        if input_len > self.data.shape[0]:
+            raise RuntimeError('input_len should not be larger than the number of time series points')
+        if pred_len > self.data.shape[0]:
+            raise RuntimeError('pred_len should not be larger than the number of time series points')
 
     def __getitem__(self, index):
         s_begin = index
@@ -100,17 +100,3 @@ class WindowDataset(TimeSeriesDataset):
 
     def __len__(self):
         return len(self.data) - self.input_len - self.pred_len + 1
-
-
-def get_timeseries_dataset(data_config: argparse.Namespace) -> TimeSeriesDataset:
-    # TODO (@lcy)
-    # init datasource
-    # init dataset
-    pass
-
-
-def get_window_dataset(data_config: argparse.Namespace) -> WindowDataset:
-    # TODO (@lcy)
-    # init datasource
-    # init dataset
-    pass
