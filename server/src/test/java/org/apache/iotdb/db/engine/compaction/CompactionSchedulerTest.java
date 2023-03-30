@@ -1332,6 +1332,9 @@ public class CompactionSchedulerTest {
           }
         } catch (InterruptedException e) {
           e.printStackTrace();
+        } catch (NullPointerException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
