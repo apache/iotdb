@@ -505,6 +505,57 @@ public class SchemaFileTest {
     sf.close();
   }
 
+  /**
+   * This test case is designed to examine a scenario in which, every time a SegmentedPage inserts a
+   * record, the process of checking whether there is enough space in the segment takes into account
+   * not only the size of the record's buffer, but also the size of the key and related pointers.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testEstimateSegSizeWithBigName() throws Exception {
+    ICachedMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma", 111111111L).getAsMNode();
+    ICachedMNode d1 =
+        fillChildren(
+            sgNode,
+            300,
+            "device中文abcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZ",
+            this::supplyEntity);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+
+    try {
+      fillChildren(d1, 19, "ss1", this::supplyMeasurement);
+
+      sf.writeMNode(sgNode);
+      sf.writeMNode(d1);
+
+      moveAllToBuffer(d1);
+
+      fillChildren(
+          d1,
+          2,
+          "sensor2中文abcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZPORSTUVWXYZ",
+          this::supplyMeasurementWithoutAlias);
+
+      sf.writeMNode(d1);
+      moveAllToBuffer(d1);
+      moveAllToBuffer(sgNode);
+
+      fillChildren(d1, 20, "ss", this::supplyMeasurement);
+      sf.writeMNode(d1);
+
+      Iterator<ICachedMNode> verifyChildren = sf.getChildren(d1);
+      int cnt = 0;
+      while (verifyChildren.hasNext()) {
+        cnt++;
+        verifyChildren.next();
+      }
+      Assert.assertEquals(41, cnt);
+    } finally {
+      sf.close();
+    }
+  }
+
   @Test
   public void testEstimateSegSize() throws Exception {
     // to test whether estimation of segment size works on edge cases
@@ -923,6 +974,10 @@ public class SchemaFileTest {
     return getMeasurementNode(par, name, name + "_als");
   }
 
+  private ICachedMNode supplyMeasurementWithoutAlias(ICachedMNode par, String name) {
+    return getMeasurementNode(par, name, null);
+  }
+
   private ICachedMNode supplyInternal(ICachedMNode par, String name) {
     return nodeFactory.createInternalMNode(par, name);
   }
@@ -1003,7 +1058,8 @@ public class SchemaFileTest {
 
   static void moveAllToBuffer(ICachedMNode par) {
     List<String> childNames =
-        par.getChildren().values().stream().map(IMNode::getName).collect(Collectors.toList());
+        ICachedMNodeContainer.getCachedMNodeContainer(par).getNewChildBuffer().keySet().stream()
+            .collect(Collectors.toList());
     for (String name : childNames) {
       ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(name);
     }
