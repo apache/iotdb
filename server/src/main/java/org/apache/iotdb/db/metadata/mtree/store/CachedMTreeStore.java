@@ -330,7 +330,6 @@ public class CachedMTreeStore implements IMTreeStore {
   public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaExceededException {
     quotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
-    regionStatistics.addDevice();
     if (result != node) {
       regionStatistics.addDevice();
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());

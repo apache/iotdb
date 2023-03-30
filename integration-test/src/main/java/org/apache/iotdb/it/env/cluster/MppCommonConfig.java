@@ -340,4 +340,16 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("write_memory_proportion", writeMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    setProperty("cluster_schema_limit_level", clusterSchemaLimitLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+    setProperty("cluster_max_schema_count", String.valueOf(clusterMaxSchemaCount));
+    return this;
+  }
 }

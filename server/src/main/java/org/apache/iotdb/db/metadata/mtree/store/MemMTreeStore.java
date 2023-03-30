@@ -161,7 +161,6 @@ public class MemMTreeStore implements IMTreeStore {
   public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaExceededException {
     schemaQuotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
-    regionStatistics.addDevice();
     if (result != node) {
       regionStatistics.addDevice();
       requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
