@@ -133,6 +133,5 @@ def test_wrong_argument_type():
         data_conf, model_conf, task_conf = parse_training_request(req)
     except Exception as e:
         message = "Wrong type for config: ({})".format('input_len')
-        message += ", expected: ({})".format(int)
-        message += ", actual: ({})".format(float)
+        message += ", expected: ({})".format('int')
         assert e.message == message

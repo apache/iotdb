@@ -15,11 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.constant import TSStatusCode
+
+
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import ConfigManager
-from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
+from iotdb.mlnode.parser import get_configs
+from iotdb.thrift.common.ttypes import TEndPoint
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
@@ -47,18 +48,6 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         raise BadNodeUrlError(endpoint_url)
 
 
-def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
-    status = TSStatus(status_code.get_status_code())
-    status.message = message
-    return status
-
-
-def verify_success(status: TSStatus, err_msg: str) -> None:
-    if status.code != TSStatusCode.SUCCESS_STATUS:
-        logger.warn(err_msg + ", error status is ", status)
-        raise RuntimeError(str(status.code) + ": " + status.message)
-
-
 def parse_training_request(req: TCreateTrainingTaskReq):
     """
     Parse TCreateTrainingTaskReq with given yaml template
@@ -74,5 +63,4 @@ def parse_training_request(req: TCreateTrainingTaskReq):
     config.update(tuning=req.isAuto)
     config.update(query_expressions=req.queryExpressions)
     config.update(query_filter=req.queryFilter)
-    config_manager = ConfigManager(config)
-    return config_manager.get_configs()
+    return get_configs(config)

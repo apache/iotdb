@@ -16,7 +16,6 @@
 # under the License.
 #
 
-
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -43,7 +42,6 @@ class MissingConfigError(_BaseError):
 
 
 class WrongTypeError(_BaseError):
-    def __init__(self, config_name: str, expected_type: str, actual_type: str):
+    def __init__(self, config_name: str, expected_type: str):
         self.message = "Wrong type for config: ({})".format(config_name)
         self.message += ", expected: ({})".format(expected_type)
-        self.message += ", actual: ({})".format(actual_type)
