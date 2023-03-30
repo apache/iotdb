@@ -175,7 +175,6 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
-    regionStatistics.deleteDevice();
     if (result != entityMNode) {
       regionStatistics.deleteDevice();
       releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
