@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -26,7 +28,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,7 +48,9 @@ public class PipeTaskMeta {
 
   private Map<String, String> connectorAttributes = new HashMap<>();
 
-  private Map<Integer, DataRegionPipeTask> dataRegionPipeTasks = new HashMap<>();
+  private final List<String> messages = new ArrayList<>();
+
+  private Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
 
   private PipeTaskMeta() {}
 
@@ -55,7 +61,7 @@ public class PipeTaskMeta {
       Map<String, String> collectorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes,
-      Map<Integer, DataRegionPipeTask> dataRegionPipeTasks) {
+      Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks) {
     this.pipeName = pipeName.toUpperCase();
     this.createTime = createTime;
     this.status = status;
@@ -89,20 +95,29 @@ public class PipeTaskMeta {
     return status;
   }
 
+  public List<String> getMessages() {
+    return messages;
+  }
+
+  public DataRegionPipeTaskMeta getDataRegionPipeTask(int regionGroup) {
+    return dataRegionPipeTasks.get(regionGroup);
+  }
+
+  public Set<TConsensusGroupId> getRegionGroups() {
+    return dataRegionPipeTasks.keySet();
+  }
+
   public void setStatus(PipeStatus status) {
     this.status = status;
   }
 
-  public DataRegionPipeTask getDataRegionPipeTask(int regionGroup) {
-    return dataRegionPipeTasks.get(regionGroup);
+  public void addMessage(String message) {
+    messages.add(message);
   }
 
-  public Set<Integer> getRegionGroups() {
-    return dataRegionPipeTasks.keySet();
-  }
-
-  public void addDataRegionPipeTask(DataRegionPipeTask dataRegionPipeTask) {
-    this.dataRegionPipeTasks.put(dataRegionPipeTask.getRegionGroup(), dataRegionPipeTask);
+  public void addDataRegionPipeTask(
+      TConsensusGroupId id, DataRegionPipeTaskMeta dataRegionPipeTaskMeta) {
+    this.dataRegionPipeTasks.put(id, dataRegionPipeTaskMeta);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -132,8 +147,10 @@ public class PipeTaskMeta {
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     outputStream.writeInt(dataRegionPipeTasks.size());
-    for (DataRegionPipeTask dataRegionPipeTask : dataRegionPipeTasks.values()) {
-      dataRegionPipeTask.serialize(outputStream);
+    for (Map.Entry<TConsensusGroupId, DataRegionPipeTaskMeta> entry :
+        dataRegionPipeTasks.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
+      entry.getValue().serialize(outputStream);
     }
   }
 
@@ -159,8 +176,10 @@ public class PipeTaskMeta {
     }
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      DataRegionPipeTask dataRegionPipeTask = DataRegionPipeTask.deserialize(byteBuffer);
-      pipeTaskMeta.dataRegionPipeTasks.put(dataRegionPipeTask.getRegionGroup(), dataRegionPipeTask);
+      pipeTaskMeta.dataRegionPipeTasks.put(
+          new TConsensusGroupId(
+              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
+          DataRegionPipeTaskMeta.deserialize(byteBuffer));
     }
     return pipeTaskMeta;
   }

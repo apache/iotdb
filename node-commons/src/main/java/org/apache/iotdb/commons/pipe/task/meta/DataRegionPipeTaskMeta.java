@@ -26,22 +26,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-public class DataRegionPipeTask {
+public class DataRegionPipeTaskMeta {
 
+  // TODO: replace it with consensus index
   private long index;
 
   private long version;
 
-  private int regionGroup;
-
   private int regionLeader;
 
-  private DataRegionPipeTask() {}
+  private DataRegionPipeTaskMeta() {}
 
-  public DataRegionPipeTask(long index, long version, int regionGroup, int regionLeader) {
+  public DataRegionPipeTaskMeta(long index, long version, int regionLeader) {
     this.index = index;
     this.version = version;
-    this.regionGroup = regionGroup;
     this.regionLeader = regionLeader;
   }
 
@@ -51,10 +49,6 @@ public class DataRegionPipeTask {
 
   public long getVersion() {
     return version;
-  }
-
-  public int getRegionGroup() {
-    return regionGroup;
   }
 
   public int getRegionLeader() {
@@ -76,20 +70,18 @@ public class DataRegionPipeTask {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(index, outputStream);
     ReadWriteIOUtils.write(version, outputStream);
-    ReadWriteIOUtils.write(regionGroup, outputStream);
     ReadWriteIOUtils.write(regionLeader, outputStream);
   }
 
-  public static DataRegionPipeTask deserialize(ByteBuffer byteBuffer) {
-    DataRegionPipeTask dataRegionPipeTask = new DataRegionPipeTask();
-    dataRegionPipeTask.index = ReadWriteIOUtils.readLong(byteBuffer);
-    dataRegionPipeTask.version = ReadWriteIOUtils.readLong(byteBuffer);
-    dataRegionPipeTask.regionGroup = ReadWriteIOUtils.readInt(byteBuffer);
-    dataRegionPipeTask.regionLeader = ReadWriteIOUtils.readInt(byteBuffer);
-    return dataRegionPipeTask;
+  public static DataRegionPipeTaskMeta deserialize(ByteBuffer byteBuffer) {
+    DataRegionPipeTaskMeta dataRegionPipeTaskMeta = new DataRegionPipeTaskMeta();
+    dataRegionPipeTaskMeta.index = ReadWriteIOUtils.readLong(byteBuffer);
+    dataRegionPipeTaskMeta.version = ReadWriteIOUtils.readLong(byteBuffer);
+    dataRegionPipeTaskMeta.regionLeader = ReadWriteIOUtils.readInt(byteBuffer);
+    return dataRegionPipeTaskMeta;
   }
 
-  public static DataRegionPipeTask deserialize(InputStream inputStream) throws IOException {
+  public static DataRegionPipeTaskMeta deserialize(InputStream inputStream) throws IOException {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
@@ -102,25 +94,19 @@ public class DataRegionPipeTask {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    DataRegionPipeTask that = (DataRegionPipeTask) obj;
-    return index == that.index
-        && version == that.version
-        && regionGroup == that.regionGroup
-        && regionLeader == that.regionLeader;
+    DataRegionPipeTaskMeta that = (DataRegionPipeTaskMeta) obj;
+    return index == that.index && version == that.version && regionLeader == that.regionLeader;
   }
 
   @Override
   public int hashCode() {
-    return regionGroup;
+    return (int) (index * 31 * 31 + version * 31 + regionLeader);
   }
 
   @Override
   public String toString() {
     return "DataRegionPipeTask{"
-        + "regionGroup='"
-        + regionGroup
-        + '\''
-        + ", index='"
+        + "index='"
         + index
         + '\''
         + ", version='"

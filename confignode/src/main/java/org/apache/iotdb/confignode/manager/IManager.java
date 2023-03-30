@@ -73,8 +73,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
@@ -538,14 +536,6 @@ public interface IManager {
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
-
-  /**
-   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
-   *
-   * @param req specify the pipeSinkName
-   * @return TGetPipeSinkResp contains the PipeSink
-   */
-  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
 
   /**
    * Create Pipe

@@ -846,20 +846,24 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  @Deprecated
   public TSStatus createPipeSink(TPipeSinkInfo req) {
     // To be deleted
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TSStatus dropPipeSink(TDropPipeSinkReq req) {
     // To be deleted
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    return configManager.getPipeSink(req);
+    // To be deleted
+    return new TGetPipeSinkResp();
   }
 
   @Override
@@ -888,11 +892,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  @Deprecated
   public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
   }
 
   @Override
+  @Deprecated
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
     return configManager.recordPipeMessage(req);
   }

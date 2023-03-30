@@ -114,7 +114,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
+    LOGGER.info("Roll back StopPipeProcedure at STATE [{}]", state);
     switch (state) {
       case VALIDATE_TASK:
         rollbackFromValidateTask(env);
@@ -144,7 +144,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
-    LOGGER.info("Start to rollback from operate on data nodes for task [{}]", pipeName);
+    LOGGER.info("Start to rollback from stop on data nodes for task [{}]", pipeName);
 
     // Stop pipe
     TOperatePipeOnDataNodeReq request =
@@ -154,12 +154,12 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
-          String.format("Failed to create pipe instance [%s] on data nodes", pipeName));
+          String.format("Failed to rollback from stop on data nodes for task [%s]", pipeName));
     }
   }
 
   private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from write config node consensus for task [{}]", pipeName);
+    LOGGER.info("Start to rollback from write config node consensus for stop pipe task [{}]", pipeName);
 
     // Stop pipe
     final ConfigManager configNodeManager = env.getConfigManager();

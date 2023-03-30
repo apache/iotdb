@@ -118,7 +118,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
       throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
+    LOGGER.info("Roll back DropPipeProcedure at STATE [{}]", state);
     switch (state) {
       case VALIDATE_TASK:
         rollbackFromValidateTask(env);

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTask;
+import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
@@ -53,8 +55,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedureV2.class);
 
   private TCreatePipeReq req;
-  private Map<Integer, Integer> regionGroupToLeaderMap = new HashMap<>();
-  // TODO: Will there be a regionGroupToVersionMap?
+  private Map<TConsensusGroupId, Integer> regionGroupToLeaderMap = new HashMap<>();
+  private long createTime;
 
   public CreatePipeProcedureV2() {
     super();
@@ -74,6 +76,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("Start to calculate PIPE [{}] information on Config Nodes", req.getPipeName());
+    createTime = System.currentTimeMillis();
     // TODO: Get the regionMap after the interface is implemented
     if (this.regionGroupToLeaderMap.isEmpty()) {
       throw new PipeManagementException(
@@ -91,7 +94,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .setCollectorAttributes(req.getCollectorAttributes())
             .setProcessorAttributes(req.getProcessorAttributes())
             .setConnectorAttributes(req.getConnectorAttributes())
-            .setRegionGroupToLeaderMap(regionGroupToLeaderMap);
+            .setRegionGroupToLeaderMap(regionGroupToLeaderMap)
+            .setCreateTime(createTime);
     if (RpcUtils.squashResponseStatusList(env.createPipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
@@ -114,15 +118,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   private PipeTaskMeta parseInfoToPipeTaskMeta() {
-    Map<Integer, DataRegionPipeTask> dataRegionPipeTasks = new HashMap<>();
-    // TODO: Record the index and version of each newborn DataRegionPipeTask
+    Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
     regionGroupToLeaderMap.forEach(
         (region, leader) -> {
-          dataRegionPipeTasks.put(region, new DataRegionPipeTask(0, 0, region, leader));
+          dataRegionPipeTasks.put(region, new DataRegionPipeTaskMeta(0, 0, leader));
         });
     return new PipeTaskMeta(
         req.getPipeName(),
-        System.currentTimeMillis(),
+        createTime,
         PipeStatus.STOP,
         req.getCollectorAttributes(),
         req.getProcessorAttributes(),
@@ -189,7 +192,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "Start to rollback from write config node consensus for task [{}]", req.getPipeName());
+        "Start to rollback from write config node consensus for create pipe task [{}]", req.getPipeName());
 
     // Drop pipe
     final ConfigManager configNodeManager = env.getConfigManager();
@@ -223,9 +226,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
+    stream.writeLong(createTime);
     stream.writeInt(regionGroupToLeaderMap.size());
-    for (Map.Entry<Integer, Integer> entry : regionGroupToLeaderMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
+    for (Map.Entry<TConsensusGroupId, Integer> entry : regionGroupToLeaderMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getId(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
   }
@@ -249,10 +253,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       req.getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
+    createTime = byteBuffer.getLong();
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
       regionGroupToLeaderMap.put(
-          ReadWriteIOUtils.readInt(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+          new TConsensusGroupId(
+              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
+          ReadWriteIOUtils.readInt(byteBuffer));
     }
   }
 

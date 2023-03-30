@@ -19,19 +19,12 @@
 package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
-import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Collections;
 
 public class PipeTaskCoordinator {
 
@@ -67,19 +60,5 @@ public class PipeTaskCoordinator {
 
   public void unlockPipeTaskInfo() {
     pipeTaskInfo.releasePipeTaskInfoLock();
-  }
-
-  public TGetPipePluginTableResp getPipePluginTable() {
-    try {
-      return ((PipePluginTableResp)
-              configManager.getConsensusManager().read(new GetPipePluginTablePlan()).getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get PipePluginTable", e);
-      return new TGetPipePluginTableResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
   }
 }

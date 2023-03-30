@@ -353,14 +353,14 @@ struct TCreatePipeOnDataNodeReq{
   2: optional map<string, string> collectorAttributes
   3: optional map<string, string> processorAttributes
   4: required map<string, string> connectorAttributes
-  5: required map<i32, i32> regionGroupToLeaderMap
+  5: required map<common.TConsensusGroupId, i32> regionGroupToLeaderMap
+  6: required i64 createTime
 }
 
 struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
-    3: optional i64 createTime
 }
 
 // ====================================================

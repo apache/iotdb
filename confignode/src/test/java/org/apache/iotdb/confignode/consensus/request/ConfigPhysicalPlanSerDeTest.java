@@ -35,7 +35,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTask;
+import org.apache.iotdb.commons.pipe.task.meta.DataRegionPipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -990,9 +990,9 @@ public class ConfigPhysicalPlanSerDeTest {
     collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    DataRegionPipeTask dataRegionPipeTask = new DataRegionPipeTask(0, 0, 1, 3);
-    Map<Integer, DataRegionPipeTask> dataRegionPipeTasks = new HashMap<>();
-    dataRegionPipeTasks.put(1, dataRegionPipeTask);
+    DataRegionPipeTaskMeta dataRegionPipeTaskMeta = new DataRegionPipeTaskMeta(0, 0, 1);
+    Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta);
     PipeTaskMeta pipeTaskMeta =
         new PipeTaskMeta(
             "testPipe",
