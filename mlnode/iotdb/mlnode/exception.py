@@ -31,9 +31,9 @@ class ModelNotExistError(_BaseError):
         self.message = "Model path: ({}) not exists".format(file_path)
 
 
-class ModelNotSupportedError(_BaseError):
-    def __init__(self, model_name: str):
-        self.message = "Model: ({}) not supported".format(model_name)
+class BadConfigValueError(_BaseError):
+    def __init__(self, config_name: str, config_value, hint: str = ''):
+        self.message = "Bad value ({0}) for config: ({1}). {2}".format(config_value, config_name, hint)
 
 
 class MissingConfigError(_BaseError):
@@ -41,7 +41,6 @@ class MissingConfigError(_BaseError):
         self.message = "Missing config: ({})".format(config_name)
 
 
-class WrongTypeError(_BaseError):
+class WrongTypeConfigError(_BaseError):
     def __init__(self, config_name: str, expected_type: str):
-        self.message = "Wrong type for config: ({})".format(config_name)
-        self.message += ", expected: ({})".format(expected_type)
+        self.message = "Wrong type for config: ({0}), expected: ({1})".format(config_name, expected_type)
