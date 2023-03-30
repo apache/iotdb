@@ -71,6 +71,22 @@ def parse_training_request(req: TCreateTrainingTaskReq):
 
 
 def _get_data_config_parser():
+    """
+    Get data config parser
+    Returns:
+        data_config_parser: parser for data config
+    Argument description:
+        query_expressions: query expressions
+        query_filter: query filter
+        source_type: source type
+        filename: filename
+        dataset_type: dataset type
+        time_embed: freq for time features encoding
+        input_len: input sequence length
+        pred_len: prediction sequence length
+        input_vars: number of input variables
+        output_vars: number of output variables
+    """
     data_config_parser = ConfigParser()
     data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
     data_config_parser.add_argument('--query_filter', type=str, default='')
@@ -86,6 +102,24 @@ def _get_data_config_parser():
 
 
 def _get_model_config_parser():
+    """
+    Get model config parser
+    Returns:
+        model_config_parser: parser for model config
+    Argument description:
+        model_name: model name
+        input_len: input sequence length
+        pred_len: prediction sequence length
+        input_vars: number of input variables
+        output_vars: number of output variables
+        task_type: task type, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate,
+            MS:multivariate predict univariate'
+        kernel_size: kernel size
+        block_type: block type
+        d_model: dimension of feature in model
+        inner_layers: number of inner layers
+        outer_layers: number of outer layers
+    """
     model_config_parser = ConfigParser()
     model_config_parser.add_argument('--model_name', type=str, required=True)
     model_config_parser.add_argument('--input_len', type=int, default=96)
@@ -102,6 +136,29 @@ def _get_model_config_parser():
 
 
 def _get_task_config_parser():
+    """
+    Get task config parser
+    Returns:
+        task_config_parser: parser for task config
+    Argument description:
+        model_id: model id
+        tuning: whether to tune hyperparameters
+        task_type: task type, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate,
+            MS:multivariate predict univariate'
+        task_class: task class
+        input_len: input sequence length
+        pred_len: prediction sequence length
+        input_vars: number of input variables
+        output_vars: number of output variables
+        learning_rate: learning rate
+        batch_size: batch size
+        num_workers: number of workers
+        epochs: number of epochs
+        use_gpu: whether to use gpu
+        use_multi_gpu: whether to use multi-gpu
+        devices: devices to use
+        metric_names: metric to use
+    """
     task_config_parser = ConfigParser()
     task_config_parser.add_argument('--model_id', type=str, default='')
     task_config_parser.add_argument('--tuning', type=bool, default=False)
@@ -118,6 +175,6 @@ def _get_task_config_parser():
     task_config_parser.add_argument('--use_gpu', type=bool, default=False)
     task_config_parser.add_argument('--gpu', type=int, default=0)
     task_config_parser.add_argument('--use_multi_gpu', type=bool, default=False)
-    task_config_parser.add_argument('--devices', type=list, default=[0])
+    task_config_parser.add_argument('--devices', type=int, nargs='+', default=[0])
     task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE', 'MAE'])
     return task_config_parser
