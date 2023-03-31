@@ -16,12 +16,12 @@
 # under the License.
 #
 
-
 import os
+
 import optuna
-from iotdb.mlnode.process.trial import ForecastingTrainingTrial
-from iotdb.mlnode.algorithm.model_factory import create_forecast_model
+
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 
 
 class TrainingTrialObjective:
@@ -72,12 +72,11 @@ class BasicTask(object):
 
 class ForecastingTrainingTask(BasicTask):
     def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
-        super(ForecastingTrainingTask, self).__init__ \
-            (task_configs, model_configs, model, dataset, task_trial_map)
+        super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, task_trial_map)
         model_id = self.task_configs['model_id']
         self.tuning = self.task_configs["tuning"]
 
-        if self.tuning:             # TODO implement tuning task
+        if self.tuning:  # TODO implement tuning task
             self.study = optuna.create_study(direction='minimize')
         else:
             self.task_configs['trial_id'] = 'tid_0'  # TODO: set a default trial id
@@ -94,6 +93,6 @@ class ForecastingTrainingTask(BasicTask):
                     self.task_trial_map
                 ), n_trials=20)
             else:
-                loss = self.trial.start()
+                self.trial.start()
         except Exception as e:
             logger.exception(e)

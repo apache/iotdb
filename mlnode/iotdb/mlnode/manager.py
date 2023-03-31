@@ -17,14 +17,15 @@
 #
 
 
-import sys
-import signal
-import psutil
 import multiprocessing as mp
+import signal
+import sys
 from subprocess import call
+
+import psutil
+
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.task_factory import create_task
-
 
 # def _create_inference_task(configs, task_map, task_id):
 #     trial = ForecastingInferenceTrial(configs, debug_inference_data())
@@ -91,4 +92,3 @@ class Manager(object):
 
     # def _get_task_state(self, task_id):
     #     return self.task_map[task_id]
-

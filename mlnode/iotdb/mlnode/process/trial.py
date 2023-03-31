@@ -15,21 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
-import os
 import time
+
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 
-from torch.utils.data import Dataset, DataLoader
-
-from iotdb.mlnode.log import logger
+from iotdb.mlnode.algorithm.metric import all_metrics
 from iotdb.mlnode.client import DataNodeClient
-from iotdb.mlnode.algorithm.metric import *
+from iotdb.mlnode.data_access.utils.timefeatures import (data_transform,
+                                                         timestamp_transform)
+from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
-from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 
 
 def parse_trial_config(**kwargs):
@@ -55,22 +54,20 @@ def parse_trial_config(**kwargs):
         if k in support_cfg.keys():
             if not isinstance(v, type(support_cfg[k])):
                 raise RuntimeError(
-                    'Trial config {} should have {} type, but got {} instead'
-                    .format(k, type(support_cfg[k]).__name__, type(v).__name__)
+                    'Trial config {} should have {} type, but got {} instead'.format(k, type(support_cfg[k]).__name__,
+                                                                                     type(v).__name__)
                 )
             trial_config[k] = v
     # TODO: check all param
 
     if trial_config['input_len'] <= 0:
         raise RuntimeError(
-            'Trial config input_len should be positive integer but got {}'
-            .format(trial_config['input_len'])
+            'Trial config input_len should be positive integer but got {}'.format(trial_config['input_len'])
         )
 
     if trial_config['pred_len'] <= 0:
         raise RuntimeError(
-            'Trial config pred_len should be positive integer but got {}'
-            .format(trial_config['pred_len'])
+            'Trial config pred_len should be positive integer but got {}'.format(trial_config['pred_len'])
         )
 
     for metric in trial_config['metric_names']:
@@ -214,9 +211,8 @@ class ForecastingTrainingTrial(BasicTrial):
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(),
                                      lr=self.learning_rate)
-        print("Start training...")
         for epoch in range(self.epochs):
-            train_loss = self._train(self.model, optimizer, criterion, self.dataloader, epoch)
+            self._train(self.model, optimizer, criterion, self.dataloader, epoch)
             # TODO: add validation methods
             val_loss = self._validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
