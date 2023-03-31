@@ -17,12 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.model;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata.model;
 
-public enum DropModelState {
-  INIT,
-  VALIDATED,
-  DATA_NODE_DROPPED,
-  ML_NODE_DROPPED,
-  CONFIG_NODE_DROPPED
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+public class DropModelTask implements IConfigTask {
+
+  private final String modelId;
+
+  public DropModelTask(String modelId) {
+    this.modelId = modelId;
+  }
+
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.dropModel(modelId);
+  }
 }

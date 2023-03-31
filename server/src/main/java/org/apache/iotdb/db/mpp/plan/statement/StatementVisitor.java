@@ -73,6 +73,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -228,6 +232,23 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowPipePlugins(ShowPipePluginsStatement showPipePluginsStatement, C context) {
     return visitStatement(showPipePluginsStatement, context);
+  }
+
+  // ML Model
+  public R visitCreateModel(CreateModelStatement createModelStatement, C context) {
+    return visitStatement(createModelStatement, context);
+  }
+
+  public R visitDropModel(DropModelStatement dropModelStatement, C context) {
+    return visitStatement(dropModelStatement, context);
+  }
+
+  public R visitShowModels(ShowModelsStatement showModelsModelStatement, C context) {
+    return visitStatement(showModelsModelStatement, context);
+  }
+
+  public R visitShowTrails(ShowTrailsStatement showTrailsStatement, C context) {
+    return visitStatement(showTrailsStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

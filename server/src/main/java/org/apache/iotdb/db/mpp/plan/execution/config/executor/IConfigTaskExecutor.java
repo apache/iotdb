@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -175,4 +176,12 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
 
   SettableFuture<ConfigTaskResult> showContinuousQueries();
+
+  SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelId);
+
+  SettableFuture<ConfigTaskResult> showModels();
+
+  SettableFuture<ConfigTaskResult> showTrails(String modelId);
 }
