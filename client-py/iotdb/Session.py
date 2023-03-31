@@ -1714,28 +1714,28 @@ class Session(object):
             return False
         connected = False
         for i in range(1, self.RETRY_NUM + 1):
-            if self.__default_connection.transport is not None:
+            if self.__default_connection is not None and self.__default_connection.transport is not None:
                 self.__default_connection.transport.close()
-                curr_host_index = random.randint(0, len(self.__hosts))
-                try_host_num = 0
-                for j in range(curr_host_index, len(self.__hosts)):
-                    if try_host_num == len(self.__hosts):
-                        break
-                    self.__default_endpoint = TEndPoint(
-                        self.__hosts[j], self.__ports[j]
-                    )
-                    if j == len(self.__hosts) - 1:
-                        j = -1
-                    try_host_num += 1
-                    try:
-                        self.__default_connection = self.init_connection(
-                            self.__default_endpoint
-                        )
-                        self.__client = self.__default_connection.client
-                        connected = True
-                    except TTransport.TException:
-                        continue
+            curr_host_index = random.randint(0, len(self.__hosts))
+            try_host_num = 0
+            for j in range(curr_host_index, len(self.__hosts)):
+                if try_host_num == len(self.__hosts):
                     break
+                self.__default_endpoint = TEndPoint(
+                    self.__hosts[j], self.__ports[j]
+                )
+                if j == len(self.__hosts) - 1:
+                    j = -1
+                try_host_num += 1
+                try:
+                    self.__default_connection = self.init_connection(
+                        self.__default_endpoint
+                    )
+                    self.__client = self.__default_connection.client
+                    connected = True
+                except TTransport.TException:
+                    continue
+                break
             if connected:
                 break
         return connected
