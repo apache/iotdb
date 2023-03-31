@@ -70,7 +70,7 @@ class MLNodeClient(object):
                              model_id: str,
                              is_auto: bool,
                              model_configs: dict,
-                             query_expressions: list[str],
+                             query_expressions: list = [],
                              query_filter: str = None) -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
@@ -116,6 +116,7 @@ class DataNodeClient(object):
                 transport.open()
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
+                raise e
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IDataNodeRPCService.Client(protocol)
@@ -123,7 +124,7 @@ class DataNodeClient(object):
     def fetch_timeseries(self,
                          session_id: int,
                          statement_id: int,
-                         query_expressions: list[str],
+                         query_expressions: list = [],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
@@ -145,8 +146,8 @@ class DataNodeClient(object):
     def record_model_metrics(self,
                              model_id: str,
                              trial_id: str,
-                             metrics: list[str],
-                             values: list[float]) -> None:
+                             metrics: list = [],
+                             values: list = []) -> None:
         req = TRecordModelMetricsReq(
             modelId=model_id,
             trialId=trial_id,
