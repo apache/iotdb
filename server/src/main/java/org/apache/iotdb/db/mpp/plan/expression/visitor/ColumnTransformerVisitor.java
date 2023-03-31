@@ -358,11 +358,13 @@ public class ColumnTransformerVisitor
         context.inputDataTypes.add(context.getType(caseWhenThenExpression));
         context.cache.put(caseWhenThenExpression, identity);
       } else {
-        List<WhenThenColumnTransformer> whenThenColumnTransformers = new ArrayList<>();
+        //        List<WhenThenColumnTransformer> whenThenColumnTransformers = new ArrayList<>();
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
         for (WhenThenExpression whenThenExpression :
             caseWhenThenExpression.getWhenThenExpressions()) {
-          whenThenColumnTransformers.add(
-              (WhenThenColumnTransformer) this.process(whenThenExpression, context));
+          whenList.add(this.process(whenThenExpression.getWhen(), context));
+          thenList.add(this.process(whenThenExpression.getThen(), context));
         }
         ColumnTransformer elseColumnTransformer =
             this.process(caseWhenThenExpression.getElseExpression(), context);
@@ -370,7 +372,8 @@ public class ColumnTransformerVisitor
             caseWhenThenExpression,
             new CaseWhenThenColumnTransformer(
                 TypeFactory.getType(context.getType(caseWhenThenExpression)),
-                whenThenColumnTransformers,
+                whenList,
+                thenList,
                 elseColumnTransformer));
       }
     }

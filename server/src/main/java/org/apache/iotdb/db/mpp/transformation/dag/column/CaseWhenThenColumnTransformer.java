@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column;
 
-import org.apache.iotdb.db.mpp.transformation.dag.column.binary.WhenThenColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
@@ -29,26 +28,35 @@ import org.apache.iotdb.tsfile.read.common.type.FloatType;
 import org.apache.iotdb.tsfile.read.common.type.IntType;
 import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CaseWhenThenColumnTransformer extends ColumnTransformer {
 
-  List<WhenThenColumnTransformer> whenThenTransformers;
-
+  //  List<WhenThenColumnTransformer> whenThenTransformers;
+  List<Pair<ColumnTransformer, ColumnTransformer>> whenThenTransformers;
   ColumnTransformer elseTransformer;
 
   public CaseWhenThenColumnTransformer(
       Type returnType,
-      List<WhenThenColumnTransformer> whenThenTransformers,
+      List<ColumnTransformer> whenTransformers,
+      List<ColumnTransformer> thenTransformers,
       ColumnTransformer elseTransformer) {
     super(returnType);
-    this.whenThenTransformers = whenThenTransformers;
+    if (whenTransformers.size() != thenTransformers.size()) {
+      throw new UnsupportedOperationException(
+          "the size of whenTransformers and thenTransformers need to be same.");
+    }
+    this.whenThenTransformers = new ArrayList<>();
+    for (int i = 0; i < whenTransformers.size(); i++) {
+      this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
+    }
     this.elseTransformer = elseTransformer;
   }
 
-  public List<WhenThenColumnTransformer> getWhenThenColumnTransformers() {
+  public List<Pair<ColumnTransformer, ColumnTransformer>> getWhenThenColumnTransformers() {
     return whenThenTransformers;
   }
 
@@ -83,23 +91,36 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
    */
   @Override
   protected void evaluate() {
-    whenThenTransformers.forEach(ColumnTransformer::tryEvaluate);
-    elseTransformer.tryEvaluate();
-    int positionCount = whenThenTransformers.get(0).getColumnCachePositionCount();
-    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-    //        List<Object> resultList = new ArrayList<>(positionCount);
-    //        for
-    List<Column> columnList = new ArrayList<>();
-    for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
-      columnList.add(whenThenTransformer.getColumn());
+    //    whenThenTransformers.forEach(ColumnTransformer::tryEvaluate);
+    List<Column> whenColumnList = new ArrayList<>();
+    List<Column> thenColumnList = new ArrayList<>();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
+      whenThenTransformer.left.tryEvaluate();
+      whenThenTransformer.right.tryEvaluate();
     }
+    elseTransformer.tryEvaluate();
+    int positionCount = whenThenTransformers.get(0).left.getColumnCachePositionCount();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
+      whenColumnList.add(whenThenTransformer.left.getColumn());
+      thenColumnList.add(whenThenTransformer.right.getColumn());
+    }
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    //    List<Column> columnList = new ArrayList<>();
+    //    for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
+    //      columnList.add(whenThenTransformer.getColumn());
+    //    }
     Column elseColumn = elseTransformer.getColumn();
     for (int i = 0; i < positionCount; i++) {
       boolean hasValue = false;
       for (int j = 0; j < whenThenTransformers.size(); j++) {
-        Column whenThenColumn = columnList.get(j);
-        if (!whenThenColumn.isNull(i)) {
-          writeToColumnBuilder(whenThenTransformers.get(j), whenThenColumn, i, builder);
+        Column whenColumn = whenColumnList.get(j);
+        Column thenColumn = thenColumnList.get(j);
+        if (!whenColumn.isNull(i) && whenColumn.getBoolean(i)) {
+          if (thenColumn.isNull(i)) {
+            builder.appendNull();
+          } else {
+            writeToColumnBuilder(whenThenTransformers.get(j).right, thenColumn, i, builder);
+          }
           hasValue = true;
           break;
         }
