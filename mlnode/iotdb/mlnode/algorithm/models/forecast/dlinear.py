@@ -15,13 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import argparse
 import math
 
 import torch
 import torch.nn as nn
-
-from iotdb.mlnode.exception import BadConfigValueError
 
 
 class MovingAverageBlock(nn.Module):
@@ -63,9 +61,7 @@ class DLinear(nn.Module):
             kernel_size=25,
             input_len=96,
             pred_len=96,
-            input_vars=1,
-            output_vars=1,
-            forecast_type='m',  # TODO, support others
+            input_vars=1
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -98,9 +94,7 @@ class DLinearIndividual(nn.Module):
             kernel_size=25,
             input_len=96,
             pred_len=96,
-            input_vars=1,
-            output_vars=1,
-            forecast_type='m',  # TODO, support others
+            input_vars=1
     ):
         super(DLinearIndividual, self).__init__()
         self.input_len = input_len
@@ -134,28 +128,11 @@ class DLinearIndividual(nn.Module):
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-def _model_config(**kwargs):
-    return {
-        'kernel_size': 25,
-        **kwargs
-    }
+def dlinear(model_config: argparse.Namespace) -> DLinear:
+    # TODO (@lcy)
+    pass
 
 
-def dlinear(common_config: dict, kernel_size=25, **kwargs) -> [DLinear, dict]:
-    config = _model_config()
-    config.update(**common_config)
-    if not kernel_size > 0:
-        raise BadConfigValueError('kernel_size', kernel_size,
-                                  'Kernel size of dlinear should larger than 0')
-    config['kernel_size'] = kernel_size
-    return DLinear(**config), config
-
-
-def dlinear_individual(common_config: dict, kernel_size=25, **kwargs) -> [DLinearIndividual, dict]:
-    config = _model_config()
-    config.update(**common_config)
-    if not kernel_size > 0:
-        raise BadConfigValueError('kernel_size', kernel_size,
-                                  'Kernel size of dlinear_individual should larger than 0')
-    config['kernel_size'] = kernel_size
-    return DLinearIndividual(**config), config
+def dlinear_individual(model_config: argparse.Namespace) -> DLinearIndividual:
+    # TODO (@lcy)
+    pass

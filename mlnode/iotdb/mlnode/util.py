@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
@@ -24,10 +23,13 @@ from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
     """ Parse TEndPoint from a given endpoint url.
+
     Args:
         endpoint_url: an endpoint url, format: ip:port
+
     Returns:
         TEndPoint
+
     Raises:
         BadNodeUrlError
     """

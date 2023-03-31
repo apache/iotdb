@@ -33,7 +33,6 @@ class DataSource(object):
     def __init__(self):
         self.data = None
         self.timestamp = None
-        self._read_data()
 
     def _read_data(self):
         raise NotImplementedError
@@ -47,8 +46,9 @@ class DataSource(object):
 
 class FileDataSource(DataSource):
     def __init__(self, filename: str = None):
-        self.filename = filename
         super(FileDataSource, self).__init__()
+        self.filename = filename
+        self._read_data()
 
     def _read_data(self):
         try:
@@ -62,14 +62,15 @@ class FileDataSource(DataSource):
 
 class ThriftDataSource(DataSource):
     def __init__(self, query_expressions: list = None, query_filter: str = None):
+        super(DataSource, self).__init__()
         self.query_expressions = query_expressions
         self.query_filter = query_filter
-        super(ThriftDataSource, self).__init__()
+        self._read_data()
 
     def _read_data(self):
         try:
             data_client = client_manager.borrow_data_node_client()
-        except Exception:
+        except Exception:  # is this exception catch needed???
             raise RuntimeError('Fail to establish connection with DataNode')
 
         try:
