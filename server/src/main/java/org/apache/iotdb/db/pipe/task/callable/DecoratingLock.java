@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class DecoratingLock {
-  private volatile boolean isDecorating = false;
+  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
 
   public void waitForDecorated() {
-    while (isDecorating) {
+    while (isDecorating.get()) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -33,10 +35,10 @@ public class DecoratingLock {
   }
 
   public void markAsDecorating() {
-    isDecorating = true;
+    isDecorating.set(true);
   }
 
   public void markAsDecorated() {
-    isDecorating = false;
+    isDecorating.set(false);
   }
 }

@@ -27,13 +27,11 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutorManager;
  */
 public class PipeTaskScheduler {
 
-  private PipeTaskExecutorManager pipeTaskExecutorManager;
+  private final PipeTaskExecutorManager pipeTaskExecutorManager =
+      PipeTaskExecutorManager.setupAndGetInstance();
 
-  void setPipeTaskExecutor(PipeTaskExecutorManager pipeTaskExecutorManager) {
-    this.pipeTaskExecutorManager = pipeTaskExecutorManager;
-  }
-
-  public void setAssignerSubtaskExecutorThreadNum(int threadNum) {
+  public void adjustAssignerSubtaskExecutorThreadNum(int threadNum) {
+    // TODO: make it configurable by setting different parameters
     pipeTaskExecutorManager.getAssignerSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 
@@ -41,7 +39,8 @@ public class PipeTaskScheduler {
     return pipeTaskExecutorManager.getAssignerSubtaskExecutor().getExecutorThreadNumber();
   }
 
-  public void setConnectorSubtaskExecutorThreadNum(int threadNum) {
+  public void adjustConnectorSubtaskExecutorThreadNum(int threadNum) {
+    // TODO: make it configurable by setting different parameters
     pipeTaskExecutorManager.getConnectorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 
@@ -49,7 +48,8 @@ public class PipeTaskScheduler {
     return pipeTaskExecutorManager.getConnectorSubtaskExecutor().getExecutorThreadNumber();
   }
 
-  public void setProcessorSubtaskExecutorThreadNum(int threadNum) {
+  public void adjustProcessorSubtaskExecutorThreadNum(int threadNum) {
+    // TODO: make it configurable by setting different parameters
     pipeTaskExecutorManager.getProcessorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
   }
 

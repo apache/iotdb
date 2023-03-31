@@ -30,31 +30,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
-  private final DecoratingLock decoratingLock = new DecoratingLock();
-
   private final String taskID;
 
-  private ListeningExecutorService executorService;
-  private Throwable lastFailedCause;
+  private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
+  private ExecutorService subtaskCallbackListeningExecutor;
+
+  private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
 
   private static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
 
-  private volatile boolean shouldStopSubmittingSelf = true;
+  private Throwable lastFailedCause;
+
+  private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
 
   public PipeSubtask(String taskID) {
     super();
     this.taskID = taskID;
   }
 
-  public void bindExecutorService(ListeningExecutorService executorService) {
-    this.executorService = executorService;
+  public void bindExecutors(
+      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ExecutorService subtaskCallbackListeningExecutor) {
+    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
   }
 
   @Override
@@ -63,7 +70,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
     // wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
-    decoratingLock.waitForDecorated();
+    callbackDecoratingLock.waitForDecorated();
 
     return null;
   }
@@ -92,36 +99,32 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     }
   }
 
-  /**
-   * this may cause RejectedExecutionException when the executorService is shutdown. we just ignore
-   * it.
-   */
   public void submitSelf() {
-    if (shouldStopSubmittingSelf) {
+    if (shouldStopSubmittingSelf.get()) {
       // we change the flag to false to make sure that the subtask can be submitted again
-      shouldStopSubmittingSelf = false;
+      shouldStopSubmittingSelf.set(false);
       return;
     }
 
-    decoratingLock.markAsDecorating();
+    callbackDecoratingLock.markAsDecorating();
     try {
-      final ListenableFuture<Void> nextFuture = executorService.submit(this);
-      Futures.addCallback(nextFuture, this, executorService);
+      final ListenableFuture<Void> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
     } finally {
-      decoratingLock.markAsDecorated();
+      callbackDecoratingLock.markAsDecorated();
     }
   }
 
   public void allowSubmittingSelf() {
-    shouldStopSubmittingSelf = false;
+    shouldStopSubmittingSelf.set(false);
   }
 
   public void disallowSubmittingSelf() {
-    shouldStopSubmittingSelf = true;
+    shouldStopSubmittingSelf.set(true);
   }
 
   public boolean isSubmittingSelf() {
-    return !shouldStopSubmittingSelf;
+    return !shouldStopSubmittingSelf.get();
   }
 
   public String getTaskID() {

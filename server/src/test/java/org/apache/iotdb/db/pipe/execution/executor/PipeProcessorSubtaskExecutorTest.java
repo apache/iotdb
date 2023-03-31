@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.execution.executor;
 import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,6 +45,7 @@ public class PipeProcessorSubtaskExecutorTest {
   @After
   public void tearDown() throws Exception {
     executor.shutdown();
+    Assert.assertTrue(executor.isShutdown());
   }
 
   @Test
@@ -78,14 +78,5 @@ public class PipeProcessorSubtaskExecutorTest {
     }
 
     verify(spySubtask, atLeast(10)).call();
-  }
-
-  @Test
-  public void testStop() {
-    // test stop a running executor
-    executor.shutdown();
-
-    ListeningExecutorService executorService = executor.getListeningExecutorService();
-    Assert.assertTrue(executorService.isShutdown());
   }
 }

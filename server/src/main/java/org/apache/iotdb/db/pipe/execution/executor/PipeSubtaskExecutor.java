@@ -21,8 +21,6 @@ package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -34,24 +32,26 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 
 @NotThreadSafe
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
 
-  private final WrappedThreadPoolExecutor wrappedThreadPoolExecutor;
-  private final ListeningExecutorService listeningExecutorService;
+  private static final ExecutorService subtaskCallbackListeningExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+          ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
+  private final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
   private int corePoolSize;
 
   protected PipeSubtaskExecutor(int corePoolSize, ThreadName threadName) {
-    wrappedThreadPoolExecutor =
-        (WrappedThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
-    listeningExecutorService = MoreExecutors.listeningDecorator(wrappedThreadPoolExecutor);
+    subtaskWorkerThreadPoolExecutor =
+        MoreExecutors.listeningDecorator(
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName()));
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -67,7 +67,7 @@ public abstract class PipeSubtaskExecutor {
     }
 
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
-    subtask.bindExecutorService(listeningExecutorService);
+    subtask.bindExecutors(subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor);
   }
 
   public final void start(String subTaskID) {
@@ -104,24 +104,28 @@ public abstract class PipeSubtaskExecutor {
   /////////////////////// executor management  ///////////////////////
 
   public final void shutdown() {
-    if (listeningExecutorService != null) {
-      listeningExecutorService.shutdown();
+    if (isShutdown()) {
+      return;
     }
+
+    // stop all subtasks before shutting down the executor
+    for (PipeSubtask subtask : registeredIdSubtaskMapper.values()) {
+      subtask.disallowSubmittingSelf();
+    }
+
+    subtaskWorkerThreadPoolExecutor.shutdown();
+  }
+
+  public final boolean isShutdown() {
+    return subtaskWorkerThreadPoolExecutor.isShutdown();
   }
 
   public final void adjustExecutorThreadNumber(int threadNum) {
     corePoolSize = threadNum;
-    wrappedThreadPoolExecutor.setCorePoolSize(threadNum);
+    throw new UnsupportedOperationException("Not implemented yet.");
   }
 
   public final int getExecutorThreadNumber() {
     return corePoolSize;
-  }
-
-  /////////////////////// test only ///////////////////////
-
-  @TestOnly
-  public ListeningExecutorService getListeningExecutorService() {
-    return listeningExecutorService;
   }
 }
