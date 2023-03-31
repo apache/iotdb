@@ -31,3 +31,9 @@ class TSStatusCode(Enum):
 
     def get_status_code(self) -> int:
         return self.value
+
+
+class ModelState(Enum):
+    RUNNING = 'running'
+    FINISHED = 'finished'
+    FAILED = 'failed'

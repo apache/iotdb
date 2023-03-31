@@ -27,6 +27,7 @@ from iotdb.mlnode.algorithm.metric import all_metrics
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.constant import ModelState
 
 
 def _parse_trial_config(**kwargs):
@@ -78,7 +79,7 @@ def _parse_trial_config(**kwargs):
 
 class BasicTrial(object):
     def __init__(self, trial_configs: dict, model: nn.Module, model_configs: dict, dataset: Dataset, **kwargs):
-        trial_configs = _parse_trial_config(**trial_configs)  # TODO: remove all configs
+        trial_configs = self.trial_configs = _parse_trial_config(**trial_configs)
         self.model_id = trial_configs['model_id']
         self.trial_id = trial_configs['trial_id']
         self.batch_size = trial_configs['batch_size']
@@ -203,23 +204,28 @@ class ForecastingTrainingTrial(BasicTrial):
         )
         val_loss = np.average(val_loss)
         logger.info('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
-        return val_loss
+        return val_loss, metrics_dict
 
     def start(self) -> float:
-        # TODO(@zh): update model state
-
+        self.confignode_client.update_model_state(self.model_id, self.trial_id, ModelState.RUNNING)
         best_loss = np.inf
+        best_metrics_dict = None
         for epoch in range(self.epochs):
             self._train(epoch)
-            val_loss = self._validate(epoch)
+            val_loss, metrics_dict = self._validate(epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
+                best_metrics_dict = metrics_dict
                 model_storage.save_model(self.model,
                                          self.model_configs,
                                          model_id=self.model_id,
                                          trial_id=self.trial_id)
 
-        logger.info(f'Trail: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
+        logger.info(f'Trial: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
 
-        # TODO(@zh): update model state & model info
+        self.confignode_client.update_model_state(self.model_id, self.trial_id, ModelState.RUNNING)
+        model_info = {}
+        model_info.update(best_metrics_dict)
+        model_info.update(self.trial_configs)
+        self.confignode_client.update_model_info(self.model_id, self.trial_id, model_info)
         return best_loss
