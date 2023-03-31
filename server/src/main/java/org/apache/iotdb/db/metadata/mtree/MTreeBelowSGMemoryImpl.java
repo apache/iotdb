@@ -810,7 +810,6 @@ public class MTreeBelowSGMemoryImpl {
     }
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(templateId);
-    regionStatistics.activateTemplate(templateId);
   }
 
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
