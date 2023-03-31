@@ -504,6 +504,55 @@ public class SchemaFileTest {
     sf.close();
   }
 
+  /**
+   * This test case is designed to examine a scenario in which, every time a SegmentedPage inserts a
+   * record, the process of checking whether there is enough space in the segment takes into account
+   * not only the size of the record's buffer, but also the size of the key and related pointers.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testEstimateSegSizeWithBigName() throws Exception {
+    IMNode sgNode = new StorageGroupMNode(null, "mma", 111111111L);
+    IMNode d1 =
+        fillChildren(
+            sgNode,
+            300,
+            "deviceabcdabcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZ",
+            this::supplyEntity);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+
+    try {
+      fillChildren(d1, 19, "ss1", this::supplyMeasurement);
+
+      sf.writeMNode(sgNode);
+
+      fillChildren(
+          d1,
+          2,
+          "sensor2abcdabcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZPORSTUVWXYZ",
+          this::supplyMeasurementWithoutAlias);
+
+      sf.writeMNode(d1);
+
+      moveAllToBuffer(d1);
+      moveAllToBuffer(sgNode);
+
+      fillChildren(d1, 20, "ss", this::supplyMeasurement);
+      sf.writeMNode(d1);
+
+      Iterator<IMNode> verifyChildren = sf.getChildren(d1);
+      int cnt = 0;
+      while (verifyChildren.hasNext()) {
+        cnt++;
+        verifyChildren.next();
+      }
+      Assert.assertEquals(41, cnt);
+    } finally {
+      sf.close();
+    }
+  }
+
   @Test
   public void testEstimateSegSize() throws Exception {
     // to test whether estimation of segment size works on edge cases
@@ -920,6 +969,10 @@ public class SchemaFileTest {
 
   private IMNode supplyMeasurement(IMNode par, String name) {
     return getMeasurementNode(par, name, name + "_als");
+  }
+
+  private IMNode supplyMeasurementWithoutAlias(IMNode par, String name) {
+    return getMeasurementNode(par, name, null);
   }
 
   private IMNode supplyInternal(IMNode par, String name) {
