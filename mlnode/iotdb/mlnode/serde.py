@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
+
 import numpy as np
 import pandas as pd
-
-from enum import Enum
 
 
 class TSDataType(Enum):
@@ -46,6 +46,7 @@ class TSDataType(Enum):
             TSDataType.INT64: np.dtype(">i8"),
             TSDataType.TEXT: np.dtype("str"),
         }[self]
+
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2

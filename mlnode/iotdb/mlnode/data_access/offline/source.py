@@ -69,7 +69,7 @@ class ThriftDataSource(DataSource):
     def _read_data(self):
         try:
             data_client = client_manager.borrow_data_node_client()
-        except Exception:  # is this exception catch needed???
+        except Exception:
             raise RuntimeError('Fail to establish connection with DataNode')
 
         try:

@@ -151,7 +151,7 @@ support_model_configs = {
 }
 
 
-def nbeats(common_config: dict, d_model=128, inner_layers=4, outer_layers=4, **kwargs) -> NBeats:
+def nbeats(common_config: dict, d_model=128, inner_layers=4, outer_layers=4, **kwargs) -> [NBeats, dict]:
     config = _model_config()
     config.update(**common_config)
     if not d_model > 0:

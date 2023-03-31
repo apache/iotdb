@@ -15,16 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
-import argparse
-
 from torch.utils.data import Dataset
 
-from iotdb.mlnode.datats.offline.data_source import DataSource
-from iotdb.mlnode.datats.utils.timefeatures import time_features
-
-# currently support for multivariate forecasting only
+from iotdb.mlnode.data_access.offline.source import DataSource
+from iotdb.mlnode.data_access.utils.timefeatures import time_features
 
 
 class TimeSeriesDataset(Dataset):

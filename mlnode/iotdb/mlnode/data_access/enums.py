@@ -15,6 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
 
 
-support_forecasting_models = ['dlinear', 'dlinear_individual', 'nbeats']
+class DatasetType(Enum):
+    TIMESERIES = "timeseries"
+    WINDOW = "window"
+
+    def __str__(self):
+        return self.value
+
+    def __eq__(self, other: str) -> bool:
+        return self.value == other
