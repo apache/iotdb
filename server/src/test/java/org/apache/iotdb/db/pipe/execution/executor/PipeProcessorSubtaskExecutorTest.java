@@ -22,61 +22,23 @@ package org.apache.iotdb.db.pipe.execution.executor;
 import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
 
-import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.mockito.Mockito;
 
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
-public class PipeProcessorSubtaskExecutorTest {
-
-  private PipeProcessorSubtaskExecutor executor;
+public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
     executor = new PipeProcessorSubtaskExecutor();
-  }
 
-  @After
-  public void tearDown() throws Exception {
-    executor.shutdown();
-    Assert.assertTrue(executor.isShutdown());
-  }
-
-  @Test
-  public void testSubmit() throws Exception {
-
-    PipeProcessorSubtask subtask =
-        new PipeProcessorSubtask(
-            "testProcessorSubtask", mock(PipeProcessorPluginRuntimeWrapper.class)) {
-          @Override
-          public void executeForAWhile() {}
-        };
-    PipeProcessorSubtask spySubtask = Mockito.spy(subtask);
-
-    // test submit a subtask which is not in the map
-    executor.start(spySubtask.getTaskID());
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    verify(spySubtask, times(0)).call();
-
-    // test submit a subtask which is in the map
-    executor.register(spySubtask);
-    executor.start(spySubtask.getTaskID());
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    verify(spySubtask, atLeast(10)).call();
+    subtask =
+        Mockito.spy(
+            new PipeProcessorSubtask(
+                "PipeProcessorSubtaskExecutorTest", mock(PipeProcessorPluginRuntimeWrapper.class)) {
+              @Override
+              public void executeForAWhile() {}
+            });
   }
 }

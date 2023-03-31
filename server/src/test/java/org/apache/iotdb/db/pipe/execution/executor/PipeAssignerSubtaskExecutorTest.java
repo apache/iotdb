@@ -21,58 +21,20 @@ package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.db.pipe.task.callable.PipeAssignerSubtask;
 
-import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.mockito.Mockito;
 
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
-public class PipeAssignerSubtaskExecutorTest {
-
-  private PipeAssignerSubtaskExecutor executor;
+public class PipeAssignerSubtaskExecutorTest extends PipeSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
     executor = new PipeAssignerSubtaskExecutor();
-  }
 
-  @After
-  public void tearDown() throws Exception {
-    executor.shutdown();
-    Assert.assertTrue(executor.isShutdown());
-  }
-
-  @Test
-  public void testSubmit() throws Exception {
-
-    PipeAssignerSubtask subtask =
-        new PipeAssignerSubtask("testProcessorSubtask") {
-          @Override
-          public void executeForAWhile() {}
-        };
-    PipeAssignerSubtask spySubtask = Mockito.spy(subtask);
-
-    // test submit a subtask which is not in the map
-    executor.start(spySubtask.getTaskID());
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    verify(spySubtask, times(0)).call();
-
-    // test submit a subtask which is in the map
-    executor.register(spySubtask);
-    executor.start(spySubtask.getTaskID());
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    verify(spySubtask, atLeast(10)).call();
+    subtask =
+        Mockito.spy(
+            new PipeAssignerSubtask("PipeAssignerSubtaskExecutorTest") {
+              @Override
+              public void executeForAWhile() {}
+            });
   }
 }

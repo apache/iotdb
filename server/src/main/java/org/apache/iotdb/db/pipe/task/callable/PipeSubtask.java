@@ -101,8 +101,6 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public void submitSelf() {
     if (shouldStopSubmittingSelf.get()) {
-      // we change the flag to false to make sure that the subtask can be submitted again
-      shouldStopSubmittingSelf.set(false);
       return;
     }
 

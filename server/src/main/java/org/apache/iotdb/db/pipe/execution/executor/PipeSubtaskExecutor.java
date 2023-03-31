@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -99,6 +100,16 @@ public abstract class PipeSubtaskExecutor {
     stop(subTaskID);
 
     registeredIdSubtaskMapper.remove(subTaskID);
+  }
+
+  @TestOnly
+  public final boolean isRegistered(String subTaskID) {
+    return registeredIdSubtaskMapper.containsKey(subTaskID);
+  }
+
+  @TestOnly
+  public final int getRegisteredSubtaskNumber() {
+    return registeredIdSubtaskMapper.size();
   }
 
   /////////////////////// executor management  ///////////////////////
