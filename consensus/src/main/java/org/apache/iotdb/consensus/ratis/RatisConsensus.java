@@ -81,6 +81,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -91,6 +92,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.consensus.common.Utils.listAllRegularFilesRecursively;
 
 /** A multi-raft consensus implementation based on Apache Ratis. */
 class RatisConsensus implements IConsensus {
@@ -723,9 +726,26 @@ class RatisConsensus implements IConsensus {
         continue;
       }
 
-      final long currentDirLength =
-          calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
+      final List<Path> allFiles = listAllRegularFilesRecursively(currentDir);
+      final long currentDirLength = allFiles.stream().mapToLong(p -> p.toFile().length()).sum();
+      final StringBuilder allFilesString = new StringBuilder();
+      allFiles.forEach(
+          p ->
+              allFilesString
+                  .append(p.toFile().getAbsolutePath())
+                  .append(":\t")
+                  .append(p.toFile().length())
+                  .append("\n"));
       final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
+
+      logger.warn(
+          "SNAPSHOT-SZY: {} checks snapshot for group {}, current dir {}, total size {}, triggers {}, file details: {}",
+          this,
+          raftGroupId,
+          currentDir,
+          currentDirLength,
+          currentDirLength >= triggerSnapshotFileSize,
+          allFilesString);
 
       if (currentDirLength >= triggerSnapshotFileSize) {
         ConsensusGenericResponse consensusGenericResponse =
