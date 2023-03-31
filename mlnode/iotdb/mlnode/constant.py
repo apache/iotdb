@@ -22,7 +22,7 @@ MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
 MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
 
 MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
-
+MLNODE_REQUEST_TEMPLATE = "resources/template"
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200

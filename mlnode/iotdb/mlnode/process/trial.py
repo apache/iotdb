@@ -200,8 +200,8 @@ class ForecastingTrainingTrial(BasicTrial):
 
         # TODO: handle some exception
         self.data_client.record_model_metrics(
-            modelId=self.model_id,
-            trialId=self.trial_id,
+            model_id=self.model_id,
+            trial_id=self.trial_id,
             metrics=list(metrics_dict.keys()),
             values=list(metrics_dict.values())
         )
