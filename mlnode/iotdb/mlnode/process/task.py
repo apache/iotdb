@@ -17,6 +17,7 @@
 #
 
 import os
+from abc import abstractmethod
 
 import optuna
 
@@ -53,7 +54,7 @@ class TrainingTrialObjective:
         return loss
 
 
-class BasicTask(object):
+class _BasicTask(object):
     """
     This class serve as a function, accepting configs and launch trials
     according to the configs.
@@ -66,11 +67,12 @@ class BasicTask(object):
         self.model = model
         self.dataset = dataset
 
+    @abstractmethod
     def __call__(self):
         raise NotImplementedError
 
 
-class ForecastingTrainingTask(BasicTask):
+class ForecastingTrainingTask(_BasicTask):
     def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
         super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, task_trial_map)
         model_id = self.task_configs['model_id']
@@ -89,7 +91,7 @@ class ForecastingTrainingTask(BasicTask):
                 self.study.optimize(TrainingTrialObjective(
                     self.task_configs,  # TODO: How to generate diff trial_id by optuna
                     self.model_configs,
-                    self.data_configs,
+                    self.dataset,
                     self.task_trial_map
                 ), n_trials=20)
             else:

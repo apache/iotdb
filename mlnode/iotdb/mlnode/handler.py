@@ -20,8 +20,8 @@ from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.manager import Manager
 from iotdb.mlnode.parser import parse_training_request
+from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
@@ -31,7 +31,7 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
-        self.manager = Manager(pool_num=10)  # TODO: add pool num to config
+        self.__task_manager = TaskManager(pool_num=10)  # TODO: add pool num to config
 
     def deleteModel(self, req: TDeleteModelReq):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
@@ -57,7 +57,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         # create task stage (check task config legitimacy)
 
         # submit task stage (check resource and decide pending/start)
-        self.manager.submit_training_task(task_config, model_config, model, dataset)
+        self.__task_manager.submit_training_task(task_config, model_config, model, dataset)
 
         return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
 

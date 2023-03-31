@@ -16,79 +16,39 @@
 # under the License.
 #
 
-
 import multiprocessing as mp
-import signal
-import sys
-from subprocess import call
-
-import psutil
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.task_factory import create_task
 
-# def _create_inference_task(configs, task_map, task_id):
-#     trial = ForecastingInferenceTrial(configs, debug_inference_data())
-#     trial.start()
 
-
-def kill_process(pid):
-    """
-    Kill the process by pid
-    """
-    if sys.platform == 'win32':
-        try:
-            process = psutil.Process(pid=pid)
-            process.send_signal(signal.CTRL_BREAK_EVENT)
-        except psutil.NoSuchProcess:
-            print(f'Tried to kill process (pid = {pid}), '
-                  f'but the process does not exist.')
-    else:
-        cmds = ['kill', str(pid)]
-        call(cmds)
-
-
-class Manager(object):
+class TaskManager(object):
     def __init__(self, pool_num):
         """
         resource_manager: a manager that manage resources shared between processes
         task_map: a map shared between processes and storing the tasks' states
         pool: a multiprocessing process pool
         """
-        self.resource_manager = mp.Manager()
-        self.task_trial_map = self.resource_manager.dict()
-        # signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-        # leave to the os to clean up zombie processes
-        self.training_pool = mp.Pool(pool_num)
+        self.__shared_resource_manager = mp.Manager()
+        self.__pid_info = self.__shared_resource_manager.dict()
+        self.__training_process_pool = mp.Pool(pool_num)
 
     def submit_training_task(self, task_configs, model_configs, model, dataset):
         assert 'model_id' in task_configs.keys(), 'Task config should contain model_id'
         model_id = task_configs['model_id']
-        self.task_trial_map[model_id] = self.resource_manager.dict()
+        self.__pid_info[model_id] = self.__shared_resource_manager.dict()
         try:
             task = create_task(
                 task_configs,
                 model_configs,
                 model,
                 dataset,
-                self.task_trial_map
+                self.__pid_info
             )
         except Exception as e:
             logger.exception(e)
             return e, False
 
         logger.info(f'Task: ({model_id}) - Training process submitted successfully')
-        self.training_pool.apply_async(task, args=())
+        self.__training_process_pool.apply_async(task, args=())
         return model_id, True
-
-    # def create_inference_task_pool(self, configs):
-    #     """
-    #     Create an inference based on configs; will add the inference process to the pool
-    #     """
-    #     task_id = self.generate_taskid()
-    #     self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id,))
-    #     self.task_map[task_id] = self.resource_manager.dict()
-    #     return task_id
-
-    # def _get_task_state(self, task_id):
-    #     return self.task_map[task_id]
