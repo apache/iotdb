@@ -19,30 +19,48 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
  */
-public class PipeTaskExecutor {
+public class PipeTaskExecutorManager {
 
-  private final PipeAssignerSubtaskExecutor assignerSubtaskExecutor =
-      new PipeAssignerSubtaskExecutor();
-  private final PipeProcessorSubtaskExecutor processorSubtaskExecutor =
-      new PipeProcessorSubtaskExecutor();
-  private final PipeConnectorSubtaskExecutor connectorSubtaskExecutor =
-      new PipeConnectorSubtaskExecutor();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskExecutorManager.class);
+
+  private final PipeAssignerSubtaskExecutor assignerSubtaskExecutor;
+  private final PipeProcessorSubtaskExecutor processorSubtaskExecutor;
+  private final PipeConnectorSubtaskExecutor connectorSubtaskExecutor;
+
+  public PipeAssignerSubtaskExecutor getAssignerSubtaskExecutor() {
+    return assignerSubtaskExecutor;
+  }
+
+  public PipeProcessorSubtaskExecutor getProcessorSubtaskExecutor() {
+    return processorSubtaskExecutor;
+  }
+
+  public PipeConnectorSubtaskExecutor getConnectorSubtaskExecutor() {
+    return connectorSubtaskExecutor;
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeTaskExecutor() {}
-
-  private static class PipeTaskExecutorHolder {
-    private static PipeTaskExecutor instance = null;
+  private PipeTaskExecutorManager() {
+    assignerSubtaskExecutor = new PipeAssignerSubtaskExecutor();
+    processorSubtaskExecutor = new PipeProcessorSubtaskExecutor();
+    connectorSubtaskExecutor = new PipeConnectorSubtaskExecutor();
   }
 
-  public static PipeTaskExecutor setupAndGetInstance() {
+  private static class PipeTaskExecutorHolder {
+    private static PipeTaskExecutorManager instance = null;
+  }
+
+  public static PipeTaskExecutorManager setupAndGetInstance() {
     if (PipeTaskExecutorHolder.instance == null) {
-      PipeTaskExecutorHolder.instance = new PipeTaskExecutor();
+      PipeTaskExecutorHolder.instance = new PipeTaskExecutorManager();
     }
     return PipeTaskExecutorHolder.instance;
   }

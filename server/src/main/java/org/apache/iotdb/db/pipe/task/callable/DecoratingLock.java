@@ -17,14 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.task.callable;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+public class DecoratingLock {
+  private volatile boolean isDecorating = false;
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
+  public void waitForDecorated() {
+    while (isDecorating) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
-  @Override
-  public void runMayThrow() throws Throwable {}
+  public void markAsDecorating() {
+    isDecorating = true;
+  }
+
+  public void markAsDecorated() {
+    isDecorating = false;
+  }
 }

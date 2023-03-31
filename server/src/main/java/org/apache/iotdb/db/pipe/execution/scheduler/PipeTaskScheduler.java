@@ -19,33 +19,47 @@
 
 package org.apache.iotdb.db.pipe.execution.scheduler;
 
-import org.apache.iotdb.db.pipe.task.PipeTask;
+import org.apache.iotdb.db.pipe.execution.executor.PipeTaskExecutorManager;
 
 /**
- * PipeTaskScheduler is responsible for scheduling the pipe tasks. It takes the pipe tasks and
- * executes them in the PipeTaskExecutor. It is a singleton class.
+ * PipeTaskScheduler is a singleton class that manages the numbers of threads used by
+ * PipeTaskExecutors dynamically.
  */
 public class PipeTaskScheduler {
 
-  private final PipeSubtaskScheduler assignerSubtaskScheduler;
-  private final PipeSubtaskScheduler processorSubtaskScheduler;
-  private final PipeSubtaskScheduler connectorSubtaskScheduler;
+  private PipeTaskExecutorManager pipeTaskExecutorManager;
 
-  public void createPipeTask(PipeTask pipeTask) {}
+  void setPipeTaskExecutor(PipeTaskExecutorManager pipeTaskExecutorManager) {
+    this.pipeTaskExecutorManager = pipeTaskExecutorManager;
+  }
 
-  public void dropPipeTask(String pipeName) {}
+  public void setAssignerSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutorManager.getAssignerSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
+  }
 
-  public void startPipeTask(String pipeName) {}
+  public int getAssignerSubtaskExecutorThreadNum() {
+    return pipeTaskExecutorManager.getAssignerSubtaskExecutor().getExecutorThreadNumber();
+  }
 
-  public void stopPipeTask(String pipeName) {}
+  public void setConnectorSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutorManager.getConnectorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
+  }
+
+  public int getConnectorSubtaskExecutorThreadNum() {
+    return pipeTaskExecutorManager.getConnectorSubtaskExecutor().getExecutorThreadNumber();
+  }
+
+  public void setProcessorSubtaskExecutorThreadNum(int threadNum) {
+    pipeTaskExecutorManager.getProcessorSubtaskExecutor().adjustExecutorThreadNumber(threadNum);
+  }
+
+  public int getProcessorSubtaskExecutorThreadNum() {
+    return pipeTaskExecutorManager.getProcessorSubtaskExecutor().getExecutorThreadNumber();
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeTaskScheduler() {
-    assignerSubtaskScheduler = new PipeAssignerSubtaskScheduler();
-    processorSubtaskScheduler = new PipeProcessorSubtaskScheduler();
-    connectorSubtaskScheduler = new PipeConnectorSubtaskScheduler();
-  }
+  private PipeTaskScheduler() {}
 
   private static class PipeTaskSchedulerHolder {
     private static PipeTaskScheduler instance = null;

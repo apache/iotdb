@@ -17,6 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.metrics;
+package org.apache.iotdb.db.pipe.task.callable;
 
-public class PipeTaskRuntimeRecorder {}
+import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
+
+public class PipeProcessorSubtask extends PipeSubtask {
+
+  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
+
+  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
+    super(taskID);
+    this.pipeProcessor = pipeProcessor;
+  }
+
+  @Override
+  protected void executeForAWhile() {
+    pipeProcessor.executeForAWhile();
+  }
+}

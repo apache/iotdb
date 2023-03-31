@@ -17,20 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+public class PipeAssignerSubtask extends PipeSubtask {
 
-public class PipeAssignerSubtaskScheduler implements PipeSubtaskScheduler {
-  @Override
-  public void createSubtask(String subtaskId, PipeSubtask subtask) {}
-
-  @Override
-  public void dropSubtask(String subtaskId) {}
+  public PipeAssignerSubtask(String taskID) {
+    super(taskID);
+  }
 
   @Override
-  public void startSubtask(String subtaskId) {}
-
-  @Override
-  public void stopSubtask(String subtaskId) {}
+  protected void executeForAWhile() {
+    // do nothing
+  }
 }
