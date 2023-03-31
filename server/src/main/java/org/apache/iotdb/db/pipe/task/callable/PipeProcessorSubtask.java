@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.task.callable;
 
-public class PipeConnectorSubtask extends PipeSubtask {
+import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 
-  public PipeConnectorSubtask(String taskID) {
+public class PipeProcessorSubtask extends PipeSubtask {
+
+  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
+
+  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
     super(taskID);
+    this.pipeProcessor = pipeProcessor;
   }
 
   @Override
-  public void runMayThrow() throws Throwable {}
+  protected void executeForAWhile() {
+    pipeProcessor.executeForAWhile();
+  }
 }

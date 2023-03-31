@@ -17,20 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
+import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
 
-public class PipeConnectorSubtaskScheduler implements PipeSubtaskScheduler {
-  @Override
-  public void createSubtask(String subtaskId, PipeSubtask subtask) {}
+import org.junit.Before;
+import org.mockito.Mockito;
 
-  @Override
-  public void dropSubtask(String subtaskId) {}
+import static org.mockito.Mockito.mock;
 
-  @Override
-  public void startSubtask(String subtaskId) {}
+public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
 
-  @Override
-  public void stopSubtask(String subtaskId) {}
+  @Before
+  public void setUp() throws Exception {
+    executor = new PipeProcessorSubtaskExecutor();
+
+    subtask =
+        Mockito.spy(
+            new PipeProcessorSubtask(
+                "PipeProcessorSubtaskExecutorTest", mock(PipeProcessorPluginRuntimeWrapper.class)) {
+              @Override
+              public void executeForAWhile() {}
+            });
+  }
 }

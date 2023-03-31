@@ -22,9 +22,7 @@ from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
 from iotdb.mlnode.config import config
-from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.util import verify_success
 from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
 from iotdb.thrift.confignode import IConfigNodeRPCService
 from iotdb.thrift.confignode.ttypes import TUpdateModelInfoReq
@@ -34,6 +32,16 @@ from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
                                           TRecordModelMetricsReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
+
+# status code
+SUCCESS_STATUS = 200
+REDIRECTION_RECOMMEND = 400
+
+
+def verify_success(status: TSStatus, err_msg: str) -> None:
+    if status.code != SUCCESS_STATUS:
+        logger.warn(err_msg + ", error status is ", status)
+        raise RuntimeError(str(status.code) + ": " + status.message)
 
 
 class ClientManager(object):
@@ -70,7 +78,7 @@ class MLNodeClient(object):
                              model_id: str,
                              is_auto: bool,
                              model_configs: dict,
-                             query_expressions: list = [],
+                             query_expressions: list[str],
                              query_filter: str = None) -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
@@ -116,7 +124,6 @@ class DataNodeClient(object):
                 transport.open()
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
-                raise e
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IDataNodeRPCService.Client(protocol)
@@ -124,7 +131,7 @@ class DataNodeClient(object):
     def fetch_timeseries(self,
                          session_id: int,
                          statement_id: int,
-                         query_expressions: list = [],
+                         query_expressions: list[str],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
@@ -146,8 +153,8 @@ class DataNodeClient(object):
     def record_model_metrics(self,
                              model_id: str,
                              trial_id: str,
-                             metrics: list = [],
-                             values: list = []) -> None:
+                             metrics: list[str],
+                             values: list[float]) -> None:
         req = TRecordModelMetricsReq(
             modelId=model_id,
             trialId=trial_id,
@@ -235,7 +242,7 @@ class ConfigNodeClient(object):
         pass
 
     def __update_config_node_leader(self, status: TSStatus) -> bool:
-        if status.code == TSStatusCode.REDIRECTION_RECOMMEND:
+        if status.code == REDIRECTION_RECOMMEND:
             if status.redirectNode is not None:
                 self.__config_leader = status.redirectNode
             else:

@@ -19,19 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
 
-public class PipeTaskConnectorStage implements PipeTaskStage {
+public class PipeTaskConnectorStage extends PipeTaskStage {
 
-  @Override
-  public void create() throws PipeException {}
-
-  @Override
-  public void start() throws PipeException {}
-
-  @Override
-  public void stop() throws PipeException {}
-
-  @Override
-  public void drop() throws PipeException {}
+  protected PipeTaskConnectorStage(
+      PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask) {
+    super(executor, subtask);
+  }
 }
