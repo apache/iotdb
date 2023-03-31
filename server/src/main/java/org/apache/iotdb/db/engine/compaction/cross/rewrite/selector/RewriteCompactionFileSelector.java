@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore.DeviceInfo;
@@ -48,7 +49,8 @@ import java.util.Map;
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   CrossSpaceCompactionResource resource;
@@ -189,6 +191,10 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
+      if (!checkUnseqFileHasOverlapOrNot(unseqFile)) {
+        tmpSelectedSeqFiles.clear();
+        break;
+      }
       boolean isSeqFilesValid = checkIsSeqFilesValid();
       if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
@@ -227,6 +233,22 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
       }
     }
+  }
+
+  private boolean checkUnseqFileHasOverlapOrNot(TsFileResource unseqFile) {
+    if (!tmpSelectedSeqFiles.isEmpty()) {
+      return true;
+    }
+    // the current unseq file does not overlap with any seq files
+    logger.info("Unseq files {} do not overlap with seq files.", unseqFile);
+    List<TsFileResource> seqResources = resource.getSeqFiles();
+    for (int i = seqResources.size() - 1; i >= 0; i--) {
+      if (seqResources.get(i).isClosed()) {
+        tmpSelectedSeqFiles.add(i);
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {

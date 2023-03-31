@@ -113,7 +113,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return return whether to continue the search to higher levels
    * @throws IOException
    */
-  private boolean selectLevelTask(
+  public boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
     boolean shouldContinueToSearch = true;
@@ -180,7 +180,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
-  private class SizeTieredCompactionTaskComparator
+  public static class SizeTieredCompactionTaskComparator
       implements Comparator<Pair<List<TsFileResource>, Long>> {
 
     @Override
