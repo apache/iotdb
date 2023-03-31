@@ -15,25 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
-
-MLNODE_CONF_DIRECTORY_NAME = "conf"
-MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
-MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
-
-MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
 
 
-class TSStatusCode(Enum):
-    SUCCESS_STATUS = 200
-    REDIRECTION_RECOMMEND = 400
-    FAIL_STATUS = 404
+from iotdb.mlnode.process.task import ForecastingTrainingTask
 
-    def get_status_code(self) -> int:
-        return self.value
+support_task_types = {
+    'forecast_training_task': ForecastingTrainingTask
+}
 
 
-class ModelState(Enum):
-    RUNNING = 'running'
-    FINISHED = 'finished'
-    FAILED = 'failed'
+def create_task(task_configs, model_configs, model, dataset, task_trial_map):
+    task_class = task_configs["task_class"]
+    if task_class not in support_task_types:
+        raise RuntimeError(f'Unknown task type: ({task_class}), which'
+                           f' should be one of {support_task_types.keys()}')
+    task_fn = support_task_types[task_class]
+    task = task_fn(
+        task_configs,
+        model_configs,
+        model,
+        dataset,
+        task_trial_map
+    )
+    return task

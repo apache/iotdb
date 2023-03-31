@@ -25,9 +25,10 @@ from iotdb.mlnode.config import config
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import verify_success
-from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
+from iotdb.thrift.common.ttypes import TEndPoint, TrainingState, TSStatus
 from iotdb.thrift.confignode import IConfigNodeRPCService
-from iotdb.thrift.confignode.ttypes import TUpdateModelInfoReq
+from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
+                                            TUpdateModelStateReq)
 from iotdb.thrift.datanode import IDataNodeRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
                                           TFetchTimeseriesResp,
@@ -242,6 +243,29 @@ class ConfigNodeClient(object):
                 self.__config_leader = None
             return True
         return False
+
+    def update_model_state(self,
+                           model_id: str,
+                           trial_id: str,
+                           training_state: TrainingState) -> None:
+        req = TUpdateModelStateReq(
+            modelId=model_id,
+            trialId=trial_id,
+            trainingState=training_state
+        )
+        for i in range(0, self.__RETRY_NUM):
+            try:
+                status = self.__client.updateModelState(req)
+                if not self.__update_config_node_leader(status):
+                    verify_success(status, "An error occurs when calling update_model_state()")
+                    return
+            except TTransport.TException:
+                logger.warn("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
+                            self.__config_leader)
+                self.__config_leader = None
+            self.__wait_and_reconnect()
+
+        raise TException(self.__MSG_RECONNECTION_FAIL)
 
     def update_model_info(self,
                           model_id: str,
