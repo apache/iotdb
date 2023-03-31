@@ -65,7 +65,8 @@ public enum ThreadName {
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
   SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
   SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
-  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor");
+  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
+  MLNODE_RPC_SERVICE("MLNodeRpc-Service");
 
   private final String name;
 
