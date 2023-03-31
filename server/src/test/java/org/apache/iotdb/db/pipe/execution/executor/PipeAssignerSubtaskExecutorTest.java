@@ -38,7 +38,7 @@ public class PipeAssignerSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = PipeTaskExecutorManager.setupAndGetInstance().getAssignerSubtaskExecutor();
+    executor = new PipeAssignerSubtaskExecutor();
   }
 
   @After

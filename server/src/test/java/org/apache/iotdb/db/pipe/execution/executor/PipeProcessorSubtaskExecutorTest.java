@@ -40,7 +40,7 @@ public class PipeProcessorSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = PipeTaskExecutorManager.setupAndGetInstance().getProcessorSubtaskExecutor();
+    executor = new PipeProcessorSubtaskExecutor();
   }
 
   @After
