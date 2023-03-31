@@ -20,7 +20,8 @@ from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_data
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.util import get_status, parse_training_request
+from iotdb.mlnode.parser import parse_training_request
+from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
