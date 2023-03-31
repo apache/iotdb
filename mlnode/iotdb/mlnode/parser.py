@@ -17,9 +17,10 @@
 #
 
 
+import argparse
 import re
 import sys
-import argparse
+
 from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
 
 

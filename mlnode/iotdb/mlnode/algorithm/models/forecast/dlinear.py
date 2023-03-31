@@ -158,4 +158,3 @@ def dlinear_individual(common_config: dict, kernel_size=25, **kwargs) -> DLinear
                                   'Kernel size of dlinear_individual should larger than 0')
     config['kernel_size'] = kernel_size
     return DLinearIndividual(**config), config
-

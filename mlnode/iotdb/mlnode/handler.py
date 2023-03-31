@@ -16,11 +16,11 @@
 # under the License.
 #
 
+from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
-from iotdb.mlnode.util import get_status, parse_training_request
-from iotdb.mlnode.algorithm.model_factory import create_forecast_model
-from iotdb.mlnode.datats.data_factory import create_forecast_data
+from iotdb.mlnode.data_access.factory import create_forecast_data
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.util import get_status, parse_training_request
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
@@ -41,7 +41,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         # create model stage (check model config legitimacy)
         try:
             model, model_config = create_forecast_model(**model_config)
-        except Exception as e: # Create model failed
+        except Exception as e:  # Create model failed
             return get_status(TSStatusCode.FAIL_STATUS, str(e))
         logger.info('model config: ' + str(model_config))
 

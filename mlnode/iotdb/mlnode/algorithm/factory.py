@@ -15,14 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
-from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear, dlinear_individual
-from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats
 from iotdb.mlnode.algorithm.models.forecast import support_forecasting_models
 from iotdb.mlnode.exception import BadConfigValueError
-
-
 
 """
 Common configs for all forecasting model with default values
@@ -137,5 +131,3 @@ def create_forecast_model(
     model_config['model_name'] = model_name
 
     return model, model_config
-
-

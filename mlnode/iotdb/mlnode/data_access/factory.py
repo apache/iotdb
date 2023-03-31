@@ -15,11 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from iotdb.mlnode.datats.offline.data_source import *
-from iotdb.mlnode.datats.offline.dataset import *
+from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
+                                                      WindowDataset)
+from iotdb.mlnode.data_access.offline.source import (FileDataSource,
+                                                     ThriftDataSource)
 from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
-
 
 support_forecasting_dataset = {
     'timeseries': TimeSeriesDataset,
@@ -77,7 +77,7 @@ def create_forecast_data(
             raise MissingConfigError('query_filter')
         datasource = ThriftDataSource(kwargs['query_expressions'], kwargs['query_filter'])
     else:
-        raise BadConfigValueError('source_type', source_type, f"It should be one of ['file', 'thrift]")
+        raise BadConfigValueError('source_type', source_type, "It should be one of ['file', 'thrift]")
 
     dataset_fn = support_forecasting_dataset[dataset_type]
     dataset_config = support_dataset_configs[dataset_type]
