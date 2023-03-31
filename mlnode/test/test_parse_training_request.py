@@ -15,15 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from iotdb.mlnode.util import parse_training_request
+from iotdb.mlnode.parser import parse_training_request
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
 def test_parse_training_request():
-    modelId = 'mid_etth1_dlinear_default'
-    isAuto = False
-    modelConfigs = {
+    model_id = 'mid_etth1_dlinear_default'
+    is_auto = False
+    model_configs = {
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
         'dataset_type': 'window',
@@ -42,30 +41,30 @@ def test_parse_training_request():
         'epochs': 10,
         'metric_names': ['MSE', 'MAE']
     }
-    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
-    queryFilter = '0,1501516800000'
+    query_expressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    query_filter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
-        modelId=str(modelId),
-        isAuto=isAuto,
-        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
-        queryExpressions=[str(query) for query in queryExpressions],
-        queryFilter=str(queryFilter),
+        modelId=str(model_id),
+        isAuto=is_auto,
+        modelConfigs={k: str(v) for k, v in model_configs.items()},
+        queryExpressions=[str(query) for query in query_expressions],
+        queryFilter=str(query_filter),
     )
     data_config, model_config, task_config = parse_training_request(req)
-    for config in modelConfigs:
+    for config in model_configs:
         if config in data_config:
-            assert data_config[config] == modelConfigs[config]
+            assert data_config[config] == model_configs[config]
         if config in model_config:
-            assert model_config[config] == modelConfigs[config]
+            assert model_config[config] == model_configs[config]
         if config in task_config:
-            assert task_config[config] == modelConfigs[config]
+            assert task_config[config] == model_configs[config]
 
 
 def test_missing_argument():
     # missing model_name
-    modelId = 'mid_etth1_dlinear_default'
-    isAuto = False
-    modelConfigs = {
+    model_id = 'mid_etth1_dlinear_default'
+    is_auto = False
+    model_configs = {
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
         'dataset_type': 'window',
@@ -83,14 +82,14 @@ def test_missing_argument():
         'epochs': 10,
         'metric_names': ['MSE', 'MAE']
     }
-    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
-    queryFilter = '0,1501516800000'
+    query_expressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    query_filter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
-        modelId=str(modelId),
-        isAuto=isAuto,
-        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
-        queryExpressions=[str(query) for query in queryExpressions],
-        queryFilter=str(queryFilter),
+        modelId=str(model_id),
+        isAuto=is_auto,
+        modelConfigs={k: str(v) for k, v in model_configs.items()},
+        queryExpressions=[str(query) for query in query_expressions],
+        queryFilter=str(query_filter),
     )
     try:
         data_config, model_config, task_config = parse_training_request(req)
@@ -99,9 +98,9 @@ def test_missing_argument():
 
 
 def test_wrong_argument_type():
-    modelId = 'mid_etth1_dlinear_default'
-    isAuto = False
-    modelConfigs = {
+    model_id = 'mid_etth1_dlinear_default'
+    is_auto = False
+    model_configs = {
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
         'dataset_type': 'window',
@@ -120,14 +119,14 @@ def test_wrong_argument_type():
         'epochs': 10,
         'metric_names': ['MSE', 'MAE']
     }
-    queryExpressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
-    queryFilter = '0,1501516800000'
+    query_expressions = ['root.eg.etth1.**', 'root.eg.etth1.**', 'root.eg.etth1.**']
+    query_filter = '0,1501516800000'
     req = TCreateTrainingTaskReq(
-        modelId=str(modelId),
-        isAuto=isAuto,
-        modelConfigs={k: str(v) for k, v in modelConfigs.items()},
-        queryExpressions=[str(query) for query in queryExpressions],
-        queryFilter=str(queryFilter),
+        modelId=str(model_id),
+        isAuto=is_auto,
+        modelConfigs={k: str(v) for k, v in model_configs.items()},
+        queryExpressions=[str(query) for query in query_expressions],
+        queryFilter=str(query_filter),
     )
     try:
         data_config, model_config, task_config = parse_training_request(req)

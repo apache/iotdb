@@ -141,7 +141,7 @@ def _model_config(**kwargs):
     }
 
 
-def dlinear(common_config: dict, kernel_size=25, **kwargs) -> DLinear:
+def dlinear(common_config: dict, kernel_size=25, **kwargs) -> [DLinear, dict]:
     config = _model_config()
     config.update(**common_config)
     if not kernel_size > 0:
@@ -151,8 +151,9 @@ def dlinear(common_config: dict, kernel_size=25, **kwargs) -> DLinear:
     return DLinear(**config), config
 
 
-def dlinear_individual(common_config: dict, kernel_size=25, **kwargs) -> DLinearIndividual:
+def dlinear_individual(common_config: dict, kernel_size=25, **kwargs) -> [DLinearIndividual, dict]:
     config = _model_config()
+    config.update(**common_config)
     if not kernel_size > 0:
         raise BadConfigValueError('kernel_size', kernel_size,
                                   'Kernel size of dlinear_individual should larger than 0')

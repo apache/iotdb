@@ -18,7 +18,7 @@
 
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
-from iotdb.mlnode.data_access.factory import create_forecast_data
+from iotdb.mlnode.data_access.factory import create_forecast_dataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import parse_training_request
 from iotdb.mlnode.util import get_status
@@ -48,7 +48,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
         # create data stage (check data config legitimacy)
         try:
-            data, data_config = create_forecast_data(**data_config)
+            dataset, data_config = create_forecast_dataset(**data_config)
         except Exception as e:  # Create data failed
             return get_status(TSStatusCode.FAIL_STATUS, str(e))
         logger.info('data config: ' + str(data_config))

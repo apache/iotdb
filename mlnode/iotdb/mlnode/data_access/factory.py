@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from torch.utils.data import Dataset
+
+from iotdb.mlnode.data_access.enums import DatasetType
 from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
                                                       WindowDataset)
 from iotdb.mlnode.data_access.offline.source import (FileDataSource,
@@ -22,8 +25,8 @@ from iotdb.mlnode.data_access.offline.source import (FileDataSource,
 from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
 
 support_forecasting_dataset = {
-    'timeseries': TimeSeriesDataset,
-    'window': WindowDataset
+    DatasetType.TIMESERIES: TimeSeriesDataset,
+    DatasetType.WINDOW: WindowDataset
 }
 
 
@@ -35,19 +38,19 @@ def _dataset_config(**kwargs):
 
 
 support_dataset_configs = {
-    'timeseries': _dataset_config(),
-    'window': _dataset_config(
+    DatasetType.TIMESERIES: _dataset_config(),
+    DatasetType.WINDOW: _dataset_config(
         input_len=96,
         pred_len=96,
     )
 }
 
 
-def create_forecast_data(
+def create_forecast_dataset(
         source_type,
         dataset_type,
         **kwargs,
-):
+) -> [Dataset, dict]:
     """
     Factory method for all support dataset
     currently implement WindowDataset, TimeSeriesDataset
@@ -95,7 +98,7 @@ def create_forecast_data(
 
     data_config = dataset_config.copy()
     data_config['input_vars'] = dataset.get_variable_num()
-    data_config['output_vars'] = dataset.get_variable_num()  # only support forecast type = 'm'
+    data_config['output_vars'] = dataset.get_variable_num()
     data_config['source_type'] = source_type
     data_config['dataset_type'] = dataset_type
 

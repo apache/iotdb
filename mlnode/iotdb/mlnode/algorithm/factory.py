@@ -15,14 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import torch.nn as nn
+
+from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.models.forecast import support_forecasting_models
 from iotdb.mlnode.exception import BadConfigValueError
 
-"""
-Common configs for all forecasting model with default values
-"""
 
-
+# Common configs for all forecasting model with default values
 def _common_config(**kwargs):
     return {
         'input_len': 96,
@@ -33,21 +33,16 @@ def _common_config(**kwargs):
     }
 
 
-"""
-Common forecasting task configs
-"""
+# Common forecasting task configs
 support_common_configs = {
-    # univariate forecasting
-    's': _common_config(
+    # multivariate forecasting, current support this only
+    ForecastTaskType.ENDOGENOUS: _common_config(
         input_vars=1,
         output_vars=1),
 
     # univariate forecasting with observable exogenous variables
-    'ms': _common_config(
+    ForecastTaskType.EXOGENOUS: _common_config(
         output_vars=1),
-
-    # multivariate forecasting, current support this only
-    'm': _common_config(),
 }
 
 
@@ -58,7 +53,7 @@ def is_model(model_name: str) -> bool:
     return model_name in support_forecasting_models
 
 
-def list_model():
+def list_model() -> list[str]:
     """
     List support forecasting model
     """
@@ -67,13 +62,13 @@ def list_model():
 
 def create_forecast_model(
         model_name,
-        forecast_type='m',
+        forecast_task_type=ForecastTaskType.ENDOGENOUS,
         input_len=96,
         pred_len=96,
         input_vars=1,
         output_vars=1,
         **kwargs,
-):
+) -> [nn.Module, dict]:
     """
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
@@ -81,7 +76,7 @@ def create_forecast_model(
 
     Args:
         model_name: see available models by `list_model`
-        forecast_type: 'm' for multivariate forecasting, 'ms' for covariate forecasting,
+        forecast_task_type: 'm' for multivariate forecasting, 'ms' for covariate forecasting,
                    's' for univariate forecasting
         input_len: time length of model input
         pred_len: time length of model output
@@ -95,16 +90,16 @@ def create_forecast_model(
     """
     if not is_model(model_name):
         raise BadConfigValueError('model_name', model_name, f'It should be one of {list_model()}')
-    if forecast_type not in support_common_configs.keys():
-        raise BadConfigValueError('forecast_type', forecast_type,
+    if forecast_task_type not in support_common_configs.keys():
+        raise BadConfigValueError('forecast_task_type', forecast_task_type,
                                   f'It should be one of {list(support_common_configs.keys())}')
 
-    common_config = support_common_configs[forecast_type]
+    common_config = support_common_configs[forecast_task_type]
     common_config['input_len'] = input_len
     common_config['pred_len'] = pred_len
     common_config['input_vars'] = input_vars
     common_config['output_vars'] = output_vars
-    common_config['forecast_type'] = forecast_type
+    common_config['forecast_task_type'] = str(forecast_task_type)
 
     if not input_len > 0:
         raise BadConfigValueError('input_len', input_len,
@@ -118,9 +113,9 @@ def create_forecast_model(
     if not output_vars > 0:
         raise BadConfigValueError('output_vars', output_vars,
                                   'Number of output variates should be positive')
-    if forecast_type == 'm':
+    if forecast_task_type == ForecastTaskType.ENDOGENOUS:
         if input_vars != output_vars:
-            raise BadConfigValueError('forecast_type', forecast_type,
+            raise BadConfigValueError('forecast_task_type', forecast_task_type,
                                       'Number of input/output variates should be '
                                       'the same in multivariate forecast')
     create_fn = eval(model_name)
