@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.handler;
+package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -72,8 +72,8 @@ public class QueryDataSetHandler {
   public static Response fillDataSetWithTimestamps(
       IQueryExecution queryExecution, final int actualRowSizeLimit, final long timePrecision)
       throws IoTDBException {
-    org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
-        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet =
+        new org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet();
 
     return fillQueryDataSetWithTimestamps(
         queryExecution, actualRowSizeLimit, targetDataSet, timePrecision);
@@ -82,8 +82,8 @@ public class QueryDataSetHandler {
   public static Response fillAggregationPlanDataSet(
       IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
 
-    org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
-        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet =
+        new org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet();
 
     DatasetHeader datasetHeader = queryExecution.getDatasetHeader();
 
@@ -97,8 +97,8 @@ public class QueryDataSetHandler {
 
   private static Response fillShowPlanDataSet(
       IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
-    org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
-        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet =
+        new org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet();
     initTargetDatasetOrderByOrderWithSourceDataSet(
         queryExecution.getDatasetHeader(), targetDataSet);
 
@@ -107,7 +107,7 @@ public class QueryDataSetHandler {
 
   private static void initTargetDatasetOrderByOrderWithSourceDataSet(
       DatasetHeader datasetHeader,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet) {
+      org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet) {
     if (datasetHeader.getRespColumns() != null) {
       for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
         targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
@@ -119,7 +119,7 @@ public class QueryDataSetHandler {
   private static void initTargetDatasetExpByOrderWithSourceDataSet(
       QueryDataSet sourceDataSet,
       int[] targetDataSetIndexToSourceDataSetIndex,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet) {
+      org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet) {
     if (sourceDataSet.getPaths() != null) {
       for (int i = 0; i < sourceDataSet.getPaths().size(); i++) {
         Path path = sourceDataSet.getPaths().get(i);
@@ -133,7 +133,7 @@ public class QueryDataSetHandler {
   private static Response fillQueryDataSetWithTimestamps(
       IQueryExecution queryExecution,
       int actualRowSizeLimit,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet,
+      org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet,
       final long timePrecision)
       throws IoTDBException {
     int fetched = 0;
@@ -151,7 +151,7 @@ public class QueryDataSetHandler {
       if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
         return Response.ok()
             .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                new ExecutionStatus()
                     .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
                     .message(
                         String.format(
@@ -202,7 +202,7 @@ public class QueryDataSetHandler {
   private static Response fillQueryDataSetWithoutTimestamps(
       IQueryExecution queryExecution,
       int actualRowSizeLimit,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet)
+      org.apache.iotdb.db.protocol.rest.v2.model.QueryDataSet targetDataSet)
       throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
@@ -210,7 +210,7 @@ public class QueryDataSetHandler {
       if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
         return Response.ok()
             .entity(
-                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                new ExecutionStatus()
                     .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
                     .message(
                         String.format(
