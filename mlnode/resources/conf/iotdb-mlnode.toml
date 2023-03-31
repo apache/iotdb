@@ -31,6 +31,14 @@ mn_rpc_address = "127.0.0.1"
 # Datatype: int
 mn_rpc_port = 10810
 
+# Directory to save models
+# Datatype: String
+mn_model_storage_dir = "models"
+
+# Cache number of model storage to avoid repeated loading
+# Datatype: int
+mn_model_storage_cachesize = 30
+
 ####################
 ### Target Config Node
 ####################

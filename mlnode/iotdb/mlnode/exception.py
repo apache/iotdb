@@ -24,3 +24,23 @@ class _BaseError(Exception):
 class BadNodeUrlError(_BaseError):
     def __init__(self, node_url: str):
         self.message = "Bad node url: {}".format(node_url)
+
+
+class ModelNotExistError(_BaseError):
+    def __init__(self, file_path: str):
+        self.message = "Model path: ({}) not exists".format(file_path)
+
+
+class BadConfigValueError(_BaseError):
+    def __init__(self, config_name: str, config_value, hint: str = ''):
+        self.message = "Bad value ({0}) for config: ({1}). {2}".format(config_value, config_name, hint)
+
+
+class MissingConfigError(_BaseError):
+    def __init__(self, config_name: str):
+        self.message = "Missing config: ({})".format(config_name)
+
+
+class WrongTypeConfigError(_BaseError):
+    def __init__(self, config_name: str, expected_type: str):
+        self.message = "Wrong type for config: ({0}), expected: ({1})".format(config_name, expected_type)

@@ -15,9 +15,38 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
+
 import numpy as np
 import pandas as pd
-from iotdb.utils.IoTDBConstants import TSDataType
+
+
+class TSDataType(Enum):
+    BOOLEAN = 0
+    INT32 = 1
+    INT64 = 2
+    FLOAT = 3
+    DOUBLE = 4
+    TEXT = 5
+
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
+    def __hash__(self):
+        return self.value
+
+    def np_dtype(self):
+        return {
+            TSDataType.BOOLEAN: np.dtype(">?"),
+            TSDataType.FLOAT: np.dtype(">f4"),
+            TSDataType.DOUBLE: np.dtype(">f8"),
+            TSDataType.INT32: np.dtype(">i4"),
+            TSDataType.INT64: np.dtype(">i8"),
+            TSDataType.TEXT: np.dtype("str"),
+        }[self]
+
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2
@@ -81,12 +110,10 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
         for i in range(len(column_values)):
             column_name = column_name_list[i + 1]
 
-            location = (
-                    column_ordinal_dict[column_name] - START_INDEX
-            )
-
+            location = column_ordinal_dict[column_name] - START_INDEX
             if location < 0:
                 continue
+
             data_type = column_type_deduplicated_list[location]
             value_buffer = column_values[location]
             value_buffer_len = len(value_buffer)
@@ -200,7 +227,8 @@ def deserialize(buffer):
     column_values = [None] * value_column_count
     null_indicators = [None] * value_column_count
     for i in range(value_column_count):
-        column_value, nullIndicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i], position_count)
+        column_value, nullIndicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i],
+                                                          position_count)
         column_values[i] = column_value
         null_indicators[i] = nullIndicator
 

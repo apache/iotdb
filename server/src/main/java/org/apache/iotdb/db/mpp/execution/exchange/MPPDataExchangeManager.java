@@ -470,6 +470,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
+  public void deRegisterFragmentInstanceFromMemoryPool(String queryId, String fragmentInstanceId) {
+    localMemoryManager
+        .getQueryPool()
+        .deRegisterFragmentInstanceToQueryMemoryMap(queryId, fragmentInstanceId);
+  }
+
   private synchronized ISinkChannel createLocalSinkChannel(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,

@@ -133,7 +133,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path: http://ip:port/rest/v1/query
+Request path: http://ip:port/rest/v2/query
 
 Parameter Description:
 
@@ -158,7 +158,7 @@ Tip: Statements like `select * from root.xx.**` are not recommended because thos
 **Expression query**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4, s3 + 1 from root.sg27 limit 2"}' http://127.0.0.1:18080/rest/v2/query
 ````
 
 ```json
@@ -193,7 +193,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show child paths**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child paths root"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -215,7 +215,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show child nodes**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show child nodes root"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -237,7 +237,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show all ttl**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show all ttl"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -264,7 +264,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show ttl**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show ttl on root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -289,7 +289,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show functions**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show functions"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -327,7 +327,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show timeseries**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show timeseries"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -400,7 +400,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show latest timeseries**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show latest timeseries"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -473,7 +473,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Count timeseries**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count timeseries root.**"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -494,7 +494,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Count nodes**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"count nodes root.** level=2"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -515,7 +515,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show devices**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -542,7 +542,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Show devices with database**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"show devices with database"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -574,7 +574,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **List user**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"list user"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -595,7 +595,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Aggregation**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -622,7 +622,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Group by level**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.** group by level = 1"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -647,7 +647,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Group by**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(*) from root.sg27 group by([1635232143960,1635232153960),1s)"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -701,7 +701,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Last**
 
 ```shell
-curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select last s3 from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -732,7 +732,7 @@ curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -
 **Disable align**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root.sg27 disable align"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -745,7 +745,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Align by device**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select count(s3) from root.sg27 align by device"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -758,7 +758,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 **Select into**
 
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v1/query
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select s3, s4 into root.sg29.s1, root.sg29.s2 from root.sg27"}' http://127.0.0.1:18080/rest/v2/query
 ```
 
 ```json
@@ -774,7 +774,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path: http://ip:port/rest/v1/nonQuery
+Request path: http://ip:port/rest/v2/nonQuery
 
 Parameter Description:
 
@@ -784,7 +784,7 @@ Parameter Description:
 
 Example request:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"CREATE DATABASE root.ln"}' http://127.0.0.1:18080/rest/v2/nonQuery
 ```
 
 Response parameters:
@@ -810,7 +810,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path: http://ip:port/rest/v1/insertTablet
+Request path: http://ip:port/rest/v2/insertTablet
 
 Parameter Description:
 
@@ -825,7 +825,7 @@ Parameter Description:
 
 Example request:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v2/insertTablet
 ```
 
 Sample response:
