@@ -23,7 +23,7 @@ import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidE
 
 public class IntolerableStrategy extends DisorderHandlingStrategy {
 
-  protected IntolerableStrategy() {
+  public IntolerableStrategy() {
     super(0);
   }
 

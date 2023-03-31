@@ -50,6 +50,7 @@
         <module>rest-java-example</module>
         <module>influxdb-protocol-example</module>
         <module>ext-pipe-plugin-example</module>
+        <module>subscription-example</module>
     </modules>
     <build>
         <pluginManagement>

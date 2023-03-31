@@ -141,14 +141,17 @@ public abstract class Consumer implements IConsumer {
           newDataSet.setColumnNames(new ArrayList<>());
           newDataSet.setColumnTypes(new ArrayList<>());
           newDataSet.setDataResult(new ArrayList<>());
-          int columnSize = dataSet.getColumnNames().size();
-          for (int index = 0; index < columnSize; index++) {
-            if (checkTolerant(dataSet.getColumnNames().get(index), dataSet.getTime())) {
-              newDataSet.getColumnNames().add(dataSet.getColumnNames().get(index));
-              newDataSet.getColumnTypes().add(dataSet.getColumnTypes().get(index));
-              newDataSet.getDataResult().add(dataSet.getDataResult().get(index));
+          if (dataSet.getColumnNames() != null && dataSet.getColumnNames().size() > 0) {
+            int columnSize = dataSet.getColumnNames().size();
+            for (int index = 0; index < columnSize; index++) {
+              if (checkTolerant(dataSet.getColumnNames().get(index), dataSet.getTime())) {
+                newDataSet.getColumnNames().add(dataSet.getColumnNames().get(index));
+                newDataSet.getColumnTypes().add(dataSet.getColumnTypes().get(index));
+                newDataSet.getDataResult().add(dataSet.getDataResult().get(index));
+              }
             }
           }
+          result.add(newDataSet);
         });
     return result;
   }

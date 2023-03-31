@@ -23,7 +23,7 @@ import org.apache.iotdb.subscription.consumer.Consumer;
 import org.apache.iotdb.subscription.rpc.thrift.ISubscriptionRPCService;
 import org.apache.iotdb.subscription.service.thrift.handler.SubscriptionServiceThriftHandler;
 
-import org.apache.thrift.TProcessor;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
@@ -38,7 +38,7 @@ public abstract class SubscriptionService {
 
   private SubscriptionServiceThriftHandler handler;
 
-  private TProcessor processor;
+  private ISubscriptionRPCService.Processor processor;
   private TServer server;
 
   public SubscriptionService(String localHost, Integer localPort) {
@@ -61,7 +61,7 @@ public abstract class SubscriptionService {
 
   private void initTProcessor() {
     this.handler = new SubscriptionServiceThriftHandler(getConsumer());
-    this.processor = new ISubscriptionRPCService.Processor<>(handler);
+    this.processor = new ISubscriptionRPCService.Processor(handler);
   }
 
   private void initThriftService() {
@@ -80,9 +80,13 @@ public abstract class SubscriptionService {
   private void startThriftServer(TServerTransport serverTransport) {
     if (server == null) {
       server =
-          new TThreadPoolServer(new TThreadPoolServer.Args(serverTransport).processor(processor));
+          new TThreadPoolServer(
+              new TThreadPoolServer.Args(serverTransport)
+                  .protocolFactory(new TBinaryProtocol.Factory())
+                  .processor(processor));
     }
     server.serve();
+    logger.info("Subscription thrift server started at {}:{}", localHost, localPort);
   }
 
   public void stop() {

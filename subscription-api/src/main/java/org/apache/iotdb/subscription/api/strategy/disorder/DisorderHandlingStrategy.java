@@ -25,7 +25,7 @@ public abstract class DisorderHandlingStrategy implements SubscriptionStrategy {
 
   protected final long watermark;
 
-  protected DisorderHandlingStrategy(long watermark) {
+  public DisorderHandlingStrategy(long watermark) {
     this.watermark = watermark;
   }
 

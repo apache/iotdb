@@ -30,6 +30,6 @@ struct TSubscriptionDataSet {
 
 service ISubscriptionRPCService {
 
-  common.TSStatus pushSubscriptionData(1: list<TSubscriptionDataSet> req)
+  common.TSStatus pushSubscriptionData(list<TSubscriptionDataSet> req)
 
 }

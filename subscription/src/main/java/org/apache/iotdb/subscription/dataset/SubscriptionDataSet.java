@@ -21,6 +21,7 @@ package org.apache.iotdb.subscription.dataset;
 
 import org.apache.iotdb.subscription.api.dataset.ISubscriptionDataSet;
 import org.apache.iotdb.subscription.rpc.thrift.TSubscriptionDataSet;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -88,9 +89,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
 
   public class DataGetter implements IDataGetter {
     public boolean getBoolean(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return (Boolean) column.get();
+        return BytesUtils.bytesToBool(column.get());
       }
       return false;
     }
@@ -100,9 +101,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     }
 
     public double getDouble(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return (Double) column.get();
+        BytesUtils.bytesToDouble(column.get());
       }
       return 0;
     }
@@ -112,9 +113,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     }
 
     public float getFloat(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return (Float) column.get();
+        return BytesUtils.bytesToFloat(column.get());
       }
       return 0;
     }
@@ -124,9 +125,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     }
 
     public int getInt(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return (Integer) column.get();
+        return BytesUtils.bytesToInt(column.get());
       }
       return 0;
     }
@@ -136,9 +137,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     }
 
     public long getLong(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return (Long) column.get();
+        return BytesUtils.bytesToLong(column.get());
       }
       return 0;
     }
@@ -156,9 +157,9 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
     }
 
     public String getString(int columnIndex) {
-      Optional<Object> column = Optional.ofNullable(getObject(columnIndex));
+      Optional<byte[]> column = Optional.ofNullable(getBytes(columnIndex));
       if (column.isPresent()) {
-        return column.toString();
+        return BytesUtils.bytesToString(column.get());
       }
       return null;
     }
@@ -177,6 +178,16 @@ public class SubscriptionDataSet implements ISubscriptionDataSet {
 
     public int findColumn(String columnName) {
       return columnNames.indexOf(columnName);
+    }
+
+    private byte[] getBytes(int columnIndex) {
+      return bufferToBytes(dataResult.get(columnIndex));
+    }
+
+    private byte[] bufferToBytes(ByteBuffer byteBuffer) {
+      byte[] bytes = new byte[byteBuffer.remaining()];
+      byteBuffer.get(bytes);
+      return bytes;
     }
   }
 }
