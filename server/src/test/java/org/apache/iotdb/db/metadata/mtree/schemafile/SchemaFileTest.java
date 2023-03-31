@@ -519,7 +519,7 @@ public class SchemaFileTest {
         fillChildren(
             sgNode,
             300,
-            "device中文abcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZ",
+            "deviceabcdabcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZ",
             this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
 
@@ -534,7 +534,7 @@ public class SchemaFileTest {
       fillChildren(
           d1,
           2,
-          "sensor2中文abcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZPORSTUVWXYZ",
+          "sensor2abcdabcdefahiklmnoparstuwwxyz1ABCDEFGHUKLMNOPORSTUVWXYZPORSTUVWXYZ",
           this::supplyMeasurementWithoutAlias);
 
       sf.writeMNode(d1);
