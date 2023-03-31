@@ -262,7 +262,10 @@ public class LocalSourceHandle implements ISourceHandle {
           }
           queue.close();
           closed = true;
-          executorService.submit(new SendCloseLocalSinkChannelEventTask());
+          if (executorService != null) {
+            // only send close event when this LocalSourceHandle is created for a Fragment
+            executorService.submit(new SendCloseLocalSinkChannelEventTask());
+          }
           sourceHandleListener.onFinished(this);
         }
       }
