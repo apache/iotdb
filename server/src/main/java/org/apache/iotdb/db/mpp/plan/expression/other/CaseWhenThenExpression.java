@@ -128,8 +128,9 @@ public class CaseWhenThenExpression extends Expression {
       builder.append(expression.toString()).append(" ");
     }
     if (!(this.elseExpression instanceof NullOperand)) {
-      builder.append("ELSE ").append(this.elseExpression.toString());
+      builder.append("ELSE ").append(this.elseExpression.toString()).append(" ");
     }
+    builder.append("END");
     return builder.toString();
   }
 

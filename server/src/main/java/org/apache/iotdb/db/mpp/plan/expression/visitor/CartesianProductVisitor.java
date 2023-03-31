@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProductEmpty;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
@@ -70,9 +70,10 @@ public abstract class CartesianProductVisitor<C>
   @Override
   public List<Expression> visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, C context) {
+    // TODO: 得在这里加上时间序列不存在的处理
     List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
     List<List<Expression>> cartesianResults = new ArrayList<>();
-    cartesianProduct(childResultsList, cartesianResults, 0, new ArrayList<>());
+    cartesianProductEmpty(childResultsList, cartesianResults, 0, new ArrayList<>());
     List<Expression> result = new ArrayList<>();
     for (List<Expression> cartesianResult : cartesianResults) {
       result.add(reconstructCaseWHenThenExpression(cartesianResult));

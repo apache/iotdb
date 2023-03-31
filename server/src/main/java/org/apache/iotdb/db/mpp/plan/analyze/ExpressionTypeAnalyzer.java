@@ -336,8 +336,12 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitWhenThenExpression(WhenThenExpression whenThenExpression, Void context) {
       TSDataType whenType = process(whenThenExpression.getWhen(), context);
-      checkInputExpressionDataType(
-          whenThenExpression.getWhen().toString(), whenType, TSDataType.BOOLEAN);
+      if (!whenType.equals(TSDataType.BOOLEAN)) {
+        throw new SemanticException(
+            String.format(
+                "The expression in the WHEN clause must return BOOLEAN. expression: %s, actual data type: %s.",
+                whenThenExpression.getWhen().getExpressionString(), whenType.name()));
+      }
       TSDataType thenType = process(whenThenExpression.getThen(), context);
       return setExpressionType(whenThenExpression, thenType);
     }

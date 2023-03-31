@@ -293,17 +293,22 @@ public class IntermediateLayerVisitor
   }
 
   @Override
-  public IntermediateLayer visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
+  public IntermediateLayer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
     if (!context.expressionIntermediateLayerMap.containsKey(caseWhenThenExpression)) {
       try {
         float memoryBudgetInMB = context.memoryAssigner.assign();
-        List<IntermediateLayer> whenThenLayers = caseWhenThenExpression.getWhenThenExpressions()
-            .stream().map(whenThenExpression -> this.process(whenThenExpression, context))
-            .collect(Collectors.toList());
-        IntermediateLayer elseLayer = this.process(caseWhenThenExpression.getElseExpression(), context);
-        Transformer transformer = new;
+        List<IntermediateLayer> whenThenLayers =
+            caseWhenThenExpression.getWhenThenExpressions().stream()
+                .map(whenThenExpression -> this.process(whenThenExpression, context))
+                .collect(Collectors.toList());
+        IntermediateLayer elseLayer =
+            this.process(caseWhenThenExpression.getElseExpression(), context);
+        //        Transformer transformer = new;
+      } catch (Exception ignore) {
       }
     }
+    return null;
   }
 
   private Transformer getConcreteUnaryTransformer(
