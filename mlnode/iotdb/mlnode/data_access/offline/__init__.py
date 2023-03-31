@@ -15,6 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-
-support_forecasting_models = ['dlinear', 'dlinear_individual', 'nbeats']

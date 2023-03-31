@@ -16,11 +16,12 @@
 # under the License.
 #
 
-import argparse
 from typing import Tuple
 
 import torch
 import torch.nn as nn
+
+from iotdb.mlnode.exception import BadConfigValueError
 
 
 class GenericBasis(nn.Module):
@@ -37,10 +38,6 @@ class GenericBasis(nn.Module):
 
 block_dict = {
     'generic': GenericBasis,
-
-    # TODO(@lcy) support more block type
-    # 'trend': TrendBasis,
-    # 'seasonality': SeasonalityBasis,
 }
 
 
@@ -109,6 +106,8 @@ class NBeats(nn.Module):
             input_len=96,
             pred_len=96,
             input_vars=1,
+            output_vars=1,
+            forecast_type='m',  # TODO, support others
     ):
         super(NBeats, self).__init__()
         self.enc_in = input_vars
@@ -133,6 +132,38 @@ class NBeats(nn.Module):
         return torch.stack(res, dim=-1)  # to [Batch, Output length, Channel]
 
 
-def nbeats(model_config: argparse.Namespace) -> NBeats:
-    # TODO (@lcy)
-    pass
+def _model_config(**kwargs):
+    return {
+        'block_type': 'generic',
+        'd_model': 128,
+        'inner_layers': 4,
+        'outer_layers': 4,
+        **kwargs
+    }
+
+
+"""
+Specific configs for NBeats variants
+"""
+support_model_configs = {
+    'nbeats': _model_config(
+        block_type='generic'),
+}
+
+
+def nbeats(common_config: dict, d_model=128, inner_layers=4, outer_layers=4, **kwargs) -> [NBeats, dict]:
+    config = _model_config()
+    config.update(**common_config)
+    if not d_model > 0:
+        raise BadConfigValueError('d_model', d_model,
+                                  'Model dimension (d_model) of nbeats should larger than 0')
+    if not inner_layers > 0:
+        raise BadConfigValueError('inner_layers', inner_layers,
+                                  'Number of inner layers of nbeats should larger than 0')
+    if not outer_layers > 0:
+        raise BadConfigValueError('outer_layers', outer_layers,
+                                  'Number of outer layers of nbeats should larger than 0')
+    config['d_model'] = d_model
+    config['inner_layers'] = inner_layers
+    config['outer_layers'] = outer_layers
+    return NBeats(**config), config

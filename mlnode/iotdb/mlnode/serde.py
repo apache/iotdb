@@ -15,10 +15,38 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
+
 import numpy as np
 import pandas as pd
 
-from iotdb.utils.IoTDBConstants import TSDataType
+
+class TSDataType(Enum):
+    BOOLEAN = 0
+    INT32 = 1
+    INT64 = 2
+    FLOAT = 3
+    DOUBLE = 4
+    TEXT = 5
+
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
+    def __hash__(self):
+        return self.value
+
+    def np_dtype(self):
+        return {
+            TSDataType.BOOLEAN: np.dtype(">?"),
+            TSDataType.FLOAT: np.dtype(">f4"),
+            TSDataType.DOUBLE: np.dtype(">f8"),
+            TSDataType.INT32: np.dtype(">i4"),
+            TSDataType.INT64: np.dtype(">i8"),
+            TSDataType.TEXT: np.dtype("str"),
+        }[self]
+
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2
