@@ -30,6 +30,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.Executors;
+
 public class LocalSourceHandleTest {
   @Test
   public void testReceive() {
@@ -51,7 +53,15 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
+            localFragmentInstanceId,
+            localPlanNodeId,
+            queue,
+            mockSourceHandleListener,
+            null,
+            Executors.newSingleThreadExecutor(),
+            0,
+            null,
+            remoteFragmentInstanceId);
     Assert.assertFalse(localSourceHandle.isBlocked().isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());
@@ -95,7 +105,15 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
+            localFragmentInstanceId,
+            localPlanNodeId,
+            queue,
+            mockSourceHandleListener,
+            null,
+            Executors.newSingleThreadExecutor(),
+            0,
+            null,
+            remoteFragmentInstanceId);
     ListenableFuture<?> future = localSourceHandle.isBlocked();
     Assert.assertFalse(future.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());

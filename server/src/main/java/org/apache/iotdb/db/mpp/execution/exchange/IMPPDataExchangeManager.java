@@ -74,6 +74,7 @@ public interface IMPPDataExchangeManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       String remotePlanNodeId,
+      TEndPoint remoteEndPoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);

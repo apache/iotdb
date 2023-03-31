@@ -126,7 +126,7 @@ public class DistributionPlanner {
         newChild.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
         exchangeNode.setChild(newChild);
-        exchangeNode.setIndexOfUpstreamSinkHandle(newChild.getCurrentLastIndex());
+        exchangeNode.setIndexOfUpstreamISinkChannel(newChild.getCurrentLastIndex());
       }
     }
   }
@@ -153,7 +153,7 @@ public class DistributionPlanner {
         newChild.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
         exchangeNode.setChild(newChild);
-        exchangeNode.setIndexOfUpstreamSinkHandle(newChild.getCurrentLastIndex());
+        exchangeNode.setIndexOfUpstreamISinkChannel(newChild.getCurrentLastIndex());
       }
     }
   }

@@ -41,7 +41,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
-  /** Each ISinkHandle in the list matches one downStream ISourceHandle */
+  /** Each ISinkChannel in the list matches one downStream ISourceHandle */
   private final List<ISinkChannel> downStreamChannelList;
 
   private final boolean[] hasSetNoMoreTsBlocks;
@@ -145,8 +145,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public boolean isClosed() {
+  public synchronized boolean isClosed() {
     return closedChannel.size() == downStreamChannelList.size();
+  }
+
+  @Override
+  public synchronized void addToClosedChannel(int index) {
+    closedChannel.add(index);
   }
 
   @Override
