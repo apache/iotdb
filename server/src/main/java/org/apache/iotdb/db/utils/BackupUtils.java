@@ -33,6 +33,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BackupUtils {
+  private static String confDir;
+
+  public static boolean checkConfDir() {
+    String iotdbConf = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    if (iotdbConf != null) {
+      confDir = iotdbConf;
+      return true;
+    }
+    String iotdbHome = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (iotdbHome != null) {
+      confDir = iotdbHome + File.separator + "conf";
+      return true;
+    }
+    return false;
+  }
+
+  public static String getConfDir() {
+    return confDir;
+  }
 
   /**
    * @param target The hard link file to be created.
@@ -71,12 +90,16 @@ public class BackupUtils {
     if (dataDirs.length == 1) {
       return FilePathUtils.regularizePath(outputBaseDir)
           + "data"
+          + File.separator
+          + "data"
           + resource.getTsFile().getAbsolutePath().replace(tsFileDataDir, "");
     } else {
       for (int i = 0; i < dataDirs.length; ++i) {
         Path dataDirPath = Paths.get(dataDirs[i]);
         if (Files.isSameFile(dataDirPath, tsFileDataDirPath)) {
           return FilePathUtils.regularizePath(outputBaseDir)
+              + "data"
+              + File.separator
               + "data"
               + i
               + resource.getTsFile().getAbsolutePath().replace(tsFileDataDir, "");
@@ -96,11 +119,17 @@ public class BackupUtils {
         relativeSourcePath = File.separator + relativeSourcePath;
       }
       return FilePathUtils.regularizePath(outputBaseDir)
+          + "data"
+          + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + relativeSourcePath;
     } else {
       return "";
     }
+  }
+
+  public static String getConfigFileTargetPath(File source, String outputBaseDir) {
+    return FilePathUtils.regularizePath(outputBaseDir) + "conf" + File.separator + source.getName();
   }
 
   public static String getTsFileTmpLinkPath(TsFileResource resource) {
@@ -159,22 +188,25 @@ public class BackupUtils {
       File dataTmpDir =
           new File(
               FilePathUtils.regularizePath(dataDir) + IoTDBConstant.BACKUP_DATA_TMP_FOLDER_NAME);
-      success = success && deleteFileOrDir(dataTmpDir);
+      success = success && deleteFileOrDirRecursively(dataTmpDir);
     }
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     File systemTmpDir =
         new File(
             FilePathUtils.regularizePath(systemDir) + IoTDBConstant.BACKUP_SYSTEM_TMP_FOLDER_NAME);
-    return success && deleteFileOrDir(systemTmpDir);
+    return success && deleteFileOrDirRecursively(systemTmpDir);
   }
 
-  public static boolean deleteFileOrDir(File file) {
-    if (file == null) return true;
+  /**
+   * Will return true when the file is deleted successfully or when it does not exist.
+   */
+  public static boolean deleteFileOrDirRecursively(File file) {
+    if (file == null || !file.exists()) return true;
     if (!file.isFile()) {
       File[] sonFileAndDirs = file.listFiles();
       if (sonFileAndDirs != null) {
         for (File sonFile : sonFileAndDirs) {
-          deleteFileOrDir(sonFile);
+          deleteFileOrDirRecursively(sonFile);
         }
       }
     }

@@ -60,11 +60,19 @@ public class BackupService implements IService {
 
   @Override
   public void start() throws StartupException {
+    if (!BackupUtils.deleteBackupTmpDir()) {
+      logger.warn("Failed to delete backup temporary directories when starting BackupService.");
+    }
     if (backupThreadPool == null) {
       int backupThreadNum = IoTDBDescriptor.getInstance().getConfig().getBackupThreadNum();
       backupThreadPool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
               backupThreadNum, ThreadName.BACKUP_SERVICE.getName());
+    }
+    if (BackupUtils.checkConfDir()) {
+      logger.info("BackupService found the config directory: " + BackupUtils.getConfDir());
+    } else {
+      logger.error("BackupService couldn't find the config directory, will skip it during backup.");
     }
   }
 
@@ -72,6 +80,9 @@ public class BackupService implements IService {
   public void stop() {
     if (backupThreadPool != null) {
       backupThreadPool.shutdownNow();
+    }
+    if (!BackupUtils.deleteBackupTmpDir()) {
+      logger.warn("Failed to delete backup temporary directories when stopping BackupService.");
     }
   }
 
@@ -85,7 +96,6 @@ public class BackupService implements IService {
 
   public void checkBackupPathValid(String outputPath) throws WriteProcessException {
     File tempFile = new File(outputPath);
-
     try {
       if (!tempFile.createNewFile()) {
         if (tempFile.isFile()) {
@@ -110,6 +120,10 @@ public class BackupService implements IService {
    * @param outputPath
    */
   public void backupFiles(List<TsFileResource> resources, String outputPath) {
+    if (!BackupUtils.deleteBackupTmpDir()) {
+      logger.error("Failed to delete backup temporary directories before backup. Backup aborted.");
+      return;
+    }
     backupByCopyTaskList.clear();
     for (TsFileResource resource : resources) {
       try {
@@ -168,10 +182,23 @@ public class BackupService implements IService {
       }
     }
 
+    String configDirPath = BackupUtils.getConfDir();
+    List<File> configFiles = new ArrayList<>();
+    if (configDirPath != null) {
+      configFiles = BackupUtils.getAllFilesInOneDir(configDirPath);
+      for (File file : configFiles) {
+        String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
+        backupByCopyTaskList.add(
+            new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+      }
+    } else {
+      logger.warn("Can't find config directory during backup, skipping.");
+    }
+
     logger.info(
         String.format(
-            "Backup starting, found %d TsFiles and their related files, %d system files.",
-            resources.size(), systemFiles.size()));
+            "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
+            resources.size(), systemFiles.size(), configFiles.size()));
     logger.debug(
         String.format(
             "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
