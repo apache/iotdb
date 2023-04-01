@@ -41,9 +41,15 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Utils {
   private static final int TEMP_BUFFER_SIZE = 1024;
@@ -264,5 +270,53 @@ public class Utils {
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
+  }
+
+  /**
+   * Monitoring Ratis RaftLog total size. It will memorize the state of all files in the last update
+   * and calculates the diff incrementally each run.
+   */
+  static class RatisLogSizeMonitor {
+
+    private static final class DirectoryState {
+      private long size = 0;
+      private List<Path> memorizedFiles = Collections.emptyList();
+
+      private void update(long size, List<Path> latest) {
+        this.size = size;
+        this.memorizedFiles = latest;
+      }
+    }
+
+    private final ConcurrentHashMap<File, DirectoryState> directoryMap = new ConcurrentHashMap<>();
+
+    long updateAndGetDirectorySize(File dir) {
+      final DirectoryState prev = directoryMap.computeIfAbsent(dir, d -> new DirectoryState());
+      List<Path> latest;
+      try (Stream<Path> files = Files.list(dir.toPath())) {
+        latest = files.filter(p -> p.getFileName().startsWith("log_inprogress"))  // filter out the in progress ratis log
+                .collect(Collectors.toList());
+      } catch (IOException e) {
+        RatisConsensus.logger.warn(
+            "{}: Error caught when listing files under {}: {}", this, dir, e);
+        latest = Collections.emptyList();
+      }
+      final long sizeDiff = diff(prev.memorizedFiles, latest);
+      final long newSize = prev.size + sizeDiff;
+      prev.update(newSize, latest);
+      return newSize;
+    }
+
+    List<Path> getFilesUnder(File dir) {
+      return directoryMap.get(dir).memorizedFiles;
+    }
+
+    private static long diff(List<Path> old, List<Path> latest) {
+      final long incremental =
+          latest.stream().filter(p -> !old.contains(p)).mapToLong(p -> p.toFile().length()).sum();
+      final long decremental =
+          old.stream().filter(p -> !latest.contains(p)).mapToLong(p -> p.toFile().length()).sum();
+      return incremental - decremental;
+    }
   }
 }

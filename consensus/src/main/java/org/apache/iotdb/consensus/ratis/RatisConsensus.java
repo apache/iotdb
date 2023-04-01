@@ -37,7 +37,6 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.Utils.MemorizedFileSizeCalc;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -95,7 +94,7 @@ import java.util.stream.Collectors;
 /** A multi-raft consensus implementation based on Apache Ratis. */
 class RatisConsensus implements IConsensus {
 
-  private final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
+  static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
   /** the unique net communication endpoint */
   private final RaftPeer myself;
@@ -123,7 +122,7 @@ class RatisConsensus implements IConsensus {
 
   private final RatisConfig config;
 
-  private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
+  private final Utils.RatisLogSizeMonitor monitor = new Utils.RatisLogSizeMonitor();
 
   private final RatisMetricSet ratisMetricSet;
   private TConsensusGroupType consensusGroupType = null;
@@ -723,11 +722,21 @@ class RatisConsensus implements IConsensus {
         continue;
       }
 
-      final long currentDirLength =
-          calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
+      final long currentDirLength = monitor.updateAndGetDirectorySize(currentDir);
       final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
+        final String allFiles =
+            monitor.getFilesUnder(currentDir).stream()
+                .map(f -> f.toFile().getName() + ",")
+                .collect(Collectors.joining());
+        logger.info(
+            "{}: take snapshot for region {}, current dir size {}, files {}",
+            this,
+            raftGroupId,
+            currentDirLength,
+            allFiles);
+
         ConsensusGenericResponse consensusGenericResponse =
             triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
         if (consensusGenericResponse.isSuccess()) {
