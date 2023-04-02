@@ -71,21 +71,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
-
-    TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.STOP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to stop pipe instance [%s] on data nodes", pipeName));
-    }
-  }
-
-  @Override
   void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("Start to stop PIPE [{}] on Config Nodes", pipeName);
 
@@ -98,6 +83,21 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
+    }
+  }
+
+  @Override
+  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
+    LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
+
+    TOperatePipeOnDataNodeReq request =
+        new TOperatePipeOnDataNodeReq()
+            .setPipeName(pipeName)
+            .setOperation((byte) SyncOperation.STOP_PIPE.ordinal());
+    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException(
+          String.format("Failed to stop pipe instance [%s] on data nodes", pipeName));
     }
   }
 
@@ -122,11 +122,11 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       case CALCULATE_INFO_FOR_TASK:
         rollbackFromCalculateInfoForTask(env);
         break;
-      case OPERATE_ON_DATA_NODES:
-        rollbackFromOperateOnDataNodes(env);
-        break;
       case WRITE_CONFIG_NODE_CONSENSUS:
         rollbackFromWriteConfigNodeConsensus(env);
+        break;
+      case OPERATE_ON_DATA_NODES:
+        rollbackFromOperateOnDataNodes(env);
         break;
       default:
         LOGGER.error("Unsupported roll back STATE [{}]", state);
@@ -140,22 +140,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     // Do nothing
-  }
-
-  private void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
-    LOGGER.info("Start to rollback from stop on data nodes for task [{}]", pipeName);
-
-    // Stop pipe
-    TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.START_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to rollback from stop on data nodes for task [%s]", pipeName));
-    }
   }
 
   private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
@@ -172,6 +156,22 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
+    }
+  }
+
+  private void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
+    LOGGER.info("Start to rollback from stop on data nodes for task [{}]", pipeName);
+
+    // Stop pipe
+    TOperatePipeOnDataNodeReq request =
+        new TOperatePipeOnDataNodeReq()
+            .setPipeName(pipeName)
+            .setOperation((byte) SyncOperation.START_PIPE.ordinal());
+    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException(
+          String.format("Failed to rollback from stop on data nodes for task [%s]", pipeName));
     }
   }
 

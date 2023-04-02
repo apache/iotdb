@@ -16,172 +16,56 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class PipeTaskMeta {
 
-  private String pipeName;
+  // TODO: replace it with consensus index
+  private long index;
 
-  private long createTime;
-
-  private PipeStatus status;
-
-  private Map<String, String> collectorAttributes = new HashMap<>();
-
-  private Map<String, String> processorAttributes = new HashMap<>();
-
-  private Map<String, String> connectorAttributes = new HashMap<>();
-
-  private final List<String> messages = new ArrayList<>();
-
-  private Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+  private int regionLeader;
 
   private PipeTaskMeta() {}
 
-  public PipeTaskMeta(
-      String pipeName,
-      long createTime,
-      PipeStatus status,
-      Map<String, String> collectorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
-      Map<TConsensusGroupId, DataRegionPipeTaskMeta> dataRegionPipeTasks) {
-    this.pipeName = pipeName.toUpperCase();
-    this.createTime = createTime;
-    this.status = status;
-    this.collectorAttributes = collectorAttributes;
-    this.processorAttributes = processorAttributes;
-    this.connectorAttributes = connectorAttributes;
-    this.dataRegionPipeTasks = dataRegionPipeTasks;
+  public PipeTaskMeta(long index, int regionLeader) {
+    this.index = index;
+    this.regionLeader = regionLeader;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public long getIndex() {
+    return index;
   }
 
-  public long getCreateTime() {
-    return createTime;
+  public int getRegionLeader() {
+    return regionLeader;
   }
 
-  public Map<String, String> getCollectorAttributes() {
-    return collectorAttributes;
+  public void setIndex(long index) {
+    this.index = index;
   }
 
-  public Map<String, String> getProcessorAttributes() {
-    return collectorAttributes;
-  }
-
-  public Map<String, String> getConnectorAttributes() {
-    return collectorAttributes;
-  }
-
-  public PipeStatus getStatus() {
-    return status;
-  }
-
-  public List<String> getMessages() {
-    return messages;
-  }
-
-  public DataRegionPipeTaskMeta getDataRegionPipeTask(int regionGroup) {
-    return dataRegionPipeTasks.get(regionGroup);
-  }
-
-  public Set<TConsensusGroupId> getRegionGroups() {
-    return dataRegionPipeTasks.keySet();
-  }
-
-  public void setStatus(PipeStatus status) {
-    this.status = status;
-  }
-
-  public void addMessage(String message) {
-    messages.add(message);
-  }
-
-  public void addDataRegionPipeTask(
-      TConsensusGroupId id, DataRegionPipeTaskMeta dataRegionPipeTaskMeta) {
-    this.dataRegionPipeTasks.put(id, dataRegionPipeTaskMeta);
-  }
-
-  public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  public void setRegionLeader(int regionLeader) {
+    this.regionLeader = regionLeader;
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(pipeName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
-    ReadWriteIOUtils.write(status.getType(), outputStream);
-    outputStream.writeInt(collectorAttributes.size());
-    for (Map.Entry<String, String> entry : collectorAttributes.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    outputStream.writeInt(processorAttributes.size());
-    for (Map.Entry<String, String> entry : processorAttributes.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    outputStream.writeInt(connectorAttributes.size());
-    for (Map.Entry<String, String> entry : connectorAttributes.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    outputStream.writeInt(dataRegionPipeTasks.size());
-    for (Map.Entry<TConsensusGroupId, DataRegionPipeTaskMeta> entry :
-        dataRegionPipeTasks.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
-      entry.getValue().serialize(outputStream);
-    }
+    ReadWriteIOUtils.write(index, outputStream);
+    ReadWriteIOUtils.write(regionLeader, outputStream);
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta();
-    pipeTaskMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeTaskMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
-    pipeTaskMeta.status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer));
-    int size = byteBuffer.getInt();
-    for (int i = 0; i < size; ++i) {
-      pipeTaskMeta.collectorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
-    }
-    size = byteBuffer.getInt();
-    for (int i = 0; i < size; ++i) {
-      pipeTaskMeta.processorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
-    }
-    size = byteBuffer.getInt();
-    for (int i = 0; i < size; ++i) {
-      pipeTaskMeta.connectorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
-    }
-    size = byteBuffer.getInt();
-    for (int i = 0; i < size; ++i) {
-      pipeTaskMeta.dataRegionPipeTasks.put(
-          new TConsensusGroupId(
-              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
-          DataRegionPipeTaskMeta.deserialize(byteBuffer));
-    }
-    return pipeTaskMeta;
+    PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
+    PipeTaskMeta.index = ReadWriteIOUtils.readLong(byteBuffer);
+    PipeTaskMeta.regionLeader = ReadWriteIOUtils.readInt(byteBuffer);
+    return PipeTaskMeta;
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
@@ -198,44 +82,16 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return pipeName.equals(that.pipeName)
-        && createTime == that.createTime
-        && status.equals(that.status)
-        && collectorAttributes.equals(that.collectorAttributes)
-        && processorAttributes.equals(that.processorAttributes)
-        && connectorAttributes.equals(that.connectorAttributes)
-        && dataRegionPipeTasks.equals(that.dataRegionPipeTasks);
+    return index == that.index && regionLeader == that.regionLeader;
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return (int) (index * 31 + regionLeader);
   }
 
   @Override
   public String toString() {
-    return "PipeTaskMeta{"
-        + "pipeName='"
-        + pipeName
-        + '\''
-        + ", createTime='"
-        + createTime
-        + '\''
-        + ", status='"
-        + status
-        + '\''
-        + ", collectorAttributes='"
-        + collectorAttributes
-        + '\''
-        + ", processorAttributes='"
-        + processorAttributes
-        + '\''
-        + ", connectorAttributes='"
-        + connectorAttributes
-        + '\''
-        + ", DataRegionPipeTasks='"
-        + dataRegionPipeTasks
-        + '\''
-        + '}';
+    return "PipeTask{" + "index='" + index + '\'' + ", regionLeader='" + regionLeader + '\'' + '}';
   }
 }

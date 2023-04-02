@@ -100,7 +100,7 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
     }
   }
 
-  private void clear() {
+  public void clear() {
     pipeNameToPipeMetaMap.clear();
     jarNameToMd5Map.clear();
     jarNameToReferenceCountMap.clear();

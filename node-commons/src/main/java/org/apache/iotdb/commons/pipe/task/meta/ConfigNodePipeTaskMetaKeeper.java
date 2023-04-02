@@ -18,30 +18,7 @@
  */
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 public class ConfigNodePipeTaskMetaKeeper extends PipeTaskMetaKeeper {
-
-  public void processTakeSnapshot(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(pipeNameToPipeTaskMetaMap.size(), outputStream);
-    for (PipeTaskMeta pipeTaskMeta : pipeNameToPipeTaskMetaMap.values()) {
-      ReadWriteIOUtils.write(pipeTaskMeta.serialize(), outputStream);
-    }
-  }
-
-  public void processLoadSnapshot(InputStream inputStream) throws IOException {
-    pipeNameToPipeTaskMetaMap.clear();
-
-    final int pipePluginMetaSize = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < pipePluginMetaSize; i++) {
-      final PipeTaskMeta pipeTaskMeta = PipeTaskMeta.deserialize(inputStream);
-      addPipeTaskMeta(pipeTaskMeta);
-    }
-  }
 
   public static ConfigNodePipeTaskMetaKeeper getInstance() {
     return ConfigNodePipeTaskMetaKeeper.ConfigNodePipeTaskMetaKeeperHolder.INSTANCE;

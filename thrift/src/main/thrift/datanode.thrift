@@ -349,12 +349,7 @@ struct TCountPathsUsingTemplateResp{
 }
 
 struct TCreatePipeOnDataNodeReq{
-  1: required string pipeName
-  2: optional map<string, string> collectorAttributes
-  3: optional map<string, string> processorAttributes
-  4: required map<string, string> connectorAttributes
-  5: required map<common.TConsensusGroupId, i32> regionGroupToLeaderMap
-  6: required i64 createTime
+  1: required binary pipeMeta
 }
 
 struct TOperatePipeOnDataNodeReq {

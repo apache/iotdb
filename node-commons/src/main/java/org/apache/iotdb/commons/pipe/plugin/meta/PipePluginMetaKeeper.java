@@ -49,4 +49,8 @@ public abstract class PipePluginMetaKeeper {
   public boolean containsPipePlugin(String pluginName) {
     return pipeNameToPipeMetaMap.containsKey(pluginName.toUpperCase());
   }
+
+  public void clear() {
+    pipeNameToPipeMetaMap.clear();
+  }
 }

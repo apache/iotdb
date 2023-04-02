@@ -18,34 +18,28 @@
  */
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class PipeTaskMetaKeeper {
 
-  protected final Map<String, PipeTaskMeta> pipeNameToPipeTaskMetaMap;
+  protected final List<PipeTaskMeta> pipeTaskMetas = new ArrayList<>();
 
-  public PipeTaskMetaKeeper() {
-    pipeNameToPipeTaskMetaMap = new ConcurrentHashMap<>();
-  }
+  public PipeTaskMetaKeeper() {}
 
   public void addPipeTaskMeta(PipeTaskMeta pipeTaskMeta) {
-    pipeNameToPipeTaskMetaMap.put(pipeTaskMeta.getPipeName().toUpperCase(), pipeTaskMeta);
+    pipeTaskMetas.add(pipeTaskMeta);
   }
 
-  public void removePipeTaskMeta(String TaskName) {
-    pipeNameToPipeTaskMetaMap.remove(TaskName.toUpperCase());
+  public void removePipeTaskMeta(PipeTaskMeta pipeTaskMeta) {
+    pipeTaskMetas.remove(pipeTaskMeta);
   }
 
-  public PipeTaskMeta getPipeTaskMeta(String TaskName) {
-    return pipeNameToPipeTaskMetaMap.get(TaskName.toUpperCase());
+  public List<PipeTaskMeta> getPipeTaskMetas() {
+    return pipeTaskMetas;
   }
 
-  public PipeTaskMeta[] getAllPipeTaskMeta() {
-    return pipeNameToPipeTaskMetaMap.values().toArray(new PipeTaskMeta[0]);
-  }
-
-  public boolean containsPipeTask(String TaskName) {
-    return pipeNameToPipeTaskMetaMap.containsKey(TaskName.toUpperCase());
+  public void clear() {
+    this.pipeTaskMetas.clear();
   }
 }

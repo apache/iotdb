@@ -70,21 +70,6 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to broadcast drop PIPE [{}] on Data Nodes", pipeName);
-
-    TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
-    }
-  }
-
-  @Override
   void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("Start to drop PIPE [{}] on Config Nodes", pipeName);
 
@@ -96,6 +81,21 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         configNodeManager.getConsensusManager().write(dropPipePlanV2);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
+    }
+  }
+
+  @Override
+  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
+    LOGGER.info("Start to broadcast drop PIPE [{}] on Data Nodes", pipeName);
+
+    TOperatePipeOnDataNodeReq request =
+        new TOperatePipeOnDataNodeReq()
+            .setPipeName(pipeName)
+            .setOperation((byte) SyncOperation.DROP_PIPE.ordinal());
+    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException(
+          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
     }
   }
 

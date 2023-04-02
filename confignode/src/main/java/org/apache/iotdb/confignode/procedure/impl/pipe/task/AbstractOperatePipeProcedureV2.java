@@ -32,6 +32,8 @@ import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /** This procedure manage three kinds of PIPE operations: CREATE, START and STOP */
 abstract class AbstractOperatePipeProcedureV2
     extends StateMachineProcedure<ConfigNodeProcedureEnv, OperatePipeState> {
@@ -51,11 +53,11 @@ abstract class AbstractOperatePipeProcedureV2
   /** Execute at state PRE_OPERATE_PIPE_CONFIGNODE */
   abstract void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state OPERATE_ON_DATA_NODES */
-  abstract void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException;
-
   /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
   abstract void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException;
+
+  /** Execute at state OPERATE_ON_DATA_NODES */
+  abstract void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException, IOException;
 
   abstract SyncOperation getOperation();
 
@@ -74,18 +76,18 @@ abstract class AbstractOperatePipeProcedureV2
           break;
         case CALCULATE_INFO_FOR_TASK:
           calculateInfoForTask(env);
-          setNextState(OperatePipeState.OPERATE_ON_DATA_NODES);
-          break;
-        case OPERATE_ON_DATA_NODES:
-          operateOnDataNodes(env);
           setNextState(OperatePipeState.WRITE_CONFIG_NODE_CONSENSUS);
           break;
         case WRITE_CONFIG_NODE_CONSENSUS:
           writeConfigNodeConsensus(env);
+          setNextState(OperatePipeState.OPERATE_ON_DATA_NODES);
+          break;
+        case OPERATE_ON_DATA_NODES:
+          operateOnDataNodes(env);
           env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeException | PipeSinkException e) {
+    } catch (PipeException | PipeSinkException | IOException e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail in OperatePipeProcedure", e);
         setFailure(new ProcedureException(e.getMessage()));
