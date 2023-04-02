@@ -25,5 +25,22 @@ class DatasetType(Enum):
     def __str__(self):
         return self.value
 
+    def __hash__(self):
+        return hash(self.value)
+
+    def __eq__(self, other: str) -> bool:
+        return self.value == other
+
+
+class DataSourceType(Enum):
+    FILE = "file"
+    THRIFT = "thrift"
+
+    def __str__(self):
+        return self.value
+
+    def __hash__(self):
+        return hash(self.value)
+
     def __eq__(self, other: str) -> bool:
         return self.value == other

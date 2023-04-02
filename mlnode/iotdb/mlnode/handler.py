@@ -57,7 +57,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         # create task stage (check task config legitimacy)
 
         # submit task stage (check resource and decide pending/start)
-        self.__task_manager.submit_training_task(task_config, model_config, model, dataset)
+        # self.__task_manager.submit_training_task(task_config, model_config, model, dataset)
 
         return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
 

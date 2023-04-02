@@ -17,7 +17,7 @@
 #
 from torch.utils.data import Dataset
 
-from iotdb.mlnode.data_access.enums import DatasetType
+from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
                                                       WindowDataset)
 from iotdb.mlnode.data_access.offline.source import (FileDataSource,
@@ -27,6 +27,11 @@ from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
 support_forecasting_dataset = {
     DatasetType.TIMESERIES: TimeSeriesDataset,
     DatasetType.WINDOW: WindowDataset
+}
+
+support_forecasting_datasource = {
+    DataSourceType.FILE: FileDataSource,
+    DataSourceType.THRIFT: ThriftDataSource
 }
 
 
@@ -53,12 +58,13 @@ def create_forecast_dataset(
 ) -> [Dataset, dict]:
     """
     Factory method for all support dataset
-    currently implement WindowDataset, TimeSeriesDataset
-    for specific dataset configs, see _dataset_config in `algorithm/models/MODELNAME.py`
+    currently implement two types of PyTorch dataset: WindowDataset, TimeSeriesDataset
+    support two types of offline data source: FileDataSource and ThriftDataSource
+    for specific dataset/datasource configs, see _dataset_config in `dataset.py` and `source.py`
 
     Args:
-        dataset_type: available choice in support_forecasting_dataset
-        source_type:  available choice in ['file', 'thrift']
+        dataset_type: see data_access/enums for available choices
+        source_type:  see data_access/enums for available choices
         kwargs: for specific dataset configs, see returned `dataset_config` with kwargs=None
 
     Returns:
@@ -69,18 +75,19 @@ def create_forecast_dataset(
         raise BadConfigValueError('dataset_type', dataset_type,
                                   f'It should be one of {list(support_forecasting_dataset.keys())}')
 
-    if source_type == 'file':
+    if source_type == DataSourceType.FILE:
         if 'filename' not in kwargs.keys():
             raise MissingConfigError('filename')
         datasource = FileDataSource(kwargs['filename'])
-    elif source_type == 'thrift':
+    elif source_type == DataSourceType.THRIFT:
         if 'query_expressions' not in kwargs.keys():
             raise MissingConfigError('query_expressions')
         if 'query_filter' not in kwargs.keys():
             raise MissingConfigError('query_filter')
         datasource = ThriftDataSource(kwargs['query_expressions'], kwargs['query_filter'])
     else:
-        raise BadConfigValueError('source_type', source_type, "It should be one of ['file', 'thrift]")
+        raise BadConfigValueError('source_type', source_type,
+                                  f"It should be one of {list(support_forecasting_datasource)}")
 
     dataset_fn = support_forecasting_dataset[dataset_type]
     dataset_config = support_dataset_configs[dataset_type]
@@ -93,13 +100,13 @@ def create_forecast_dataset(
 
     if 'input_vars' in kwargs.keys() and dataset.get_variable_num() != kwargs['input_vars']:
         raise BadConfigValueError('input_vars', kwargs['input_vars'],
-                                  f'Variable number of fetched data: ({dataset.get_variable_num()})'
-                                  f' should be consistent with input_vars')
+                                  f'Variable number of fetched data should be consistent with '
+                                  f'input_vars, but got: {dataset.get_variable_num()}')
 
     data_config = dataset_config.copy()
     data_config['input_vars'] = dataset.get_variable_num()
     data_config['output_vars'] = dataset.get_variable_num()
-    data_config['source_type'] = source_type
-    data_config['dataset_type'] = dataset_type
+    data_config['source_type'] = str(source_type)
+    data_config['dataset_type'] = str(dataset_type)
 
     return dataset, data_config

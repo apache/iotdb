@@ -72,11 +72,11 @@ def create_forecast_model(
     """
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
-    for specific model configs, see __model_config in `algorithm/models/MODELNAME.py`
+    for specific model configs, see _model_config in `MODELNAME.py`
 
     Args:
         model_name: see available models by `list_model`
-        forecast_task_type: see model/enums for available choices
+        forecast_task_type: see algorithm/enums for available choices
         input_len: time length of model input
         pred_len: time length of model output
         input_vars: number of input series
