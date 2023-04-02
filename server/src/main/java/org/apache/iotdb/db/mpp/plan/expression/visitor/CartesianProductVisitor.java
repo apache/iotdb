@@ -50,12 +50,6 @@ public abstract class CartesianProductVisitor<C>
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    //    if (binaryExpression instanceof WhenThenExpression) {
-    //      if (ExpressionAnalyzer.checkHasWildCard(((WhenThenExpression)
-    // binaryExpression).getThen())) {
-    //        throw new IllegalArgumentException("Cannot use wildcard in then-expression");
-    //      }
-    //    }
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
         binaryExpression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));
@@ -70,7 +64,6 @@ public abstract class CartesianProductVisitor<C>
   @Override
   public List<Expression> visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, C context) {
-    // TODO: 得在这里加上时间序列不存在的处理
     List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
     List<List<Expression>> cartesianResults = new ArrayList<>();
     cartesianProductEmpty(childResultsList, cartesianResults, 0, new ArrayList<>());

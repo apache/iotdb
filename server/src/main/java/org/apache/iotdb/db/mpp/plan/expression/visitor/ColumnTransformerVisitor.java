@@ -53,7 +53,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessThanC
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.LogicOrColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.binary.WhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -456,9 +455,6 @@ public class ColumnTransformerVisitor
             returnType, leftColumnTransformer, rightColumnTransformer);
       case LOGIC_OR:
         return new LogicOrColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
-      case WHEN_THEN:
-        return new WhenThenColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       default:
         throw new UnsupportedOperationException(

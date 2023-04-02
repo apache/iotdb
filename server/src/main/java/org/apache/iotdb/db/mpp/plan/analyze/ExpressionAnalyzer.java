@@ -824,26 +824,4 @@ public class ExpressionAnalyzer {
           "unsupported expression type: " + expression.getExpressionType());
     }
   }
-
-  public static boolean checkHasWildCard(Expression expression) {
-    if (expression instanceof TernaryExpression
-        || expression instanceof BinaryExpression
-        || expression instanceof UnaryExpression
-        || expression instanceof FunctionExpression
-        || expression instanceof CaseWhenThenExpression) {
-      for (Expression child : expression.getExpressions()) {
-        if (checkHasWildCard(child)) {
-          return true;
-        }
-      }
-      return false;
-    } else if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().hasWildcard();
-    } else if (expression instanceof LeafOperand) {
-      return false;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
 }

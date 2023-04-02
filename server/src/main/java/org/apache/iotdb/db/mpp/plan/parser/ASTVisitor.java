@@ -2367,7 +2367,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (context.caseWhenThenExpression() != null) {
-      return parseCaseWhenThenExpression(context.caseWhenThenExpression(), canUseFullPath); // TODO
+      return parseCaseWhenThenExpression(context.caseWhenThenExpression(), canUseFullPath);
     }
 
     throw new UnsupportedOperationException();

@@ -32,9 +32,6 @@ public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R
   }
 
   List<R> getResultsFromChild(Expression expression, C context) {
-    //    return expression.getExpressions().stream()
-    //        .map(child -> process(child, context))
-    //        .collect(Collectors.toList());
     List<R> result = new ArrayList<>();
     for (Expression child : expression.getExpressions()) {
       result.add(this.process(child, context));

@@ -83,15 +83,8 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
     }
   }
 
-  /*
-  whenThen[0] -> column[0] -> {xx, null, yy, ...}
-  whenThen[1] -> column[1] -> {null, zz, cc, ...}
-  ...
-
-   */
   @Override
   protected void evaluate() {
-    //    whenThenTransformers.forEach(ColumnTransformer::tryEvaluate);
     List<Column> whenColumnList = new ArrayList<>();
     List<Column> thenColumnList = new ArrayList<>();
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
@@ -105,10 +98,6 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
       thenColumnList.add(whenThenTransformer.right.getColumn());
     }
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-    //    List<Column> columnList = new ArrayList<>();
-    //    for (WhenThenColumnTransformer whenThenTransformer : whenThenTransformers) {
-    //      columnList.add(whenThenTransformer.getColumn());
-    //    }
     Column elseColumn = elseTransformer.getColumn();
     for (int i = 0; i < positionCount; i++) {
       boolean hasValue = false;

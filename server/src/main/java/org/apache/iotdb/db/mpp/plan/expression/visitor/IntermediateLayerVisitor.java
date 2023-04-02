@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
-import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -290,25 +289,6 @@ public class IntermediateLayerVisitor
     }
 
     return context.expressionIntermediateLayerMap.get(constantOperand);
-  }
-
-  @Override
-  public IntermediateLayer visitCaseWhenThenExpression(
-      CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
-    if (!context.expressionIntermediateLayerMap.containsKey(caseWhenThenExpression)) {
-      try {
-        float memoryBudgetInMB = context.memoryAssigner.assign();
-        List<IntermediateLayer> whenThenLayers =
-            caseWhenThenExpression.getWhenThenExpressions().stream()
-                .map(whenThenExpression -> this.process(whenThenExpression, context))
-                .collect(Collectors.toList());
-        IntermediateLayer elseLayer =
-            this.process(caseWhenThenExpression.getElseExpression(), context);
-        //        Transformer transformer = new;
-      } catch (Exception ignore) {
-      }
-    }
-    return null;
   }
 
   private Transformer getConcreteUnaryTransformer(
