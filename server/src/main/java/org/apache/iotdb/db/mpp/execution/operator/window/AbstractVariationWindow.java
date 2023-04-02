@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
@@ -45,11 +44,6 @@ public abstract class AbstractVariationWindow implements IWindow {
   @Override
   public Column getControlColumn(TsBlock tsBlock) {
     return tsBlock.getColumn(controlColumnIndex);
-  }
-
-  @Override
-  public boolean hasFinalResult(Accumulator accumulator) {
-    return accumulator.hasFinalResult();
   }
 
   @Override

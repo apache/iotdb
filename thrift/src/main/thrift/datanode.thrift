@@ -63,7 +63,7 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkHandle
+  // index of upstream SinkChannel
   4: required i32 index
 }
 
@@ -75,8 +75,14 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkHandle
+  // index of upstream SinkChannel
   4: required i32 index
+}
+
+struct TCloseSinkChannelEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  // index of upstream SinkChannel
+  2: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -208,6 +214,16 @@ struct TFireTriggerReq {
 struct TFireTriggerResp {
   1: required bool foundExecutor
   2: required i32 fireResult
+}
+
+struct TCreatePipePluginInstanceReq {
+  1: required binary pipePluginMeta
+  2: required binary jarFile
+}
+
+struct TDropPipePluginInstanceReq {
+  1: required string pipePluginName
+  2: required bool needToDeleteJar
 }
 
 struct TInvalidatePermissionCacheReq {
@@ -609,6 +625,20 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /**
+   * Config node will create a pipe plugin on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createPipePlugin(TCreatePipePluginInstanceReq req)
+
+  /**
+   * Config node will drop a pipe plugin on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
@@ -741,6 +771,8 @@ service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
+
+  void onCloseSinkChannelEvent(TCloseSinkChannelEvent e);
 
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 

@@ -603,15 +603,9 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
-                      hasResult =
-                          queryType(
-                              new HashSet<String>() {
-                                {
-                                  add(deviceName.get());
-                                }
-                              },
-                              headerTypeMap,
-                              "Device");
+                      Set<String> devices = new HashSet<>();
+                      devices.add(deviceName.get());
+                      hasResult = queryType(devices, headerTypeMap, "Device");
                     }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {

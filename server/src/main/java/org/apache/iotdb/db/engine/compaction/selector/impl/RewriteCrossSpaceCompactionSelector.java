@@ -208,10 +208,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
   private boolean canSubmitCrossTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-    return CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
-            < config.getCandidateCompactionTaskQueueSize()
-        && !sequenceFileList.isEmpty()
-        && !unsequenceFileList.isEmpty();
+    return !sequenceFileList.isEmpty() && !unsequenceFileList.isEmpty();
   }
 
   /**

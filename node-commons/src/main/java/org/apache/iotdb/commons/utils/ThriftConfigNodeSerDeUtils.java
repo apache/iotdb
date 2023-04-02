@@ -66,7 +66,7 @@ public class ThriftConfigNodeSerDeUtils {
     return new TBinaryProtocol(tioStreamTransport);
   }
 
-  public static void serializeTStorageGroupSchema(
+  public static void serializeTDatabaseSchema(
       TDatabaseSchema storageGroupSchema, ByteBuffer buffer) {
     try {
       storageGroupSchema.write(generateWriteProtocol(buffer));
@@ -75,7 +75,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TDatabaseSchema deserializeTStorageGroupSchema(ByteBuffer buffer) {
+  public static TDatabaseSchema deserializeTDatabaseSchema(ByteBuffer buffer) {
     TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(buffer));
@@ -85,7 +85,7 @@ public class ThriftConfigNodeSerDeUtils {
     return storageGroupSchema;
   }
 
-  public static void serializeTStorageGroupSchema(
+  public static void serializeTDatabaseSchema(
       TDatabaseSchema storageGroupSchema, OutputStream outputStream) {
     try {
       storageGroupSchema.write(generateWriteProtocol(outputStream));
@@ -94,7 +94,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TDatabaseSchema deserializeTStorageGroupSchema(InputStream inputStream) {
+  public static TDatabaseSchema deserializeTDatabaseSchema(InputStream inputStream) {
     TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(inputStream));

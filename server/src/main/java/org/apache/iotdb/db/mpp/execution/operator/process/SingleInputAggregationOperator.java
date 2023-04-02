@@ -72,7 +72,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -97,7 +97,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 
@@ -106,7 +106,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     child.close();
   }
 
-  protected abstract boolean calculateNextAggregationResult();
+  protected abstract boolean calculateNextAggregationResult() throws Exception;
 
   protected abstract void updateResultTsBlock();
 

@@ -54,6 +54,7 @@ public class IoTDBShutdownHook extends Thread {
     }
 
     // reject write operations to make sure all tsfiles will be sealed
+    CommonDescriptor.getInstance().getConfig().setStopping(true);
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     // wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();

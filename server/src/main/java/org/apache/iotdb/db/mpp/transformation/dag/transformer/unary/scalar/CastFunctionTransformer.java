@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -97,7 +97,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(long value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastHelper.castLongToInt(value);
+        cachedInt = CastFunctionHelper.castLongToInt(value);
         return;
       case INT64:
         cachedLong = value;
@@ -123,10 +123,10 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(float value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastHelper.castFloatToInt(value);
+        cachedInt = CastFunctionHelper.castFloatToInt(value);
         return;
       case INT64:
-        cachedLong = CastHelper.castFloatToLong(value);
+        cachedLong = CastFunctionHelper.castFloatToLong(value);
         return;
       case FLOAT:
         cachedFloat = value;
@@ -149,13 +149,13 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(double value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastHelper.castDoubleToInt(value);
+        cachedInt = CastFunctionHelper.castDoubleToInt(value);
         return;
       case INT64:
-        cachedLong = CastHelper.castDoubleToLong(value);
+        cachedLong = CastFunctionHelper.castDoubleToLong(value);
         return;
       case FLOAT:
-        cachedFloat = CastHelper.castDoubleToFloat(value);
+        cachedFloat = CastFunctionHelper.castDoubleToFloat(value);
         return;
       case DOUBLE:
         cachedDouble = value;
@@ -209,13 +209,13 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedLong = Long.parseLong(stringValue);
         return;
       case FLOAT:
-        cachedFloat = CastHelper.castTextToFloat(stringValue);
+        cachedFloat = CastFunctionHelper.castTextToFloat(stringValue);
         return;
       case DOUBLE:
-        cachedDouble = CastHelper.castTextToDouble(stringValue);
+        cachedDouble = CastFunctionHelper.castTextToDouble(stringValue);
         return;
       case BOOLEAN:
-        cachedBoolean = CastHelper.castTextToBoolean(stringValue);
+        cachedBoolean = CastFunctionHelper.castTextToBoolean(stringValue);
         return;
       case TEXT:
         cachedBinary = Binary.valueOf(String.valueOf(value));

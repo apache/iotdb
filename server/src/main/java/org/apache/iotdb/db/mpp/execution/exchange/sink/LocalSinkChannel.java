@@ -225,5 +225,12 @@ public class LocalSinkChannel implements ISinkChannel {
     }
   }
 
+  @Override
+  public boolean isClosed() {
+    synchronized (queue) {
+      return queue.isClosed();
+    }
+  }
+
   // end region
 }

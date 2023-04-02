@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -46,12 +47,12 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
@@ -180,6 +181,20 @@ public class PartitionManager {
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public SchemaPartitionResp getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
+    // Check if the related Databases exist
+    for (String database : req.getPartitionSlotsMap().keySet()) {
+      if (!isDatabaseExist(database)) {
+        return new SchemaPartitionResp(
+            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Create SchemaPartition failed because the database: %s is not exists",
+                        database)),
+            false,
+            null);
+      }
+    }
+
     // After all the SchemaPartitions are allocated,
     // all the read requests about SchemaPartitionTable are parallel.
     SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
@@ -243,7 +258,16 @@ public class PartitionManager {
       }
     }
 
-    return (SchemaPartitionResp) getSchemaPartition(req);
+    resp = (SchemaPartitionResp) getSchemaPartition(req);
+    if (!resp.isAllPartitionsExist()) {
+      LOGGER.error(
+          "Lacked some SchemaPartition allocation result in the response of getOrCreateDataPartition method");
+      resp.setStatus(
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some SchemaPartition allocation result in the response"));
+      return resp;
+    }
+    return resp;
   }
 
   /**
@@ -256,6 +280,20 @@ public class PartitionManager {
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+    // Check if the related Databases exist
+    for (String database : req.getPartitionSlotsMap().keySet()) {
+      if (!isDatabaseExist(database)) {
+        return new DataPartitionResp(
+            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Create DataPartition failed because the database: %s is not exists",
+                        database)),
+            false,
+            null);
+      }
+    }
+
     // After all the DataPartitions are allocated,
     // all the read requests about DataPartitionTable are parallel.
     DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
@@ -322,10 +360,10 @@ public class PartitionManager {
     resp = (DataPartitionResp) getDataPartition(req);
     if (!resp.isAllPartitionsExist()) {
       LOGGER.error(
-          "Lacked some data partition allocation result in the response of getOrCreateDataPartition method");
+          "Lacked some DataPartition allocation result in the response of getOrCreateDataPartition method");
       resp.setStatus(
-          new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
-              .setMessage("Lacked some data partition allocation result in the response"));
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some DataPartition allocation result in the response"));
       return resp;
     }
     return resp;
@@ -589,8 +627,33 @@ public class PartitionManager {
     return partitionInfo.getRegionGroupCount(database, type);
   }
 
-  public boolean isDatabaseExisted(String database) {
+  /**
+   * Check if the specified Database exists.
+   *
+   * @param database The specified Database
+   * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
+   */
+  public boolean isDatabaseExist(String database) {
     return partitionInfo.isDatabaseExisted(database);
+  }
+
+  /**
+   * Filter the un-exist Databases.
+   *
+   * @param databases the Databases to check
+   * @return List of PartialPath the Databases that not exist
+   */
+  public List<PartialPath> filterUnExistDatabases(List<PartialPath> databases) {
+    List<PartialPath> unExistDatabases = new ArrayList<>();
+    if (databases == null) {
+      return unExistDatabases;
+    }
+    for (PartialPath database : databases) {
+      if (!isDatabaseExist(database.getFullPath())) {
+        unExistDatabases.add(database);
+      }
+    }
+    return unExistDatabases;
   }
 
   /**

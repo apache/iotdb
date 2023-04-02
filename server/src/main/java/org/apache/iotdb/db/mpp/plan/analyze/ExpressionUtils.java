@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExpressionUtils {
   public static List<Expression> reconstructTimeSeriesOperands(
@@ -142,6 +143,15 @@ public class ExpressionUtils {
         childWhenThenExpressions, elseExpressions, new ArrayList<>(), 0);
   }
 
+  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
+    return new CaseWhenThenExpression(
+        childExpressions // transform to List<WhenThenExpression>
+            .subList(0, childExpressions.size() - 1).stream()
+            .map(expression -> (WhenThenExpression) expression)
+            .collect(Collectors.toList()),
+        childExpressions.get(childExpressions.size() - 1));
+  }
+
   public static Expression reconstructUnaryExpression(
       UnaryExpression expression, Expression childExpression) {
     switch (expression.getExpressionType()) {
@@ -226,6 +236,9 @@ public class ExpressionUtils {
       case LOGIC_OR:
         return new LogicOrExpression(leftExpression, rightExpression);
 
+      case WHEN_THEN:
+        return new WhenThenExpression(leftExpression, rightExpression);
+
       default:
         throw new IllegalArgumentException("unsupported expression type: " + expressionType);
     }
@@ -264,6 +277,16 @@ public class ExpressionUtils {
     }
   }
 
+  /**
+   * Make cartesian product.
+   *
+   * @param dimensionValue source data
+   * @param resultList final results
+   * @param layer the depth of recursive, dimensionValue[layer] will be processed this time, should
+   *     always be 0 while call from outside
+   * @param currentList intermediate result, should always be empty while call from outside
+   * @param <T> any type
+   */
   public static <T> void cartesianProduct(
       List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
     if (layer < dimensionValue.size() - 1) {
@@ -279,6 +302,32 @@ public class ExpressionUtils {
     } else if (layer == dimensionValue.size() - 1) {
       if (dimensionValue.get(layer).isEmpty()) {
         resultList.add(currentList);
+      } else {
+        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
+          List<T> list = new ArrayList<>(currentList);
+          list.add(dimensionValue.get(layer).get(i));
+          resultList.add(list);
+        }
+      }
+    }
+  }
+
+  public static <T> void cartesianProductEmpty(
+      List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
+    if (layer < dimensionValue.size() - 1) {
+      if (dimensionValue.get(layer).isEmpty()) {
+        resultList.clear();
+        //        cartesianProductEmpty(dimensionValue, resultList, layer + 1, currentList);
+      } else {
+        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
+          List<T> list = new ArrayList<>(currentList);
+          list.add(dimensionValue.get(layer).get(i));
+          cartesianProductEmpty(dimensionValue, resultList, layer + 1, list);
+        }
+      }
+    } else if (layer == dimensionValue.size() - 1) {
+      if (dimensionValue.get(layer).isEmpty()) {
+        resultList.clear();
       } else {
         for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
           List<T> list = new ArrayList<>(currentList);

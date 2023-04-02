@@ -103,7 +103,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 #### 4.1.2. 接口层统计
 
 | Metric                | Tags                               | Type      | Description                         |
-| --------------------- |------------------------------------| --------- | ----------------------------------- |
+| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
 | thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
 | thrift_connections    | name="InternalRPC"                 | AutoGauge | DataNode 的内部 Thrift 连接数       |
 | thrift_connections    | name="MPPDataExchangeRPC"          | AutoGauge | MPP 框架的内部 Thrift 连接数        |
@@ -131,14 +131,18 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | performance_overview_detail          | stage="analyzer"                                 | Timer | 语句分析总耗时             |
 | performance_overview_detail          | stage="planner"                                  | Timer | 请求规划总耗时             |
 | performance_overview_detail          | stage="scheduler"                                | Timer | 请求执行总耗时             |
-| performance_overview_schedule_detail | stage="schema_validate"                          | Timer | 元数据验证总耗时           |
-| performance_overview_schedule_detail | stage="trigger"                                  | Timer | Trigger 触发总耗时         |
-| performance_overview_schedule_detail | stage="consensus"                                | Timer | 共识层总耗时               |
-| performance_overview_schedule_detail | stage="lock"                                     | Timer | DataRegion 抢锁总耗时      |
-| performance_overview_schedule_detail | stage="memory_block"                             | Timer | 内存控制阻塞总耗时         |
-| performance_overview_schedule_detail | stage="wal"                                      | Timer | 写入 Wal 总耗时            |
-| performance_overview_schedule_detail | stage="memtable"                                 | Timer | 写入 Memtable 总耗时       |
-| performance_overview_schedule_detail | stage="last_cache"                               | Timer | 更新 LastCache 总耗时      |
+| performance_overview_schedule_detail | stage="local_scheduler"                          | Timer | 本地请求执行总耗时         |
+| performance_overview_schedule_detail | stage="remote_scheduler"                         | Timer | 远程请求执行总耗时         |
+| performance_overview_local_detail    | stage="schema_validate"                          | Timer | 元数据验证总耗时           |
+| performance_overview_local_detail    | stage="trigger"                                  | Timer | Trigger 触发总耗时         |
+| performance_overview_local_detail    | stage="storage"                                  | Timer | 共识层总耗时               |
+| performance_overview_storage_detail  | stage="engine"                                   | Timer | DataRegion 抢锁总耗时      |
+| performance_overview_engine_detail   | stage="lock"                                     | Timer | DataRegion 抢锁总耗时      |
+| performance_overview_engine_detail   | stage="create_memtable_block"                    | Timer | 创建新的 Memtable 耗时     |
+| performance_overview_engine_detail   | stage="memory_block"                             | Timer | 内存控制阻塞总耗时         |
+| performance_overview_engine_detail   | stage="wal"                                      | Timer | 写入 Wal 总耗时            |
+| performance_overview_engine_detail   | stage="memtable"                                 | Timer | 写入 Memtable 总耗时       |
+| performance_overview_engine_detail   | stage="last_cache"                               | Timer | 更新 LastCache 总耗时      |
 
 #### 4.1.5. 任务统计
 
@@ -245,7 +249,24 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region | name="{ip}:{port}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
-#### 4.2.2. IoT共识协议统计
+#### 4.2.2. Ratis共识协议统计
+
+| Metric                | Tags                       | Type  | Description                                            |
+| --------------------- | -------------------------- | ----- | ------------------------------------------------------ |
+| ratis_consensus_write | stage="writeLocally"       | Timer | 本地写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeRemotely"      | Timer | 远程写入阶段的时间                                     |
+| ratis_consensus_write | stage="writeStateMachine"  | Timer | 写入状态机阶段的时间                                   |
+| ratis_server          | clientWriteRequest         | Timer | 处理来自客户端写请求的时间                             |
+| ratis_server          | followerAppendEntryLatency | Timer | 跟随者追加日志条目的总时间                             |
+| ratis_log_worker      | appendEntryLatency         | Timer | 领导者追加日志条目的总时间                             |
+| ratis_log_worker      | queueingDelay              | Timer | 一个 Raft 日志操作被请求后进入队列的时间，等待队列未满 |
+| ratis_log_worker      | enqueuedTime               | Timer | 一个 Raft 日志操作在队列中的时间                       |
+| ratis_log_worker      | writelogExecutionTime      | Timer | 一个 Raft 日志写入操作完成执行的时间                   |
+| ratis_log_worker      | flushTime                  | Timer | 刷新日志的时间                                         |
+| ratis_log_worker      | closedSegmentsSizeInBytes  | Gauge | 关闭的 Raft 日志段的总大小                             |
+| ratis_log_worker      | openSegmentSizeInBytes     | Gauge | 打开的 Raft 日志段的总大小                             |
+
+#### 4.2.3. IoT共识协议统计
 
 | Metric        | Tags                                                                                   | Type      | Description                       |
 | ------------- | -------------------------------------------------------------------------------------- | --------- | --------------------------------- |
@@ -264,7 +285,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | stage         | name="iot_consensus", region="{region}", type="constructBatch"                         | Histogram | 同步线程构造 Batch 耗时           |
 | stage         | name="iot_consensus", region="{region}", type="syncLogTimePerRequest"                  | Histogram | 异步回调流程同步日志耗时          |
 
-#### 4.2.3. 缓存统计
+#### 4.2.4. 缓存统计
 
 | Metric    | Tags                               | Type      | Description                                             |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
@@ -279,7 +300,8 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
 | cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
 
-#### 4.2.4. 内存统计
+#### 4.2.5. 内存统计
+
 | Metric | Tags                                 | Type      | Description                                       |
 | ------ | ------------------------------------ | --------- | ------------------------------------------------- |
 | mem    | name="database_{name}"               | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
@@ -289,7 +311,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | mem    | name="IoTConsensusSync"              | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
 | mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
 
-#### 4.2.5. 合并统计
+#### 4.2.6. 合并统计
 
 | Metric                | Tags                                                | Type    | Description        |
 | --------------------- | --------------------------------------------------- | ------- | ------------------ |
@@ -299,7 +321,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
-#### 4.2.6. IoTDB 进程统计
+#### 4.2.7. IoTDB 进程统计
 
 | Metric                | Tags           | Type      | Description                          |
 | --------------------- | -------------- | --------- | ------------------------------------ |
@@ -308,20 +330,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
 | process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
-#### 4.2.7. JVM 类加载统计
+#### 4.2.8. JVM 类加载统计
 
 | Metric                       | Tags | Type      | Description         |
 | ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-#### 4.2.8. JVM 编译时间统计
+#### 4.2.9. JVM 编译时间统计
 
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-#### 4.2.9. 查询规划耗时统计
+#### 4.2.10. 查询规划耗时统计
 
 | Metric          | Tags                         | Type  | Description                |
 | --------------- | ---------------------------- | ----- | -------------------------- |
@@ -331,14 +353,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
 | query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
 
-#### 4.2.10. 执行计划分发耗时统计
+#### 4.2.11. 执行计划分发耗时统计
 
 | Metric     | Tags                      | Type  | Description          |
 | ---------- | ------------------------- | ----- | -------------------- |
 | dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
 | dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
 
-#### 4.2.11. 查询资源访问统计
+#### 4.2.12. 查询资源访问统计
 
 | Metric         | Tags                     | Type | Description                |
 | -------------- | ------------------------ | ---- | -------------------------- |
@@ -347,7 +369,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
 | query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
 
-#### 4.2.12. 数据传输模块统计
+#### 4.2.13. 数据传输模块统计
 
 | Metric              | Tags                                                                   | Type      | Description                             |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
@@ -361,7 +383,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
 
-#### 4.2.13. 查询任务调度统计
+#### 4.2.14. 查询任务调度统计
 
 | Metric           | Tags                           | Type      | Description        |
 | ---------------- | ------------------------------ | --------- | ------------------ |
@@ -370,7 +392,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
 
-#### 4.2.14. 查询执行耗时统计
+#### 4.2.15. 查询执行耗时统计
 
 | Metric                   | Tags                                                                                | Type    | Description                                    |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
@@ -397,15 +419,49 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.16 元数据引擎统计
 
-| Metric        | Tags                                                         | Type      | Description                                    |
-| ------------- | ------------------------------------------------------------ | --------- | ---------------------------------------------- |
-| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | SchemaRegion 全局内存使用量                    |
-| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | SchemaRegion 全局可用内存                      |
-| schema_engine | name="schema_engine_mode"                                    | Gauge     | SchemaEngine 模式                              |
-| schema_engine | name="schema_region_consensus"                               | Gauge     | 元数据管理引擎共识协议                         |
-| schema_engine | name="schema_region_number"                                  | AutoGauge | SchemaRegion 个数                              |
-| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的内存使用量             |
-| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数             |
+| Metric        | Tags                                                         | Type      | Description                        |
+| ------------- | ------------------------------------------------------------ | --------- | ---------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | SchemaRegion 全局内存使用量        |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | SchemaRegion 全局可用内存          |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | SchemaEngine 模式                  |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | 元数据管理引擎共识协议             |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | SchemaRegion 个数                  |
+| quantity      | name="template_series_cnt"                                   | AutoGauge | 模板序列数                         |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的内存使用量 |
+| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数 |
+| schema_region | name="activated_template_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 激活的模板数     |
+| schema_region | name="template_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 的模板序列数     |
+
+#### 4.2.17 写入指标统计
+
+| Metric                    | Tags                                                                  | Type      | Description                              |
+|---------------------------|:----------------------------------------------------------------------|-----------|------------------------------------------|
+| wal_node_num              | name="wal_nodes_num"                                                  | AutoGauge | WALNode数量                                |
+| wal_cost                  | stage="make_checkpoint"  type="<checkpoint_type>"                     | Timer     | 创建各种类型的Checkpoint耗时                      |
+| wal_cost                  | type="serialize_one_wal_info_entry"                                   | Timer     | 对每个WALInfoEntry serialize耗时              |
+| wal_cost                  | stage="sync_wal_buffer" type="<force_flag>"                           | Timer     | WAL flush SyncBuffer耗时                   |
+| wal_buffer                | name="used_ratio"                                                     | Histogram | WALBuffer利用率                             |
+| wal_buffer                | name="entries_count"                                                  | Histogram | WALBuffer条目数量                            |
+| wal_cost                  | stage="serialize_wal_entry" type="serialize_wal_entry_total"          | Timer     | WALBuffer serialize任务耗时                  |
+| wal_node_info             | name="effective_info_ratio" type="<wal_node_id>"                      | Histogram | WALNode有效信息占比                            |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_snapshot" type="<wal_node_id>"  | Histogram | WAL触发oldest MemTable snapshot时MemTable大小 |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_flush" type="<wal_node_id>"     | Histogram | WAL触发oldest MemTable flush时MemTable大小    |
+| flush_sub_task_cost       | type="sort_task"                                                      | Timer     | 排序阶段中的每个series排序耗时                       |
+| flush_sub_task_cost       | type="encoding_task"                                                  | Timer     | 编码阶段中处理每个encodingTask耗时                  |
+| flush_sub_task_cost       | type="io_task"                                                        | Timer     | IO阶段中处理每个ioTask耗时                        |
+| flush_cost                | stage="write_plan_indices"                                            | Timer     | writePlanIndices耗时                       |
+| flush_cost                | stage="sort"                                                          | Timer     | 排序阶段总耗时                                  |
+| flush_cost                | stage="encoding"                                                      | Timer     | 编码阶段总耗时                                  |
+| flush_cost                | stage="io"                                                            | Timer     | IO阶段总耗时                                  |
+| pending_flush_task        | type="pending_task_num"                                               | AutoGauge | 阻塞的Task数                                 |
+| pending_flush_task        | type="pending_sub_task_num"                                           | AutoGauge | 阻塞的SubTask数                              |
+| flushing_mem_table_status | name="mem_table_size" region="DataRegion[<data_region_id>]"           | Histogram | Flush时MemTable大小                         |
+| flushing_mem_table_status | name="total_point_num" region="DataRegion[<data_region_id>]"          | Histogram | Flush时MemTable中point数量                   |
+| flushing_mem_table_status | name="series_num" region="DataRegion[<data_region_id>]"               | Histogram | Flush时MemTable中series数量                  |
+| flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Flush时该memTable内平均每个Memchunk中的point数量    |
+| flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | Flush MemTable时对应的TsFile的压缩率             |
+| flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | Flush的MemTable对应的TsFile大小                |
+| data_region_mem_cost      | name="data_region_mem_cost"                                           | AutoGauge | DataRegion内存占用                           |
 
 ### 4.3. Normal 级别监控指标
 
@@ -452,12 +508,12 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，其中 value 为具体值
 
-| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Counter          | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| AutoGauge、Gauge | name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Histogram        | name_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.0"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.5"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.99"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.999"} value                                                                |
-| Rate             | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m1"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m5"} value  <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m15"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                                                                                                                                                                                                               |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| AutoGauge、Gauge | name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Histogram        | name_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.0"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.5"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.99"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.999"} value                                                               |
+| Rate             | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m1"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m5"} value  <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="m15"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                                                                                          |
 | Timer            | name_seconds_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_seconds_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_seconds_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.5"} value value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.99"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId",k1="V1" , ..., Kn="Vn", quantile="0.999"} value |
 
 #### 5.2.2. 修改配置文件
@@ -709,12 +765,12 @@ static_configs:
 
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric.`clusterName`.`nodeType`.`nodeId` 为例
 
-| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| AutoGauge、Gauge | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Histogram        | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p999                                                                                                                                                                                                                                                                                                                  |
-| Rate             | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| AutoGauge、Gauge | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Histogram        | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p999                                                                                                                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Timer            | root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.p999   <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`clusterName`.`nodeType`.`nodeId`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. 获取监控指标

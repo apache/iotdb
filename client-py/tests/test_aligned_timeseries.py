@@ -114,7 +114,7 @@ def test_aligned_timeseries():
         )
 
         # delete time series
-        if (
+        try:
             session.delete_time_series(
                 [
                     "root.sg_test_01.d_02.s_07",
@@ -122,8 +122,7 @@ def test_aligned_timeseries():
                     "root.sg_test_01.d_02.s_09",
                 ]
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message("delete time series failed")
 
@@ -149,12 +148,11 @@ def test_aligned_timeseries():
             TSDataType.DOUBLE,
             TSDataType.TEXT,
         ]
-        if (
+        try:
             session.insert_aligned_record(
                 "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message("insert record failed")
 
@@ -169,12 +167,11 @@ def test_aligned_timeseries():
         ]
         data_type_list_ = [data_types_, data_types_]
         device_ids_ = ["root.sg_test_01.d_02", "root.sg_test_01.d_02"]
-        if (
+        try:
             session.insert_aligned_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message("insert records failed")
 
@@ -251,12 +248,11 @@ def test_aligned_timeseries():
             print_message("insert records of one device failed")
 
         # execute non-query sql statement
-        if (
+        try:
             session.execute_non_query_statement(
                 "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
             )
-            < 0
-        ):
+        except Exception:
             test_fail()
             print_message(
                 "execute 'insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)' failed"

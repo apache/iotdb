@@ -244,12 +244,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -479,12 +479,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -713,12 +713,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -965,12 +965,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -1310,12 +1310,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -1662,12 +1662,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2024,12 +2024,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2371,12 +2371,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2719,12 +2719,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -3077,12 +3077,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -3487,12 +3487,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -3900,12 +3900,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -4313,12 +4313,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -4775,12 +4775,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5185,12 +5185,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5391,12 +5391,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5656,12 +5656,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6039,12 +6039,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6387,12 +6387,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6626,12 +6626,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6760,12 +6760,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6942,12 +6942,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -7151,12 +7151,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(timeserisPathList, tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,

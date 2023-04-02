@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.config;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.Optional;
@@ -29,7 +28,6 @@ public class ConsensusConfig {
   private final TEndPoint thisNodeEndPoint;
   private final int thisNodeId;
   private final String storageDir;
-  private final TConsensusGroupType consensusGroupType;
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig ioTConsensusConfig;
 
@@ -37,13 +35,11 @@ public class ConsensusConfig {
       TEndPoint thisNode,
       int thisNodeId,
       String storageDir,
-      TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
       IoTConsensusConfig ioTConsensusConfig) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
-    this.consensusGroupType = consensusGroupType;
     this.ratisConfig = ratisConfig;
     this.ioTConsensusConfig = ioTConsensusConfig;
   }
@@ -58,10 +54,6 @@ public class ConsensusConfig {
 
   public String getStorageDir() {
     return storageDir;
-  }
-
-  public TConsensusGroupType getConsensusGroupType() {
-    return consensusGroupType;
   }
 
   public RatisConfig getRatisConfig() {
@@ -81,7 +73,6 @@ public class ConsensusConfig {
     private TEndPoint thisNode;
     private int thisNodeId;
     private String storageDir;
-    private TConsensusGroupType consensusGroupType;
     private RatisConfig ratisConfig;
     private IoTConsensusConfig ioTConsensusConfig;
 
@@ -90,7 +81,6 @@ public class ConsensusConfig {
           thisNode,
           thisNodeId,
           storageDir,
-          consensusGroupType,
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(ioTConsensusConfig)
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()));
@@ -108,11 +98,6 @@ public class ConsensusConfig {
 
     public Builder setStorageDir(String storageDir) {
       this.storageDir = storageDir;
-      return this;
-    }
-
-    public Builder setConsensusGroupType(TConsensusGroupType consensusGroupType) {
-      this.consensusGroupType = consensusGroupType;
       return this;
     }
 

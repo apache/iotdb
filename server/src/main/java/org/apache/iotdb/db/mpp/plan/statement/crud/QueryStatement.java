@@ -303,8 +303,12 @@ public class QueryStatement extends Statement {
         && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
   }
 
+  private boolean isGroupByCount() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
+  }
+
   public boolean hasGroupByExpression() {
-    return isGroupByVariation() || isGroupByCondition();
+    return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
 
   public boolean isAlignByTime() {
@@ -504,6 +508,9 @@ public class QueryStatement extends Statement {
       }
       if (isOrderByTime()) {
         throw new SemanticException("Sorting by time is not yet supported in last queries.");
+      }
+      if (seriesLimit != 0 || seriesOffset != 0) {
+        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
       }
     }
 
