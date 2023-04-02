@@ -759,13 +759,12 @@ public class ExpressionAnalyzer {
 
   public static boolean checkHasWildCard(Expression expression) {
     if (expression instanceof TernaryExpression
-            || expression instanceof BinaryExpression
-            || expression instanceof UnaryExpression
-            || expression instanceof FunctionExpression
-            || expression instanceof CaseWhenThenExpression
-    ) {
+        || expression instanceof BinaryExpression
+        || expression instanceof UnaryExpression
+        || expression instanceof FunctionExpression
+        || expression instanceof CaseWhenThenExpression) {
       for (Expression child : expression.getExpressions()) {
-        if(checkHasWildCard(child)) {
+        if (checkHasWildCard(child)) {
           return true;
         }
       }
@@ -776,7 +775,7 @@ public class ExpressionAnalyzer {
       return false;
     } else {
       throw new IllegalArgumentException(
-              "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 }

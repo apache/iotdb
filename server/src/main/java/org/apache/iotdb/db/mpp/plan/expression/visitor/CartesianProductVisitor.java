@@ -66,18 +66,19 @@ public abstract class CartesianProductVisitor<C>
   }
 
   @Override
-  public List<Expression> visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
+  public List<Expression> visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
     int len = childResultsList.size();
     List<List<WhenThenExpression>> whenThenLists = new ArrayList<>();
-    for (List<Expression> list : childResultsList.subList(0, len-1)) {
+    for (List<Expression> list : childResultsList.subList(0, len - 1)) {
       List<WhenThenExpression> newList = new ArrayList<>();
       for (Expression expression : list) {
         newList.add((WhenThenExpression) expression);
       }
       whenThenLists.add(newList);
     }
-    List<Expression> elseLists = childResultsList.get(len-1);
+    List<Expression> elseLists = childResultsList.get(len - 1);
     return reconstructCaseWhenThenExpressions(whenThenLists, elseLists);
   }
 }
