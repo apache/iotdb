@@ -32,7 +32,10 @@ class ModelStorage(object):
     def __init__(self):
         self.__model_dir = os.path.join(os.getcwd(), config.get_mn_model_storage_dir())
         if not os.path.exists(self.__model_dir):
-            os.mkdir(self.__model_dir)
+            try:
+                os.mkdir(self.__model_dir)
+            except PermissionError as e: # TODO: handle storage permission
+                raise e
 
         self.__model_cache = lrucache(config.get_mn_model_storage_cache_size())
 
