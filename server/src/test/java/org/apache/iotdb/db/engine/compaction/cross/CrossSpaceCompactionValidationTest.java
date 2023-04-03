@@ -2307,7 +2307,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionSelector.SizeTieredCompactionTaskComparator());
     sizeTieredCompactionSelector.selectLevelTask(0, taskPriorityQueue);
-    ;
     for (Pair<List<TsFileResource>, Long> taskResource : taskPriorityQueue) {
       new SizeTieredCompactionTask(
               COMPACTION_TEST_SG,

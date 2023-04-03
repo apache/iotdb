@@ -191,7 +191,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      if (!checkUnseqFileHasOverlapOrNot(unseqFile)) {
+      if (!hasFoundSeqFiles(unseqFile)) {
         tmpSelectedSeqFiles.clear();
         break;
       }
@@ -235,15 +235,22 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     }
   }
 
-  private boolean checkUnseqFileHasOverlapOrNot(TsFileResource unseqFile) {
+  /**
+   * If the unseq file does not overlap with any seq files, then select the latest sealed seq file
+   * for it to compact with. Notice: If the data is deleted and then start an inner space
+   * compaction, it may cause unseqStartTime > seqEndTime or partial devices are in the unseq files
+   * but not in seq files, which will cause the unseq files to not overlap with any seq file
+   */
+  private boolean hasFoundSeqFiles(TsFileResource unseqFile) {
     if (!tmpSelectedSeqFiles.isEmpty()) {
       return true;
     }
     // the current unseq file does not overlap with any seq files
-    logger.info("Unseq files {} do not overlap with seq files.", unseqFile);
+    logger.info("Unseq file {} does not overlap with seq files.", unseqFile);
     List<TsFileResource> seqResources = resource.getSeqFiles();
     for (int i = seqResources.size() - 1; i >= 0; i--) {
       if (seqResources.get(i).isClosed()) {
+        logger.info("Select the latest closed seq file {} for it to compact.", seqResources.get(i));
         tmpSelectedSeqFiles.add(i);
         return true;
       }
