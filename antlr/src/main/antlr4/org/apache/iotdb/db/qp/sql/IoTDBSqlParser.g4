@@ -977,16 +977,7 @@ expression
     ;
 
 caseWhenThenExpression
-    : caseWhenThenExpression1
-    | caseWhenThenExpression2
-    ;
-
-caseWhenThenExpression1
-    : CASE whenThenExpression+ (ELSE elseExpression=expression)? END
-    ;
-
-caseWhenThenExpression2
-    : CASE caseExpression=expression whenThenExpression+ (ELSE elseExpression=expression)? END
+    : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END
     ;
 
 whenThenExpression
