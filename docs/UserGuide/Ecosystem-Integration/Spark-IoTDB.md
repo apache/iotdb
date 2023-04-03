@@ -93,7 +93,7 @@ Take the following TsFile structure as an example: There are three Measurements 
 
 The existing data in the TsFile is as follows:
 
-<img width="517" alt="SI " src="/img/github/98197835-99a64980-1f62-11eb-84af-8301b8a6aad5.png">
+<img width="517" alt="SI " src="https://alioss.timecho.com/docs/img/github/98197835-99a64980-1f62-11eb-84af-8301b8a6aad5.png">
 
 The wide(default) table form is as follows:
 
