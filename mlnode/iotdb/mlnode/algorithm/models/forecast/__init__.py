@@ -16,5 +16,7 @@
 # under the License.
 #
 
+from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear, dlinear_individual
+from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats
 
 support_forecasting_models = ['dlinear', 'dlinear_individual', 'nbeats']

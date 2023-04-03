@@ -72,7 +72,7 @@ class MLNodeClient(object):
                              is_auto: bool,
                              model_configs: dict,
                              query_expressions: list = [],
-                             query_filter: str = None) -> None:
+                             query_filter: str = '') -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
             isAuto=is_auto,

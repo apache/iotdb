@@ -21,6 +21,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
+from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.exception import BadConfigValueError
 
 
@@ -74,8 +75,8 @@ class NBeatsBlock(nn.Module):
         return self.basis_function(basis_parameters)
 
 
-class NBeatsUnivariate(nn.Module):
-    """ N-Beats Model (univariate) """
+class NBeatsUnivariable(nn.Module):
+    """ N-Beats Model (uni-variable) """
 
     def __init__(self, blocks: nn.ModuleList):
         super().__init__()
@@ -107,12 +108,12 @@ class NBeats(nn.Module):
             pred_len=96,
             input_vars=1,
             output_vars=1,
-            forecast_type='m',  # TODO, support others
+            forecast_task_type=ForecastTaskType.ENDOGENOUS,  # TODO, support others
     ):
         super(NBeats, self).__init__()
         self.enc_in = input_vars
         self.block = block_dict[block_type]
-        self.model = NBeatsUnivariate(
+        self.model = NBeatsUnivariable(
             torch.nn.ModuleList(
                 [NBeatsBlock(input_size=input_len,
                              theta_size=input_len + pred_len,

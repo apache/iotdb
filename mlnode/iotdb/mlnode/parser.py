@@ -21,7 +21,7 @@ import argparse
 import re
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
-from iotdb.mlnode.data_access.enums import DatasetType
+from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
@@ -91,8 +91,13 @@ class _ConfigParser(argparse.ArgumentParser):
  - output_vars: number of output variables
 """
 _data_config_parser = _ConfigParser()
-_data_config_parser.add_argument('--source_type', type=str, default="thrift")
-_data_config_parser.add_argument('--dataset_type', type=DatasetType, default=DatasetType.WINDOW,
+_data_config_parser.add_argument('--source_type',
+                                 type=DataSourceType,
+                                 default=DataSourceType.THRIFT,
+                                 choices=list(DataSourceType))
+_data_config_parser.add_argument('--dataset_type', required=True,
+                                 type=DatasetType,
+                                 default=DatasetType.WINDOW,
                                  choices=list(DatasetType))
 _data_config_parser.add_argument('--filename', type=str, default='')
 _data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
@@ -125,7 +130,9 @@ _model_config_parser.add_argument('--input_len', type=int, default=96)
 _model_config_parser.add_argument('--pred_len', type=int, default=96)
 _model_config_parser.add_argument('--input_vars', type=int, default=1)
 _model_config_parser.add_argument('--output_vars', type=int, default=1)
-_model_config_parser.add_argument('--forecast_task_type', type=ForecastTaskType, default=ForecastTaskType.ENDOGENOUS,
+_model_config_parser.add_argument('--forecast_task_type',
+                                  type=ForecastTaskType,
+                                  default=ForecastTaskType.ENDOGENOUS,
                                   choices=list(ForecastTaskType))
 _model_config_parser.add_argument('--kernel_size', type=int, default=25)
 _model_config_parser.add_argument('--block_type', type=str, default='generic')
@@ -156,7 +163,9 @@ _task_config_parser = _ConfigParser()
 _task_config_parser.add_argument('--task_class', type=str, required=True)
 _task_config_parser.add_argument('--model_id', type=str, required=True)
 _task_config_parser.add_argument('--tuning', type=bool, default=False)
-_task_config_parser.add_argument('--forecast_task_type', type=ForecastTaskType, default=ForecastTaskType.ENDOGENOUS,
+_task_config_parser.add_argument('--forecast_task_type',
+                                 type=ForecastTaskType,
+                                 default=ForecastTaskType.ENDOGENOUS,
                                  choices=list(ForecastTaskType))
 _task_config_parser.add_argument('--input_len', type=int, default=96)
 _task_config_parser.add_argument('--pred_len', type=int, default=96)

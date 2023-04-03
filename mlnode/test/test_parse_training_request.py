@@ -16,6 +16,7 @@
 # under the License.
 #
 from iotdb.mlnode.parser import parse_training_request
+from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
@@ -25,7 +26,7 @@ def test_parse_training_request():
     model_configs = {
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
-        'dataset_type': 'window',
+        'dataset_type': 'window', # or use DatasetType.WINDOW,
         'filename': 'ETTh1.csv',
         'time_embed': 'h',
         'input_len': 96,
@@ -33,7 +34,7 @@ def test_parse_training_request():
         'model_name': 'dlinear',
         'input_vars': 7,
         'output_vars': 7,
-        'forecast_type': 'm',
+        'forecast_type': 'endogenous',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -74,7 +75,7 @@ def test_missing_argument():
         'pred_len': 96,
         'input_vars': 7,
         'output_vars': 7,
-        'forecast_type': 'm',
+        'forecast_type': 'endogenous',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -94,7 +95,8 @@ def test_missing_argument():
     try:
         data_config, model_config, task_config = parse_training_request(req)
     except Exception as e:
-        assert e.message == 'Missing config: (model_name)'
+
+        assert e.message == MissingConfigError(config_name='model_name').message
 
 
 def test_wrong_argument_type():
@@ -111,7 +113,7 @@ def test_wrong_argument_type():
         'model_name': 'dlinear',
         'input_vars': 7,
         'output_vars': 7,
-        'forecast_type': 'm',
+        'forecast_type': 'endogenous',
         'kernel_size': 25,
         'learning_rate': 1e-3,
         'batch_size': 32,
@@ -131,6 +133,4 @@ def test_wrong_argument_type():
     try:
         data_config, model_config, task_config = parse_training_request(req)
     except Exception as e:
-        message = "Wrong type for config: ({})".format('input_len')
-        message += ", expected: ({})".format('int')
-        assert e.message == message
+        assert e.message == WrongTypeConfigError(config_name='input_len', expected_type='int').message
