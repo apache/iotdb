@@ -261,6 +261,16 @@ public class IoTDBCaseWhenThenIT {
           "avg(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999 END) * max_value(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 ELSE 9999 END)"
         },
         new String[] {"5.2734726E7,"});
+
+    // UDF is not allowed
+
+    sql = "select change_points(case when s1=0 then 99 end) from root.sg.d1";
+    String msg = "301: CASE expression cannot be used with non-mappable UDF";
+    assertTestFail(sql, msg);
+
+    sql = "select change_points(s1) + case when s1=0 then 99 end from root.sg.d1";
+    msg = "301: CASE expression cannot be used with non-mappable UDF";
+    assertTestFail(sql, msg);
   }
 
   @Test
@@ -294,7 +304,11 @@ public class IoTDBCaseWhenThenIT {
           "210000000,root.sg.d1,32.0,",
         };
     resultSetEqualTest(sql, expectHeader, retArray);
-    //    expectHeader = new String[] {}
+
+    // UDF is not allowed
+    sql = "select case when s1=0 then change_points(s1) end from root.sg.d1";
+    String msg = "301: CASE expression cannot be used with non-mappable UDF";
+    assertTestFail(sql, msg);
   }
 
   @Test
