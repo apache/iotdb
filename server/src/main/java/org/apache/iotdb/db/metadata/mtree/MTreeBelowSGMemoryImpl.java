@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
@@ -63,6 +64,8 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -371,13 +374,18 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   private IMemMNode checkAndAutoCreateDeviceNode(String deviceName, IMemMNode deviceParent)
-      throws PathAlreadyExistException {
+      throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
       // device is sg
       return storageGroupMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
+      if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(storageGroupMNode.getName())) {
+        throw new ExceedQuotaException(
+            "The number of devices has reached the upper limit",
+            TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
+      }
       device =
           store.addChild(
               deviceParent, deviceName, nodeFactory.createInternalMNode(deviceParent, deviceName));
@@ -429,6 +437,14 @@ public class MTreeBelowSGMemoryImpl {
             i,
             new AliasAlreadyExistException(
                 devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+      }
+      if (!DataNodeSpaceQuotaManager.getInstance()
+          .checkTimeSeriesNum(storageGroupMNode.getName())) {
+        failingMeasurementMap.put(
+            i,
+            new ExceedQuotaException(
+                "The number of timeSeries has reached the upper limit",
+                TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode()));
       }
     }
     return failingMeasurementMap;

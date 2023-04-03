@@ -41,10 +41,12 @@ ddlStatement
     | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropPipePlugin | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
+    | setSpaceQuota
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showPipePlugins | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
+    | showSpaceQuota
     | countStorageGroup | countDevices | countTimeseries | countNodes
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     ;
@@ -294,6 +296,11 @@ unsetSchemaTemplate
     : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
     ;
 
+// Set Space Quota
+setSpaceQuota
+    : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
+    ;
+
 // Start Trigger
 startTrigger
     : START TRIGGER triggerName=identifier
@@ -403,6 +410,11 @@ showPathsSetSchemaTemplate
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
     : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
+    ;
+
+// Show Space Quota
+showSpaceQuota
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
     ;
 
 // Count Storage Group

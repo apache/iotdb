@@ -1060,6 +1060,8 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
+  private boolean quotaEnable = false;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3673,5 +3675,13 @@ public class IoTDBConfig {
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
     return pipeMaxThreadNum;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
   }
 }

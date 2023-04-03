@@ -161,6 +161,10 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
 
+  public static final String QUOTA_TYPE = "quotaType";
+  public static final String LIMIT = "limit";
+  public static final String USED = "used";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -395,4 +399,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(LIMIT, TSDataType.TEXT),
+          new ColumnHeader(USED, TSDataType.TEXT));
 }
