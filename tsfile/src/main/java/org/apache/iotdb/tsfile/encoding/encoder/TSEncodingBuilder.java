@@ -204,13 +204,12 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-
           return new DeltaBinaryEncoder.IntDeltaEncoder();
         case INT64:
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
-          //          maxPointNumber
+          maxPointNumber = 6;
           return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);

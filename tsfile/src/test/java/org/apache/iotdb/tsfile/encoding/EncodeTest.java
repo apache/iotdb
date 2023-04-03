@@ -36,8 +36,8 @@ public class EncodeTest {
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio_ts_2diff.csv";
 
     // speed
-    int repeatTime = 10; // set repeat time
-    String dataTypeName = "float"; // set dataType
+    int repeatTime = 1; // set repeat time
+    String dataTypeName = "double"; // set dataType
     //    if (args.length >= 2) inputPath = args[1];
     //    if (args.length >= 3) Output = args[2];
 
@@ -48,10 +48,12 @@ public class EncodeTest {
     TSEncoding[] encodingList = {
 //            TSEncoding.PLAIN ,
             TSEncoding.TS_2DIFF,
-//            TSEncoding.RLE ,
             TSEncoding.CHIMP,
-//            TSEncoding.SPRINTZ,
             TSEncoding.GORILLA,
+//            TSEncoding.RLE ,
+
+//            TSEncoding.SPRINTZ,
+
 //            TSEncoding.RLBE,
 //            TSEncoding.RAKE
     };
@@ -85,6 +87,7 @@ public class EncodeTest {
     for (int i = 0; i < 2; i++) {
       columnIndexes.add(i, i);}
     for (File f : tempList) {
+      System.out.println(f);
       fileRepeat += 1;
       InputStream inputStream = Files.newInputStream(f.toPath());
       CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -97,7 +100,8 @@ public class EncodeTest {
         data.clear();
 //        int sb = 0;&&sb<256
         while (loader.readRecord()) {
-          data.add(loader.getValues()[index]);
+//          System.out.println(loader.getValues()[1]);
+          data.add(loader.getValues()[1]);
 //          sb++;
         }
         inputStream.close();
@@ -354,9 +358,17 @@ public class EncodeTest {
                     // test decode time
                     ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
                     s = System.nanoTime();
+                    int index_decoded = 0;
                     while (decoder.hasNext(ebuffer)) {
-                      decoder.readDouble(ebuffer);
+                      double d = decoder.readDouble(ebuffer);
+                      if(d!=tmp.get(index_decoded)){
+//                        System.out.println(d);
+                        break;
+                      }
+                      index_decoded ++;
+                      if(d<0) break;
                     }
+//                    System.out.println(index_decoded);
                     e = System.nanoTime();
                     decodeTime += (e - s);
 
@@ -383,6 +395,7 @@ public class EncodeTest {
                     String.valueOf(compressed_size),
                     String.valueOf(ratio)
                   };
+                  System.out.println(ratio);
                   writer.writeRecord(record);
                 }
               }
@@ -419,6 +432,7 @@ public class EncodeTest {
 
                     // test encode time
                     long s = System.nanoTime();
+
                     for (float val : tmp) {
                       encoder.encode(val, buffer);
                     }
@@ -437,6 +451,7 @@ public class EncodeTest {
                     compressed_size += compressed.length;
                     double ratioTmp =
                         (double) compressed.length / (double) (tmp.size() * Float.BYTES);
+                    System.out.println(ratioTmp);
                     ratio += ratioTmp;
 
                     // test uncompress time
@@ -447,10 +462,18 @@ public class EncodeTest {
 
                     // test decode time
                     s = System.nanoTime();
-//                    ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
-//                    while (decoder.hasNext(ebuffer)) {
+                    ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
+                    int index_decoded = 0;
+                    while (decoder.hasNext(ebuffer)) {
 //                      decoder.readFloat(ebuffer);
-//                    }
+                      float d = decoder.readFloat(ebuffer);
+                      if(d!=tmp.get(index_decoded)){
+//                        System.out.println(d);
+                        break;
+                      }
+                      index_decoded ++;
+                      if(d<0) break;
+                    }
                     e = System.nanoTime();
                     decodeTime += (e - s);
 
