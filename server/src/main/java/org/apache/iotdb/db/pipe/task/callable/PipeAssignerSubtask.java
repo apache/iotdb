@@ -17,6 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.metrics;
+package org.apache.iotdb.db.pipe.task.callable;
 
-public class PipeTaskRuntimeRecorder {}
+public class PipeAssignerSubtask extends PipeSubtask {
+
+  public PipeAssignerSubtask(String taskID) {
+    super(taskID);
+  }
+
+  @Override
+  protected void executeForAWhile() {
+    // do nothing
+  }
+}

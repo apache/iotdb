@@ -19,7 +19,22 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeRuntimeAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+
+  public void report(PipeSubtask subtask) {
+    // TODO: terminate the task by the given taskID
+    LOGGER.warn(
+        "Failed to execute task {} after many retries, last failed cause by {}",
+        subtask.getTaskID(),
+        subtask.getLastFailedCause());
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 

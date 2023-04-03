@@ -23,7 +23,7 @@ import time
 import torch.nn as nn
 
 from iotdb.mlnode.config import config
-from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.model_storage import model_storage
 
 
 class TestModel(nn.Module):
