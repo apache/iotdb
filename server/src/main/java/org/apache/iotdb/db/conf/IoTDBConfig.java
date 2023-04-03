@@ -406,7 +406,7 @@ public class IoTDBConfig {
   private boolean enableCrossSpaceCompaction = true;
 
   /** Enable the service for MLNode */
-  private boolean enableMLNodeService = true;
+  private boolean enableMLNodeService = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
