@@ -21,7 +21,7 @@ from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
-from iotdb.mlnode.config import config
+from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import verify_success
@@ -29,7 +29,7 @@ from iotdb.thrift.common.ttypes import TEndPoint, TrainingState, TSStatus
 from iotdb.thrift.confignode import IConfigNodeRPCService
 from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
-from iotdb.thrift.datanode import IDataNodeRPCService
+from iotdb.thrift.datanode import IMLNodeInternalRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
                                           TFetchTimeseriesResp,
                                           TRecordModelMetricsReq)
@@ -39,8 +39,8 @@ from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
 class ClientManager(object):
     def __init__(self):
-        self.__data_node_endpoint = config.get_mn_target_data_node()
-        self.__config_node_endpoint = config.get_mn_target_config_node()
+        self.__data_node_endpoint = descriptor.get_config().get_mn_target_data_node()
+        self.__config_node_endpoint = descriptor.get_config().get_mn_target_config_node()
 
     def borrow_data_node_client(self):
         return DataNodeClient(host=self.__data_node_endpoint.ip,
@@ -120,18 +120,14 @@ class DataNodeClient(object):
                 raise e
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
-        self.__client = IDataNodeRPCService.Client(protocol)
+        self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         session_id: int,
-                         statement_id: int,
                          query_expressions: list = [],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
         req = TFetchTimeseriesReq(
-            sessionId=session_id,
-            statementId=statement_id,
             queryExpressions=query_expressions,
             queryFilter=query_filter,
             fetchSize=fetch_size,
@@ -147,8 +143,8 @@ class DataNodeClient(object):
     def record_model_metrics(self,
                              model_id: str,
                              trial_id: str,
-                             metrics: list = [],
-                             values: list = []) -> None:
+                             metrics: list,
+                             values: list) -> None:
         req = TRecordModelMetricsReq(
             modelId=model_id,
             trialId=trial_id,
@@ -186,6 +182,7 @@ class ConfigNodeClient(object):
         if self.__config_leader is not None:
             try:
                 self.__connect(self.__config_leader)
+                return
             except TException:
                 logger.warn("The current node {} may have been down, try next node", self.__config_leader)
                 self.__config_leader = None
@@ -200,6 +197,7 @@ class ConfigNodeClient(object):
             try_endpoint = self.__config_nodes[self.__cursor]
             try:
                 self.__connect(try_endpoint)
+                return
             except TException:
                 logger.warn("The current node {} may have been down, try next node", try_endpoint)
 
@@ -217,7 +215,7 @@ class ConfigNodeClient(object):
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
 
-        protocol = TCompactProtocol.TBinaryProtocol(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IConfigNodeRPCService.Client(protocol)
 
     def __wait_and_reconnect(self) -> None:
@@ -246,12 +244,12 @@ class ConfigNodeClient(object):
 
     def update_model_state(self,
                            model_id: str,
-                           trial_id: str,
-                           training_state: TrainingState) -> None:
+                           training_state: TrainingState,
+                           best_trail_id: str = None) -> None:
         req = TUpdateModelStateReq(
             modelId=model_id,
-            trialId=trial_id,
-            trainingState=training_state
+            state=training_state,
+            bestTrailId=best_trail_id
         )
         for i in range(0, self.__RETRY_NUM):
             try:
@@ -275,7 +273,7 @@ class ConfigNodeClient(object):
             model_info = {}
         req = TUpdateModelInfoReq(
             modelId=model_id,
-            trialId=trial_id,
+            trailId=trial_id,
             modelInfo={k: str(v) for k, v in model_info.items()},
         )
 

@@ -20,7 +20,7 @@
 from iotdb.mlnode.process.task import ForecastingTrainingTask
 
 support_task_types = {
-    'forecast_training_task': ForecastingTrainingTask
+    'forecast': ForecastingTrainingTask
 }
 
 

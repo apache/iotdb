@@ -23,11 +23,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
-from iotdb.mlnode.algorithm.metric import all_metrics
+from iotdb.mlnode.algorithm.metric import MAE, MSE, all_metrics
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
-from iotdb.mlnode.constant import ModelState
+from iotdb.thrift.common.ttypes import TrainingState
 
 
 def _parse_trial_config(**kwargs):
@@ -188,8 +188,8 @@ class ForecastingTrainingTrial(BasicTrial):
 
             val_loss.append(loss.item())
             for name in self.metric_names:
-                value = eval(name)(outputs.detach().cpu().numpy(),
-                                   batch_y.detach().cpu().numpy())
+                metric = eval(name)()
+                value = metric(outputs.detach().cpu().numpy(), batch_y.detach().cpu().numpy())
                 metrics_dict[name].append(value)
 
         for name, value_list in metrics_dict.items():
@@ -207,25 +207,32 @@ class ForecastingTrainingTrial(BasicTrial):
         return val_loss, metrics_dict
 
     def start(self) -> float:
-        self.confignode_client.update_model_state(self.model_id, self.trial_id, ModelState.RUNNING)
-        best_loss = np.inf
-        best_metrics_dict = None
-        for epoch in range(self.epochs):
-            self._train(epoch)
-            val_loss, metrics_dict = self._validate(epoch)
-            if val_loss < best_loss:
-                best_loss = val_loss
-                best_metrics_dict = metrics_dict
-                model_storage.save_model(self.model,
-                                         self.model_configs,
-                                         model_id=self.model_id,
-                                         trial_id=self.trial_id)
+        try:
+            self.confignode_client.update_model_state(self.model_id, TrainingState.RUNNING)
+            best_loss = np.inf
+            best_metrics_dict = None
+            model_path = None
+            for epoch in range(self.epochs):
+                self._train(epoch)
+                val_loss, metrics_dict = self._validate(epoch)
+                if val_loss < best_loss:
+                    best_loss = val_loss
+                    best_metrics_dict = metrics_dict
+                    model_path = model_storage.save_model(self.model,
+                                                          self.model_configs,
+                                                          model_id=self.model_id,
+                                                          trial_id=self.trial_id)
 
-        logger.info(f'Trial: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
+            logger.info(f'Trial: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
 
-        self.confignode_client.update_model_state(self.model_id, self.trial_id, ModelState.RUNNING)
-        model_info = {}
-        model_info.update(best_metrics_dict)
-        model_info.update(self.trial_configs)
-        self.confignode_client.update_model_info(self.model_id, self.trial_id, model_info)
-        return best_loss
+            model_info = {}
+            model_info.update(best_metrics_dict)
+            model_info.update(self.trial_configs)
+            model_info['model_path'] = model_path
+            self.confignode_client.update_model_info(self.model_id, self.trial_id, model_info)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial_id)
+            return best_loss
+        except Exception as e:
+            logger.warn(e)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
+            raise e

@@ -27,3 +27,6 @@ class DatasetType(Enum):
 
     def __eq__(self, other: str) -> bool:
         return self.value == other
+
+    def __hash__(self) -> int:
+        return hash(self.value)

@@ -19,7 +19,6 @@
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
-from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import parse_training_request
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.util import get_status
@@ -37,29 +36,26 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        # parse request stage (check required config and config type)
-        data_config, model_config, task_config = parse_training_request(req)
-
-        # create model stage (check model config legitimacy)
+        task = None
         try:
+            # parse request, check required config and config type
+            data_config, model_config, task_config = parse_training_request(req)
+
+            # create model & check model config legitimacy
             model, model_config = create_forecast_model(**model_config)
-        except Exception as e:  # Create model failed
-            return get_status(TSStatusCode.FAIL_STATUS, str(e))
-        logger.info('model config: ' + str(model_config))
 
-        # create data stage (check data config legitimacy)
-        try:
+            # create dataset & check data config legitimacy
             dataset, data_config = create_forecast_dataset(**data_config)
-        except Exception as e:  # Create data failed
+
+            # create task & check task config legitimacy
+            task = self.__task_manager.create_training_task(dataset, model, model_config, task_config)
+
+            return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
+        except Exception as e:
             return get_status(TSStatusCode.FAIL_STATUS, str(e))
-        logger.info('data config: ' + str(data_config))
-
-        # create task stage (check task config legitimacy)
-
-        # submit task stage (check resource and decide pending/start)
-        self.__task_manager.submit_training_task(task_config, model_config, model, dataset)
-
-        return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
+        finally:
+            # submit task stage & check resource and decide pending/start
+            self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
         status = get_status(TSStatusCode.SUCCESS_STATUS, "")

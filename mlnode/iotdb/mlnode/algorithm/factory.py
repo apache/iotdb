@@ -19,6 +19,7 @@ import torch.nn as nn
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.models.forecast import support_forecasting_models
+from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear
 from iotdb.mlnode.exception import BadConfigValueError
 
 

@@ -24,35 +24,36 @@ import torch
 import torch.nn as nn
 from pylru import lrucache
 
-from iotdb.mlnode.config import config
+from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
 
 
 class ModelStorage(object):
     def __init__(self):
-        self.__model_dir = os.path.join(os.getcwd(), config.get_mn_model_storage_dir())
+        self.__model_dir = os.path.join('.', descriptor.get_config().get_mn_model_storage_dir())
         if not os.path.exists(self.__model_dir):
             os.mkdir(self.__model_dir)
 
-        self.__model_cache = lrucache(config.get_mn_model_storage_cache_size())
+        self.__model_cache = lrucache(descriptor.get_config().get_mn_model_storage_cache_size())
 
     def save_model(self,
                    model: nn.Module,
                    model_config: dict,
                    model_id: str,
-                   trial_id: str) -> None:
+                   trial_id: str) -> str:
         """
         Note: model config for time series should contain 'input_len' and 'input_vars'
         """
         model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
         if not os.path.exists(model_dir_path):
-            os.mkdir(model_dir_path)
+            os.makedirs(model_dir_path)
         model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
 
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
         torch.jit.save(torch.jit.trace(model, sample_input),
                        model_file_path,
                        _extra_files={'model_config': json.dumps(model_config)})
+        return os.path.abspath(model_file_path)
 
     def load_model(self, model_id: str, trial_id: str) -> (torch.jit.ScriptModule, dict):
         """

@@ -74,8 +74,8 @@ class ThriftDataSource(DataSource):
 
         try:
             res = data_client.fetch_timeseries(
-                queryExpressions=self.query_expressions,
-                queryFilter=self.query_filter,
+                query_expressions=self.query_expressions,
+                query_filter=self.query_filter,
             )
         except Exception:
             raise RuntimeError(f'Fail to fetch data with query expressions: {self.query_expressions}'

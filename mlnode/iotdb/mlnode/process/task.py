@@ -75,7 +75,7 @@ class _BasicTask(object):
 class ForecastingTrainingTask(_BasicTask):
     def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
         super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, task_trial_map)
-        model_id = self.task_configs['model_id']
+        self.model_id = self.task_configs['model_id']
         self.tuning = self.task_configs["tuning"]
 
         if self.tuning:  # TODO implement tuning task
@@ -83,7 +83,7 @@ class ForecastingTrainingTask(_BasicTask):
         else:
             self.task_configs['trial_id'] = 'tid_0'  # TODO: set a default trial id
             self.trial = ForecastingTrainingTrial(self.task_configs, self.model, self.model_configs, self.dataset)
-            self.task_trial_map[model_id]['tid_0'] = os.getpid()
+            self.task_trial_map[self.model_id]['tid_0'] = os.getpid()
 
     def __call__(self):
         try:

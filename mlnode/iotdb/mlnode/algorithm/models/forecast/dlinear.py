@@ -21,6 +21,7 @@ import math
 import torch
 import torch.nn as nn
 
+from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.exception import BadConfigValueError
 
 
@@ -65,7 +66,7 @@ class DLinear(nn.Module):
             pred_len=96,
             input_vars=1,
             output_vars=1,
-            forecast_type='m',  # TODO, support others
+            forecast_task_type=ForecastTaskType.ENDOGENOUS,  # TODO, support others
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len

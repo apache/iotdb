@@ -18,7 +18,11 @@
 
 import multiprocessing as mp
 
+from torch import nn
+from torch.utils.data import Dataset
+
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.process.task import ForecastingTrainingTask
 from iotdb.mlnode.process.task_factory import create_task
 
 
@@ -33,22 +37,22 @@ class TaskManager(object):
         self.__pid_info = self.__shared_resource_manager.dict()
         self.__training_process_pool = mp.Pool(pool_num)
 
-    def submit_training_task(self, task_configs, model_configs, model, dataset):
-        assert 'model_id' in task_configs.keys(), 'Task config should contain model_id'
+    def create_training_task(self,
+                             dataset: Dataset,
+                             model: nn.Module,
+                             model_configs: dict,
+                             task_configs: dict) -> ForecastingTrainingTask:
         model_id = task_configs['model_id']
         self.__pid_info[model_id] = self.__shared_resource_manager.dict()
-        try:
-            task = create_task(
-                task_configs,
-                model_configs,
-                model,
-                dataset,
-                self.__pid_info
-            )
-        except Exception as e:
-            logger.exception(e)
-            return e, False
+        return create_task(
+            task_configs,
+            model_configs,
+            model,
+            dataset,
+            self.__pid_info
+        )
 
-        logger.info(f'Task: ({model_id}) - Training process submitted successfully')
-        self.__training_process_pool.apply_async(task, args=())
-        return model_id, True
+    def submit_training_task(self, task: ForecastingTrainingTask) -> None:
+        if task is not None:
+            self.__training_process_pool.apply_async(task, args=())
+            logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')

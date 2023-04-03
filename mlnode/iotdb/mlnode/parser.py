@@ -91,8 +91,9 @@ class _ConfigParser(argparse.ArgumentParser):
  - output_vars: number of output variables
 """
 _data_config_parser = _ConfigParser()
-_data_config_parser.add_argument('--source_type', type=str, required=True)
-_data_config_parser.add_argument('--dataset_type', type=DatasetType, required=True)
+_data_config_parser.add_argument('--source_type', type=str, default="thrift")
+_data_config_parser.add_argument('--dataset_type', type=DatasetType, default=DatasetType.WINDOW,
+                                 choices=list(DatasetType))
 _data_config_parser.add_argument('--filename', type=str, default='')
 _data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
 _data_config_parser.add_argument('--query_filter', type=str, default='')
@@ -183,6 +184,8 @@ def parse_training_request(req: TCreateTrainingTaskReq):
         task_config: configurations related to task
     """
     config = req.modelConfigs
+    config.update(model_name=config['model_type'])
+    config.update(task_class=config['model_task'])
     config.update(model_id=req.modelId)
     config.update(tuning=req.isAuto)
     config.update(query_expressions=req.queryExpressions)
