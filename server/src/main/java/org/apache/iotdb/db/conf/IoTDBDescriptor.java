@@ -1801,6 +1801,15 @@ public class IoTDBDescriptor {
 
   private void loadPipeProps(Properties properties) {
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+
+    conf.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_thread_num",
+                Integer.toString(conf.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (conf.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      conf.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
   }
 
   private void loadCQProps(Properties properties) {

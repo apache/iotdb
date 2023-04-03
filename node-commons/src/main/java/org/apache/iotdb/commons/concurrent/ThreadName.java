@@ -67,6 +67,11 @@ public enum ThreadName {
   SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
   SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
   MLNODE_RPC_SERVICE("MLNodeRpc-Service");
+  PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
+  PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
+  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
+  PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
+  ;
 
   private final String name;
 
