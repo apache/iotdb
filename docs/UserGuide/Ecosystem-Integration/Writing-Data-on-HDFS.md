@@ -29,7 +29,7 @@ Currently, TsFiles(including both TsFile and related data files) are supported t
 
 When you config to store TSFile on HDFS, your data files will be in distributed storage. The system architecture is as below:
 
-<img style="width:100%; max-width:700px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/66922722-35180400-f05a-11e9-8ff0-7dd51716e4a8.png">
+<img style="width:100%; max-width:700px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/66922722-35180400-f05a-11e9-8ff0-7dd51716e4a8.png">
 
 #### Config and usage
 
