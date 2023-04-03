@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
@@ -319,9 +320,8 @@ public class QueryExecution implements IQueryExecution {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery() && logger.isDebugEnabled()) {
-      //      logger.debug(
-      //          "logical plan is: \n {}",
-      // PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+      logger.debug(
+          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
     checkTimeOutForQuery();
