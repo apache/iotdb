@@ -175,7 +175,7 @@ It costs 0.004s
 
 那么 Metadata Tree 如下所示：
 
-<img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg">
+<img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg">
 
 可以看到，`root`被定义为`LEVEL=0`。那么当你输入如下语句时：
 

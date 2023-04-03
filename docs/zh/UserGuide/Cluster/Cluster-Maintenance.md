@@ -124,7 +124,7 @@ It costs 0.006s
 
 ### DataNode 状态定义
 DataNode 的状态机如下图所示：
-<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Cluster/DataNode-StateMachine-ZH.jpg?raw=true">
+<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Cluster/DataNode-StateMachine-ZH.jpg?raw=true">
 
 对 DataNode 各状态定义如下：
 

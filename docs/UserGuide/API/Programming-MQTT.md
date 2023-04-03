@@ -27,7 +27,7 @@ It is useful for connections with remote locations where a small code footprint 
 IoTDB supports the MQTT v3.1(an OASIS Standard) protocol.
 IoTDB server includes a built-in MQTT service that allows remote devices send messages into IoTDB server directly.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 
 ### Built-in MQTT Service
@@ -56,7 +56,7 @@ or
 ```
 or json array of the above two.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT Configurations
 The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties` by default.
