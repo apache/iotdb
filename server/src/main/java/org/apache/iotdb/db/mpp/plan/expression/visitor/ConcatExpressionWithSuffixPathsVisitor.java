@@ -60,8 +60,7 @@ public class ConcatExpressionWithSuffixPathsVisitor
     }
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-    return reconstructFunctionExpressions(
-        (FunctionExpression) functionExpression, childExpressionsList);
+    return reconstructFunctionExpressions(functionExpression, childExpressionsList);
   }
 
   @Override
