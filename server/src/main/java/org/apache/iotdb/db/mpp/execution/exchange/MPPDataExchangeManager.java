@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseLocalSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -178,6 +179,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           return;
         }
         sinkHandle.getChannel(e.getIndex()).close();
+        closeISinkChannelOfShuffleSinkHandle(sinkHandle, e.getIndex());
       } catch (Throwable t) {
         LOGGER.warn(
             "Close channel of ShuffleSinkHandle {}, index {} failed.",
@@ -185,6 +187,46 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getIndex(),
             t);
         throw t;
+      }
+    }
+
+    @Override
+    public void onCloseLocalSinkChannelEvent(TCloseLocalSinkChannelEvent e) throws TException {
+      try (SetThreadName fragmentInstanceName =
+          new SetThreadName(
+              createFullId(
+                  e.sourceFragmentInstanceId.queryId,
+                  e.sourceFragmentInstanceId.fragmentId,
+                  e.sourceFragmentInstanceId.instanceId))) {
+        LOGGER.debug(
+            "Closed LocalSourceHandle of ShuffleSinkHandle {}, channel index: {}.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex());
+        ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
+        if (sinkHandle == null) {
+          LOGGER.debug(
+              "received CloseLocalSinkChannelEvent but target FragmentInstance[{}] is not found.",
+              e.getSourceFragmentInstanceId());
+          return;
+        }
+        closeISinkChannelOfShuffleSinkHandle(sinkHandle, e.getIndex());
+
+      } catch (Throwable t) {
+        LOGGER.warn(
+            "Close channel of ShuffleSinkHandle {}, index {} failed.",
+            e.getSourceFragmentInstanceId(),
+            e.getIndex(),
+            t);
+        throw t;
+      }
+    }
+
+    private void closeISinkChannelOfShuffleSinkHandle(ISinkHandle sinkHandle, int index) {
+      sinkHandle.addToClosedChannel(index);
+      // if all the channels of the ShuffleSinkHandle are closed, we close the ShuffleSinkHandle
+      // directly so that we can finish the FI.
+      if (sinkHandle.isClosed()) {
+        sinkHandle.close();
       }
     }
 
@@ -634,6 +676,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       String remotePlanNodeId,
+      TEndPoint remoteEndPoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
@@ -667,7 +710,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             localFragmentInstanceId,
             localPlanNodeId,
             queue,
-            new SourceHandleListenerImpl(onFailureCallback));
+            new SourceHandleListenerImpl(onFailureCallback),
+            mppDataExchangeServiceClientManager,
+            executorService,
+            index,
+            remoteEndPoint,
+            remoteFragmentInstanceId);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, localSourceHandle);

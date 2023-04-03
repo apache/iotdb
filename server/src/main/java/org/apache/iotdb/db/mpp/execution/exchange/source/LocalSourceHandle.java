@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange.source;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TCloseLocalSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -35,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
@@ -44,6 +49,21 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HA
 public class LocalSourceHandle implements ISourceHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalSourceHandle.class);
+
+  public static final int MAX_ATTEMPT_TIMES = 3;
+
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
+
+  private ExecutorService executorService;
+
+  private int indexOfUpstreamISinkChannel = 0;
+
+  private TEndPoint remoteEndpoint;
+
+  private TFragmentInstanceId remoteFragmentInstanceId;
+
+  private IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      mppDataExchangeServiceClientManager;
 
   private TFragmentInstanceId localFragmentInstanceId;
   private String localPlanNodeId;
@@ -74,13 +94,24 @@ public class LocalSourceHandle implements ISourceHandle {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       SharedTsBlockQueue queue,
-      SourceHandleListener sourceHandleListener) {
+      SourceHandleListener sourceHandleListener,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager,
+      ExecutorService executorService,
+      int indexOfUpstreamISinkChannel,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.queue = Validate.notNull(queue);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
+    this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
+    this.executorService = executorService;
+    this.indexOfUpstreamISinkChannel = indexOfUpstreamISinkChannel;
+    this.remoteEndpoint = remoteEndpoint;
+    this.remoteFragmentInstanceId = remoteFragmentInstanceId;
   }
 
   @Override
@@ -231,6 +262,10 @@ public class LocalSourceHandle implements ISourceHandle {
           }
           queue.close();
           closed = true;
+          if (executorService != null) {
+            // only send close event when this LocalSourceHandle is created for a Fragment
+            executorService.submit(new SendCloseLocalSinkChannelEventTask());
+          }
           sourceHandleListener.onFinished(this);
         }
       }
@@ -254,5 +289,48 @@ public class LocalSourceHandle implements ISourceHandle {
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
     // LocalSinkChannel
+  }
+
+  class SendCloseLocalSinkChannelEventTask implements Runnable {
+
+    @Override
+    public void run() {
+      try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+        LOGGER.debug(
+            "[SendCloseLocalSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+            remoteFragmentInstanceId,
+            indexOfUpstreamISinkChannel);
+        int attempt = 0;
+        TCloseLocalSinkChannelEvent closeLocalSinkChannelEvent =
+            new TCloseLocalSinkChannelEvent(remoteFragmentInstanceId, indexOfUpstreamISinkChannel);
+        while (attempt < MAX_ATTEMPT_TIMES) {
+          attempt += 1;
+          long startTime = System.nanoTime();
+          try (SyncDataNodeMPPDataExchangeServiceClient client =
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+            client.onCloseLocalSinkChannelEvent(closeLocalSinkChannelEvent);
+            break;
+          } catch (Throwable e) {
+            LOGGER.warn(
+                "[SendCloseLocalSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                remoteFragmentInstanceId,
+                indexOfUpstreamISinkChannel);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              synchronized (LocalSourceHandle.this) {
+                sourceHandleListener.onFailure(LocalSourceHandle.this, e);
+              }
+            }
+            try {
+              Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+              synchronized (LocalSourceHandle.this) {
+                sourceHandleListener.onFailure(LocalSourceHandle.this, e);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

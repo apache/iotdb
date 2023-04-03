@@ -45,7 +45,7 @@ public class ExchangeNode extends SingleChildProcessNode {
   private List<String> outputColumnNames = new ArrayList<>();
 
   /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
-  private int indexOfUpstreamSinkHandle = 0;
+  private int indexOfUpstreamISinkChannel = 0;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -65,7 +65,7 @@ public class ExchangeNode extends SingleChildProcessNode {
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
     node.setOutputColumnNames(outputColumnNames);
-    node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
+    node.setIndexOfUpstreamISinkChannel(indexOfUpstreamISinkChannel);
     return node;
   }
 
@@ -101,7 +101,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
-    exchangeNode.setIndexOfUpstreamSinkHandle(index);
+    exchangeNode.setIndexOfUpstreamISinkChannel(index);
     return exchangeNode;
   }
 
@@ -116,7 +116,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
-    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, byteBuffer);
+    ReadWriteIOUtils.write(indexOfUpstreamISinkChannel, byteBuffer);
   }
 
   @Override
@@ -130,7 +130,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, stream);
     }
-    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, stream);
+    ReadWriteIOUtils.write(indexOfUpstreamISinkChannel, stream);
   }
 
   @Override
@@ -148,12 +148,12 @@ public class ExchangeNode extends SingleChildProcessNode {
         getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
-  public int getIndexOfUpstreamSinkHandle() {
-    return indexOfUpstreamSinkHandle;
+  public int getIndexOfUpstreamISinkChannel() {
+    return indexOfUpstreamISinkChannel;
   }
 
-  public void setIndexOfUpstreamSinkHandle(int indexOfUpstreamSinkHandle) {
-    this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
+  public void setIndexOfUpstreamISinkChannel(int indexOfUpstreamISinkChannel) {
+    this.indexOfUpstreamISinkChannel = indexOfUpstreamISinkChannel;
   }
 
   public TEndPoint getUpstreamEndpoint() {

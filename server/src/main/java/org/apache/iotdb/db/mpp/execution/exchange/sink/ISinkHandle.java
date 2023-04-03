@@ -36,4 +36,6 @@ public interface ISinkHandle extends ISink {
 
   /** Return true if the specified channel is closed. */
   boolean isChannelClosed(int index);
+
+  void addToClosedChannel(int index);
 }

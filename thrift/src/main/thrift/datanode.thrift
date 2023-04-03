@@ -85,6 +85,12 @@ struct TCloseSinkChannelEvent {
   2: required i32 index
 }
 
+struct TCloseLocalSinkChannelEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  // index of upstream SinkChannel
+  2: required i32 index
+}
+
 struct TNewDataBlockEvent {
   1: required TFragmentInstanceId targetFragmentInstanceId
   2: required string targetPlanNodeId
@@ -773,6 +779,8 @@ service MPPDataExchangeService {
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
 
   void onCloseSinkChannelEvent(TCloseSinkChannelEvent e);
+
+  void onCloseLocalSinkChannelEvent(TCloseLocalSinkChannelEvent e);
 
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 

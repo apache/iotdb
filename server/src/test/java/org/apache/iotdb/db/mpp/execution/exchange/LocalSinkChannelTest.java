@@ -32,6 +32,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.Executors;
+
 public class LocalSinkChannelTest {
   @Test
   public void testSend() {
@@ -64,7 +66,12 @@ public class LocalSinkChannelTest {
             localFragmentInstanceId,
             remotePlanNodeId,
             queue,
-            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
+            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class),
+            null,
+            Executors.newSingleThreadExecutor(),
+            0,
+            null,
+            remoteFragmentInstanceId);
 
     Assert.assertFalse(localSinkChannel.isFull().isDone());
     localSourceHandle.isBlocked();
@@ -151,7 +158,12 @@ public class LocalSinkChannelTest {
             localFragmentInstanceId,
             remotePlanNodeId,
             queue,
-            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
+            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class),
+            null,
+            Executors.newSingleThreadExecutor(),
+            0,
+            null,
+            remoteFragmentInstanceId);
 
     Assert.assertFalse(localSinkChannel.isFull().isDone());
     localSourceHandle.isBlocked();

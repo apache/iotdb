@@ -89,6 +89,7 @@ public class MPPDataExchangeManagerTest {
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localPlanNodeId,
+            null,
             localFragmentInstanceId,
             0,
             t -> {});
@@ -128,6 +129,7 @@ public class MPPDataExchangeManagerTest {
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localPlanNodeId,
+            null,
             localFragmentInstanceId,
             0,
             t -> {});
