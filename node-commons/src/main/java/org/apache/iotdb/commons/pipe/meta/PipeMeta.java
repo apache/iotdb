@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class PipeMeta {
 
   private long createTime;
 
-  private PipeStatus status;
+  private volatile PipeStatus status;
 
   private Map<String, String> collectorAttributes = new HashMap<>();
 
@@ -48,9 +49,9 @@ public class PipeMeta {
 
   private Map<String, String> connectorAttributes = new HashMap<>();
 
-  private final List<String> messages = new ArrayList<>();
+  private final List<String> messages = Collections.synchronizedList(new ArrayList<>());
 
-  private Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
+  private volatile Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
 
   private PipeMeta() {}
 

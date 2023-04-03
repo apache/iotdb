@@ -25,23 +25,24 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTaskMeta {
 
   // TODO: replace it with consensus index
-  private long index;
+  private final AtomicLong index = new AtomicLong(0L);
 
-  private int regionLeader;
+  private volatile int regionLeader;
 
   private PipeTaskMeta() {}
 
   public PipeTaskMeta(long index, int regionLeader) {
-    this.index = index;
+    this.index.set(index);
     this.regionLeader = regionLeader;
   }
 
   public long getIndex() {
-    return index;
+    return index.get();
   }
 
   public int getRegionLeader() {
@@ -49,7 +50,11 @@ public class PipeTaskMeta {
   }
 
   public void setIndex(long index) {
-    this.index = index;
+    this.index.set(index);
+  }
+
+  public void addIndex(long delta) {
+    index.addAndGet(delta);
   }
 
   public void setRegionLeader(int regionLeader) {
@@ -57,13 +62,13 @@ public class PipeTaskMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(index, outputStream);
+    ReadWriteIOUtils.write(index.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader, outputStream);
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
-    PipeTaskMeta.index = ReadWriteIOUtils.readLong(byteBuffer);
+    PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader = ReadWriteIOUtils.readInt(byteBuffer);
     return PipeTaskMeta;
   }
@@ -82,12 +87,12 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index == that.index && regionLeader == that.regionLeader;
+    return index.get() == that.index.get() && regionLeader == that.regionLeader;
   }
 
   @Override
   public int hashCode() {
-    return (int) (index * 31 + regionLeader);
+    return (int) (index.get() * 31 + regionLeader);
   }
 
   @Override
