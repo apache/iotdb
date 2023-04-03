@@ -67,3 +67,10 @@ class MAPE(Metric):
 class MSPE(Metric):
     def calculate(self, pred, ground_truth):
         return np.mean(np.square((pred - ground_truth) / ground_truth))
+
+
+def build_metrics(metric_names: list[str]) -> dict[str, Metric]:
+    metrics_dict = {}
+    for metric_name in metric_names:
+        metrics_dict[metric_name] = eval(metric_name)()
+    return metrics_dict

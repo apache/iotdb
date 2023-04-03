@@ -97,4 +97,5 @@ class ForecastingTrainingTask(_BasicTask):
             else:
                 self.trial.start()
         except Exception as e:
-            logger.exception(e)
+            logger.warn(e)
+            raise e

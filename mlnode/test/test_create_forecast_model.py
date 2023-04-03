@@ -17,9 +17,9 @@
 #
 import torch
 
+from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.exception import BadConfigValueError
-from iotdb.mlnode.algorithm.enums import ForecastTaskType
 
 
 def test_create_forecast_model():
@@ -34,7 +34,7 @@ def test_create_forecast_model():
     model, model_config = create_forecast_model(model_name='nbeats',
                                                 kernel_size=25, d_model=64)
     assert model_config['d_model'] == 64
-    assert 'kernel_size' not in model_config # config kernel_size not belongs to nbeats model
+    assert 'kernel_size' not in model_config  # config kernel_size not belongs to nbeats model
 
 
 def test_bad_config_model1():
@@ -67,6 +67,7 @@ def test_bad_config_model4():
                                               forecast_task_type='dummy_task')
     except BadConfigValueError as e:
         print(e)  # ('forecast_task_type', 'dummy_task')
+
 
 def test_bad_config_model5():
     try:

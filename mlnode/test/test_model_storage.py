@@ -23,8 +23,8 @@ import time
 import torch.nn as nn
 
 from iotdb.mlnode.config import config
-from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.exception import ModelNotExistError
+from iotdb.mlnode.storage import model_storage
 
 
 class ExampleModel(nn.Module):

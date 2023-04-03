@@ -16,10 +16,11 @@
 # under the License.
 #
 import torch.nn as nn
-from iotdb.mlnode.algorithm.models.forecast import *
-from iotdb.mlnode.algorithm.enums import ForecastTaskType
-from iotdb.mlnode.algorithm.models.forecast import support_forecasting_models
-from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear
+
+from iotdb.mlnode.algorithm.enums import ForecastModelType, ForecastTaskType
+from iotdb.mlnode.algorithm.models.forecast.dlinear import (dlinear,
+                                                            dlinear_individual)
+from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats
 from iotdb.mlnode.exception import BadConfigValueError
 
 
@@ -35,7 +36,7 @@ def _common_config(**kwargs):
 
 
 # Common forecasting task configs
-support_common_configs = {
+_forecasting_model_default_config_dict = {
     # multivariable forecasting with all endogenous variables, current support this only
     ForecastTaskType.ENDOGENOUS: _common_config(
         input_vars=1,
@@ -45,20 +46,6 @@ support_common_configs = {
     ForecastTaskType.EXOGENOUS: _common_config(
         output_vars=1),
 }
-
-
-def is_model(model_name: str) -> bool:
-    """
-    Check if a model name exists
-    """
-    return model_name in support_forecasting_models
-
-
-def list_model() -> list:
-    """
-    List support forecasting model
-    """
-    return support_forecasting_models
 
 
 def create_forecast_model(
@@ -88,13 +75,13 @@ def create_forecast_model(
         model: torch.nn.Module
         model_config: dict of model configurations
     """
-    if not is_model(model_name):
-        raise BadConfigValueError('model_name', model_name, f'It should be one of {list_model()}')
-    if forecast_task_type not in support_common_configs.keys():
+    if model_name not in ForecastModelType.values():
+        raise BadConfigValueError('model_name', model_name, f'It should be one of {ForecastModelType.values()}')
+    if forecast_task_type not in _forecasting_model_default_config_dict.keys():
         raise BadConfigValueError('forecast_task_type', forecast_task_type,
-                                  f'It should be one of {list(support_common_configs.keys())}')
+                                  f'It should be one of {list(_forecasting_model_default_config_dict.keys())}')
 
-    common_config = support_common_configs[forecast_task_type]
+    common_config = _forecasting_model_default_config_dict[forecast_task_type]
     common_config['input_len'] = input_len
     common_config['pred_len'] = pred_len
     common_config['input_vars'] = input_vars
@@ -113,16 +100,29 @@ def create_forecast_model(
     if not output_vars > 0:
         raise BadConfigValueError('output_vars', output_vars,
                                   'Number of output variables should be positive')
-    if forecast_task_type == ForecastTaskType.ENDOGENOUS:
+    if forecast_task_type is ForecastTaskType.ENDOGENOUS:
         if input_vars != output_vars:
             raise BadConfigValueError('forecast_task_type', forecast_task_type,
                                       'Number of input/output variables should be '
                                       'the same in endogenous forecast')
-    create_fn = eval(model_name)
-    model, model_config = create_fn(
-        common_config=common_config,
-        **kwargs
-    )
-    model_config['model_name'] = model_name
 
+    if model_name == ForecastModelType.DLINEAR.value:
+        model, model_config = dlinear(
+            common_config=common_config,
+            **kwargs
+        )
+    elif model_name == ForecastModelType.DLINEAR_INDIVIDUAL.value:
+        model, model_config = dlinear_individual(
+            common_config=common_config,
+            **kwargs
+        )
+    elif model_name == ForecastModelType.NBEATS.value:
+        model, model_config = nbeats(
+            common_config=common_config,
+            **kwargs
+        )
+    else:
+        raise BadConfigValueError('model_name', model_name, f'It should be one of {ForecastModelType.values()}')
+
+    model_config['model_name'] = model_name
     return model, model_config

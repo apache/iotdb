@@ -23,7 +23,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
-from iotdb.mlnode.algorithm.metric import MAE, MSE, all_metrics
+from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
@@ -122,6 +122,7 @@ class ForecastingTrainingTrial(BasicTrial):
         self.confignode_client = client_manager.borrow_config_node_client()
         self.criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.metrics_dict = build_metrics(self.metric_names)
 
     def _build_dataloader(self):
         return DataLoader(
@@ -148,8 +149,10 @@ class ForecastingTrainingTrial(BasicTrial):
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
             outputs = outputs[:, -self.pred_len:]
             batch_y = batch_y[:, -self.pred_len:]
+
             loss = self.criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
@@ -161,7 +164,6 @@ class ForecastingTrainingTrial(BasicTrial):
             self.optimizer.step()
 
         train_loss = np.average(train_loss)
-        # TODO: manage these training output
         logger.info('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'
                     .format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
@@ -169,7 +171,7 @@ class ForecastingTrainingTrial(BasicTrial):
     def _validate(self, epoch):
         self.model.eval()
         val_loss = []
-        metrics_dict = {name: [] for name in self.metric_names}
+        metrics_value_dict = {name: [] for name in self.metric_names}
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(self.dataloader):
             batch_x = batch_x.float().to(self.device)
             batch_y = batch_y.float().to(self.device)
@@ -185,26 +187,25 @@ class ForecastingTrainingTrial(BasicTrial):
             batch_y = batch_y[:, -self.pred_len:]
 
             loss = self.criterion(outputs, batch_y)
-
             val_loss.append(loss.item())
+
             for name in self.metric_names:
-                metric = eval(name)()
+                metric = self.metrics_dict[name]
                 value = metric(outputs.detach().cpu().numpy(), batch_y.detach().cpu().numpy())
-                metrics_dict[name].append(value)
+                metrics_value_dict[name].append(value)
 
-        for name, value_list in metrics_dict.items():
-            metrics_dict[name] = np.average(value_list)
+        for name, value_list in metrics_value_dict.items():
+            metrics_value_dict[name] = np.average(value_list)
 
-        # TODO: handle some exception
         self.datanode_client.record_model_metrics(
             model_id=self.model_id,
             trial_id=self.trial_id,
-            metrics=list(metrics_dict.keys()),
-            values=list(metrics_dict.values())
+            metrics=list(metrics_value_dict.keys()),
+            values=list(metrics_value_dict.values())
         )
         val_loss = np.average(val_loss)
         logger.info('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
-        return val_loss, metrics_dict
+        return val_loss, metrics_value_dict
 
     def start(self) -> float:
         try:

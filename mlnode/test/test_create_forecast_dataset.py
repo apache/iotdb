@@ -16,12 +16,11 @@
 # under the License.
 #
 import os
-import torch
+
 import requests
 
-from iotdb.mlnode.data_access.factory import create_forecast_dataset
-from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
+from iotdb.mlnode.data_access.factory import create_forecast_dataset
 
 
 def test_create_dataset():

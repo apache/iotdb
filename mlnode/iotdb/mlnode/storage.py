@@ -26,6 +26,7 @@ from pylru import lrucache
 
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
+from iotdb.mlnode.log import logger
 
 
 class ModelStorage(object):
@@ -34,7 +35,8 @@ class ModelStorage(object):
         if not os.path.exists(self.__model_dir):
             try:
                 os.mkdir(self.__model_dir)
-            except PermissionError as e: # TODO: handle storage permission
+            except PermissionError as e:
+                logger.error(e)
                 raise e
 
         self.__model_cache = lrucache(descriptor.get_config().get_mn_model_storage_cache_size())

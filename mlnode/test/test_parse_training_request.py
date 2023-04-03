@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.parser import parse_training_request
 from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
+from iotdb.mlnode.parser import parse_training_request
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
@@ -26,7 +26,7 @@ def test_parse_training_request():
     model_configs = {
         'task_class': 'forecast_training_task',
         'source_type': 'thrift',
-        'dataset_type': 'window', # or use DatasetType.WINDOW,
+        'dataset_type': 'window',  # or use DatasetType.WINDOW,
         'filename': 'ETTh1.csv',
         'time_embed': 'h',
         'input_len': 96,

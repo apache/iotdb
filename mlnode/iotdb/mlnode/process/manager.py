@@ -23,7 +23,6 @@ from torch.utils.data import Dataset
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.task import ForecastingTrainingTask
-from iotdb.mlnode.process.task_factory import create_task
 
 
 class TaskManager(object):
@@ -44,13 +43,14 @@ class TaskManager(object):
                              task_configs: dict) -> ForecastingTrainingTask:
         model_id = task_configs['model_id']
         self.__pid_info[model_id] = self.__shared_resource_manager.dict()
-        return create_task(
+        task = ForecastingTrainingTask(
             task_configs,
             model_configs,
             model,
             dataset,
             self.__pid_info
         )
+        return task
 
     def submit_training_task(self, task: ForecastingTrainingTask) -> None:
         if task is not None:

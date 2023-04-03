@@ -21,23 +21,33 @@ from enum import Enum
 class ForecastTaskType(Enum):
     """
     In multivariable time series forecasting tasks, the columns to be predicted are called the endogenous variables
-    and the columns that are independent or non-forecast are called the exogenous variables (they might be helpful 
+    and the columns that are independent or non-forecast are called the exogenous variables (they might be helpful
     to predict the endogenous variables). Both of them can appear in the input time series.
-    
+
     ForecastTaskType.ENDOGENOUS: all input time series of input are endogenous variables
     ForecastTaskType.EXOGENOUS: the input time series is combined with endogenous and exogenous variables
     """
     ENDOGENOUS = "endogenous"
     EXOGENOUS = "exogenous"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
-
-    def __hash__(self):
-        return hash(self.value)
 
     def __eq__(self, other: str) -> bool:
         return self.value == other
 
     def __hash__(self) -> int:
         return hash(self.value)
+
+
+class ForecastModelType(Enum):
+    DLINEAR = "dlinear"
+    DLINEAR_INDIVIDUAL = "dlinear_individual"
+    NBEATS = "nbeats"
+
+    @classmethod
+    def values(cls) -> list[str]:
+        values = []
+        for item in list(cls):
+            values.append(item.value)
+        return values

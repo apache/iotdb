@@ -24,27 +24,17 @@ from iotdb.mlnode.data_access.offline.source import (FileDataSource,
                                                      ThriftDataSource)
 from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
 
-support_forecasting_dataset = {
-    DatasetType.TIMESERIES: TimeSeriesDataset,
-    DatasetType.WINDOW: WindowDataset
-}
 
-support_forecasting_datasource = {
-    DataSourceType.FILE: FileDataSource,
-    DataSourceType.THRIFT: ThriftDataSource
-}
-
-
-def _dataset_config(**kwargs):
+def _dataset_common_config(**kwargs):
     return {
         'time_embed': 'h',
         **kwargs
     }
 
 
-support_dataset_configs = {
-    DatasetType.TIMESERIES: _dataset_config(),
-    DatasetType.WINDOW: _dataset_config(
+_dataset_default_config_dict = {
+    DatasetType.TIMESERIES: _dataset_common_config(),
+    DatasetType.WINDOW: _dataset_common_config(
         input_len=96,
         pred_len=96,
     )
@@ -71,9 +61,8 @@ def create_forecast_dataset(
         dataset: torch.nn.Module
         dataset_config: dict of dataset configurations
     """
-    if dataset_type not in support_forecasting_dataset.keys():
-        raise BadConfigValueError('dataset_type', dataset_type,
-                                  f'It should be one of {list(support_forecasting_dataset.keys())}')
+    if dataset_type not in list(DatasetType):
+        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
 
     if source_type == DataSourceType.FILE:
         if 'filename' not in kwargs.keys():
@@ -86,17 +75,19 @@ def create_forecast_dataset(
             raise MissingConfigError('query_filter')
         datasource = ThriftDataSource(kwargs['query_expressions'], kwargs['query_filter'])
     else:
-        raise BadConfigValueError('source_type', source_type,
-                                  f"It should be one of {list(support_forecasting_datasource)}")
+        raise BadConfigValueError('source_type', source_type, f"It should be one of {list(DataSourceType)}")
 
-    dataset_fn = support_forecasting_dataset[dataset_type]
-    dataset_config = support_dataset_configs[dataset_type]
-
+    dataset_config = _dataset_default_config_dict[dataset_type]
     for k, v in kwargs.items():
         if k in dataset_config.keys():
             dataset_config[k] = v
 
-    dataset = dataset_fn(datasource, **dataset_config)
+    if dataset_type == DatasetType.TIMESERIES:
+        dataset = TimeSeriesDataset(datasource, **dataset_config)
+    elif dataset_type == DatasetType.WINDOW:
+        dataset = WindowDataset(datasource, **dataset_config)
+    else:
+        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
 
     if 'input_vars' in kwargs.keys() and dataset.get_variable_num() != kwargs['input_vars']:
         raise BadConfigValueError('input_vars', kwargs['input_vars'],

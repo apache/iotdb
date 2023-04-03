@@ -71,7 +71,7 @@ class MLNodeClient(object):
                              model_id: str,
                              is_auto: bool,
                              model_configs: dict,
-                             query_expressions: list = [],
+                             query_expressions: list,
                              query_filter: str = '') -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
@@ -123,7 +123,7 @@ class DataNodeClient(object):
         self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         query_expressions: list = [],
+                         query_expressions: list,
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
