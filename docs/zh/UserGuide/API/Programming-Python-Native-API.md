@@ -522,7 +522,7 @@ SQLAlchemy 中的元数据有：
 
 下图更加清晰的展示了二者的映射关系：
 
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
 ##### 数据类型映射
 | IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |

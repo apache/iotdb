@@ -20,7 +20,8 @@ import os
 from dynaconf import Dynaconf
 
 from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
-                                   MLNODE_CONF_FILE_NAME)
+                                   MLNODE_CONF_FILE_NAME,
+                                   MLNODE_MODEL_STORAGE_DIRECTORY_NAME)
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import parse_endpoint_url
@@ -32,6 +33,12 @@ class MLNodeConfig(object):
         # Used for connection of DataNode/ConfigNode clients
         self.__mn_rpc_address: str = "127.0.0.1"
         self.__mn_rpc_port: int = 10810
+
+        # Directory to save models
+        self.__mn_model_storage_dir = MLNODE_MODEL_STORAGE_DIRECTORY_NAME
+
+        # Cache number of model storage to avoid repeated loading
+        self.__mn_model_storage_cache_size = 30
 
         # Target ConfigNode to be connected by MLNode
         self.__mn_target_config_node: TEndPoint = TEndPoint("127.0.0.1", 10710)
@@ -50,6 +57,18 @@ class MLNodeConfig(object):
 
     def set_mn_rpc_port(self, mn_rpc_port: int) -> None:
         self.__mn_rpc_port = mn_rpc_port
+
+    def get_mn_model_storage_dir(self) -> str:
+        return self.__mn_model_storage_dir
+
+    def set_mn_model_storage_dir(self, mn_model_storage_dir: str):
+        self.__mn_model_storage_dir = mn_model_storage_dir
+
+    def get_mn_model_storage_cache_size(self) -> int:
+        return self.__mn_model_storage_cache_size
+
+    def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int):
+        self.__mn_model_storage_cache_size = mn_model_storage_cache_size
 
     def get_mn_target_config_node(self) -> TEndPoint:
         return self.__mn_target_config_node
@@ -89,6 +108,12 @@ class MLNodeDescriptor(object):
 
             if file_configs.mn_rpc_port is not None:
                 self.__config.set_mn_rpc_port(file_configs.mn_rpc_port)
+
+            if file_configs.mn_model_storage_dir is not None:
+                self.__config.set_mn_model_storage_dir(file_configs.mn_model_storage_dir)
+
+            if file_configs.mn_model_storage_cache_size is not None:
+                self.__config.set_mn_model_storage_cachesize(file_configs.mn_model_storage_cache_size)
 
             if file_configs.mn_target_config_node is not None:
                 self.__config.set_mn_target_config_node(file_configs.mn_target_config_node)

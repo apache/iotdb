@@ -66,6 +66,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -101,11 +103,13 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -801,5 +805,70 @@ public class StatementGenerator {
     }
     MetaFormatUtils.checkDatabase(database);
     return databasePath;
+  }
+
+  public static InsertRowStatement createStatement(
+      TRecordModelMetricsReq recordModelMetricsReq, String prefix) throws IllegalPathException {
+    String path =
+        prefix
+            + TsFileConstant.PATH_SEPARATOR
+            + recordModelMetricsReq.getModelId()
+            + TsFileConstant.PATH_SEPARATOR
+            + recordModelMetricsReq.getTrialId();
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setDevicePath(new PartialPath(path));
+    insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
+    insertRowStatement.setMeasurements(recordModelMetricsReq.getMetrics().toArray(new String[0]));
+    insertRowStatement.setAligned(true);
+
+    TSDataType[] dataTypes = new TSDataType[recordModelMetricsReq.getValues().size()];
+    Arrays.fill(dataTypes, TSDataType.DOUBLE);
+    insertRowStatement.setDataTypes(dataTypes);
+    insertRowStatement.setValues(recordModelMetricsReq.getValues().toArray(new Object[0]));
+    return insertRowStatement;
+  }
+
+  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
+      throws IllegalPathException {
+    QueryStatement queryStatement = new QueryStatement();
+
+    FromComponent fromComponent = new FromComponent();
+    for (String pathStr : fetchTimeseriesReq.getQueryExpressions()) {
+      PartialPath path = new PartialPath(pathStr);
+      fromComponent.addPrefixPath(path);
+    }
+
+    SelectComponent selectComponent = new SelectComponent(zoneId);
+    selectComponent.addResultColumn(
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+
+    WhereCondition whereCondition = new WhereCondition();
+    String queryFilter = fetchTimeseriesReq.getQueryFilter();
+    String[] times = queryFilter.split(",");
+    int predictNum = 0;
+    LessThanExpression rightPredicate = null;
+    GreaterEqualExpression leftPredicate = null;
+    if (!Objects.equals(times[0], "-1")) {
+      leftPredicate =
+          new GreaterEqualExpression(
+              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
+      predictNum += 1;
+    }
+    if (!Objects.equals(times[1], "-1")) {
+      rightPredicate =
+          new LessThanExpression(
+              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
+      predictNum += 2;
+    }
+    whereCondition.setPredicate(
+        predictNum == 3
+            ? new LogicAndExpression(leftPredicate, rightPredicate)
+            : (predictNum == 1 ? leftPredicate : rightPredicate));
+
+    queryStatement.setWhereCondition(whereCondition);
+    queryStatement.setFromComponent(fromComponent);
+    queryStatement.setSelectComponent(selectComponent);
+    return queryStatement;
   }
 }

@@ -19,3 +19,5 @@
 MLNODE_CONF_DIRECTORY_NAME = "conf"
 MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
 MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
+
+MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"

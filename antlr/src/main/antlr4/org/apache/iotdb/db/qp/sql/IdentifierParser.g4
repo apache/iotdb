@@ -75,6 +75,7 @@ keyWords
     | DESC
     | DESCRIBE
     | DEVICE
+    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
@@ -178,6 +179,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTRING
     | SYSTEM
     | TAGS
     | TASK

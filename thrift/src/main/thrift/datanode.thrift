@@ -379,23 +379,33 @@ struct TDeleteModelMetricsReq {
   1: required string modelId
 }
 
+struct TFetchMoreDataReq{
+    1: required i64 queryId
+    2: optional i64 timeout
+    3: optional i32 fetchSize
+}
+
+struct TFetchMoreDataResp{
+    1: required common.TSStatus status
+    2: optional list<binary> tsDataset
+    3: optional bool hasMoreData
+}
+
 struct TFetchTimeseriesReq {
-  1: required i64 sessionId
-  2: required i64 statementId
-  3: required list<string> queryExpressions
-  4: optional string queryFilter
-  5: optional i32 fetchSize
-  6: optional i64 timeout
+  1: required list<string> queryExpressions
+  2: optional string queryFilter
+  3: optional i32 fetchSize
+  4: optional i64 timeout
 }
 
 struct TFetchTimeseriesResp {
   1: required common.TSStatus status
-  2: required i64 queryId
-  3: required list<string> columnNameList
-  4: required list<string> columnTypeList
-  5: required map<string, i32> columnNameIndexMap
-  6: required list<binary> tsDataset
-  7: required bool hasMoreData
+  2: optional i64 queryId
+  3: optional list<string> columnNameList
+  4: optional list<string> columnTypeList
+  5: optional map<string, i32> columnNameIndexMap
+  6: optional list<binary> tsDataset
+  7: optional bool hasMoreData
 }
 
 struct TFetchWindowBatchReq {
@@ -429,7 +439,7 @@ struct TFetchWindowBatchResp {
 struct TRecordModelMetricsReq {
   1: required string modelId
   2: required string trialId
-  3: required list<common.EvaluateMetric> metrics
+  3: required list<string> metrics
   4: required i64 timestamp
   5: required list<double> values
 }
@@ -744,27 +754,10 @@ service IDataNodeRPCService {
   */
   common.TSStatus executeCQ(TExecuteCQ req)
 
- /**
+  /**
   * Delete model training metrics on DataNode
   */
   common.TSStatus deleteModelMetrics(TDeleteModelMetricsReq req)
-
-  // ----------------------------------- For ML Node -----------------------------------------------
-
- /**
-  * Fecth the data of the specified time series
-  */
-  TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
-
- /**
-  * Fecth window batches of the specified time series
-  */
-  TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req)
-
- /**
-  * Record model training metrics on DataNode
-  */
-  common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
 }
 
 service MPPDataExchangeService {
@@ -778,3 +771,27 @@ service MPPDataExchangeService {
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
 }
+
+service IMLNodeInternalRPCService{
+ /**
+  * Fecth the data of the specified time series
+  */
+  TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
+
+  /**
+  * Fetch rest data for a specified fetchTimeseries
+  */
+  TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req)
+
+ /**
+  * Fecth window batches of the specified time series
+  */
+  TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req)
+
+ /**
+  * Record model training metrics on DataNode
+  */
+  common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
+
+}
+

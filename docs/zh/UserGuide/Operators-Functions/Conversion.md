@@ -30,7 +30,7 @@
 语法示例如下：
 
 ```sql
-SELECT cast(s1 as INT32)from root.sg
+SELECT cast(s1 as INT32) from root.sg
 ```
 
 cast 函数语法形式上与 PostgreSQL 一致，AS 后指定的数据类型表明要转换成的目标类型，目前 IoTDB 支持的六种数据类型均可以在 cast 函数中使用，遵循的转换规则如下表所示，其中行表示原始数据类型，列表示要转化成的目标数据类型：

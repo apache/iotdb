@@ -658,6 +658,10 @@ STOP
     : S T O P
     ;
 
+SUBSTRING
+    : S U B S T R I N G
+    ;
+
 SYSTEM
     : S Y S T E M
     ;

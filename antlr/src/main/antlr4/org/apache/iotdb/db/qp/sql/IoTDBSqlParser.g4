@@ -1063,6 +1063,7 @@ functionName
 scalarFunctionExpression
     : CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
     | REPLACE LR_BRACKET text=expression COMMA from=STRING_LITERAL COMMA to=STRING_LITERAL RR_BRACKET
+    | SUBSTRING subStringExpression
     | ROUND LR_BRACKET input=expression (COMMA places=constant)? RR_BRACKET
     ;
 
@@ -1119,4 +1120,13 @@ attributeValue
 alias
     : constant
     | identifier
+    ;
+
+subStringExpression
+    : LR_BRACKET input=expression COMMA startPosition=signedIntegerLiteral (COMMA length=signedIntegerLiteral)? RR_BRACKET
+    | LR_BRACKET input=expression FROM from=signedIntegerLiteral (FOR forLength=signedIntegerLiteral)? RR_BRACKET
+    ;
+
+signedIntegerLiteral
+    : (PLUS|MINUS)?INTEGER_LITERAL
     ;

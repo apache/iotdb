@@ -628,6 +628,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
+    properties.setLogo(IoTDBConstant.LOGO);
     properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
     LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());

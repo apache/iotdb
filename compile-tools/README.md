@@ -79,7 +79,7 @@ If Openssl header files can not be found when building Thrift, please add option
 
 ### Linux
 
-#### Additional requrirements
+#### Additional requirements
 
 * g++
 
