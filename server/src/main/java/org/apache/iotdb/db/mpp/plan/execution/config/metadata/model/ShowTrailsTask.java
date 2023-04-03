@@ -36,6 +36,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,17 +62,27 @@ public class ShowTrailsTask implements IConfigTask {
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (ByteBuffer trailInfo : trailInfoList) {
+      String trailId = ReadWriteIOUtils.readString(trailInfo);
+      String modelPath = ReadWriteIOUtils.readString(trailInfo);
+      int listSize = ReadWriteIOUtils.readInt(trailInfo);
+      List<String> modelHyperparameter = new ArrayList<>();
+      for (int i = 0; i < listSize; i++) {
+        modelHyperparameter.add(ReadWriteIOUtils.readString(trailInfo));
+      }
+
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
-      builder
-          .getColumnBuilder(1)
-          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
-      builder
-          .getColumnBuilder(2)
-          .writeBinary(Binary.valueOf(ReadWriteIOUtils.readString(trailInfo)));
+      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(trailId));
+      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(modelPath));
+      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelHyperparameter.get(0)));
       builder.declarePosition();
+
+      for (int i = 1; i < listSize; i++) {
+        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getColumnBuilder(0).writeBinary(Binary.valueOf(""));
+        builder.getColumnBuilder(1).writeBinary(Binary.valueOf(""));
+        builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
+        builder.declarePosition();
+      }
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTrailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

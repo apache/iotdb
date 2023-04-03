@@ -412,12 +412,12 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
           new ColumnHeader(QUERY_BODY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT),
-          new ColumnHeader(MODEL_PATH, TSDataType.TEXT));
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTrailsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
-          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT),
-          new ColumnHeader(MODEL_PATH, TSDataType.TEXT));
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 }

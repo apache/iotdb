@@ -170,10 +170,10 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowModelsHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, false);
+    return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTrailsHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, false);
+    return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, true);
   }
 }
