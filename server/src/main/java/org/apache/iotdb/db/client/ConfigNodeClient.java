@@ -2001,37 +2001,75 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createModel(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropModel(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowModelResp resp = client.showModel(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowTrailResp resp = client.showTrail(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
-    // TODO
     throw new TException(new UnsupportedOperationException().getCause());
   }
 
   @Override
   public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
-    // TODO
     throw new TException(new UnsupportedOperationException().getCause());
   }
 

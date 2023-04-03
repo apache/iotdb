@@ -870,8 +870,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

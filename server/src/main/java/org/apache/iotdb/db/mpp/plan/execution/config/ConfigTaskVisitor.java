@@ -49,6 +49,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.CreateModelTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.DropModelTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowTrailsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DropSchemaTemplateTask;
@@ -104,6 +108,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -446,6 +454,28 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowContinuousQueries(
       ShowContinuousQueriesStatement showContinuousQueriesStatement, TaskContext context) {
     return new ShowContinuousQueriesTask();
+  }
+
+  /** ML Model Management */
+  @Override
+  public IConfigTask visitCreateModel(
+      CreateModelStatement createModelStatement, TaskContext context) {
+    return new CreateModelTask(createModelStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropModel(DropModelStatement dropModelStatement, TaskContext context) {
+    return new DropModelTask(dropModelStatement.getModelId());
+  }
+
+  @Override
+  public IConfigTask visitShowModels(ShowModelsStatement showModelsStatement, TaskContext context) {
+    return new ShowModelsTask();
+  }
+
+  @Override
+  public IConfigTask visitShowTrails(ShowTrailsStatement showTrailsStatement, TaskContext context) {
+    return new ShowTrailsTask(showTrailsStatement.getModelId());
   }
 
   public static class TaskContext {
