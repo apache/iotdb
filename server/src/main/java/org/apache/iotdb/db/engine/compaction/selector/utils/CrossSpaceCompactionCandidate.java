@@ -40,6 +40,7 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> unseqFiles;
 
   private int nextUnseqFileIndex;
+  public boolean nextUnseqFileOverlap;
   private CrossCompactionTaskResourceSplit nextSplit;
   private long ttlLowerBound = Long.MIN_VALUE;
 
@@ -65,6 +66,7 @@ public class CrossSpaceCompactionCandidate {
     if (nextUnseqFileIndex >= unseqFiles.size()) {
       return false;
     }
+    nextUnseqFileOverlap = false;
     return prepareNextSplit();
   }
 
@@ -104,6 +106,7 @@ public class CrossSpaceCompactionCandidate {
             ret.add(seqFile);
             seqFile.markAsSelected();
           }
+          nextUnseqFileOverlap = true;
           // if this condition is satisfied, all subsequent seq files is unnecessary to check
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
@@ -111,6 +114,7 @@ public class CrossSpaceCompactionCandidate {
             ret.add(seqFile);
             seqFile.markAsSelected();
           }
+          nextUnseqFileOverlap = true;
         }
       }
     }
@@ -152,6 +156,10 @@ public class CrossSpaceCompactionCandidate {
     return seqFiles.stream()
         .map(tsFileResourceCandidate -> tsFileResourceCandidate.resource)
         .collect(Collectors.toList());
+  }
+
+  public List<TsFileResourceCandidate> getSeqFileCandidates() {
+    return seqFiles;
   }
 
   public List<TsFileResourceCandidate> getUnseqFileCandidates() {
