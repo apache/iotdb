@@ -48,7 +48,7 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
       ColumnTransformer elseTransformer) {
     super(returnType);
     Validate.isTrue(
-        whenTransformers.size() != thenTransformers.size(),
+        whenTransformers.size() == thenTransformers.size(),
         "the size between whenTransformers and thenTransformers needs to be same");
     this.whenThenTransformers = new ArrayList<>();
     for (int i = 0; i < whenTransformers.size(); i++) {

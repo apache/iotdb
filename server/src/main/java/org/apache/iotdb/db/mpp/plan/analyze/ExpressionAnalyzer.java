@@ -590,6 +590,8 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)) {
       return new Pair<>(null, true);
+    } else if (predicate.getExpressionType().equals(ExpressionType.CASE_WHEN_THEN)) {
+      return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
