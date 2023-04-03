@@ -119,7 +119,7 @@ public class IoTDBCaseWhenThenIT {
 
   @Test
   public void testKind1OutputTypeRestrict() {
-    // BOOLEAN and other types cannot exist at same time
+    // BOOLEAN and other types cannot exist at the same time
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
@@ -135,9 +135,9 @@ public class IoTDBCaseWhenThenIT {
     // fail
     assertTestFail(
         "select case when s1<=0 then true else 22 end from root.sg.d1",
-        "701: CASE expression: BOOLEAN and other types cannot exist at same time");
+        "701: CASE expression: BOOLEAN and other types cannot exist at the same time");
 
-    // TEXT and other types cannot exist at same time
+    // TEXT and other types cannot exist at the same time
     expectedHeader =
         new String[] {
           TIMESTAMP_STR,
@@ -152,9 +152,9 @@ public class IoTDBCaseWhenThenIT {
     // fail
     assertTestFail(
         "select case when s1<=0 then \"good\" else 22 end from root.sg.d1",
-        "701: CASE expression: TEXT and other types cannot exist at same time");
+        "701: CASE expression: TEXT and other types cannot exist at the same time");
 
-    // 4 numerical types(INT LONG FLOAT DOUBLE) can exist at same time
+    // 4 numerical types(INT LONG FLOAT DOUBLE) can exist at the same time
     expectedHeader = new String[] {TIMESTAMP_STR, "result"};
     retArray =
         new String[] {

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R, C> {
   @Override
@@ -32,10 +32,8 @@ public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R
   }
 
   List<R> getResultsFromChild(Expression expression, C context) {
-    List<R> result = new ArrayList<>();
-    for (Expression child : expression.getExpressions()) {
-      result.add(this.process(child, context));
-    }
-    return result;
+    return expression.getExpressions().stream()
+        .map(child -> this.process(child, context))
+        .collect(Collectors.toList());
   }
 }

@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang3.Validate;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,10 +47,9 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
       List<ColumnTransformer> thenTransformers,
       ColumnTransformer elseTransformer) {
     super(returnType);
-    if (whenTransformers.size() != thenTransformers.size()) {
-      throw new UnsupportedOperationException(
-          "the size of whenTransformers and thenTransformers need to be same.");
-    }
+    Validate.isTrue(
+        whenTransformers.size() != thenTransformers.size(),
+        "the size between whenTransformers and thenTransformers needs to be same");
     this.whenThenTransformers = new ArrayList<>();
     for (int i = 0; i < whenTransformers.size(); i++) {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));

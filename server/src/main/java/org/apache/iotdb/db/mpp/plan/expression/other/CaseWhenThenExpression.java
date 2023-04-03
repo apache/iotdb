@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -46,18 +47,19 @@ public class CaseWhenThenExpression extends Expression {
       List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
     this.whenThenExpressions = whenThenExpressions;
     this.elseExpression = elseExpression;
+    if (this.elseExpression == null) {
+      this.elseExpression = new NullOperand();
+    }
   }
 
   public CaseWhenThenExpression(ByteBuffer byteBuffer) {
-    while (true) {
+    int len = ReadWriteIOUtils.readInt(byteBuffer);
+    assert len > 0;
+    for (int i = 0; i < len; i++) {
       Expression expression = Expression.deserialize(byteBuffer);
-      if (expression.getExpressionType() == ExpressionType.WHEN_THEN) {
-        this.whenThenExpressions.add((WhenThenExpression) expression);
-      } else {
-        this.elseExpression = expression;
-        break;
-      }
+      this.whenThenExpressions.add((WhenThenExpression) expression);
     }
+    this.elseExpression = Expression.deserialize(byteBuffer);
   }
 
   public void setElseExpression(Expression expression) {
@@ -80,7 +82,9 @@ public class CaseWhenThenExpression extends Expression {
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     for (Expression expression : this.getExpressions()) {
-      if (!expression.isMappable(expressionTypes)) return false;
+      if (!expression.isMappable(expressionTypes)) {
+        return false;
+      }
     }
     return true;
   }
@@ -88,7 +92,9 @@ public class CaseWhenThenExpression extends Expression {
   @Override
   protected boolean isConstantOperandInternal() {
     for (Expression expression : this.getExpressions()) {
-      if (!expression.isConstantOperand()) return false;
+      if (!expression.isConstantOperand()) {
+        return false;
+      }
     }
     return true;
   }
@@ -136,11 +142,14 @@ public class CaseWhenThenExpression extends Expression {
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
+    int len = this.whenThenExpressions.size();
+    ReadWriteIOUtils.write(len, byteBuffer);
     getExpressions().forEach(child -> Expression.serialize(child, byteBuffer));
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.whenThenExpressions.size(), stream);
     for (Expression expression : this.getExpressions()) {
       Expression.serialize(expression, stream);
     }
@@ -157,7 +166,4 @@ public class CaseWhenThenExpression extends Expression {
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);
   }
-
-  // TODO: constructUdfExecutors
-
 }

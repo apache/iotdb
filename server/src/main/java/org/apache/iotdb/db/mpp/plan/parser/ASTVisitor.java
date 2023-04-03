@@ -2449,20 +2449,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // handle WHEN-THEN
     List<WhenThenExpression> whenThenList = new ArrayList<>();
     if (simpleCase) {
-      for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext : context.whenThenExpression()) {
+      for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
+          context.whenThenExpression()) {
         Expression when = parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath);
         Expression then = parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath);
         Expression comparison = new EqualToExpression(caseExpression, when);
         whenThenList.add(new WhenThenExpression(comparison, then));
       }
-    }
-    else {
+    } else {
       for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
           context.whenThenExpression()) {
-        whenThenList.add(new WhenThenExpression(
-            parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath),
-            parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath)
-        ));
+        whenThenList.add(
+            new WhenThenExpression(
+                parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath),
+                parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath)));
       }
     }
     // handle ELSE

@@ -312,24 +312,24 @@ public class ExpressionTypeAnalyzer {
       if (elseType != null) {
         typeSet.add(elseType);
       }
-      // if TEXT exist, every branch need to be TEXT
+      // if TEXT exists, every branch need to be TEXT
       if (typeSet.contains(TSDataType.TEXT)) {
         if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.TEXT)) {
           throw new SemanticException(
-              "CASE expression: TEXT and other types cannot exist at same time");
+              "CASE expression: TEXT and other types cannot exist at the same time");
         }
         return setExpressionType(caseWhenThenExpression, TSDataType.TEXT);
       }
-      // if BOOLEAN exist, every branch need to be BOOLEAN
+      // if BOOLEAN exists, every branch need to be BOOLEAN
       if (typeSet.contains(TSDataType.BOOLEAN)) {
         if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.BOOLEAN)) {
           throw new SemanticException(
-              "CASE expression: BOOLEAN and other types cannot exist at same time");
+              "CASE expression: BOOLEAN and other types cannot exist at the same time");
         }
         return setExpressionType(caseWhenThenExpression, TSDataType.BOOLEAN);
       }
-      // other 4 TSDataType can exist at same time
-      // because they can transform by Type, finally treated as DOUBLE
+      // other 4 TSDataType can exist at the same time
+      // because they can be transformed by Type, finally treated as DOUBLE
       return setExpressionType(caseWhenThenExpression, TSDataType.DOUBLE);
     }
 

@@ -357,7 +357,6 @@ public class ColumnTransformerVisitor
         context.inputDataTypes.add(context.getType(caseWhenThenExpression));
         context.cache.put(caseWhenThenExpression, identity);
       } else {
-        //        List<WhenThenColumnTransformer> whenThenColumnTransformers = new ArrayList<>();
         List<ColumnTransformer> whenList = new ArrayList<>();
         List<ColumnTransformer> thenList = new ArrayList<>();
         for (WhenThenExpression whenThenExpression :
