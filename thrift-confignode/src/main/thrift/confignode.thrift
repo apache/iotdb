@@ -1346,7 +1346,7 @@ service IConfigNodeRPCService {
   /** Set Space Quota */
   common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 
-  TSpaceQuotaResp showSpaceQuota(list<string> storageGroups);
+  TSpaceQuotaResp showSpaceQuota(list<string> databases);
 
   TSpaceQuotaResp getSpaceQuota();
 }
