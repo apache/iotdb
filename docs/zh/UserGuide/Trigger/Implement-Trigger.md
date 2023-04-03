@@ -183,9 +183,9 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 
 您可以参考下图辅助理解，其中 Trigger1 配置采用乐观策略，Trigger2 配置采用悲观策略。Trigger1 和 Trigger2 的触发时机是 BEFORE INSERT，Trigger3 和 Trigger4 的触发时机是 AFTER INSERT。 正常执行流程如下：
 
-<img src="/img/UserGuide/Process-Data/Triggers/Trigger_Process_Flow.jpg?raw=true">
+<img src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Triggers/Trigger_Process_Flow.jpg?raw=true">
 
-<img src="/img/UserGuide/Process-Data/Triggers/Trigger_Process_Strategy.jpg?raw=true">
+<img src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Triggers/Trigger_Process_Strategy.jpg?raw=true">
 
 
 ### 示例

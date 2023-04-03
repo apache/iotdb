@@ -33,15 +33,15 @@ IoTDB 支持用户通过修改日志配置文件的方式对 IoTDB 系统日志�
 
 本节以 Jconsole 为例介绍连接 JMX 并进入动态系统日志配置模块的方法。启动 Jconsole 控制页面，在新建连接处建立与 IoTDB Server 的 JMX 连接（可以选择本地进程或给定 IoTDB 的 IP 及 PORT 进行远程连接，IoTDB 的 JMX 服务默认运行端口为 31999），如下图使用远程进程连接 Localhost 下运行在 31999 端口的 IoTDB JMX 服务。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
 
 连接到 JMX 后，您可以通过 MBean 选项卡找到名为`ch.qos.logback.classic`的`MBean`，如下图所示。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png">
 
 在`ch.qos.logback.classic`的 MBean 操作（Operations）选项中，可以看到当前动态系统日志配置支持的 6 种接口，您可以通过使用相应的方法，来执行相应的操作，操作页面如图。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
 
 #### 动态系统日志接口说明
 
