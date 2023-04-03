@@ -396,6 +396,6 @@ makes alerts of `critical` severity inhibit those of `warning` severity,
 the alerting email we receive only contains the alert triggered
 by the writing of `(5, 120)`.
 
-<img width="669" alt="alerting" src="/img/github/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
+<img width="669" alt="alerting" src="https://alioss.timecho.com/docs/img/github/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
 
 
