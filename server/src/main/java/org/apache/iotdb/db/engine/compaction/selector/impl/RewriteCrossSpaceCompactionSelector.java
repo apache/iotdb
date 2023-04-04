@@ -155,8 +155,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
-      if (!checkUnseqFileHasOverlapOrNot(candidate, taskResource, targetSeqFiles)) {
-        break;
+      if (!split.hasOverlap) {
+        TsFileResource latestSealedSeqFile = getLatestSealedSeqFile(candidate.getSeqFileCandidates());
+        if (latestSealedSeqFile == null) {
+          break;
+        }
+        targetSeqFiles.add(latestSealedSeqFile);
       }
 
       long memoryCost =
@@ -176,16 +180,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return taskResource;
   }
 
-  private boolean checkUnseqFileHasOverlapOrNot(
-      CrossSpaceCompactionCandidate candidate,
-      CrossCompactionTaskResource taskResource,
-      List<TsFileResource> seqFiles) {
-    if (candidate.nextUnseqFileOverlap) {
-      return true;
-    }
-    // the current unseq file does not overlap with any seq files
-    LOGGER.info("Unseq file {} does not overlap with any seq files.", taskResource.getUnseqFiles());
-    List<TsFileResourceCandidate> seqResourceCandidateList = candidate.getSeqFileCandidates();
+  private TsFileResource getLatestSealedSeqFile(List<TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
       TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
@@ -195,13 +190,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           LOGGER.info(
               "Select one valid seq file {} for unseq file to compact with.",
               seqResourceCandidate.resource);
-          seqFiles.add(seqResourceCandidate.resource);
-          return true;
+          return seqResourceCandidate.resource;
         }
         break;
       }
     }
-    return false;
+    return null;
   }
 
   // TODO: (xingtanzjr) need to confirm whether we should strictly guarantee the conditions
