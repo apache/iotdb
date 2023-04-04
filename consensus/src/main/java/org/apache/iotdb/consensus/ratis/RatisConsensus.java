@@ -726,16 +726,14 @@ class RatisConsensus implements IConsensus {
       final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
-        final String allFiles =
-            monitor.getFilesUnder(currentDir).stream()
-                .map(f -> f.toFile().getName() + ",")
-                .collect(Collectors.joining());
+        final StringBuilder allFileNamesBuilder = new StringBuilder();
+        monitor.getFilesUnder(currentDir).forEach(p -> allFileNamesBuilder.append(p).append(","));
         logger.info(
             "{}: take snapshot for region {}, current dir size {}, files {}",
             this,
             raftGroupId,
             currentDirLength,
-            allFiles);
+            allFileNamesBuilder);
 
         ConsensusGenericResponse consensusGenericResponse =
             triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));

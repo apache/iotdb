@@ -48,6 +48,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,6 +57,10 @@ public class Utils {
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
+
+  /* whether the path denotes an open segment under active writing progress*/
+  private static final Predicate<Path> isOpenSegment =
+      p -> p.toFile().getName().startsWith("log_inprogress");
 
   private Utils() {}
 
@@ -294,12 +299,12 @@ public class Utils {
       final DirectoryState prev = directoryMap.computeIfAbsent(dir, d -> new DirectoryState());
       List<Path> latest;
       try (Stream<Path> files = Files.list(dir.toPath())) {
-        latest = files.filter(p -> p.getFileName().startsWith("log_inprogress"))  // filter out the in progress ratis log
-                .collect(Collectors.toList());
+        latest = files.filter(isOpenSegment).collect(Collectors.toList());
       } catch (IOException e) {
         RatisConsensus.logger.warn(
             "{}: Error caught when listing files under {}: {}", this, dir, e);
-        latest = Collections.emptyList();
+        // keep the files unchanged and return the size calculated last time
+        return prev.size;
       }
       final long sizeDiff = diff(prev.memorizedFiles, latest);
       final long newSize = prev.size + sizeDiff;
