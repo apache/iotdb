@@ -109,15 +109,15 @@ public class ClusterSchemaManager {
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
-  private final ClusterSchemaQuotaInfo schemaQuotaInfo;
+  private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
 
   public ClusterSchemaManager(
       IManager configManager,
       ClusterSchemaInfo clusterSchemaInfo,
-      ClusterSchemaQuotaInfo schemaQuotaInfo) {
+      ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
-    this.schemaQuotaInfo = schemaQuotaInfo;
+    this.schemaQuotaStatistics = schemaQuotaStatistics;
   }
 
   // ======================================================
@@ -815,15 +815,15 @@ public class ClusterSchemaManager {
   }
 
   public long getSchemaQuotaCount() {
-    return schemaQuotaInfo.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
+    return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
   }
 
   public void updateSchemaQuota(Map<TConsensusGroupId, Long> schemaCountMap) {
-    schemaQuotaInfo.updateCount(schemaCountMap);
+    schemaQuotaStatistics.updateCount(schemaCountMap);
   }
 
   public void clearSchemaQuotaCache() {
-    schemaQuotaInfo.clear();
+    schemaQuotaStatistics.clear();
   }
 
   /**
