@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from torch.utils.data import Dataset
+import numpy as np
 
+from torch.utils.data import Dataset
+from typing import Tuple
 from iotdb.mlnode.data_access.offline.source import DataSource
 from iotdb.mlnode.data_access.utils.timefeatures import time_features
 
@@ -40,15 +42,15 @@ class TimeSeriesDataset(Dataset):
         self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
         self.n_vars = self.data.shape[-1]
 
-    def get_variable_num(self):
+    def get_variable_num(self) -> int:
         return self.n_vars  # number of series in data_source
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> Tuple[np.ndarray, np.ndarray]:
         seq = self.data[index]
         seq_t = self.data_stamp[index]
         return seq, seq_t
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
 
@@ -81,7 +83,7 @@ class WindowDataset(TimeSeriesDataset):
         if pred_len > self.data.shape[0]:
             raise RuntimeError('pred_len should not be larger than the number of time series points')
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         s_begin = index
         s_end = s_begin + self.input_len
         r_begin = s_end
@@ -92,5 +94,5 @@ class WindowDataset(TimeSeriesDataset):
         seq_y_t = self.data_stamp[r_begin:r_end]
         return seq_x, seq_y, seq_x_t, seq_y_t
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data) - self.input_len - self.pred_len + 1

@@ -17,8 +17,10 @@
 #
 
 
-import argparse
 import re
+import argparse
+
+from typing import List, Dict, Tuple
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
@@ -34,7 +36,7 @@ class _ConfigParser(argparse.ArgumentParser):
     def __init__(self):
         super().__init__()
 
-    def parse_configs(self, configs):
+    def parse_configs(self, configs) -> Dict:
         """
         Parse configs from a dict
         Args:configs: a dict of all configs which contains all required arguments
@@ -44,7 +46,7 @@ class _ConfigParser(argparse.ArgumentParser):
         return vars(self.parse_known_args(args)[0])
 
     @staticmethod
-    def parse_dict(config_dict):
+    def parse_dict(config_dict) -> List:
         """
         Parse a dict of configs to a list of arguments
         Args:config_dict: a dict of configs
@@ -182,7 +184,7 @@ _task_config_parser.add_argument('--devices', type=int, nargs='+', default=[0])
 _task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE', 'MAE'])
 
 
-def parse_training_request(req: TCreateTrainingTaskReq):
+def parse_training_request(req: TCreateTrainingTaskReq) -> Tuple[Dict, Dict, Dict]:
     """
     Parse TCreateTrainingTaskReq with given yaml template
     Args:

@@ -17,6 +17,8 @@
 #
 import torch.nn as nn
 
+from typing import Dict, Tuple
+
 from iotdb.mlnode.algorithm.enums import ForecastModelType, ForecastTaskType
 from iotdb.mlnode.algorithm.models.forecast.dlinear import (dlinear,
                                                             dlinear_individual)
@@ -56,7 +58,7 @@ def create_forecast_model(
         output_vars=1,
         forecast_task_type=ForecastTaskType.ENDOGENOUS,
         **kwargs,
-) -> [nn.Module, dict]:
+) -> Tuple[nn.Module, Dict]:
     """
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
