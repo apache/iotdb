@@ -156,7 +156,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
       if (!split.hasOverlap) {
-        TsFileResource latestSealedSeqFile = getLatestSealedSeqFile(candidate.getSeqFileCandidates());
+        LOGGER.info("Unseq file {} does not overlap with any seq files.", unseqFile);
+        TsFileResource latestSealedSeqFile =
+            getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
           break;
         }
@@ -180,7 +182,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return taskResource;
   }
 
-  private TsFileResource getLatestSealedSeqFile(List<TsFileResourceCandidate> seqResourceCandidateList) {
+  private TsFileResource getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
       TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
