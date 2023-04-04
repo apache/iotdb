@@ -449,8 +449,8 @@ public class AbstractCompactionTest {
               path,
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-              seqResources,
-              unseqResources,
+              tsFileManager.getTsFileList(true),
+              tsFileManager.getTsFileList(false),
               true);
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
@@ -490,7 +490,8 @@ public class AbstractCompactionTest {
         }
       }
       if (timeseriesData.size() > 0) {
-        // there are still data points left, which are not in the target file
+        // there are still data points left, which are not in the target file. Lost the data after
+        // compaction.
         fail();
       }
     }

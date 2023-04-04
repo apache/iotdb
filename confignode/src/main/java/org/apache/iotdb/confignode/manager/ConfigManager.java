@@ -468,7 +468,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
-    clusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
+    clusterParameters.setDataRegionPerDataNode(CONF.getDataRegionPerDataNode());
     clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
@@ -1077,8 +1077,8 @@ public class ConfigManager implements IManager {
     if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
       return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
     }
-    if (clusterParameters.getDataRegionPerProcessor() != CONF.getDataRegionPerProcessor()) {
-      return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
+    if (clusterParameters.getDataRegionPerDataNode() != CONF.getDataRegionPerDataNode()) {
+      return errorStatus.setMessage(errorPrefix + "data_region_per_data_node" + errorSuffix);
     }
 
     if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {

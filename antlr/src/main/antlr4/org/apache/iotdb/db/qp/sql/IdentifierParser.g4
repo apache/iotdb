@@ -43,6 +43,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AUTO
     | BEFORE
     | BEGIN
     | BLOCKED
@@ -74,6 +75,7 @@ keyWords
     | DESC
     | DESCRIBE
     | DEVICE
+    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
@@ -115,6 +117,8 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MODEL
+    | MODELS
     | NODES
     | NONE
     | NOW
@@ -175,6 +179,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTRING
     | SYSTEM
     | TAGS
     | TASK
@@ -186,6 +191,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
+    | TRAILS
     | TRIGGER
     | TRIGGERS
     | TTL

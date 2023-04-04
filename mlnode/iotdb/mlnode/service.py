@@ -33,7 +33,7 @@ class RPCService(threading.Thread):
         super().__init__()
         processor = IMLNodeRPCService.Processor(handler=MLNodeRPCServiceHandler())
         transport = TSocket.TServerSocket(host=config.get_mn_rpc_address(), port=config.get_mn_rpc_port())
-        transport_factory = TTransport.TBufferedTransportFactory()
+        transport_factory = TTransport.TFramedTransportFactory()
         protocol_factory = TCompactProtocol.TCompactProtocolFactory()
 
         self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)

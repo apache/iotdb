@@ -24,6 +24,7 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
@@ -40,7 +41,12 @@ public class AuthorizationHandler {
             .build();
       }
     } catch (AuthException e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.ok()
+          .entity(
+              new ExecutionStatus()
+                  .message(e.getMessage())
+                  .code(Status.BAD_REQUEST.getStatusCode()))
+          .build();
     }
     return null;
   }

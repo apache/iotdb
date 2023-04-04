@@ -229,8 +229,7 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
-    if (properties.getProperty("dn_core_client_count_for_each_node_in_client_manager", null)
-        != null) {
+    if (properties.getProperty("dn_core_connection_for_internal_service", null) != null) {
       conf.setCoreClientNumForEachNode(
           Integer.parseInt(
               properties.getProperty("dn_core_connection_for_internal_service").trim()));
@@ -245,15 +244,12 @@ public class IoTDBDescriptor {
                     String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
-    if (properties.getProperty("dn_max_client_count_for_each_node_in_client_manager", null)
-        != null) {
+    if (properties.getProperty("dn_max_connection_for_internal_service", null) != null) {
       conf.setMaxClientNumForEachNode(
           Integer.parseInt(
-              properties
-                  .getProperty("dn_max_client_count_for_each_node_in_client_manager")
-                  .trim()));
+              properties.getProperty("dn_max_connection_for_internal_service").trim()));
       logger.warn(
-          "The parameter dn_max_client_count_for_each_node_in_client_manager is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
     }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -289,6 +285,19 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
+                .trim()));
+
+    conf.setEnableMLNodeService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_mlnode_rpc_service", Boolean.toString(conf.isEnableMLNodeService()))
+                .trim()));
+
+    conf.setMLNodePort(
+        Integer.parseInt(
+            properties
+                .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
                 .trim()));
 
     conf.setTimestampPrecision(
@@ -1792,6 +1801,15 @@ public class IoTDBDescriptor {
 
   private void loadPipeProps(Properties properties) {
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+
+    conf.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_thread_num",
+                Integer.toString(conf.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (conf.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      conf.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
   }
 
   private void loadCQProps(Properties properties) {

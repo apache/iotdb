@@ -377,6 +377,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
+  /*
+  NonAligned measurement iterator.
+   */
   public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
@@ -429,6 +432,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         if (chunkMetadataListMap.size() == 0) {
           if (chunkMetadataIteratorMap.get(resource).hasNext()) {
             chunkMetadataListMap = chunkMetadataIteratorMap.get(resource).next();
+            if (chunkMetadataListMap.containsKey("")) {
+              // encounter deleted aligned series, then remove it
+              chunkMetadataListMap.remove("");
+            }
             chunkMetadataCacheMap.put(reader, chunkMetadataListMap);
           } else {
             continue;

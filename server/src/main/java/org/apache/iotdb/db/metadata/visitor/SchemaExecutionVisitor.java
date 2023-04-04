@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -324,6 +325,25 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus visitBatchActivateTemplate(
+      BatchActivateTemplateNode node, ISchemaRegion schemaRegion) {
+    for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+        node.getTemplateActivationMap().entrySet()) {
+      Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      try {
+        schemaRegion.activateSchemaTemplate(
+            SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+                entry.getKey(), entry.getValue().right, entry.getValue().left),
+            template);
+      } catch (MetadataException e) {
+        logger.error(e.getMessage(), e);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFStartsWith;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrCompare;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLength;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLocate;
-import org.apache.iotdb.commons.udf.builtin.String.UDTFSubstr;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
 
@@ -61,7 +60,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   STRING_STARTS_WITH("STARTSWITH", UDTFStartsWith.class),
   STRING_ENDS_WITH("ENDSWITH", UDTFEndsWith.class),
   STRING_CONCAT("CONCAT", UDTFConcat.class),
-  STRING_SUBSTR("SUBSTR", UDTFSubstr.class),
   STRING_UPPER("UPPER", UDTFUpper.class),
   STRING_LOWER("LOWER", UDTFLower.class),
   STRING_TRIM("TRIM", UDTFTrim.class),

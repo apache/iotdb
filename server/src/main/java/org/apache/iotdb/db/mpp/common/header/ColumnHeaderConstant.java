@@ -114,7 +114,7 @@ public class ColumnHeaderConstant {
   public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
   public static final String DEFAULT_TTL = "DefaultTTL(ms)";
   public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
-  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String DATA_REGION_PER_DATA_NODE = "DataRegionPerDataNode";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
 
@@ -160,6 +160,15 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+
+  // column names for show models/trails
+  public static final String MODEL_ID = "ModelId";
+  public static final String TRAIL_ID = "TrailId";
+  public static final String MODEL_TASK = "ModelTask";
+  public static final String MODEL_TYPE = "ModelType";
+  public static final String QUERY_BODY = "QueryBody";
+  public static final String HYPERPARAMETER = "Hyperparameter";
+  public static final String MODEL_PATH = "ModelPath";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -395,4 +404,20 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showModelsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TASK, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
+          new ColumnHeader(QUERY_BODY, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTrailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 }

@@ -405,6 +405,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
+  /** Enable the service for MLNode */
+  private boolean enableMLNodeService = false;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -860,6 +863,9 @@ public class IoTDBConfig {
   /** Internal port for coordinator */
   private int internalPort = 10730;
 
+  /** Port for MLNode */
+  private int mlNodePort = 10780;
+
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
 
@@ -1057,6 +1063,9 @@ public class IoTDBConfig {
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
+  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
+  private int pipeMaxThreadNum = 5;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -1152,6 +1161,8 @@ public class IoTDBConfig {
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    pipeDir = addDataHomeDir(pipeDir);
+    pipeTemporaryLibDir = addDataHomeDir(pipeDir);
     mqttDir = addDataHomeDir(mqttDir);
 
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -2673,6 +2684,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableMLNodeService() {
+    return enableMLNodeService;
+  }
+
+  public void setEnableMLNodeService(boolean enableMLNodeService) {
+    this.enableMLNodeService = enableMLNodeService;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -2924,6 +2943,14 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public int getMLNodePort() {
+    return mlNodePort;
+  }
+
+  public void setMLNodePort(int mlNodePort) {
+    this.mlNodePort = mlNodePort;
   }
 
   public int getDataRegionConsensusPort() {
@@ -3660,5 +3687,13 @@ public class IoTDBConfig {
 
   public int getModeMapSizeThreshold() {
     return modeMapSizeThreshold;
+  }
+
+  public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
+    this.pipeMaxThreadNum = pipeMaxThreadNum;
+  }
+
+  public int getPipeSubtaskExecutorMaxThreadNum() {
+    return pipeMaxThreadNum;
   }
 }

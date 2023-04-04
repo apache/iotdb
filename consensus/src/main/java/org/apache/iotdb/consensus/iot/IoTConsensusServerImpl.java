@@ -94,6 +94,8 @@ public class IoTConsensusServerImpl {
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
   private final Peer thisNode;
   private final IStateMachine stateMachine;
@@ -224,14 +226,7 @@ public class IoTConsensusServerImpl {
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(planNode);
-      MetricService.getInstance()
-          .timer(
-              System.nanoTime() - startWriteTime,
-              TimeUnit.NANOSECONDS,
-              Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.STAGE.toString(),
-              PerformanceOverviewMetrics.ENGINE);
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
 
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine

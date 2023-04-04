@@ -139,6 +139,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
     IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
+      regionStatistics.addDevice();
       requestMemory(result.estimateSize() - node.estimateSize());
     }
 
@@ -152,6 +153,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
+      regionStatistics.deleteDevice();
       releaseMemory(entityMNode.estimateSize() - result.estimateSize());
     }
     if (result.isDatabase()) {
@@ -210,10 +212,12 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public static MemMTreeStore loadFromSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     return new MemMTreeStore(
-        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
+        MemMTreeSnapshotUtil.loadSnapshot(
+            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
         regionStatistics);
   }
 

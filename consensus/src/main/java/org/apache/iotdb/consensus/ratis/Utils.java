@@ -217,6 +217,8 @@ public class Utils {
     RaftServerConfigKeys.Snapshot.setCreationGap(properties, config.getSnapshot().getCreationGap());
     RaftServerConfigKeys.Snapshot.setRetentionFileNum(
         properties, config.getSnapshot().getRetentionFileNum());
+    // FIXME: retain 2 copies to avoid race conditions between (delete) and (transfer)
+    RaftServerConfigKeys.Snapshot.setRetentionFileNum(properties, 2);
 
     RaftServerConfigKeys.ThreadPool.setClientCached(
         properties, config.getThreadPool().isClientCached());

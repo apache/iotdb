@@ -140,6 +140,10 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.instanceId);
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    localMemoryManager
+        .getQueryPool()
+        .registerPlanNodeIdToQueryMemoryMap(
+            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
   }
 
   @Override
@@ -222,10 +226,6 @@ public class SinkChannel implements ISinkChannel {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    localMemoryManager
-        .getQueryPool()
-        .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onAborted(this);
     aborted = true;
     LOGGER.debug("[EndAbortSinkChannel]");
@@ -249,10 +249,6 @@ public class SinkChannel implements ISinkChannel {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    localMemoryManager
-        .getQueryPool()
-        .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onFinish(this);
     closed = true;
     LOGGER.debug("[EndCloseSinkChannel]");

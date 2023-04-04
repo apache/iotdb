@@ -239,7 +239,9 @@ class IoTDBRpcDataSet(object):
                 if len(data_array) < total_length:
                     if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE:
+                    elif (
+                        data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE
+                    ):
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == TSDataType.BOOLEAN:
                         tmp_array = np.full(total_length, np.nan, np.float32)
@@ -248,7 +250,7 @@ class IoTDBRpcDataSet(object):
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
-                    bit_mask = (np.fromstring(bitmap_str, 'u1') - ord('0')).astype(bool)
+                    bit_mask = (np.fromstring(bitmap_str, "u1") - ord("0")).astype(bool)
                     if len(bit_mask) != total_length:
                         bit_mask = bit_mask[:total_length]
                     tmp_array[bit_mask] = data_array

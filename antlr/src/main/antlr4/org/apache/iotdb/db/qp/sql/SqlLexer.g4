@@ -85,6 +85,10 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
+AUTO
+    : A U T O
+    ;
+
 BEFORE
     : B E F O R E
     ;
@@ -390,6 +394,14 @@ MIGRATE
     : M I G R A T E
     ;
 
+MODEL
+    : M O D E L
+    ;
+
+MODELS
+    : M O D E L S
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -646,6 +658,10 @@ STOP
     : S T O P
     ;
 
+SUBSTRING
+    : S U B S T R I N G
+    ;
+
 SYSTEM
     : S Y S T E M
     ;
@@ -700,6 +716,10 @@ TOP
 
 TRACING
     : T R A C I N G
+    ;
+
+TRAILS
+    : T R A I L S
     ;
 
 TRIGGER
