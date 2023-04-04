@@ -161,10 +161,14 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
 
-  // column names for quotas
-  public static final String QUOTA_TYPE = "quotaType";
-  public static final String LIMIT = "limit";
-  public static final String USED = "used";
+  // column names for show space quota
+  public static final String QUOTA_TYPE = "QuotaType";
+  public static final String LIMIT = "Limit";
+  public static final String USED = "Used";
+
+  // column names for show throttle quota
+  public static final String USER = "User";
+  public static final String READ_WRITE = "Read/Write";
 
   // column names for show models/trails
   public static final String MODEL_ID = "ModelId";
@@ -416,6 +420,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
           new ColumnHeader(LIMIT, TSDataType.TEXT),
           new ColumnHeader(USED, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showThrottleQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(USER, TSDataType.TEXT),
+          new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(LIMIT, TSDataType.TEXT),
+          new ColumnHeader(READ_WRITE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showModelsColumnHeaders =
       ImmutableList.of(

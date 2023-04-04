@@ -191,6 +191,9 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(config.isQuotaEnable()))));
 
+    config.setRateLimiterType(
+        properties.getProperty("rate_limiter_type", config.getRateLimiterType()));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",

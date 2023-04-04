@@ -64,6 +64,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
+import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
+import org.apache.iotdb.db.quotas.OperationQuota;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -189,6 +191,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long queryId = Long.MIN_VALUE;
     String statement = req.getStatement();
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
@@ -209,6 +213,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
       statementType = s.getType();
       if (enableAuditLog) {
         AuditLogger.log(statement, s);
@@ -240,6 +247,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setStatus(result.status);
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
         } else {
           finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
@@ -263,6 +271,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
       SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
     }
   }
 

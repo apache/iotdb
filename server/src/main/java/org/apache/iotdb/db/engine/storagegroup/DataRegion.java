@@ -1261,7 +1261,7 @@ public class DataRegion implements IDataRegionForQuery {
               "Unable to continue writing data, because the space allocated to the database "
                   + databaseName
                   + " has already used the upper limit",
-              TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
+              TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
         }
         if (sequence) {
           tsFileProcessor =
