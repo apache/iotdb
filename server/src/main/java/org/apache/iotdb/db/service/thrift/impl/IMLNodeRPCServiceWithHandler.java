@@ -17,17 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+import org.apache.iotdb.mpp.rpc.thrift.IMLNodeInternalRPCService;
 
-public interface PipeSubtaskScheduler {
-
-  void createSubtask(String subtaskId, PipeSubtask subtask);
-
-  void dropSubtask(String subtaskId);
-
-  void startSubtask(String subtaskId);
-
-  void stopSubtask(String subtaskId);
+public interface IMLNodeRPCServiceWithHandler extends IMLNodeInternalRPCService.Iface {
+  void handleExit();
 }

@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.task.callable;
 
-public class PipeConnectorSubtask extends PipeSubtask {
+public class PipeAssignerSubtask extends PipeSubtask {
 
-  public PipeConnectorSubtask(String taskID) {
+  public PipeAssignerSubtask(String taskID) {
     super(taskID);
   }
 
   @Override
-  public void runMayThrow() throws Throwable {}
+  protected void executeForAWhile() {
+    // do nothing
+  }
 }

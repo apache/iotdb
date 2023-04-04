@@ -17,14 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.execution.executor;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+import org.apache.iotdb.db.pipe.task.callable.PipeAssignerSubtask;
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
+import org.junit.Before;
+import org.mockito.Mockito;
+
+public class PipeAssignerSubtaskExecutorTest extends PipeSubtaskExecutorTest {
+
+  @Before
+  public void setUp() throws Exception {
+    executor = new PipeAssignerSubtaskExecutor();
+
+    subtask =
+        Mockito.spy(
+            new PipeAssignerSubtask("PipeAssignerSubtaskExecutorTest") {
+              @Override
+              public void executeForAWhile() {}
+            });
   }
-
-  @Override
-  public void runMayThrow() throws Throwable {}
 }

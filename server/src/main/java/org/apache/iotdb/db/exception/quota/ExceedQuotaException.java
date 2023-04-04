@@ -17,20 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.exception.quota;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+import org.apache.iotdb.commons.exception.MetadataException;
 
-public class PipeProcessorSubtaskScheduler implements PipeSubtaskScheduler {
-  @Override
-  public void createSubtask(String subtaskId, PipeSubtask subtask) {}
+public class ExceedQuotaException extends MetadataException {
 
-  @Override
-  public void dropSubtask(String subtaskId) {}
-
-  @Override
-  public void startSubtask(String subtaskId) {}
-
-  @Override
-  public void stopSubtask(String subtaskId) {}
+  public ExceedQuotaException(String message, int errorCode) {
+    super(message, errorCode);
+  }
 }

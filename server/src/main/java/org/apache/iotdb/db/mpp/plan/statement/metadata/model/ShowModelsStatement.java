@@ -17,14 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.mpp.plan.statement.metadata.model;
 
-public class PipeProcessorSubtask extends PipeSubtask {
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-  public PipeProcessorSubtask(String taskID) {
-    super(taskID);
+import java.util.Collections;
+import java.util.List;
+
+public class ShowModelsStatement extends Statement implements IConfigStatement {
+
+  public ShowModelsStatement() {}
+
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override
-  public void runMayThrow() throws Throwable {}
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowModels(this, context);
+  }
 }

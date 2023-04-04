@@ -17,20 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.runnable;
+package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
 
-public abstract class PipeSubtask extends WrappedRunnable {
+public class PipeProcessorSubtask extends PipeSubtask {
 
-  private final String taskID;
+  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
 
-  public PipeSubtask(String taskID) {
-    super();
-    this.taskID = taskID;
+  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
+    super(taskID);
+    this.pipeProcessor = pipeProcessor;
   }
 
-  public String getTaskID() {
-    return taskID;
+  @Override
+  protected void executeForAWhile() {
+    pipeProcessor.executeForAWhile();
   }
 }

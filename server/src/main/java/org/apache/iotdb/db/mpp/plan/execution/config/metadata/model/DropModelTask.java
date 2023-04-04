@@ -17,20 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.scheduler;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata.model;
 
-import org.apache.iotdb.db.pipe.task.runnable.PipeSubtask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 
-public class PipeAssignerSubtaskScheduler implements PipeSubtaskScheduler {
+import com.google.common.util.concurrent.ListenableFuture;
+
+public class DropModelTask implements IConfigTask {
+
+  private final String modelId;
+
+  public DropModelTask(String modelId) {
+    this.modelId = modelId;
+  }
+
   @Override
-  public void createSubtask(String subtaskId, PipeSubtask subtask) {}
-
-  @Override
-  public void dropSubtask(String subtaskId) {}
-
-  @Override
-  public void startSubtask(String subtaskId) {}
-
-  @Override
-  public void stopSubtask(String subtaskId) {}
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.dropModel(modelId);
+  }
 }
