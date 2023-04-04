@@ -17,10 +17,9 @@
 #
 
 
-import re
 import argparse
-
-from typing import List, Dict, Tuple
+import re
+from typing import Dict, List, Tuple
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType

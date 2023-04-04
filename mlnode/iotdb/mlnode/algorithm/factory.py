@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import torch.nn as nn
-
 from typing import Dict, Tuple
+
+import torch.nn as nn
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType, ForecastTaskType
 from iotdb.mlnode.algorithm.models.forecast.dlinear import (dlinear,

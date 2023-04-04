@@ -18,7 +18,6 @@
 import numpy as np
 import pandas as pd
 
-from iotdb.mlnode import serde
 from iotdb.mlnode.client import client_manager
 
 

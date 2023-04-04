@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from torch.utils.data import Dataset
 from typing import Dict, Tuple
+
+from torch.utils.data import Dataset
+
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
                                                       WindowDataset)

@@ -15,10 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import numpy as np
-
-from torch.utils.data import Dataset
 from typing import Tuple
+
+import numpy as np
+from torch.utils.data import Dataset
+
 from iotdb.mlnode.data_access.offline.source import DataSource
 from iotdb.mlnode.data_access.utils.timefeatures import time_features
 

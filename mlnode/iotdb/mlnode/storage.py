@@ -19,11 +19,12 @@
 import json
 import os
 import shutil
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 from pylru import lrucache
-from typing import Dict, Tuple
+
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.log import logger

@@ -16,14 +16,14 @@
 # under the License.
 #
 import time
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
-from iotdb.mlnode import serde
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
+from iotdb.mlnode import serde
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.log import logger
@@ -34,7 +34,6 @@ from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
 from iotdb.thrift.datanode import IMLNodeInternalRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
-                                          TFetchTimeseriesResp,
                                           TRecordModelMetricsReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
