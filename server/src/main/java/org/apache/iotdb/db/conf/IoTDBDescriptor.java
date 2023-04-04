@@ -287,6 +287,19 @@ public class IoTDBDescriptor {
                 .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
                 .trim()));
 
+    conf.setEnableMLNodeService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_mlnode_rpc_service", Boolean.toString(conf.isEnableMLNodeService()))
+                .trim()));
+
+    conf.setMLNodePort(
+        Integer.parseInt(
+            properties
+                .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
+                .trim()));
+
     conf.setTimestampPrecision(
         properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
 
