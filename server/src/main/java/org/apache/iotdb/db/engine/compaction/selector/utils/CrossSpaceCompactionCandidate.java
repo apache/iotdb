@@ -177,7 +177,9 @@ public class CrossSpaceCompactionCandidate {
     public boolean hasOverlap;
 
     public CrossCompactionTaskResourceSplit(
-        TsFileResourceCandidate unseqFile, List<TsFileResourceCandidate> seqFiles, boolean hasOverlap) {
+        TsFileResourceCandidate unseqFile,
+        List<TsFileResourceCandidate> seqFiles,
+        boolean hasOverlap) {
       this.unseqFile = unseqFile;
       this.seqFiles = seqFiles;
       this.hasOverlap = hasOverlap;
