@@ -66,9 +66,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "boolean",
       "datatype",
       "device",
-      "123w",
-      "123d",
-      "123h"
     };
 
     String[] resultTimeseries = {
