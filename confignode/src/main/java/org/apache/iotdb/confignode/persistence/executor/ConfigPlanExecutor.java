@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -106,6 +107,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -155,6 +157,8 @@ public class ConfigPlanExecutor {
 
   private final PipeInfo pipeInfo;
 
+  private final QuotaInfo quotaInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -165,7 +169,8 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
       ModelInfo modelInfo,
-      PipeInfo pipeInfo) {
+      PipeInfo pipeInfo,
+      QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -197,6 +202,9 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(pipeInfo);
 
     this.procedureInfo = procedureInfo;
+
+    this.quotaInfo = quotaInfo;
+    this.snapshotProcessorList.add(quotaInfo);
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -405,6 +413,8 @@ public class ConfigPlanExecutor {
       case SetPipeStatus:
       case ShowPipe:
         return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+      case setSpaceQuota:
+        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

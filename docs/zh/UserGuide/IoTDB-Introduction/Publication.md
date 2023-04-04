@@ -36,4 +36,4 @@ Apache IoTDB 始于清华大学软件学院。IoTDB 是一个用于管理大量�
 
 我们还研发了面向时间序列数据库的 Benchmark 工具： 
 
-https://github.com/thulab/iotdb-benchmark
+[https://github.com/thulab/iot-benchmark](https://github.com/thulab/iot-benchmark)

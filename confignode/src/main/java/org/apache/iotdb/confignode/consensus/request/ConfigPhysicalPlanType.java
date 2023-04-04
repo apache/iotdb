@@ -157,9 +157,12 @@ public enum ConfigPhysicalPlanType {
   GetPipePluginJar((short) 1303),
 
   /** New Pipe */
-  CreatePipeV2((short) 1401),
-  SetPipeStatusV2((short) 904),
-  DropPipeV2((short) 905);
+  CreatePipeV2((short) 1400),
+  SetPipeStatusV2((short) 1401),
+  DropPipeV2((short) 1402),
+
+  /** Quota */
+  setSpaceQuota((short) 1500);
 
   private final short planType;
 

@@ -49,7 +49,7 @@ import java.util.Objects;
 public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateModelProcedure.class);
-  private static final int RETRY_THRESHOLD = 5;
+  private static final int RETRY_THRESHOLD = 1;
 
   private ModelInformation modelInformation;
   private Map<String, String> modelConfigs;

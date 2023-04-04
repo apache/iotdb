@@ -405,6 +405,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
+  /** Enable the service for MLNode */
+  private boolean enableMLNodeService = false;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -860,6 +863,9 @@ public class IoTDBConfig {
   /** Internal port for coordinator */
   private int internalPort = 10730;
 
+  /** Port for MLNode */
+  private int mlNodePort = 10780;
+
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
 
@@ -1059,6 +1065,8 @@ public class IoTDBConfig {
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
+
+  private boolean quotaEnable = false;
 
   IoTDBConfig() {}
 
@@ -2678,6 +2686,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableMLNodeService() {
+    return enableMLNodeService;
+  }
+
+  public void setEnableMLNodeService(boolean enableMLNodeService) {
+    this.enableMLNodeService = enableMLNodeService;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -2929,6 +2945,14 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public int getMLNodePort() {
+    return mlNodePort;
+  }
+
+  public void setMLNodePort(int mlNodePort) {
+    this.mlNodePort = mlNodePort;
   }
 
   public int getDataRegionConsensusPort() {
@@ -3673,5 +3697,13 @@ public class IoTDBConfig {
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
     return pipeMaxThreadNum;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
   }
 }
