@@ -1343,6 +1343,9 @@ service IConfigNodeRPCService {
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
 
+  // ======================================================
+  // Quota
+  // ======================================================
   /** Set Space Quota */
   common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 

@@ -764,6 +764,11 @@ service IDataNodeRPCService {
   * Delete model training metrics on DataNode
   */
   common.TSStatus deleteModelMetrics(TDeleteModelMetricsReq req)
+
+  /**
+   * Set space quota
+   **/
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 }
 
 service MPPDataExchangeService {
@@ -798,10 +803,5 @@ service IMLNodeInternalRPCService{
   * Record model training metrics on DataNode
   */
   common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
-
-  /**
-   * Set space quota
-   **/
-  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 }
 
