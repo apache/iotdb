@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.consensus.ratis.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -41,26 +41,15 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Utils {
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
-
-  /* whether the path denotes an open segment under active writing progress*/
-  private static final Predicate<Path> isOpenSegment =
-      p -> p.toFile().getName().startsWith("log_inprogress");
 
   private Utils() {}
 
@@ -275,53 +264,5 @@ public class Utils {
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
-  }
-
-  /**
-   * Monitoring Ratis RaftLog total size. It will memorize the state of all files in the last update
-   * and calculates the diff incrementally each run.
-   */
-  static class RatisLogSizeMonitor {
-
-    private static final class DirectoryState {
-      private long size = 0;
-      private List<Path> memorizedFiles = Collections.emptyList();
-
-      private void update(long size, List<Path> latest) {
-        this.size = size;
-        this.memorizedFiles = latest;
-      }
-    }
-
-    private final ConcurrentHashMap<File, DirectoryState> directoryMap = new ConcurrentHashMap<>();
-
-    long updateAndGetDirectorySize(File dir) {
-      final DirectoryState prev = directoryMap.computeIfAbsent(dir, d -> new DirectoryState());
-      List<Path> latest;
-      try (Stream<Path> files = Files.list(dir.toPath())) {
-        latest = files.filter(isOpenSegment).collect(Collectors.toList());
-      } catch (IOException e) {
-        RatisConsensus.logger.warn(
-            "{}: Error caught when listing files under {}: {}", this, dir, e);
-        // keep the files unchanged and return the size calculated last time
-        return prev.size;
-      }
-      final long sizeDiff = diff(prev.memorizedFiles, latest);
-      final long newSize = prev.size + sizeDiff;
-      prev.update(newSize, latest);
-      return newSize;
-    }
-
-    List<Path> getFilesUnder(File dir) {
-      return directoryMap.get(dir).memorizedFiles;
-    }
-
-    private static long diff(List<Path> old, List<Path> latest) {
-      final long incremental =
-          latest.stream().filter(p -> !old.contains(p)).mapToLong(p -> p.toFile().length()).sum();
-      final long decremental =
-          old.stream().filter(p -> !latest.contains(p)).mapToLong(p -> p.toFile().length()).sum();
-      return incremental - decremental;
-    }
   }
 }
