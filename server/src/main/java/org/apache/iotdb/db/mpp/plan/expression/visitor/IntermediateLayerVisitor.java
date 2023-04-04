@@ -293,7 +293,8 @@ public class IntermediateLayerVisitor
   }
 
   @Override
-  public IntermediateLayer visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
+  public IntermediateLayer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
     throw new UnsupportedOperationException("CASE expression cannot be used with non-mappable UDF");
   }
 
