@@ -72,25 +72,9 @@ class ThriftDataSource(DataSource):
         except Exception:
             raise RuntimeError('Fail to establish connection with DataNode')
 
-        try:
-            res = data_client.fetch_timeseries(
-                query_expressions=self.query_expressions,
-                query_filter=self.query_filter,
-            )
-        except Exception:
-            raise RuntimeError(f'Fail to fetch data with query expressions: {self.query_expressions}'
-                               f' and query filter: {self.query_filter}')
+        query_id, has_more_data, raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
+        # TODO: consider has_more_data
 
-        if len(res.tsDataset) == 0:
-            raise RuntimeError(f'No data fetched with query filter: {self.query_filter}')
-
-        raw_data = serde.convert_to_df(res.columnNameList,
-                                       res.columnTypeList,
-                                       res.columnNameIndexMap,
-                                       res.tsDataset)
-        if raw_data.empty:
-            raise RuntimeError(f'Fetched empty data with query expressions: '
-                               f'{self.query_expressions} and query filter: {self.query_filter}')
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
         self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True) \

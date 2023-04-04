@@ -16,7 +16,8 @@
 # under the License.
 #
 import time
-
+import pandas as pd
+from iotdb.mlnode import serde
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
@@ -126,7 +127,7 @@ class DataNodeClient(object):
                          query_expressions: list,
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
-                         timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
+                         timeout: int = DEFAULT_TIMEOUT) -> [int, bool, pd.DataFrame]:
         req = TFetchTimeseriesReq(
             queryExpressions=query_expressions,
             queryFilter=query_filter,
@@ -136,9 +137,29 @@ class DataNodeClient(object):
         try:
             resp = self.__client.fetchTimeseries(req)
             verify_success(resp.status, "An error occurs when calling fetch_timeseries()")
-            return resp
-        except TTransport.TException as e:
+
+            if len(resp.tsDataset) == 0:
+                raise RuntimeError(f'No data fetched with query filter: {query_filter}')
+
+            data = serde.convert_to_df(resp.columnNameList,
+                                       resp.columnTypeList,
+                                       resp.columnNameIndexMap,
+                                       resp.tsDataset)
+            if data.empty:
+                raise RuntimeError(
+                    f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
+            return resp.queryId, resp.hasMoreData, data
+        except Exception as e:
+            logger.warn(
+                f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
+
+    def fetch_window_batch(self,
+                           query_expressions: list,
+                           query_filter: str = None,
+                           fetch_size: int = DEFAULT_FETCH_SIZE,
+                           timeout: int = DEFAULT_TIMEOUT) -> [int, bool, list[pd.DataFrame]]:
+        pass
 
     def record_model_metrics(self,
                              model_id: str,
