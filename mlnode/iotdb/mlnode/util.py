@@ -45,7 +45,7 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         raise BadNodeUrlError(endpoint_url)
 
 
-def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
+def get_status(status_code: TSStatusCode, message: str = None) -> TSStatus:
     status = TSStatus(status_code.get_status_code())
     status.message = message
     return status

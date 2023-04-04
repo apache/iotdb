@@ -21,6 +21,7 @@ from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
 from iotdb.mlnode.parser import parse_training_request
 from iotdb.mlnode.process.manager import TaskManager
+from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
@@ -33,7 +34,11 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         self.__task_manager = TaskManager(pool_num=10)  # TODO: add pool num to config
 
     def deleteModel(self, req: TDeleteModelReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        try:
+            model_storage.delete_model(req.modelId)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            return get_status(TSStatusCode.FAIL_STATUS, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         task = None
@@ -50,7 +55,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             # create task & check task config legitimacy
             task = self.__task_manager.create_training_task(dataset, model, model_config, task_config)
 
-            return get_status(TSStatusCode.SUCCESS_STATUS, 'Successfully create training task')
+            return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
             return get_status(TSStatusCode.FAIL_STATUS, str(e))
         finally:
@@ -58,6 +63,6 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
+        status = get_status(TSStatusCode.SUCCESS_STATUS)
         forecast_result = b'forecast result'
         return TForecastResp(status, forecast_result)

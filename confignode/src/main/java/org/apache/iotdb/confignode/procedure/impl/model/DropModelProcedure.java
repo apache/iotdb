@@ -156,7 +156,9 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format("Fail to drop model [%s] at STATE [%s]", modelId, state)));
+                  String.format(
+                      "Fail to drop model [%s] at STATE [%s], %s",
+                      modelId, state, e.getMessage())));
         }
       }
     }
