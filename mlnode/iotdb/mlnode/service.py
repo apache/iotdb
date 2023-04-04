@@ -19,7 +19,7 @@ import threading
 import time
 
 from thrift.protocol import TCompactProtocol
-from thrift.server import TProcessPoolServer
+from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
 from iotdb.mlnode.config import descriptor
@@ -37,8 +37,7 @@ class RPCService(threading.Thread):
         transport_factory = TTransport.TFramedTransportFactory()
         protocol_factory = TCompactProtocol.TCompactProtocolFactory()
 
-        self.__pool_server = TProcessPoolServer.TProcessPoolServer(processor, transport, transport_factory,
-                                                                   protocol_factory)
+        self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
 
     def run(self) -> None:
         logger.info("The RPC service thread begin to run...")

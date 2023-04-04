@@ -95,7 +95,7 @@ _data_config_parser.add_argument('--source_type',
                                  type=DataSourceType,
                                  default=DataSourceType.THRIFT,
                                  choices=list(DataSourceType))
-_data_config_parser.add_argument('--dataset_type', required=True,
+_data_config_parser.add_argument('--dataset_type',
                                  type=DatasetType,
                                  default=DatasetType.WINDOW,
                                  choices=list(DatasetType))

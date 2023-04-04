@@ -18,7 +18,11 @@
 
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
-    pass
+    def __init__(self):
+        self.message = None
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class BadNodeUrlError(_BaseError):
