@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import numpy as np
 import pandas as pd
 
 from iotdb.mlnode import serde
@@ -38,10 +39,10 @@ class DataSource(object):
     def _read_data(self):
         raise NotImplementedError
 
-    def get_data(self):
+    def get_data(self) -> np.ndarray:
         return self.data
 
-    def get_timestamp(self):
+    def get_timestamp(self) -> np.ndarray:
         return self.timestamp
 
 
@@ -50,7 +51,7 @@ class FileDataSource(DataSource):
         self.filename = filename
         super(FileDataSource, self).__init__()
 
-    def _read_data(self):
+    def _read_data(self) -> None:
         try:
             raw_data = pd.read_csv(self.filename)
         except Exception:
@@ -66,7 +67,7 @@ class ThriftDataSource(DataSource):
         self.query_filter = query_filter
         super(ThriftDataSource, self).__init__()
 
-    def _read_data(self):
+    def _read_data(self) -> None:
         try:
             data_client = client_manager.borrow_data_node_client()
         except Exception:

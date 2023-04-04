@@ -61,13 +61,13 @@ class MLNodeConfig(object):
     def get_mn_model_storage_dir(self) -> str:
         return self.__mn_model_storage_dir
 
-    def set_mn_model_storage_dir(self, mn_model_storage_dir: str):
+    def set_mn_model_storage_dir(self, mn_model_storage_dir: str) -> None:
         self.__mn_model_storage_dir = mn_model_storage_dir
 
     def get_mn_model_storage_cache_size(self) -> int:
         return self.__mn_model_storage_cache_size
 
-    def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int):
+    def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int) -> None:
         self.__mn_model_storage_cache_size = mn_model_storage_cache_size
 
     def get_mn_target_config_node(self) -> TEndPoint:

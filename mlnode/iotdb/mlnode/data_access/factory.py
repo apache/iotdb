@@ -16,7 +16,7 @@
 # under the License.
 #
 from torch.utils.data import Dataset
-
+from typing import Dict, Tuple
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
                                                       WindowDataset)
@@ -45,7 +45,7 @@ def create_forecast_dataset(
         source_type,
         dataset_type,
         **kwargs,
-) -> [Dataset, dict]:
+) -> Tuple[Dataset, Dict]:
     """
     Factory method for all support dataset
     currently implement two types of PyTorch dataset: WindowDataset, TimeSeriesDataset

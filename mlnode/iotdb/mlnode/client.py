@@ -16,6 +16,7 @@
 # under the License.
 #
 import time
+from typing import List, Dict
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
@@ -70,8 +71,8 @@ class MLNodeClient(object):
     def create_training_task(self,
                              model_id: str,
                              is_auto: bool,
-                             model_configs: dict,
-                             query_expressions: list,
+                             model_configs: Dict,
+                             query_expressions: List[str],
                              query_filter: str = '') -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
@@ -123,7 +124,7 @@ class DataNodeClient(object):
         self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         query_expressions: list,
+                         query_expressions: List[str],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
@@ -143,8 +144,8 @@ class DataNodeClient(object):
     def record_model_metrics(self,
                              model_id: str,
                              trial_id: str,
-                             metrics: list,
-                             values: list) -> None:
+                             metrics: List[str],
+                             values: List) -> None:
         req = TRecordModelMetricsReq(
             modelId=model_id,
             trialId=trial_id,
@@ -268,7 +269,7 @@ class ConfigNodeClient(object):
     def update_model_info(self,
                           model_id: str,
                           trial_id: str,
-                          model_info: dict) -> None:
+                          model_info: Dict) -> None:
         if model_info is None:
             model_info = {}
         req = TUpdateModelInfoReq(

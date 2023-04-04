@@ -16,6 +16,7 @@
 # under the License.
 #
 from enum import Enum
+from typing import List
 
 
 class ForecastTaskType(Enum):
@@ -46,7 +47,7 @@ class ForecastModelType(Enum):
     NBEATS = "nbeats"
 
     @classmethod
-    def values(cls) -> list[str]:
+    def values(cls) -> List[str]:
         values = []
         for item in list(cls):
             values.append(item.value)

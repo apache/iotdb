@@ -23,7 +23,7 @@ import shutil
 import torch
 import torch.nn as nn
 from pylru import lrucache
-
+from typing import Dict, Tuple
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.log import logger
@@ -43,7 +43,7 @@ class ModelStorage(object):
 
     def save_model(self,
                    model: nn.Module,
-                   model_config: dict,
+                   model_config: Dict,
                    model_id: str,
                    trial_id: str) -> str:
         """
@@ -60,7 +60,7 @@ class ModelStorage(object):
                        _extra_files={'model_config': json.dumps(model_config)})
         return os.path.abspath(model_file_path)
 
-    def load_model(self, model_id: str, trial_id: str) -> (torch.jit.ScriptModule, dict):
+    def load_model(self, model_id: str, trial_id: str) -> Tuple[torch.jit.ScriptModule, Dict]:
         """
         Returns:
             jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
