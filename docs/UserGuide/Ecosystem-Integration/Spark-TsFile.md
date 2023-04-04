@@ -254,7 +254,7 @@ Two columns are created to store the full path of the device: time(LongType) and
 
 Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is:
 
-|time(LongType)| delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|time(LongType)|delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
 |---|---|---|---|---|
 |1| root.ln.wf01.wt01 |True|2.2|null|
 |1| root.ln.wf02.wt02 |True|null|null|

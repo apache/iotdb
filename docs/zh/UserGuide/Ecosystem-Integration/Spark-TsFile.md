@@ -95,11 +95,11 @@ TsFile 中的现有数据如下：
  * d1:root.ln.wf01.wt01
  * d2:root.ln.wf02.wt02
 
-time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
----- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
-1|True	|1|2.2|2|"aaa"|1|True
-3|True	|2|2.2|4|"bbb"|2|False
-5|False|3	|2.1|6	|"ccc"|4|True
+| time | d1.status | time | d1.temperature | time | d2.hardware | time | d2.status |
+| ---- |    ----   | ---- |       ----     | ---- |     ----    | ---- |   ----    |
+|   1  |    True   |   1  |       2.2      |   2  |     "aaa"   |   1  |   True    |
+|   3  |    True   |   2  |       2.2      |   4  |     "bbb"   |   2  |   False   |
+|   5  |    False  |   3  |       2.1      |   6  |     "ccc"   |   4  |   True    |
 
 相应的 SparkSQL 表如下：
 
@@ -231,11 +231,11 @@ newDf.show
 
 显示 TsFile 的方式与 TsFile Schema 有关。 以以下 TsFile 结构为例：TsFile 架构中有三个度量：状态，温度和硬件。 这三个度量的基本信息如下：
 
-|名称 | 类型 | 编码 |
+| 名称 |  类型  | 编码   |
 | ---- | ---- | ---- | 
-|状态 | Boolean|PLAIN|
-|温度 | Float|RLE|
-|硬件|Text|PLAIN|
+| 状态 | Boolean| PLAIN |
+| 温度 | Float  | RLE   |
+| 硬件 | Text   | PLAIN |
 
 文件中的现有数据如下：
 
@@ -243,12 +243,12 @@ newDf.show
  * delta_object2: root.ln.wf02.wt02
  * delta_object3: :root.sgcc.wf03.wt01
 
-time|delta_object1.status|time|delta_object1.temperature |time	| delta_object2.hardware	|time|delta_object2.status |time|delta_object3.status|time|delta_object3.temperature 
----- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
-1|True	|1|2.2|2|"aaa"|1|True|2|True|3|3.3
-3|True	|2|2.2|4|"bbb"|2|False|3|True|6|6.6
-5|False|3	|2.1|6	|"ccc"|4|True|4|True|8|8.8
-7|True|4|2.0|8|"ddd"|5|False|6|True|9|9.9
+| time | delta_object1.status | time | delta_object1.temperature | time | delta_object2.hardware | time | delta_object2.status | time | delta_object3.status | time | delta_object3.temperature | 
+| :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- | :---- | :----  | :---- | :---- | 
+|   1   | True  |   1   |  2.2  |   2   | "aaa" |   1   | True  |   2   |  True  |   3   |  3.3  |
+|   3   | True	|   2   |  2.2  |   4   | "bbb" |   2   | False |   3   |  True  |   6   |  6.6  |
+|   5   | False |   3	|  2.1  |   6	| "ccc" |   4   | True  |   4   |  True  |   8   |  8.8  |
+|   7   | True  |   4   |  2.0  |   8   | "ddd" |   5   | False |   6   |  True  |   9   |  9.9  |
 
 有两种显示方法：
 
