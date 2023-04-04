@@ -27,7 +27,7 @@ Apache IoTDB Cluster contains two types of nodes: ConfigNode and DataNode, each 
 
 An illustration of the cluster architecture：
 
-<img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Cluster/Architecture.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Cluster/Architecture.png?raw=true">
 
 ConfigNode is the control node of the cluster, which manages the cluster's node status, partition information, etc. All ConfigNodes in the cluster form a highly available group, which is fully replicated.
 
@@ -98,7 +98,7 @@ A region is the basic unit of replication. Multiple replicas of a region constru
 
 An illustration of the partition allocation in cluster:
 
-<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Cluster/Data-Partition.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Cluster/Data-Partition.png?raw=true">
 
 The figure contains 1 SchemaRegionGroup, and the schema_replication_factor is 3, so the 3 white SchemaRegion-0s form a replication group.
 

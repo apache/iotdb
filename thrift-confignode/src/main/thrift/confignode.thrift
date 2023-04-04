@@ -730,6 +730,15 @@ struct TUpdateModelStateReq {
   3: optional string bestTrailId
 }
 
+// ====================================================
+// Quota
+// ====================================================
+struct TSpaceQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TSpaceQuota> spaceQuota
+  3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1333,5 +1342,15 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
+
+  // ======================================================
+  // Quota
+  // ======================================================
+  /** Set Space Quota */
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
+
+  TSpaceQuotaResp showSpaceQuota(list<string> databases);
+
+  TSpaceQuotaResp getSpaceQuota();
 }
 
