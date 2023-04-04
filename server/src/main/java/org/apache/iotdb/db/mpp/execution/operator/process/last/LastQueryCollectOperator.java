@@ -60,7 +60,7 @@ public class LastQueryCollectOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (children.get(currentIndex).hasNextWithTimer()) {
       return children.get(currentIndex).nextWithTimer();
     } else {
@@ -70,7 +70,7 @@ public class LastQueryCollectOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return currentIndex < inputOperatorsCount;
   }
 
@@ -82,7 +82,7 @@ public class LastQueryCollectOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

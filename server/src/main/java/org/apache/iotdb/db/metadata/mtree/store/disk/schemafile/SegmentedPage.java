@@ -84,10 +84,16 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     ISegment<ByteBuffer, IMNode> tarSeg = getSegment(segIdx);
 
     if (tarSeg.insertRecord(key, buffer) < 0) {
-      // relocate inside page, if not enough space for new size segment, throw exception
+      // relocate inside page, if not enough space for new size segment, throw SchemaPageOverflow
+      // exception
+      // increment of segment includes: buffer, key, length of the key(4 bytes), offset of the
+      // buffer(2 bytes)
       tarSeg =
           relocateSegment(
-              tarSeg, segIdx, SchemaFile.reEstimateSegSize(tarSeg.size() + buffer.capacity()));
+              tarSeg,
+              segIdx,
+              SchemaFile.reEstimateSegSize(
+                  tarSeg.size() + buffer.capacity() + key.getBytes().length + 4 + 2));
     } else {
       return 0L;
     }

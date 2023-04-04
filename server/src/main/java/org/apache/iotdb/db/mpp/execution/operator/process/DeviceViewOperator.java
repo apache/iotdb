@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.commons.lang3.Validate;
 
 import java.util.List;
 
@@ -107,11 +108,16 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!getCurDeviceOperator().hasNextWithTimer()) {
+      // close finished child
+      getCurDeviceOperator().close();
+      deviceOperators.set(deviceIndex, null);
+      // increment index, move to next child
       deviceIndex++;
       return null;
     }
+
     TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
@@ -138,19 +144,20 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return deviceIndex < devices.size();
   }
 
   @Override
   public void close() throws Exception {
-    for (Operator child : deviceOperators) {
-      child.close();
+    for (int i = deviceIndex, n = deviceOperators.size(); i < n; i++) {
+      Validate.notNull(deviceOperators.get(i));
+      deviceOperators.get(i).close();
     }
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 

@@ -170,6 +170,10 @@ public class Template implements Serializable {
     return isDirectAligned;
   }
 
+  public int getMeasurementNumber() {
+    return schemaMap.size();
+  }
+
   // region construct template tree
   /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
   private void constructTemplateTree(String[] alignedPaths, IMeasurementSchema[] schemas)

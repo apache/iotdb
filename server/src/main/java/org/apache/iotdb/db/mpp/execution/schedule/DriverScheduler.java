@@ -311,7 +311,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
           readyQueue.decreaseReservedSize();
           break;
         case FINISHED:
-          readyQueue.decreaseReservedSize();
           break;
       }
 
@@ -482,6 +481,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
+        readyQueue.decreaseReservedSize();
       } finally {
         task.unlock();
       }

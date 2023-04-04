@@ -63,7 +63,7 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
   }
 
   @Override
-  protected YieldableState yieldValue() throws QueryProcessException, IOException {
+  protected YieldableState yieldValue() throws Exception {
     final YieldableState yieldableState = layerRowReader.yield();
     if (!YieldableState.YIELDABLE.equals(yieldableState)) {
       return yieldableState;

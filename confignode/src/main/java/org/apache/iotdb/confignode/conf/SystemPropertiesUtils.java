@@ -73,7 +73,11 @@ public class SystemPropertiesUtils {
     // Startup configuration
     String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
     if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
-      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+      throw new ConfigurationException(
+          CLUSTER_NAME,
+          conf.getClusterName(),
+          clusterName,
+          "cluster_name can't be modified after first startup");
     }
 
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
@@ -81,7 +85,10 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else if (!internalAddress.equals(conf.getInternalAddress())) {
       throw new ConfigurationException(
-          "cn_internal_address", conf.getInternalAddress(), internalAddress);
+          "cn_internal_address",
+          conf.getInternalAddress(),
+          internalAddress,
+          "cn_internal_address can't be modified after first startup");
     }
 
     if (systemProperties.getProperty("cn_internal_port", null) == null) {
@@ -92,7 +99,8 @@ public class SystemPropertiesUtils {
         throw new ConfigurationException(
             "cn_internal_port",
             String.valueOf(conf.getInternalPort()),
-            String.valueOf(internalPort));
+            String.valueOf(internalPort),
+            "cn_internal_port can't be modified after first startup");
       }
     }
 
@@ -104,7 +112,8 @@ public class SystemPropertiesUtils {
         throw new ConfigurationException(
             "cn_consensus_port",
             String.valueOf(conf.getConsensusPort()),
-            String.valueOf(consensusPort));
+            String.valueOf(consensusPort),
+            "cn_consensus_port can't be modified after first startup");
       }
     }
 
@@ -118,7 +127,8 @@ public class SystemPropertiesUtils {
       throw new ConfigurationException(
           "config_node_consensus_protocol_class",
           conf.getConfigNodeConsensusProtocolClass(),
-          configNodeConsensusProtocolClass);
+          configNodeConsensusProtocolClass,
+          "config_node_consensus_protocol_class can't be modified after first startup");
     }
 
     String dataRegionConsensusProtocolClass =
@@ -130,7 +140,8 @@ public class SystemPropertiesUtils {
       throw new ConfigurationException(
           "data_region_consensus_protocol_class",
           conf.getDataRegionConsensusProtocolClass(),
-          dataRegionConsensusProtocolClass);
+          dataRegionConsensusProtocolClass,
+          "data_region_consensus_protocol_class can't be modified after first startup");
     }
 
     String schemaRegionConsensusProtocolClass =
@@ -142,7 +153,8 @@ public class SystemPropertiesUtils {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           conf.getSchemaRegionConsensusProtocolClass(),
-          schemaRegionConsensusProtocolClass);
+          schemaRegionConsensusProtocolClass,
+          "schema_region_consensus_protocol_class can't be modified after first startup");
     }
 
     // PartitionSlot configuration
@@ -155,7 +167,8 @@ public class SystemPropertiesUtils {
         throw new ConfigurationException(
             "series_partition_slot_num",
             String.valueOf(conf.getSeriesSlotNum()),
-            String.valueOf(seriesPartitionSlotNum));
+            String.valueOf(seriesPartitionSlotNum),
+            "series_partition_slot_num can't be modified after first startup");
       }
     }
 
@@ -168,7 +181,8 @@ public class SystemPropertiesUtils {
       throw new ConfigurationException(
           "series_partition_executor_class",
           conf.getSeriesPartitionExecutorClass(),
-          seriesPartitionSlotExecutorClass);
+          seriesPartitionSlotExecutorClass,
+          "series_partition_executor_class can't be modified after first startup");
     }
 
     if (needReWrite) {

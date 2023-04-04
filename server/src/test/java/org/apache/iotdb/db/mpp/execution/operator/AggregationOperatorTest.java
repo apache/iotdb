@@ -59,7 +59,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -97,8 +96,7 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate unary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult1()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testAggregateIntermediateResult1() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -122,7 +120,9 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
+
       if (resultTsBlock == null) {
         continue;
       }
@@ -139,8 +139,7 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate binary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult2()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testAggregateIntermediateResult2() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
@@ -163,7 +162,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -176,8 +176,7 @@ public class AggregationOperatorTest {
   }
 
   @Test
-  public void testGroupByIntermediateResult1()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testGroupByIntermediateResult1() throws Exception {
     int[][] result =
         new int[][] {
           {100, 100, 100, 99},
@@ -211,7 +210,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -231,8 +231,7 @@ public class AggregationOperatorTest {
   }
 
   @Test
-  public void testGroupByIntermediateResult2()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testGroupByIntermediateResult2() throws Exception {
     double[][] result =
         new double[][] {
           {20049.5, 20149.5, 6249.5, 8429.808},
@@ -262,7 +261,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
