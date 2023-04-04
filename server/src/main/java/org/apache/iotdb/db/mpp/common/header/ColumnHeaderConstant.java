@@ -175,7 +175,6 @@ public class ColumnHeaderConstant {
   public static final String HYPERPARAMETER = "Hyperparameter";
   public static final String MODEL_PATH = "ModelPath";
 
-
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -411,14 +410,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
 
-
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
           new ColumnHeader(LIMIT, TSDataType.TEXT),
           new ColumnHeader(USED, TSDataType.TEXT));
-          
+
   public static final List<ColumnHeader> showModelsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(MODEL_ID, TSDataType.TEXT),

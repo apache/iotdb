@@ -316,6 +316,16 @@ showFunctions
     : SHOW FUNCTIONS
     ;
 
+// Quota =========================================================================================
+// Show Space Quota
+showSpaceQuota
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
+    ;
+
+// Set Space Quota
+setSpaceQuota
+    : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
+    ;
 
 // Trigger =========================================================================================
 // ---- Create Trigger
@@ -334,16 +344,6 @@ triggerType
 
 triggerEventClause
     : (BEFORE | AFTER) (INSERT | DELETE)
-    ;
-
-// Set Space Quota
-setSpaceQuota
-    : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
-    ;
-
-// Start Trigger
-startTrigger
-    : START TRIGGER triggerName=identifier
     ;
 
 triggerAttributeClause
@@ -457,16 +457,6 @@ getSeriesSlotList
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
-    ;
-
-// Show Space Quota
-showSpaceQuota
-    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
-    ;
-
-// Count Storage Group
-countStorageGroup
-    : COUNT (STORAGE GROUP | DATABASES) prefixPath?
     ;
 
 // Pipe Plugin =========================================================================================

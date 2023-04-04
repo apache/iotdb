@@ -193,5 +193,4 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showModels();
 
   SettableFuture<ConfigTaskResult> showTrails(String modelId);
-
 }
