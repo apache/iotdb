@@ -54,7 +54,6 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private TCreatePipeReq req;
   private PipeMeta pipeMeta;
-  private long createTime;
 
   public CreatePipeProcedureV2() {
     super();
@@ -74,7 +73,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("Start to calculate PIPE [{}] information on Config Nodes", req.getPipeName());
-    createTime = System.currentTimeMillis();
+    long createTime = System.currentTimeMillis();
     Map<TConsensusGroupId, Integer> regionGroupToLeaderMap =
         env.getConfigManager().getLoadManager().getLatestRegionLeaderMap();
 
@@ -213,14 +212,23 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeLong(createTime);
-    pipeMeta.serialize(stream);
+    if (pipeMeta != null) {
+      stream.writeBoolean(true);
+      pipeMeta.serialize(stream);
+    } else {
+      stream.writeBoolean(false);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    req.pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    req =
+        new TCreatePipeReq()
+            .setPipeName(ReadWriteIOUtils.readString(byteBuffer))
+            .setCollectorAttributes(new HashMap<>())
+            .setProcessorAttributes(new HashMap<>())
+            .setConnectorAttributes(new HashMap<>());
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
       req.getCollectorAttributes()
@@ -236,8 +244,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       req.getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    createTime = byteBuffer.getLong();
-    pipeMeta = PipeMeta.deserialize(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeMeta = PipeMeta.deserialize(byteBuffer);
+    }
   }
 
   @Override
@@ -245,6 +254,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
+    if (pipeMeta == null && that.pipeMeta == null) return true;
     return req.equals(that.req) && pipeMeta.equals(that.pipeMeta);
   }
 
