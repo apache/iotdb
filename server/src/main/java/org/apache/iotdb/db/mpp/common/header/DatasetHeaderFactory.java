@@ -169,6 +169,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
   }
 
+  public static DatasetHeader getShowSpaceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowModelsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
   }

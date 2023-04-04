@@ -103,6 +103,8 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
@@ -521,5 +523,13 @@ public abstract class StatementVisitor<R, C> {
   public R visitInternalCreateMultiTimeSeries(
       InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement, C context) {
     return visitStatement(internalCreateMultiTimeSeriesStatement, context);
+  }
+
+  public R visitSetSpaceQuota(SetSpaceQuotaStatement setSpaceQuotaStatement, C context) {
+    return visitStatement(setSpaceQuotaStatement, context);
+  }
+
+  public R visitShowSpaceQuota(ShowSpaceQuotaStatement showSpaceQuotaStatement, C context) {
+    return visitStatement(showSpaceQuotaStatement, context);
   }
 }

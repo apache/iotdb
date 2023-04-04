@@ -148,6 +148,7 @@ keyWords
     | QUERIES
     | QUERY
     | QUERYID
+    | QUOTA
     | RANGE
     | READONLY
     | REGEXP
@@ -172,6 +173,7 @@ keyWords
     | SHOW
     | SLIMIT
     | SOFFSET
+    | SPACE
     | STORAGE
     | START
     | STARTTIME

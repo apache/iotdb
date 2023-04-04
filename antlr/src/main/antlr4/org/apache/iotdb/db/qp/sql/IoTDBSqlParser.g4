@@ -58,6 +58,8 @@ ddlStatement
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
     | createModel | dropModel | showModels | showTrails
+    // Quota
+    | setSpaceQuota | showSpaceQuota
     ;
 
 dmlStatement
@@ -314,6 +316,16 @@ showFunctions
     : SHOW FUNCTIONS
     ;
 
+// Quota =========================================================================================
+// Show Space Quota
+showSpaceQuota
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
+    ;
+
+// Set Space Quota
+setSpaceQuota
+    : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
+    ;
 
 // Trigger =========================================================================================
 // ---- Create Trigger
@@ -446,7 +458,6 @@ getSeriesSlotList
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
-
 
 // Pipe Plugin =========================================================================================
 // Create Pipe Plugin
