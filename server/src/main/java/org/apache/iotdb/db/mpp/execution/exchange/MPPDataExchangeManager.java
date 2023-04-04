@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.SinkChannel;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.source.PipelineSourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -652,7 +653,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
-    return new LocalSourceHandle(
+    return new PipelineSourceHandle(
         queue,
         new PipelineSourceHandleListenerImpl(context::failed),
         context.getDriverTaskID().toString());
