@@ -218,6 +218,6 @@ public class IoTDBSubStringFunctionIT {
     assertTestFail(
         "select SUBSTRING(s1,'start'='1','to'='2') from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Syntax error. Please check that the parameters of the function are correct");
+            + ": Syntax error,please check that the parameters of the function are correct");
   }
 }
