@@ -527,12 +527,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
 
-    LOGGER.debug(
-        "Create local sink handle to plan node {} of {} for {}",
-        remotePlanNodeId,
-        remoteFragmentInstanceId,
-        localFragmentInstanceId);
-
     SharedTsBlockQueue queue;
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(remoteFragmentInstanceId);
     LocalSourceHandle localSourceHandle =
@@ -557,7 +551,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISinkChannel createLocalSinkChannelForPipeline(
       DriverContext driverContext, String planNodeId) {
-    LOGGER.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
@@ -578,12 +571,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
-
-    LOGGER.debug(
-        "Create sink handle to plan node {} of {} for {}",
-        remotePlanNodeId,
-        remoteFragmentInstanceId,
-        localFragmentInstanceId);
 
     return new SinkChannel(
         remoteEndpoint,
@@ -665,7 +652,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
-    LOGGER.debug("Create local source handle for {}", context.getDriverTaskID());
     return new LocalSourceHandle(
         queue,
         new PipelineSourceHandleListenerImpl(context::failed),
@@ -739,12 +725,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               + localFragmentInstanceId
               + " exists.");
     }
-
-    LOGGER.debug(
-        "Create source handle from {} for plan node {} of {}",
-        remoteFragmentInstanceId,
-        localPlanNodeId,
-        localFragmentInstanceId);
 
     SourceHandle sourceHandle =
         new SourceHandle(
