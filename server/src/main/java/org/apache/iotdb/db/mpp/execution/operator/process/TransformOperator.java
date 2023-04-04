@@ -119,6 +119,7 @@ public class TransformOperator implements ProcessOperator {
       Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     UDFManagementService.getInstance().acquireLock();
     try {
+      // trigger ci
       // This statement must be surrounded by the registration lock.
       UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
       // UDF executors will be initialized at the same time

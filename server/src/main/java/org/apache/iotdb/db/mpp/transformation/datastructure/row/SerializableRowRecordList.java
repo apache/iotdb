@@ -27,10 +27,14 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -38,6 +42,10 @@ public class SerializableRowRecordList implements SerializableList {
 
   protected static final int MIN_OBJECT_HEADER_SIZE = 8;
   protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
+
+  private static AtomicLong initCnt = new AtomicLong(0);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SerializableRowRecordList.class);
 
   public static SerializableRowRecordList newSerializableRowRecordList(
       long queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
@@ -132,6 +140,10 @@ public class SerializableRowRecordList implements SerializableList {
 
   @Override
   public void init() {
+    LOGGER.warn(
+        "initCnt is : {}, internalRowRecordListCapacity is: {}",
+        initCnt.incrementAndGet(),
+        internalRowRecordListCapacity);
     rowRecords = new ArrayList<>(internalRowRecordListCapacity);
   }
 

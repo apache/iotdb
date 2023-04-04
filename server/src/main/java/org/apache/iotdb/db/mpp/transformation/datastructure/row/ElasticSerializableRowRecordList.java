@@ -27,12 +27,19 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /** An elastic list of records that implements memory control using LRU strategy. */
 public class ElasticSerializableRowRecordList {
+
+  // test test
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ElasticSerializableRowRecordList.class);
 
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
@@ -81,6 +88,12 @@ public class ElasticSerializableRowRecordList {
       internalRowRecordListCapacity = allocatableCapacity;
     }
     this.numCacheBlock = numCacheBlock;
+    LOGGER.warn(
+        "memoryLimitInMb is {}, allocatableCapacity is {}, internalRowRecordListCapacity is {}, numCacheBlock is {}",
+        memoryLimitInMB,
+        allocatableCapacity,
+        internalRowRecordListCapacity,
+        numCacheBlock);
 
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
