@@ -750,6 +750,7 @@ nodeName
     | wildcard? INTEGER_LITERAL wildcard?
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
+    | DURATION_LITERAL
     ;
 
 nodeNameWithoutWildcard
@@ -757,6 +758,7 @@ nodeNameWithoutWildcard
     | INTEGER_LITERAL
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
+    | DURATION_LITERAL
     ;
 
 suffixPathCanInExpr
@@ -768,6 +770,7 @@ nodeNameCanInExpr
     | wildcard? ID wildcard?
     | QUTOED_ID
     | QUTOED_ID_IN_NODE_NAME
+    | DURATION_LITERAL
     ;
 
 wildcard
@@ -783,6 +786,7 @@ identifier
     | QUTOED_ID
     | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
+    | DURATION_LITERAL
     ;
 
 

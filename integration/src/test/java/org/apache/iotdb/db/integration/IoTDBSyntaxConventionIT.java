@@ -250,7 +250,9 @@ public class IoTDBSyntaxConventionIT {
       "'.a'",
       "`\\\"a`",
       "`a\\\"`",
-      "\"a\\\".\\\"b\""
+      "\"a\\\".\\\"b\"",
+      "123w",
+      "123d",
     };
     String[] selectNodeNames = {
       "`select`",
@@ -268,7 +270,9 @@ public class IoTDBSyntaxConventionIT {
       "`'.a'`",
       "`\\\"a`",
       "`a\\\"`",
-      "`\"a\\\".\\\"b\"`"
+      "`\"a\\\".\\\"b\"`",
+      "123w",
+      "123d",
     };
     String[] resultNodeNames = {
       "select",
@@ -286,7 +290,9 @@ public class IoTDBSyntaxConventionIT {
       "'.a'",
       "\\\"a",
       "a\\\"",
-      "\"a\\\".\\\"b\""
+      "\"a\\\".\\\"b\"",
+      "123w",
+      "123d",
     };
     String[] resultTimeseries = {
       "root.sg1.d1.select",
@@ -304,7 +310,9 @@ public class IoTDBSyntaxConventionIT {
       "root.sg1.d1.'.a'",
       "root.sg1.d1.\\\"a",
       "root.sg1.d1.a\\\"",
-      "root.sg1.d1.\"a\\\".\\\"b\""
+      "root.sg1.d1.\"a\\\".\\\"b\"",
+      "root.sg1.d1.123w",
+      "root.sg1.d1.123d",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
