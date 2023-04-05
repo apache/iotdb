@@ -68,15 +68,15 @@ IoTDB> set schema template t1 to root.sg1.d1
 **注意**：在插入数据之前或系统未开启自动注册序列功能，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列即激活模板：
 
 ```shell
-IoTDB> create timeseries of schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d1
 ```
 
 **示例：** 执行以下语句
 ```shell
 IoTDB> set schema template t1 to root.sg1.d1
 IoTDB> set schema template t2 to root.sg1.d2
-IoTDB> create timeseries of schema template on root.sg1.d1
-IoTDB> create timeseries of schema template on root.sg1.d2
+IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d2
 ```
 
 查看此时的时间序列：
