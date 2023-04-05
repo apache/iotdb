@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-
 import org.apache.iotdb.tsfile.encoding.encoder.*;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 
