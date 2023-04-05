@@ -70,15 +70,15 @@ After setting the schema template, with the system enabled to auto create schema
 **Attention**: Before inserting data or the system not enabled to auto create schema, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries or activate the schema template, act before inserting data:
 
 ```shell
-IoTDB> create timeseries of schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d1
 ```
 
 **Example:** Execute the following statement
 ```shell
 IoTDB> set schema template t1 to root.sg1.d1
 IoTDB> set schema template t2 to root.sg1.d2
-IoTDB> create timeseries of schema template on root.sg1.d1
-IoTDB> create timeseries of schema template on root.sg1.d2
+IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d2
 ```
 
 Show the time series:

@@ -36,7 +36,7 @@ statement
     ;
 
 ddlStatement
-    : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
+    : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesUsingSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
     | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
@@ -113,8 +113,8 @@ templateMeasurementClause
     ;
 
 // Create Timeseries Of Schema Template
-createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+createTimeseriesUsingSchemaTemplate
+    : CREATE TIMESERIES (OF | USING) SCHEMA TEMPLATE ON prefixPath
     ;
 
 // Create Function
