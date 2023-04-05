@@ -21,9 +21,10 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.DoubleSprintzEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.FloatSprintzEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.IntSprintzEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongSprintzEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.FloatSprintzEncoder;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 
