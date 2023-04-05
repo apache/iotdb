@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Vector;
 
-public class FloatSprintzEncoder extends IntSprintzEncoder {
+public class FloatSprintzEncoder extends SprintzEncoder {
 
   /** bit packer */
   IntPacker packer;
@@ -86,7 +86,7 @@ public class FloatSprintzEncoder extends IntSprintzEncoder {
     float preValue = values.get(0);
     values.remove(0);
     List<Integer> convertBufferList = null;
-    for(int itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
+    for (int itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
     this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(convertBufferList);
     packer = new IntPacker(this.bitWidth);
     byte[] bytes = new byte[bitWidth];

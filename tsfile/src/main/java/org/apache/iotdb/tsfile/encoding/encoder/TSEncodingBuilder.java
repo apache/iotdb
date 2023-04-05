@@ -369,6 +369,7 @@ public abstract class TSEncodingBuilder {
       // allowed do nothing
     }
   }
+
   public static class Sprintz extends TSEncodingBuilder {
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -414,6 +415,7 @@ public abstract class TSEncodingBuilder {
       // do nothing
     }
   }
+
   public static class Dictionary extends TSEncodingBuilder {
 
     @Override

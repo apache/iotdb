@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Vector;
 
-public class DoubleSprintzEncoder extends IntSprintzEncoder {
+public class DoubleSprintzEncoder extends SprintzEncoder {
 
   /** bit packer */
   LongPacker packer;
@@ -87,7 +87,7 @@ public class DoubleSprintzEncoder extends IntSprintzEncoder {
     double preValue = values.get(0);
     values.remove(0);
     List<Long> convertBufferList = null;
-    for(long itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
+    for (long itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
     this.bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(convertBufferList);
     packer = new LongPacker(this.bitWidth);
     byte[] bytes = new byte[bitWidth];

@@ -28,10 +28,9 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4SafeDecompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xerial.snappy.Snappy;
 import org.tukaani.xz.LZMA2Options;
 import org.tukaani.xz.XZInputStream;
-import org.tukaani.xz.XZOutputStream;
+import org.xerial.snappy.Snappy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -362,7 +361,6 @@ public interface IUnCompressor {
     }
   }
 
-
   class Lzma2UnCompress {
     private static LZMA2Options options;
 
@@ -386,8 +384,10 @@ public interface IUnCompressor {
       return r;
     }
   }
+
   class LZMA2UnCompressor implements IUnCompressor {
     private static Lzma2UnCompress UnCompress;
+
     public LZMA2UnCompressor() {
       UnCompress = new Lzma2UnCompress();
     }
@@ -412,7 +412,7 @@ public interface IUnCompressor {
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
-            throws IOException {
+        throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(byteArray, offset, dataBefore, 0, length);
       byte[] res = UnCompress.uncompress(dataBefore);

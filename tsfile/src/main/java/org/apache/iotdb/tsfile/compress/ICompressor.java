@@ -26,10 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import com.github.luben.zstd.Zstd;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
-import org.xerial.snappy.Snappy;
 import org.tukaani.xz.LZMA2Options;
 import org.tukaani.xz.XZInputStream;
 import org.tukaani.xz.XZOutputStream;
+import org.xerial.snappy.Snappy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -373,7 +373,6 @@ public interface ICompressor extends Serializable {
     }
   }
 
-
   class LZMA2Compress {
     private static LZMA2Options options;
 
@@ -422,7 +421,6 @@ public interface ICompressor extends Serializable {
       byte[] r = out.toByteArray();
       return r;
     }
-
   }
 
   class LZMA2Compressor implements ICompressor {

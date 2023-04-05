@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Vector;
 
-public class LongSprintzEncoder extends IntSprintzEncoder {
+public class LongSprintzEncoder extends SprintzEncoder {
 
   /** bit packer */
   LongPacker packer;

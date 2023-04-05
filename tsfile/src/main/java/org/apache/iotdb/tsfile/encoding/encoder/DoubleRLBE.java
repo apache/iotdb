@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class DoubleRLBE extends IntRLBE {
+public class DoubleRLBE extends RLBE {
   /** delta values */
   private double[] DiffValue = new double[blockSize + 1];
 
