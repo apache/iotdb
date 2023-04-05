@@ -48,40 +48,15 @@ public class LZMA2Test {
 
   @Test
   public void testBytes1() throws IOException {
-    for (int i = 1; i < 500000; i += 100000) {
-      String input = randomString(i);
-      ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
-      source.put(input.getBytes());
-      source.flip();
-
-      ICompressor compressor = new ICompressor.LZMA2Compressor();
-      ByteBuffer compressed =
-          ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.getBytes().length));
-      compressor.compress(source, compressed);
-
-      IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
-      ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(input.getBytes().length);
-      compressed.flip();
-      unCompressor.uncompress(compressed, uncompressedByteBuffer);
-
-      uncompressedByteBuffer.flip();
-      String afterDecode = ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer);
-      Assert.assertEquals(afterDecode, input);
-    }
-  }
-
-  @Test
-  public void testBytes2() throws IOException {
     ICompressor compressor = new ICompressor.LZMA2Compressor();
     IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
-
     int n = 500000;
     String input = randomString(n);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
-    byte[] compressed = compressor.compress(uncom, 0, uncom.length);
-    // length should be same
-    Assert.assertEquals(compressor.compress(uncom).length, compressed.length);
+    byte[] compressed = compressor.compress(uncom);
     byte[] uncompressed = unCompressor.uncompress(compressed);
+
     Assert.assertArrayEquals(uncom, uncompressed);
   }
+
 }

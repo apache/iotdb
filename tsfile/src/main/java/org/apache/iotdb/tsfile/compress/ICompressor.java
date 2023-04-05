@@ -373,6 +373,7 @@ public interface ICompressor extends Serializable {
     }
   }
 
+
   class LZMA2Compress {
     private static LZMA2Options options;
 
@@ -406,12 +407,30 @@ public interface ICompressor extends Serializable {
     }
   }
 
+  class Lzma2Compress {
+    private static LZMA2Options options;
+
+    public Lzma2Compress() {
+      options = new LZMA2Options();
+    }
+
+    public static byte[] compress(byte[] data) throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      XZOutputStream lzma2 = new XZOutputStream(out, options);
+      lzma2.write(data);
+      lzma2.close();
+      byte[] r = out.toByteArray();
+      return r;
+    }
+
+  }
+
   class LZMA2Compressor implements ICompressor {
 
-    private static LZMA2Compress Compress;
+    private static Lzma2Compress Compress;
 
     public LZMA2Compressor() {
-      Compress = new LZMA2Compress();
+      Compress = new Lzma2Compress();
     }
 
     @Override
@@ -445,7 +464,7 @@ public interface ICompressor extends Serializable {
       int length = data.remaining();
       byte[] dataBefore = new byte[length];
       data.get(dataBefore, 0, length);
-      byte[] res = LZMA2Compress.compress(dataBefore);
+      byte[] res = Lzma2Compress.compress(dataBefore);
       compressed.put(res);
       return res.length;
     }
