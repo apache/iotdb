@@ -70,20 +70,31 @@ CHIMP encoding is lossless. It is the state-of-the-art compression algorithm for
 
 Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using CHIMP to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
+* SPRINTZ
+
+The SPRINTZ encoding combines encodings in four steps: predicting, bit-packing, run-length encoding and entropy encoding. SPRINTZ algorithm is suitable for predictable time series. For delta function, the vast repeats or linearly increasing time series is the best target.
+
+* RLBE
+
+The RLBE encoding proposes to combine delta, run-length and Fibonacci based encoding ideas. It has five steps: differential coding, binary encoding, run-length, Fibonacci coding and concatenation.
+It is more suitable for the differential value of time series is positive and small.
+
+
+
 ## Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. 
 
 The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-| Data Type | Supported Encoding                          |
-|:---------:|:-------------------------------------------:|
-| BOOLEAN   | PLAIN, RLE                                  |
-| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| FLOAT     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| DOUBLE    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| TEXT      | PLAIN, DICTIONARY                           |
+| Data Type |                        Supported Encoding                         |
+|:---------:|:-----------------------------------------------------------------:|
+| BOOLEAN   |                            PLAIN, RLE                             |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| TEXT      |                         PLAIN, DICTIONARY                         |
 
 When the data type specified by the user does not correspond to the encoding method, the system will prompt an error. 
 

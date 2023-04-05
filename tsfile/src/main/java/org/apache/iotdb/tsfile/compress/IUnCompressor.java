@@ -29,6 +29,9 @@ import net.jpountz.lz4.LZ4SafeDecompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
+import org.tukaani.xz.LZMA2Options;
+import org.tukaani.xz.XZInputStream;
+import org.tukaani.xz.XZOutputStream;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -354,6 +357,53 @@ public interface IUnCompressor {
     @Override
     public CompressionType getCodecName() {
       return CompressionType.ZSTD;
+    }
+  }
+
+  class LZMA2UnCompressor implements IUnCompressor {
+
+    @Override
+    public int getUncompressedLength(byte[] array, int offset, int length) {
+      throw new UnsupportedOperationException("unsupported get uncompress length");
+    }
+
+    @Override
+    public int getUncompressedLength(ByteBuffer buffer) {
+      throw new UnsupportedOperationException("unsupported get uncompress length");
+    }
+
+    @Override
+    public byte[] uncompress(byte[] byteArray) throws IOException {
+      if (null == byteArray) {
+        return new byte[0];
+      }
+      return ICompressor.LZMA2Compress.uncompress(byteArray);
+    }
+
+    @Override
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+            throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(byteArray, offset, dataBefore, 0, length);
+      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
+      System.arraycopy(res, 0, output, outOffset, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+      int length = compressed.remaining();
+      byte[] dataBefore = new byte[length];
+      compressed.get(dataBefore, 0, length);
+
+      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
+      uncompressed.put(res);
+      return res.length;
+    }
+
+    @Override
+    public CompressionType getCodecName() {
+      return CompressionType.LZMA2;
     }
   }
 }

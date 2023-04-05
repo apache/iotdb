@@ -27,6 +27,9 @@ import com.github.luben.zstd.Zstd;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.xerial.snappy.Snappy;
+import org.tukaani.xz.LZMA2Options;
+import org.tukaani.xz.XZInputStream;
+import org.tukaani.xz.XZOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -36,10 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.GZIP;
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZ4;
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.ZSTD;
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.*;
 
 /** compress data according to type in schema. */
 public interface ICompressor extends Serializable {
@@ -69,6 +69,8 @@ public interface ICompressor extends Serializable {
         return new GZIPCompressor();
       case ZSTD:
         return new ZstdCompressor();
+      case LZMA2:
+        return new LZMA2Compressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -368,6 +370,96 @@ public interface ICompressor extends Serializable {
     @Override
     public CompressionType getType() {
       return ZSTD;
+    }
+  }
+
+  class LZMA2Compress {
+    private static LZMA2Options options;
+
+    public LZMA2Compress() {
+      options = new LZMA2Options();
+    }
+
+    public static byte[] compress(byte[] data) throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      XZOutputStream lzma2 = new XZOutputStream(out, options);
+      lzma2.write(data);
+      lzma2.close();
+      byte[] r = out.toByteArray();
+      return r;
+    }
+
+    public static byte[] uncompress(byte[] data) throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      ByteArrayInputStream in = new ByteArrayInputStream(data);
+
+      XZInputStream unlzma2 = new XZInputStream(in);
+
+      byte[] buffer = new byte[256];
+      int n;
+      while ((n = unlzma2.read(buffer)) > 0) {
+        out.write(buffer, 0, n);
+      }
+      in.close();
+      byte[] r = out.toByteArray();
+      return r;
+    }
+  }
+
+  class LZMA2Compressor implements ICompressor {
+
+    private static LZMA2Compress Compress;
+
+    public LZMA2Compressor() {
+      Compress = new LZMA2Compress();
+    }
+
+    @Override
+    public byte[] compress(byte[] data) throws IOException {
+      if (null == data) {
+        return new byte[0];
+      }
+      byte[] r = Compress.compress(data);
+      return r;
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(data, offset, dataBefore, 0, length);
+      byte[] r = Compress.compress(dataBefore);
+      return r;
+    }
+
+    @Override
+    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(data, offset, dataBefore, 0, length);
+      byte[] res = Compress.compress(dataBefore);
+      System.arraycopy(res, 0, compressed, 0, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+      int length = data.remaining();
+      byte[] dataBefore = new byte[length];
+      data.get(dataBefore, 0, length);
+      byte[] res = LZMA2Compress.compress(dataBefore);
+      compressed.put(res);
+      return res.length;
+    }
+
+    @Override
+    public int getMaxBytesForCompression(int uncompressedDataSize) {
+      // hard to estimate
+      return 40 + uncompressedDataSize;
+      // return Math.max(40 + uncompressedDataSize / 2, uncompressedDataSize);
+    }
+
+    @Override
+    public CompressionType getType() {
+      return LZMA2;
     }
   }
 }

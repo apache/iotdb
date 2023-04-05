@@ -144,6 +144,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "LZO",
       "LZ4",
       "ZSTD",
+      "LZMA2",
       "LATEST",
       "LIKE",
       "METADATA",
