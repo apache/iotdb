@@ -18,15 +18,19 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class EncodeTestTime {
 
-    public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+    public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException, ParseException {
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         input_path_list.add("C:\\Users\\xiaoj\\Desktop\\Load_sensors_for_wind_power_equipment\\1");
-        output_path_list.add("C:\\Users\\xiaoj\\Desktop\\Load_sensors_for_wind_power_equipment\\test_final.csv");
+        output_path_list.add("C:\\Users\\xiaoj\\Desktop\\Load_sensors_for_wind_power_equipment\\test_time.csv");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -76,7 +80,7 @@ public class EncodeTestTime {
             assert tempList != null;
             int fileRepeat = 0;
             ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-            for (int i = 1; i < 5; i++) {
+            for (int i = 0; i < 1; i++) {
                 columnIndexes.add(i);
             }
             for (File f : tempList) {
@@ -100,12 +104,11 @@ public class EncodeTestTime {
                 inputStream.close();
                 loader.close();
 
-                TSDataType dataType = TSDataType.DOUBLE;
+                TSDataType dataType = TSDataType.INT64;
                 for (int index : columnIndexes) {
                     // Iterate over each encoding algorithm
                     for (TSEncoding encoding : encodingList) {
-                        Encoder encoder =
-                                TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+                        Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
                         Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
                         long encodeTime = 0;
                         long decodeTime = 0;
@@ -122,9 +125,9 @@ public class EncodeTestTime {
 
                             // test encode time
                             long s = System.nanoTime();
-                            int index_1 = index - 1;
+                            int index_1 = index;
                             for (ArrayList<String> datum : data) {
-                                encoder.encode(Double.parseDouble(datum.get(index_1)), buffer);
+                                encoder.encode(sdf.parse(datum.get(index_1).substring(1,24)).getTime(), buffer);
                             }
                             encoder.flush(buffer);
                             long e = System.nanoTime();
@@ -139,7 +142,7 @@ public class EncodeTestTime {
 
                             // test compression ratio and compressed size
                             compressed_size = compressed.length;
-                            double ratioTmp = (double) (data.size() * Double.BYTES) / (double) compressed.length;
+                            double ratioTmp = (double) (data.size() * Long.BYTES) / (double) compressed.length;
                             ratio += ratioTmp;
 
                             // test uncompress time
