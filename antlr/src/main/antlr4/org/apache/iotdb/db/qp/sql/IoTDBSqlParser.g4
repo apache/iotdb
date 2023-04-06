@@ -1024,8 +1024,8 @@ wildcard
 
 constant
     : dateExpression
-    | (MINUS|PLUS)? realLiteral
-    | (MINUS|PLUS)? INTEGER_LITERAL
+    | (MINUS|PLUS|DIV)? realLiteral
+    | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
     | BOOLEAN_LITERAL
     | NULL_LITERAL
