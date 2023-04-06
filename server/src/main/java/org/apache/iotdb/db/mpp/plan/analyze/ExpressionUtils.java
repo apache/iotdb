@@ -235,7 +235,8 @@ public class ExpressionUtils {
   }
 
   /**
-   * Make cartesian product.
+   * Make cartesian product. Attention, in this implementation, the way to handle the empty set is
+   * to ignore it instead of making the result an empty set.
    *
    * @param dimensionValue source data
    * @param resultList final results
@@ -259,32 +260,6 @@ public class ExpressionUtils {
     } else if (layer == dimensionValue.size() - 1) {
       if (dimensionValue.get(layer).isEmpty()) {
         resultList.add(currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          resultList.add(list);
-        }
-      }
-    }
-  }
-
-  public static <T> void cartesianProductEmpty(
-      List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
-    if (layer < dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        resultList.clear();
-        //        cartesianProductEmpty(dimensionValue, resultList, layer + 1, currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          cartesianProductEmpty(dimensionValue, resultList, layer + 1, list);
-        }
-      }
-    } else if (layer == dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        resultList.clear();
       } else {
         for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
           List<T> list = new ArrayList<>(currentList);
