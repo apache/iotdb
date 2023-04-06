@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class DriverContext {
 
   private boolean inputDriver = true;
@@ -51,14 +49,6 @@ public class DriverContext {
 
   public OperatorContext addOperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType) {
-    checkArgument(operatorId >= 0, "operatorId is negative");
-
-    for (OperatorContext operatorContext : operatorContexts) {
-      checkArgument(
-          operatorId != operatorContext.getOperatorId(),
-          "A context already exists for operatorId %s",
-          operatorId);
-    }
 
     OperatorContext operatorContext =
         new OperatorContext(operatorId, planNodeId, operatorType, this);
