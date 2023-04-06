@@ -528,6 +528,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
 
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Create local sink handle to plan node {} of {} for {}",
+          remotePlanNodeId,
+          remoteFragmentInstanceId,
+          localFragmentInstanceId);
+    }
+
     SharedTsBlockQueue queue;
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(remoteFragmentInstanceId);
     LocalSourceHandle localSourceHandle =
@@ -552,6 +560,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISinkChannel createLocalSinkChannelForPipeline(
       DriverContext driverContext, String planNodeId) {
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
+    }
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
@@ -572,6 +584,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Create sink handle to plan node {} of {} for {}",
+          remotePlanNodeId,
+          remoteFragmentInstanceId,
+          localFragmentInstanceId);
+    }
 
     return new SinkChannel(
         remoteEndpoint,
@@ -653,6 +673,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Create local source handle for {}", context.getDriverTaskID());
+    }
     return new PipelineSourceHandle(
         queue,
         new PipelineSourceHandleListenerImpl(context::failed),
@@ -677,11 +701,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               + " exists.");
     }
 
-    LOGGER.debug(
-        "Create local source handle from {} for plan node {} of {}",
-        remoteFragmentInstanceId,
-        localPlanNodeId,
-        localFragmentInstanceId);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Create local source handle from {} for plan node {} of {}",
+          remoteFragmentInstanceId,
+          localPlanNodeId,
+          localFragmentInstanceId);
+    }
+
     SharedTsBlockQueue queue;
     ISinkHandle sinkHandle = shuffleSinkHandles.get(remoteFragmentInstanceId);
     if (sinkHandle != null) {
@@ -725,6 +752,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               + " of "
               + localFragmentInstanceId
               + " exists.");
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Create source handle from {} for plan node {} of {}",
+          remoteFragmentInstanceId,
+          localPlanNodeId,
+          localFragmentInstanceId);
     }
 
     SourceHandle sourceHandle =

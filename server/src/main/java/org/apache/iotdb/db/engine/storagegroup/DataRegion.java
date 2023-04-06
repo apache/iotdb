@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -81,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -132,6 +134,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -1253,6 +1256,13 @@ public class DataRegion implements IDataRegionForQuery {
     int retryCnt = 0;
     do {
       try {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkRegionDisk(databaseName)) {
+          throw new ExceedQuotaException(
+              "Unable to continue writing data, because the space allocated to the database "
+                  + databaseName
+                  + " has already used the upper limit",
+              TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
+        }
         if (sequence) {
           tsFileProcessor =
               getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
@@ -1276,6 +1286,9 @@ public class DataRegion implements IDataRegionForQuery {
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
+      } catch (ExceedQuotaException e) {
+        logger.error(e.getMessage());
+        break;
       }
     } while (tsFileProcessor == null);
     return tsFileProcessor;
@@ -3208,6 +3221,38 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException("Partial failed inserting multi tablets");
+    }
+  }
+
+  /** @return the disk space occupied by this data region, unit is MB */
+  public long countRegionDiskSize() {
+    AtomicLong diskSize = new AtomicLong(0);
+    DirectoryManager.getInstance()
+        .getAllFilesFolders()
+        .forEach(
+            folder -> {
+              folder = folder + File.separator + databaseName + File.separator + dataRegionId;
+              countFolderDiskSize(folder, diskSize);
+            });
+    return diskSize.get() / 1024 / 1024;
+  }
+
+  /**
+   * @param folder the folder's path
+   * @param diskSize the disk space occupied by this folder, unit is MB
+   */
+  private void countFolderDiskSize(String folder, AtomicLong diskSize) {
+    File file = new File(folder);
+    File[] allFile = file.listFiles();
+    if (allFile == null) {
+      return;
+    }
+    for (File f : allFile) {
+      if (f.isFile()) {
+        diskSize.addAndGet(f.length());
+      } else if (f.isDirectory()) {
+        countFolderDiskSize(f.getAbsolutePath(), diskSize);
+      }
     }
   }
 
