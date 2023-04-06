@@ -308,7 +308,7 @@ public class ExpressionTypeAnalyzer {
           caseWhenThenExpression.getWhenThenExpressions()) {
         typeSet.add(process(whenThenExpression, context));
       }
-      if (caseWhenThenExpression.getElseExpression() != null) {
+      if (!(caseWhenThenExpression.getElseExpression() instanceof NullOperand)) {
         typeSet.add(process(caseWhenThenExpression.getElseExpression(), context));
       }
       // if TEXT exists, every branch need to be TEXT
