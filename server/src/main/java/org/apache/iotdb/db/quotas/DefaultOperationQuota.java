@@ -73,6 +73,9 @@ public class DefaultOperationQuota implements OperationQuota {
 
   @Override
   public void addReadResult(List<ByteBuffer> queryResult) {
+    if (queryResult == null) {
+      return;
+    }
     long size = 0;
     for (ByteBuffer buffer : queryResult) {
       size += buffer.limit();
