@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.other;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -54,7 +55,7 @@ public class CaseWhenThenExpression extends Expression {
 
   public CaseWhenThenExpression(ByteBuffer byteBuffer) {
     int len = ReadWriteIOUtils.readInt(byteBuffer);
-    assert len > 0;
+    Validate.isTrue(len > 0, "the length of CaseWhenThenExpression's whenThenList must greater than 0");
     for (int i = 0; i < len; i++) {
       Expression expression = Expression.deserialize(byteBuffer);
       this.whenThenExpressions.add((WhenThenExpression) expression);

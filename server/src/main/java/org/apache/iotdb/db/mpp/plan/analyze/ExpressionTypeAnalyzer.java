@@ -308,9 +308,8 @@ public class ExpressionTypeAnalyzer {
           caseWhenThenExpression.getWhenThenExpressions()) {
         typeSet.add(process(whenThenExpression, context));
       }
-      TSDataType elseType = process(caseWhenThenExpression.getElseExpression(), context);
-      if (elseType != null) {
-        typeSet.add(elseType);
+      if (caseWhenThenExpression.getElseExpression() != null) {
+        typeSet.add(process(caseWhenThenExpression.getElseExpression(), context));
       }
       // if TEXT exists, every branch need to be TEXT
       if (typeSet.contains(TSDataType.TEXT)) {
