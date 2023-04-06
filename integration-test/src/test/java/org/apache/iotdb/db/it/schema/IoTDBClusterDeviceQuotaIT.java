@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.it.env.EnvFactory;
 
-import org.junit.Assert;
-import org.junit.Test;
+public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterMeasurementQuotaIT {
+  public IoTDBClusterDeviceQuotaIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
-public class ClusterSchemaManagerTest {
-
-  @Test
-  public void testCalcMaxRegionGroupNum() {
-
-    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
-
-    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
-
-    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  @Override
+  protected void setUpQuotaConfig() {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("DEVICE");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterMaxSchemaCount(3);
   }
 }

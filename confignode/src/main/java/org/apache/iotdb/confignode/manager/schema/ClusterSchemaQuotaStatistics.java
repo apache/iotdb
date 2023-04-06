@@ -16,25 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.schema;
 
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import javax.validation.constraints.NotNull;
 
-public class ClusterSchemaManagerTest {
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-  @Test
-  public void testCalcMaxRegionGroupNum() {
+public class ClusterSchemaQuotaStatistics {
 
-    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
+  private final Map<TConsensusGroupId, Long> countMap = new ConcurrentHashMap<>();
 
-    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
+  public void updateCount(@NotNull Map<TConsensusGroupId, Long> schemaCountMap) {
+    countMap.putAll(schemaCountMap);
+  }
 
-    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  public long getSchemaQuotaCount(Set<TConsensusGroupId> consensusGroupIdSet) {
+    return countMap.entrySet().stream()
+        .filter(i -> consensusGroupIdSet.contains(i.getKey()))
+        .mapToLong(Map.Entry::getValue)
+        .sum();
+  }
+
+  public void clear() {
+    countMap.clear();
   }
 }

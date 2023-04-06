@@ -236,6 +236,7 @@ public class ConfigRegionStateMachine
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
+      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
     }
   }
 

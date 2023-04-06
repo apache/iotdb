@@ -109,6 +109,10 @@ public class DatabasePartitionTable {
     replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
   }
 
+  public Set<TConsensusGroupId> getAllConsensusGroupId() {
+    return regionGroupMap.keySet();
+  }
+
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();

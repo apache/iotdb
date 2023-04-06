@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -48,6 +50,8 @@ import java.util.function.Consumer;
 public class MemMTreeStore implements IMTreeStore {
 
   private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
   private MemSchemaRegionStatistics regionStatistics;
 
   private IMNode root;
@@ -154,7 +158,8 @@ public class MemMTreeStore implements IMTreeStore {
   public void updateMNode(IMNode node) {}
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
+  public IEntityMNode setToEntity(IMNode node) throws SchemaQuotaExceededException {
+    schemaQuotaManager.checkDeviceLevel();
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
       regionStatistics.addDevice();

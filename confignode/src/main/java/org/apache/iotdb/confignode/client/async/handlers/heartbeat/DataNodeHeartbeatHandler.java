@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
@@ -40,16 +41,19 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   private final RouteBalancer routeBalancer;
+  private final Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess;
 
   public DataNodeHeartbeatHandler(
       TDataNodeLocation dataNodeLocation,
       DataNodeHeartbeatCache dataNodeHeartbeatCache,
       Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
-      RouteBalancer routeBalancer) {
+      RouteBalancer routeBalancer,
+      Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
     this.routeBalancer = routeBalancer;
+    this.schemaQuotaRespProcess = schemaQuotaRespProcess;
   }
 
   @Override
@@ -82,6 +86,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                         heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
               }
             });
+    if (heartbeatResp.getSchemaCountMap() != null) {
+      schemaQuotaRespProcess.accept(heartbeatResp.getSchemaCountMap());
+    }
   }
 
   @Override
