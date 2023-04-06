@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -840,6 +841,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             throw new DifferentTemplateException(activatePath.getFullPath(), template.getName());
           }
         }
+        DataNodeSchemaQuotaManager.getInstance()
+            .checkMeasurementLevel(template.getMeasurementNumber());
 
         if (cur.isEntity()) {
           entityMNode = cur.getAsEntityMNode();
@@ -895,6 +898,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       entityMNode.setSchemaTemplateId(templateId);
 
       store.updateMNode(entityMNode);
+      regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
     }

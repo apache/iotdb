@@ -112,4 +112,8 @@ public interface CommonConfig {
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
+
+  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+
+  CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount);
 }

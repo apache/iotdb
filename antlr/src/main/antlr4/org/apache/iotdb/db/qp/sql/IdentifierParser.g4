@@ -23,6 +23,7 @@ options { tokenVocab=SqlLexer; }
 
 identifier
      : keyWords
+     | DURATION_LITERAL
      | ID
      | QUOTED_ID
      ;
@@ -73,6 +74,7 @@ keyWords
     | DESC
     | DESCRIBE
     | DEVICE
+    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
