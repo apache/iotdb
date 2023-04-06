@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 public class PipeInfo implements SnapshotProcessor {
 
@@ -142,5 +143,22 @@ public class PipeInfo implements SnapshotProcessor {
 
   public void clear() {
     pipeMetaKeeper.clear();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipeInfo that = (PipeInfo) o;
+    return pipeMetaKeeper.equals(that.pipeMetaKeeper);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeMetaKeeper);
   }
 }

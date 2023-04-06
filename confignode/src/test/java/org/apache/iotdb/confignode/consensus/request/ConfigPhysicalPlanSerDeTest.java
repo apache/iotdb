@@ -1015,7 +1015,11 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(recordPipeMessagePlan.serializeToByteBuffer());
     Assert.assertEquals(recordPipeMessagePlan.getPipeName(), recordPipeMessagePlan1.getPipeName());
     Assert.assertEquals(
-        recordPipeMessagePlan.getPipeMessage(), recordPipeMessagePlan1.getPipeMessage());
+        recordPipeMessagePlan.getPipeMessage().getType(),
+        recordPipeMessagePlan1.getPipeMessage().getType());
+    Assert.assertEquals(
+        recordPipeMessagePlan.getPipeMessage().getMessage(),
+        recordPipeMessagePlan1.getPipeMessage().getMessage());
   }
 
   @Test

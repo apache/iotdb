@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskInfo {
@@ -35,7 +34,7 @@ public class PipeTaskInfo {
 
   private final ConfigNodePipeMetaKeeper pipeMetaKeeper;
 
-  public PipeTaskInfo(ConfigNodePipeMetaKeeper pipeMetaKeeper) throws IOException {
+  public PipeTaskInfo(ConfigNodePipeMetaKeeper pipeMetaKeeper) {
     this.pipeMetaKeeper = pipeMetaKeeper;
   }
 

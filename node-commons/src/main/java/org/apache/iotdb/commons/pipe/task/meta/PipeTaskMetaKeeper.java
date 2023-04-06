@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class PipeTaskMetaKeeper {
 
@@ -41,5 +42,22 @@ public abstract class PipeTaskMetaKeeper {
 
   public void clear() {
     this.pipeTaskMetas.clear();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipeTaskMetaKeeper that = (PipeTaskMetaKeeper) o;
+    return pipeTaskMetas.equals(that.pipeTaskMetas);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeTaskMetas);
   }
 }

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMetaKeeper;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class PipeMetaKeeper {
@@ -71,5 +72,24 @@ public abstract class PipeMetaKeeper {
     pipeNameToPipeMetaMap.clear();
     pipeTaskMetaKeeper.clear();
     pipePluginMetaKeeper.clear();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipeMetaKeeper that = (PipeMetaKeeper) o;
+    return pipeNameToPipeMetaMap.equals(that.pipeNameToPipeMetaMap)
+        && pipeTaskMetaKeeper.equals(that.pipeTaskMetaKeeper)
+        && pipePluginMetaKeeper.equals(that.pipePluginMetaKeeper);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeNameToPipeMetaMap, pipeTaskMetaKeeper, pipePluginMetaKeeper);
   }
 }
