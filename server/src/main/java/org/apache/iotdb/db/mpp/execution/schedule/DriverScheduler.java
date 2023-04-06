@@ -216,6 +216,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     for (DriverTask task : submittedTasks) {
       registerTaskToQueryMap(queryId, task);
     }
+    timeoutQueue.push(submittedTasks.get(submittedTasks.size() - 1));
     for (DriverTask task : submittedTasks) {
       submitTaskToReadyQueue(task);
     }
@@ -225,12 +226,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     // If query has not been registered by other fragment instances,
     // add the first task as timeout checking task to timeoutQueue.
     queryMap
-        .computeIfAbsent(
-            queryId,
-            v -> {
-              timeoutQueue.push(driverTask);
-              return new ConcurrentHashMap<>();
-            })
+        .computeIfAbsent(queryId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(
             driverTask.getDriverTaskId().getFragmentInstanceId(),
             v -> Collections.synchronizedSet(new HashSet<>()))
