@@ -89,11 +89,6 @@ public class MapMatcher implements PipePatternMatcher {
     lock.readLock().lock();
     try {
       Set<PipeRealtimeCollector> matchCollectors = new HashSet<>();
-      for (Map.Entry<String, Set<PipeRealtimeCollector>> entry : pattern2Collectors.entrySet()) {
-        if (checkIfDevicesMatch(entry.getKey(), devices)) {
-          matchCollectors.addAll(entry.getValue());
-        }
-      }
       return matchCollectors;
     } finally {
       lock.readLock().unlock();
