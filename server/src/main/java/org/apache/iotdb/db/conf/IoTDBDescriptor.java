@@ -671,6 +671,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
+    conf.setEnable13DataInsertAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "0.13_data_insert_adapt", String.valueOf(conf.isEnable13DataInsertAdapt()))));
+
     int rpcSelectorThreadNum =
         Integer.parseInt(
             properties.getProperty(

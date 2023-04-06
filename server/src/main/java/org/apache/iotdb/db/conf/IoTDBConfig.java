@@ -752,6 +752,8 @@ public class IoTDBConfig {
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
 
+  private boolean enable13DataInsertAdapt = false;
+
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
    * value to be slightly larger than the average length of all text records.
@@ -1836,6 +1838,14 @@ public class IoTDBConfig {
 
   public void setEnablePartialInsert(boolean enablePartialInsert) {
     this.enablePartialInsert = enablePartialInsert;
+  }
+
+  public boolean isEnable13DataInsertAdapt() {
+    return enable13DataInsertAdapt;
+  }
+
+  public void setEnable13DataInsertAdapt(boolean enable13DataInsertAdapt) {
+    this.enable13DataInsertAdapt = enable13DataInsertAdapt;
   }
 
   public int getCompactionThreadCount() {
