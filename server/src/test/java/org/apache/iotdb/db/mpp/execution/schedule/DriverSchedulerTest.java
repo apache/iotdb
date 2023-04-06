@@ -77,8 +77,8 @@ public class DriverSchedulerTest {
     Assert.assertEquals(2, manager.getQueryMap().get(queryId).size());
     Assert.assertEquals(1, manager.getTimeoutQueue().size());
     Assert.assertEquals(2, manager.getReadyQueue().size());
-    Assert.assertNotNull(manager.getTimeoutQueue().get(driverTaskId1));
-    Assert.assertNull(manager.getTimeoutQueue().get(driverTaskId2));
+    Assert.assertNull(manager.getTimeoutQueue().get(driverTaskId1));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(driverTaskId2));
     DriverTask task1 =
         (DriverTask) manager.getQueryMap().get(queryId).get(instanceId1).toArray()[0];
     DriverTask task2 =
@@ -99,9 +99,9 @@ public class DriverSchedulerTest {
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(3, manager.getQueryMap().get(queryId).size());
-    Assert.assertEquals(1, manager.getTimeoutQueue().size());
+    Assert.assertEquals(2, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
-    Assert.assertNull(manager.getTimeoutQueue().get(driverTaskId3));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(driverTaskId3));
     DriverTask task3 =
         (DriverTask) manager.getQueryMap().get(queryId).get(instanceId3).toArray()[0];
     Assert.assertEquals(task3.getDriverTaskId(), driverTaskId3);
@@ -120,7 +120,7 @@ public class DriverSchedulerTest {
     Assert.assertEquals(2, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId2));
     Assert.assertEquals(1, manager.getQueryMap().get(queryId2).size());
-    Assert.assertEquals(2, manager.getTimeoutQueue().size());
+    Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(4, manager.getReadyQueue().size());
     DriverTask task4 = manager.getTimeoutQueue().get(driverTaskId4);
     Assert.assertNotNull(task4);
@@ -136,7 +136,7 @@ public class DriverSchedulerTest {
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(2, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-    Assert.assertEquals(1, manager.getTimeoutQueue().size());
+    Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
     Assert.assertEquals(DriverTaskStatus.ABORTED, task1.getStatus());
     Assert.assertEquals(DriverTaskStatus.READY, task2.getStatus());
