@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.other;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -31,6 +30,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.commons.lang3.Validate;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -55,7 +56,8 @@ public class CaseWhenThenExpression extends Expression {
 
   public CaseWhenThenExpression(ByteBuffer byteBuffer) {
     int len = ReadWriteIOUtils.readInt(byteBuffer);
-    Validate.isTrue(len > 0, "the length of CaseWhenThenExpression's whenThenList must greater than 0");
+    Validate.isTrue(
+        len > 0, "the length of CaseWhenThenExpression's whenThenList must greater than 0");
     for (int i = 0; i < len; i++) {
       Expression expression = Expression.deserialize(byteBuffer);
       this.whenThenExpressions.add((WhenThenExpression) expression);
