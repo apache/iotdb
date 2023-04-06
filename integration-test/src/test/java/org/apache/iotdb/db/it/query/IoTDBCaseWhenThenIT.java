@@ -512,13 +512,11 @@ public class IoTDBCaseWhenThenIT {
         "select case s1 when 11 then CAST(diff(s1) as TEXT) else CAST(s1-1 as TEXT) end from root.sg.d1 align by device";
     expectHeader =
         new String[] {
-            TIMESTAMP_STR,
-            DEVICE,
-            "CASE WHEN s1 <= 11 THEN CAST(diff(s1) AS TEXT) ELSE CAST(s1 - 1 AS TEXT) END",
+            "Time", "Device", "CASE WHEN s1 = 11 THEN CAST(diff(s1) AS TEXT) ELSE CAST(s1 - 1 AS TEXT) END",
         };
     retArray =
         new String[] {
-            "0,root.sg.d1,null,",
+            "0,root.sg.d1,-1.0,",
             "1000000,root.sg.d1,11.0,",
             "20000000,root.sg.d1,21.0,",
             "210000000,root.sg.d1,32.0,",
@@ -526,9 +524,41 @@ public class IoTDBCaseWhenThenIT {
     resultSetEqualTest(sql, expectHeader, retArray);
 
     // UDF is not allowed
-    sql = "select case when s1=0 then change_points(s1) end from root.sg.d1";
+    sql = "select case s1 when 0 then change_points(s1) end from root.sg.d1";
     String msg = "301: CASE expression cannot be used with non-mappable UDF";
     assertTestFail(sql, msg);
+  }
+
+  @Test
+  public void testKind1Wildcard() {
+    String sql = "select case when *=* then * else * end from root.sg.d2";
+    String[] expectedHeaders =
+        new String[] {
+            TIMESTAMP_STR,
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s3 THEN root.sg.d2.s3 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s3 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s3 THEN root.sg.d2.s4 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s3 THEN root.sg.d2.s4 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s4 THEN root.sg.d2.s3 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s4 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s4 THEN root.sg.d2.s4 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s3 = root.sg.d2.s4 THEN root.sg.d2.s4 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s3 THEN root.sg.d2.s3 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s3 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s3 THEN root.sg.d2.s4 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s3 THEN root.sg.d2.s4 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s4 THEN root.sg.d2.s3 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s4 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s4 THEN root.sg.d2.s4 ELSE root.sg.d2.s3 END",
+            "CASE WHEN root.sg.d2.s4 = root.sg.d2.s4 THEN root.sg.d2.s4 ELSE root.sg.d2.s4 END",
+        };
+    String[] retArray = {
+        "0,0.0,0.0,44.0,44.0,0.0,44.0,0.0,44.0,0.0,44.0,0.0,44.0,0.0,0.0,44.0,44.0,",
+        "1000000,11.0,11.0,55.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,55.0,11.0,11.0,55.0,55.0,",
+        "20000000,22.0,22.0,66.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,66.0,22.0,22.0,66.0,66.0,",
+        "210000000,33.0,33.0,77.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,77.0,33.0,33.0,77.0,77.0,",
+    };
+    resultSetEqualTest(sql, expectedHeaders, retArray);
   }
 
   @Test
@@ -615,6 +645,57 @@ public class IoTDBCaseWhenThenIT {
   }
 
   @Test
+  public void testKind2AlignedByDevice() {
+    // from different devices, result should be empty
+    String sql =
+        "select case s1 when 11 then s3 else s4 end from root.sg.d1, root.sg.d2 align by device";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR};
+    String[] retArray = {};
+    resultSetEqualTest(sql, expectedHeader, retArray);
+
+    // from same device
+    sql = "select case s3 when 11 then s3 else s4 end from root.sg.d1, root.sg.d2 align by device";
+    expectedHeader =
+        new String[] {
+            TIMESTAMP_STR, DEVICE, "CASE WHEN s3 = 11 THEN s3 ELSE s4 END",
+        };
+    retArray =
+        new String[] {
+            "0,root.sg.d2,44.0,",
+            "1000000,root.sg.d2,11.0,",
+            "20000000,root.sg.d2,66.0,",
+            "210000000,root.sg.d2,77.0,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+
+    // from same device, two result column
+    sql =
+        "select "
+            + "case s1 when 11 then s1 else s1*2 end, "
+            + "case s3 when 11 then s3 else s4 end "
+            + "from root.sg.d1, root.sg.d2 align by device";
+    expectedHeader =
+        new String[] {
+            TIMESTAMP_STR,
+            DEVICE,
+            "CASE WHEN s1 = 11 THEN s1 ELSE s1 * 2 END",
+            "CASE WHEN s3 = 11 THEN s3 ELSE s4 END",
+        };
+    retArray =
+        new String[] {
+            "0,root.sg.d1,0.0,null,",
+            "1000000,root.sg.d1,11.0,null,",
+            "20000000,root.sg.d1,44.0,null,",
+            "210000000,root.sg.d1,66.0,null,",
+            "0,root.sg.d2,null,44.0,",
+            "1000000,root.sg.d2,null,11.0,",
+            "20000000,root.sg.d2,null,66.0,",
+            "210000000,root.sg.d2,null,77.0,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
   public void testKind1MultipleTimeseries() {
     // time stamp is aligned
     String sql = "select s1*s1, case when s1<=11 then s3 else s4 end from root.sg.d1, root.sg.d2";
@@ -654,6 +735,43 @@ public class IoTDBCaseWhenThenIT {
   }
 
   @Test
+  public void testKind2MultipleTimeseries() {
+    // time stamp is aligned
+    String sql = "select s1*s1, case s1 when 11 then s3 else s4 end from root.sg.d1, root.sg.d2";
+    String[] expectedHeader =
+        new String[] {
+            TIMESTAMP_STR,
+            "root.sg.d1.s1 * root.sg.d1.s1",
+            "CASE WHEN root.sg.d1.s1 = 11 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+        };
+    String[] retArray =
+        new String[] {
+            "0,0.0,44.0,", "1000000,121.0,11.0,", "20000000,484.0,66.0,", "210000000,1089.0,77.0,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+
+    // time stamp is not aligned
+    sql =
+        "select "
+            + "case s2%2 when 1 then s2 else s2/2 end, "
+            + "case s3 when 11 then s3 else s4 end "
+            + "from root.sg.d1, root.sg.d2 limit 5 offset 98";
+    expectedHeader =
+        new String[] {
+            "Time", "CASE WHEN root.sg.d1.s2 % 2 = 1 THEN root.sg.d1.s2 ELSE root.sg.d1.s2 / 2 END", "CASE WHEN root.sg.d2.s3 = 11 THEN root.sg.d2.s3 ELSE root.sg.d2.s4 END",
+        };
+    retArray =
+        new String[] {
+            "98,49.0,null,",
+            "99,99.0,null,",
+            "1000000,null,11.0,",
+            "20000000,null,66.0,",
+            "210000000,null,77.0,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
   public void testKind1UseInWhereClause() {
     String sql =
         "select s4 from root.sg.d2 where case when s3=0 then s4>44 when s3=22 then s4>0 when time>200000000 then true end";
@@ -674,6 +792,70 @@ public class IoTDBCaseWhenThenIT {
         new String[] {
           "0,false,", "1000000,null,", "20000000,true,", "210000000,true,",
         };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testKind2UseInWhereClause() {
+    String sql =
+        "select s4 from root.sg.d2 where case s3 when 0 then s4>44 when 22 then s4>0 end";
+    String[] expectedHeader =
+        new String[] {
+            TIMESTAMP_STR, "root.sg.d2.s4",
+        };
+    String[] retArray = new String[] {"20000000,66.0,"};
+    resultSetEqualTest(sql, expectedHeader, retArray);
+
+    sql =
+        "select case s3 when 0 then s4>44 when 22 then s4>0 end as result from root.sg.d2";
+    expectedHeader =
+        new String[] {
+            TIMESTAMP_STR, "result",
+        };
+    retArray =
+        new String[] {
+            "0,false,", "1000000,null,", "20000000,true,", "210000000,null,",
+        };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+
+    // CASE time
+    sql =
+        "select s4 from root.sg.d2 where case time when 0 then false when 20000000 then true when 1000000 then true end";
+    expectedHeader =
+        new String[] {
+            TIMESTAMP_STR, "root.sg.d2.s4",
+        };
+    retArray = new String[] {"1000000,55.0,", "20000000,66.0,"};
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testKind1CaseInCase() {
+    String sql = "select case when s1=0 || s1=22 then cast(case when s1=0 then 99 when s1>22 then 999 end as TEXT) else \"xxx\" end from root.sg.d1";
+    String[] expectedHeader = new String[] {
+        TIMESTAMP_STR, "CASE WHEN root.sg.d1.s1 = 0 | root.sg.d1.s1 = 22 THEN CAST(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 END AS TEXT) ELSE \"xxx\" END"
+    };
+    String[] retArray = new String[] {
+        "0,99.0,",
+        "1000000,xxx,",
+        "20000000,null,",
+        "210000000,xxx,",
+    };
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
+
+  @Test
+  public void testKind2CaseInCase() {
+    String sql = "select case s1 when 0 then cast(case when s1=0 then 99 when s1>22 then 999 end as TEXT) when 22 then cast(case when s1=0 then 99 when s1>22 then 999 end as TEXT) else \"xxx\" end from root.sg.d1";
+    String[] expectedHeader = new String[] {
+        TIMESTAMP_STR, "CASE WHEN root.sg.d1.s1 = 0 THEN CAST(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 END AS TEXT) WHEN root.sg.d1.s1 = 22 THEN CAST(CASE WHEN root.sg.d1.s1 = 0 THEN 99 WHEN root.sg.d1.s1 > 22 THEN 999 END AS TEXT) ELSE \"xxx\" END"
+    };
+    String[] retArray = new String[] {
+        "0,99.0,",
+        "1000000,xxx,",
+        "20000000,null,",
+        "210000000,xxx,",
+    };
     resultSetEqualTest(sql, expectedHeader, retArray);
   }
 }
