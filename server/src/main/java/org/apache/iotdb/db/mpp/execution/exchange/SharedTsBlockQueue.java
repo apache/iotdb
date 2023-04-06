@@ -73,12 +73,16 @@ public class SharedTsBlockQueue {
   private ListenableFuture<Void> blockedOnMemory;
 
   private boolean closed = false;
+  private boolean alreadyRegistered = false;
 
   private LocalSourceHandle sourceHandle;
   private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+
+  // When the sink channel of a pipeline driver closes, all dependency drivers can be submitted
+  private SettableFuture<Void> blockedDependencyDriver = null;
 
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,
@@ -91,10 +95,6 @@ public class SharedTsBlockQueue {
     this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
-    localMemoryManager
-        .getQueryPool()
-        .registerPlanNodeIdToQueryMemoryMap(
-            fragmentInstanceId.queryId, fullFragmentInstanceId, planNodeId);
   }
 
   public boolean hasNoMoreTsBlocks() {
@@ -207,6 +207,12 @@ public class SharedTsBlockQueue {
 
     Validate.notNull(tsBlock, "TsBlock cannot be null");
     Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
+    if (!alreadyRegistered) {
+      localMemoryManager
+          .getQueryPool()
+          .registerPlanNodeIdToQueryMemoryMap(
+              localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+    }
     Pair<ListenableFuture<Void>, Boolean> pair =
         localMemoryManager
             .getQueryPool()
@@ -264,6 +270,17 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    // Dependency driver must be submitted before this task is cleared
+    if (blockedDependencyDriver != null) {
+      this.blockedDependencyDriver.set(null);
+    }
+  }
+
+  public SettableFuture<Void> getBlockedDependencyDriver() {
+    if (blockedDependencyDriver == null) {
+      blockedDependencyDriver = SettableFuture.create();
+    }
+    return blockedDependencyDriver;
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
