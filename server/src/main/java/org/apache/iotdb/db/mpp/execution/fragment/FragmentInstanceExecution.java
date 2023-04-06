@@ -145,6 +145,11 @@ public class FragmentInstanceExecution {
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }
+          } catch (Throwable t) {
+            try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+              LOGGER.error(
+                  "Errors happened while trying to finish FI, resource may already leak!", t);
+            }
           }
         });
   }

@@ -355,14 +355,21 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   protected synchronized void releaseResource() {
-    for (TsFileResource tsFile : closedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+    // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
+    if (closedFilePaths != null) {
+      for (TsFileResource tsFile : closedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+      }
+      closedFilePaths = null;
     }
-    closedFilePaths = null;
-    for (TsFileResource tsFile : unClosedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+
+    if (unClosedFilePaths != null) {
+      for (TsFileResource tsFile : unClosedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+      }
+      unClosedFilePaths = null;
     }
-    unClosedFilePaths = null;
+
     dataRegion = null;
     timeFilter = null;
     sourcePaths = null;
