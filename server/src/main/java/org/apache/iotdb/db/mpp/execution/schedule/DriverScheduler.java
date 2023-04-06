@@ -277,16 +277,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
     if (queryRelatedTasks != null) {
       Set<DriverTask> instanceRelatedTasks = queryRelatedTasks.remove(instanceId);
       if (instanceRelatedTasks != null) {
-        for (DriverTask task : instanceRelatedTasks) {
-          if (task == null) {
-            return;
-          }
-          task.lock();
-          try {
-            task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
-            clearDriverTask(task);
-          } finally {
-            task.unlock();
+        synchronized (instanceRelatedTasks) {
+          for (DriverTask task : instanceRelatedTasks) {
+            if (task == null) {
+              return;
+            }
+            task.lock();
+            try {
+              task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+              clearDriverTask(task);
+            } finally {
+              task.unlock();
+            }
           }
         }
       }
