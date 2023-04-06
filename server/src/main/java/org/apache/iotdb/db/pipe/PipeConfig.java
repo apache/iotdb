@@ -19,8 +19,21 @@
 
 package org.apache.iotdb.db.pipe;
 
+import com.lmax.disruptor.WaitStrategy;
+
 public class PipeConfig {
   private PipeConfig() {}
+
+  private final int defaultRingBufferSize = 65536;
+  private final int matcherCacheSize = 1024;
+
+  public int getDefaultRingBufferSize() {
+    return defaultRingBufferSize;
+  }
+
+  public int getMatcherCacheSize() {
+    return matcherCacheSize;
+  }
 
   public static PipeConfig getInstance() {
     return PipeConfigHolder.INSTANCE;

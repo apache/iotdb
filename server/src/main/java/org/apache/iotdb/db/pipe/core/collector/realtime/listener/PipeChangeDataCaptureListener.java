@@ -19,13 +19,48 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
+import org.apache.iotdb.db.pipe.core.event.factory.PipeEventFactory;
+
 import java.io.File;
+import java.util.concurrent.ConcurrentMap;
 
 public class PipeChangeDataCaptureListener {
+  private ConcurrentMap<String, DataRegionChangeDataCache> id2Caches;
+
   private PipeChangeDataCaptureListener() {}
 
-  public void collectTsFile(File tsFile) {
+  public void setDataRegionChangeDataCaches(
+      ConcurrentMap<String, DataRegionChangeDataCache> id2Caches) {
+    this.id2Caches = id2Caches;
+  }
 
+  public void collectTsFile(File tsFile, String dataRegionId, long timePartitionId, boolean isSeq) {
+    if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
+      return;
+    }
+
+    id2Caches
+        .get(dataRegionId)
+        .publishCollectorEvent(
+            PipeEventFactory.createCollectorEvent(
+                PipeEventFactory.createTsFileInsertionEvent(tsFile), timePartitionId, isSeq));
+  }
+
+  public void collectPlanNode(
+      PlanNode planNode, String dataRegionId, long timePartitionId, boolean isSeq) {
+    if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
+      return;
+    }
+
+    id2Caches
+        .get(dataRegionId)
+        .publishCollectorEvent(
+            PipeEventFactory.createCollectorEvent(
+                PipeEventFactory.createTabletInsertEvent(planNode), timePartitionId, isSeq));
   }
 
   public static PipeChangeDataCaptureListener getInstance() {

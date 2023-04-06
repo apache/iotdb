@@ -19,4 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
-public class PipeRealtimeCollectorManager {}
+import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeChangeDataCaptureListener;
+
+public class PipeRealtimeCollectorManager {
+    public PipeRealtimeCollectorManager() {
+    }
+}

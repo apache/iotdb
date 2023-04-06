@@ -19,4 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
-public class PipeRealtimeCollector {}
+public class PipeRealtimeCollector {
+    public String getPattern() {
+        return "";
+    }
+}

@@ -20,18 +20,27 @@
 package org.apache.iotdb.db.pipe.core.event.factory;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.PipeCollectorEvent;
 import org.apache.iotdb.db.pipe.core.event.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.PipeTsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import java.io.File;
 
-public class PipeEventFactory { // TODO: object pool
+public class PipeEventFactory {
+  private static final PipeCollectorEventFactory COLLECTOR_EVENT_FACTORY =
+      new PipeCollectorEventFactory();
+
   public static PipeTabletInsertionEvent createTabletInsertEvent(PlanNode planNode) {
     return new PipeTabletInsertionEvent(planNode);
   }
 
   public static PipeTsFileInsertionEvent createTsFileInsertionEvent(File tsFile) {
     return new PipeTsFileInsertionEvent(tsFile);
+  }
+
+  public static PipeCollectorEvent createCollectorEvent(
+      Event event, long timePartitionId, boolean isSeq) {
+    return COLLECTOR_EVENT_FACTORY.createCollectorEvent(event, timePartitionId, isSeq);
   }
 }

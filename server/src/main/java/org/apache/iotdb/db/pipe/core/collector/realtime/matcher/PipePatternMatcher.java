@@ -17,6 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.cache;
+package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
 
-public class PipeRealtimeEventCache {}
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
+
+import java.util.Set;
+
+public interface PipePatternMatcher {
+    void register(PipeRealtimeCollector collector, String[] nodes);
+
+    void deregister(PipeRealtimeCollector collector, String[] nodes);
+
+    Set<PipeRealtimeCollector> matchSeries(String device, String[] measurements);
+
+    Set<PipeRealtimeCollector> matchDevices(Set<String> devices);
+}
