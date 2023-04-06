@@ -829,6 +829,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5000                            |
 | 改后生效方式 | 重启服务生效                          |
 
+* 0.13\_data\_insert\_adapt
+
+|     名字     | 0.13\_data\_insert\_adapt         |
+| :----------: |:----------------------------------|
+|     描述     | 如果 0.13 版本客户端进行写入，需要将此配置项设置为 true |
+|     类型     | Boolean                           |
+|    默认值    | false                             |
+| 改后生效方式 | 重启服务生效                            |
+
 * upgrade\_thread\_count
 
 |     名字     | upgrade\_thread\_count          |
