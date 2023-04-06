@@ -818,6 +818,21 @@ WRITABLE
     : W R I T A B L E
     ;
 
+CASE
+    : C A S E
+    ;
+
+WHEN
+    : W H E N
+    ;
+
+THEN
+    : T H E N
+    ;
+
+ELSE
+    : E L S E
+    ;
 
 // Privileges Keywords
 
