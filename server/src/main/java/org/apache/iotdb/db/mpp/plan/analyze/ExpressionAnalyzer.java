@@ -540,7 +540,9 @@ public class ExpressionAnalyzer {
             false);
       }
       return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)) {
+    } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)
+        || predicate.getExpressionType().equals(ExpressionType.CONSTANT)
+        || predicate.getExpressionType().equals(ExpressionType.NULL)) {
       return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(
