@@ -135,15 +135,19 @@ public class DataNodeThrottleQuotaManager {
 
   private void recover() {
     TThrottleQuotaResp throttleQuota = ClusterConfigTaskExecutor.getInstance().getThrottleQuota();
-    if (throttleQuota.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && throttleQuota.getThrottleQuota() != null) {
-      for (String userName : throttleQuota.getThrottleQuota().keySet()) {
-        TSetThrottleQuotaReq req = new TSetThrottleQuotaReq();
-        req.setUserName(userName);
-        req.setThrottleQuota(throttleQuota.getThrottleQuota().get(userName));
-        setThrottleQuota(req);
+    if (throttleQuota.getStatus() != null) {
+      if (throttleQuota.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && throttleQuota.getThrottleQuota() != null) {
+        for (String userName : throttleQuota.getThrottleQuota().keySet()) {
+          TSetThrottleQuotaReq req = new TSetThrottleQuotaReq();
+          req.setUserName(userName);
+          req.setThrottleQuota(throttleQuota.getThrottleQuota().get(userName));
+          setThrottleQuota(req);
+        }
       }
+      LOGGER.info("Throttle quota limit restored successfully. " + throttleQuota);
+    } else {
+      LOGGER.info("Throttle quota limit restored failed. " + throttleQuota);
     }
-    LOGGER.info("Throttle quota limit restored successfully. " + throttleQuota);
   }
 }
