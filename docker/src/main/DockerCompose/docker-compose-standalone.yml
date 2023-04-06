@@ -19,7 +19,7 @@
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.0-standalone
+    image: apache/iotdb:latest
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
@@ -30,6 +30,7 @@ services:
       - cn_consensus_port=10720
       - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
+      - dn_internal_address=iotdb-service
       - dn_rpc_port=6667
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750

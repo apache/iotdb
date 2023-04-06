@@ -42,7 +42,7 @@ ddlStatement
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
     // Schema Template
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
+    | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
     // TTL
@@ -225,8 +225,8 @@ templateMeasurementClause
     ;
 
 // ---- Create Timeseries Of Schema Template
-createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+createTimeseriesUsingSchemaTemplate
+    : CREATE TIMESERIES (OF | USING) SCHEMA TEMPLATE ON prefixPath
     ;
 
 // ---- Drop Schema Template
