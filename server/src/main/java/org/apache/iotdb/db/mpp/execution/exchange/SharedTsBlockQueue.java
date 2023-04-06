@@ -81,9 +81,6 @@ public class SharedTsBlockQueue {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
-  // When the sink channel of a pipeline driver closes, all dependency drivers can be submitted
-  private SettableFuture<Void> blockedDependencyDriver = null;
-
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,
       String planNodeId,
@@ -212,6 +209,7 @@ public class SharedTsBlockQueue {
           .getQueryPool()
           .registerPlanNodeIdToQueryMemoryMap(
               localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+      alreadyRegistered = true;
     }
     Pair<ListenableFuture<Void>, Boolean> pair =
         localMemoryManager
@@ -270,17 +268,6 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    // Dependency driver must be submitted before this task is cleared
-    if (blockedDependencyDriver != null) {
-      this.blockedDependencyDriver.set(null);
-    }
-  }
-
-  public SettableFuture<Void> getBlockedDependencyDriver() {
-    if (blockedDependencyDriver == null) {
-      blockedDependencyDriver = SettableFuture.create();
-    }
-    return blockedDependencyDriver;
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */

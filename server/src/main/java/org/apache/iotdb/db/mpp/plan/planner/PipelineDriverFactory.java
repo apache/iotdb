@@ -67,7 +67,7 @@ public class PipelineDriverFactory {
     }
   }
 
-  public void setDependencyPipeIndex(int dependencyDriverIndex) {
+  public void setDependencyPipeline(int dependencyDriverIndex) {
     this.driverContext.setDependencyDriverIndex(dependencyDriverIndex);
   }
 

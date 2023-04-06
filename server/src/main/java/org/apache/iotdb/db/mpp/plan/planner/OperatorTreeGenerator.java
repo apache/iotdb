@@ -2597,7 +2597,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // Add dependency for all pipelines under current node
           if (dependencyChildNode != 0) {
             for (int i = originPipeNum; i < subContext.getPipelineNumber(); i++) {
-              context.getPipelineDriverFactories().get(i).setDependencyPipeIndex(dependencyPipeId);
+              context.getPipelineDriverFactories().get(i).setDependencyPipeline(dependencyPipeId);
             }
           }
 
