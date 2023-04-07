@@ -196,8 +196,7 @@ export const zhSidebar = {
         { text: '数据质量', link: 'Data-Quality' },
         { text: '数据修复', link: 'Data-Repairing' },
         { text: '序列发现', link: 'Series-Discovery' },
-        { text: '字符串处理', link: 'String-Processing' },
-        { text: 'M4', link: 'M4' },
+        { text: '字符串处理', link: 'String-Processing' }
       ],
     },
     {

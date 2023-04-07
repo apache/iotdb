@@ -19,15 +19,13 @@
 
 -->
 
-##  采样函数
+#  采样函数
 
-###  等数量分桶降采样函数
+##  等数量分桶降采样函数
 
 本函数对输入序列进行等数量分桶采样，即根据用户给定的降采样比例和降采样方法将输入序列按固定点数等分为若干桶。在每个桶内通过给定的采样方法进行采样。
 
-####  等数量分桶随机采样
-
-#####  函数简介
+###  等数量分桶随机采样
 
 对等数量分桶后，桶内进行随机采样。
 
@@ -35,7 +33,7 @@
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | EQUAL_SIZE_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | 降采样比例 `proportion`，取值范围为`(0, 1]`，默认为`0.1`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶随机采样                |
 
-#####  使用示例
+####  示例
 
 输入序列:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条数据。
 
@@ -95,9 +93,7 @@ Total line number = 10
 It costs 0.024s
 ```
 
-####  等数量分桶聚合采样
-
-#####  函数简介
+###  等数量分桶聚合采样
 
 采用聚合采样法对输入序列进行采样，用户需要另外提供一个聚合函数参数即
 - `type`：聚合类型，取值为`avg`或`max`或`min`或`sum`或`extreme`或`variance`。在缺省情况下，采用`avg`。其中`extreme`表示等分桶中，绝对值最大的值。`variance`表示采样等分桶中的方差。
@@ -109,7 +105,7 @@ It costs 0.024s
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | EQUAL_SIZE_BUCKET_AGG_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`<br>`type`:取值类型有`avg`, `max`, `min`, `sum`, `extreme`, `variance`, 默认为`avg`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶聚合采样                |
 
-#####  使用示例
+####  示例
 
 输入序列:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条有序数据，同等分桶随机采样的测试数据。
 
@@ -137,9 +133,7 @@ Total line number = 10
 It costs 0.044s
 ```
 
-####  等数量分桶 M4 采样
-
-#####  函数简介
+###  等数量分桶 M4 采样
 
 采用M4采样法对输入序列进行采样。即对于每个桶采样首、尾、最小和最大值。
 
@@ -147,7 +141,7 @@ It costs 0.044s
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | EQUAL_SIZE_BUCKET_M4_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶M4采样                |
 
-#####  使用示例
+####  示例
 
 输入序列:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条有序数据，同等分桶随机采样的测试数据。
 
@@ -177,9 +171,7 @@ Total line number = 12
 It costs 0.065s
 ```
 
-####  等数量分桶离群值采样
-
-#####  函数简介
+###  等数量分桶离群值采样
 
 本函数对输入序列进行等数量分桶离群值采样，即根据用户给定的降采样比例和桶内采样个数将输入序列按固定点数等分为若干桶，在每个桶内通过给定的离群值采样方法进行采样。
 
@@ -196,7 +188,7 @@ It costs 0.065s
     - `cos`: 设桶内一个数据点为b，b左边的数据点为a，b右边的数据点为c，则取ab与bc向量的夹角的余弦值，值越小，说明形成的角度越大，越可能是异常值。找到cos值最小的`top number`个
     - `prenextdis`: 设桶内一个数据点为b，b左边的数据点为a，b右边的数据点为c，则取ab与bc的长度之和作为衡量标准，和越大越可能是异常值，找到最大的`top number`个
 
-#####  使用示例
+####  示例
 
 测试数据:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条数据，其中为了加入离群值，我们使得个位数为5的值自增100。
 ```
@@ -256,9 +248,9 @@ Total line number = 10
 It costs 0.041s
 ```
 
-###  M4函数
+##  M4函数
 
-####  函数简介
+###  函数简介
 
 M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）：
 
@@ -273,7 +265,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 | ------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
 | M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`displayWindowBegin`和`displayWindowEnd`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
 
-####  属性参数
+###  属性参数
 
 **(1) 包含固定点数的窗口（SlidingSizeWindowAccessStrategy）使用的属性参数:**
 
@@ -281,8 +273,6 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 + `slidingStep`: 按照设定的点数来滑动窗口。Int数据类型。可选的属性参数；如果没有设置，默认取值和`windowSize`一样。
 
 <img src="https://alioss.timecho.com/docs/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
-
-*(图片来源: https://iotdb.apache.org/UserGuide/Master/Process-Data/UDF-User-Defined-Function.html#udtf-user-defined-timeseries-generating-function)*
 
 **(2) 滑动时间窗口（SlidingTimeWindowAccessStrategy）使用的属性参数:**
 
@@ -293,9 +283,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 
 <img src="https://alioss.timecho.com/docs/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
 
-*(图片来源: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
-
-####  使用示例
+###  示例
 
 输入的时间序列：
 
@@ -368,21 +356,27 @@ select M4(s1,'windowSize'='10') from root.vehicle.d1
 Total line number = 7
 ```
 
-####  推荐的使用场景
+###  推荐的使用场景
 
 **(1) 使用场景：保留极端点的降采样**
 
 由于M4为每个窗口聚合其第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`），因此M4通常保留了极值点，因此比其他下采样方法（如分段聚合近似 (PAA)）能更好地保留模式。如果你想对时间序列进行下采样并且希望保留极值点，你可以试试 M4。
 
-**(2) 使用场景：基于数据缩约的大规模时间序列的零误差双色折线图可视化**
+**(2) 使用场景：基于M4降采样的大规模时间序列的零误差双色折线图可视化**
 
-参考论文: ["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf).
+参考论文["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf)，作为大规模时间序列可视化的降采样方法，M4可以做到双色折线图的零变形。
 
-假设屏幕画布的像素宽乘高是`w*h`，假设时间序列root.vehicle.d1.s1要可视化的时间范围是`[tqs,tqe)`（在这个使用场景里面，需要请你自行将tqe自适应调整使得(tqe-tqs)是w的整数倍），那么落在第i个时间跨度`Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` 内的点将会被画在第i个像素列中，i=1,2,...,w。
+假设屏幕画布的像素宽乘高是`w*h`，假设时间序列要可视化的时间范围是`[tqs,tqe)`，并且(tqe-tqs)是w的整数倍，那么落在第i个时间跨度`Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` 内的点将会被画在第i个像素列中，i=1,2,...,w。于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。降采样时间序列的结果点数不会超过`4*w`个，与此同时，使用这些聚合点画出来的二色折线图与使用原始数据画出来的在像素级别上是完全一致的。
 
-于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。最终结果点数不会超过`4*w`个，使用这些聚合点画出来的折线图与使用原始数据画出来的图在像素级别上是完全一致的。
+为了免除参数值硬编码的麻烦，当Grafana用于可视化时，我们推荐使用Grafana的[模板变量](https://grafana.com/docs/grafana/latest/dashboards/variables/add-template-variables/#global-variables)`$ __interval_ms`，如下所示：
 
-####  和其它SQL的功能比较
+```sql
+select M4(s1,'timeInterval'='$__interval_ms') from root.sg1.d1
+```
+
+其中`timeInterval`自动设置为`(tqe-tqs)/w`。请注意，这里的时间精度假定为毫秒。
+
+###  和其它函数的功能比较
 
 | SQL                                               | 是否支持M4聚合                                               | 滑动窗口类型                                      | 示例                                                         | 相关文档                                                     |
 | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
