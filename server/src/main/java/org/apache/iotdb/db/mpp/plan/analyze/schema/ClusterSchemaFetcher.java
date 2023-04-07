@@ -55,7 +55,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
-  MPPQueryContext context;
+  MPPQueryContext context = null;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
       new AutoCreateSchemaExecutor(
@@ -80,7 +80,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               coordinator.execute(
                   statement,
                   queryId,
-                  context.getSession(),
+                  context == null ? null : context.getSession(),
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
