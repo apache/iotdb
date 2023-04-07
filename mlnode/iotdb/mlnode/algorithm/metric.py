@@ -16,7 +16,7 @@
 # under the License.
 #
 from abc import abstractmethod
-from typing import Dict
+from typing import List, Dict
 
 import numpy as np
 
@@ -70,7 +70,7 @@ class MSPE(Metric):
         return np.mean(np.square((pred - ground_truth) / ground_truth))
 
 
-def build_metrics(metric_names: list) -> Dict[str, Metric]:
+def build_metrics(metric_names: List) -> Dict[str, Metric]:
     metrics_dict = {}
     for metric_name in metric_names:
         metrics_dict[metric_name] = eval(metric_name)()

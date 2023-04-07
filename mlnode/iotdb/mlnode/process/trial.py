@@ -17,6 +17,7 @@
 #
 import time
 from abc import abstractmethod
+from typing import Dict
 
 import numpy as np
 import torch
@@ -78,7 +79,7 @@ def _parse_trial_config(**kwargs):
 
 
 class BasicTrial(object):
-    def __init__(self, trial_configs: dict, model: nn.Module, model_configs: dict, dataset: Dataset, **kwargs):
+    def __init__(self, trial_configs: Dict, model: nn.Module, model_configs: Dict, dataset: Dataset, **kwargs):
         trial_configs = self.trial_configs = _parse_trial_config(**trial_configs)
         self.model_id = trial_configs['model_id']
         self.trial_id = trial_configs['trial_id']

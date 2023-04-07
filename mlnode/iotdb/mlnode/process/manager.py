@@ -18,6 +18,8 @@
 
 import multiprocessing as mp
 
+from typing import Dict
+
 from torch import nn
 from torch.utils.data import Dataset
 
@@ -39,8 +41,8 @@ class TaskManager(object):
     def create_training_task(self,
                              dataset: Dataset,
                              model: nn.Module,
-                             model_configs: dict,
-                             task_configs: dict) -> ForecastingTrainingTask:
+                             model_configs: Dict,
+                             task_configs: Dict) -> ForecastingTrainingTask:
         model_id = task_configs['model_id']
         self.__pid_info[model_id] = self.__shared_resource_manager.dict()
         task = ForecastingTrainingTask(

@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -152,7 +152,7 @@ support_model_configs = {
 }
 
 
-def nbeats(common_config: dict, d_model=128, inner_layers=4, outer_layers=4, **kwargs) -> [NBeats, dict]:
+def nbeats(common_config: Dict, d_model=128, inner_layers=4, outer_layers=4, **kwargs) -> Tuple[NBeats, Dict]:
     config = _model_config()
     config.update(**common_config)
     if not d_model > 0:
