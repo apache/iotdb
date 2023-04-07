@@ -52,21 +52,22 @@ public class IntoOperator extends AbstractIntoOperator {
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize) {
+      long statementSizePerLine) {
     super(
         operatorContext,
         child,
         inputColumnTypes,
         sourceColumnToInputLocationMap,
         intoOperationExecutor,
-        maxStatementSize);
+        statementSizePerLine);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
     insertTabletStatementGenerators =
         constructInsertTabletStatementGenerators(
             targetPathToSourceInputLocationMap,
             targetPathToDataTypeMap,
             targetDeviceToAlignedMap,
-            typeConvertors);
+            typeConvertors,
+            maxRowNumberInStatement);
   }
 
   @Override
