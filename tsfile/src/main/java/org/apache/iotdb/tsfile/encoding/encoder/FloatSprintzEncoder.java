@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Vector;
 
 public class FloatSprintzEncoder extends SprintzEncoder {
@@ -85,7 +84,7 @@ public class FloatSprintzEncoder extends SprintzEncoder {
   protected void bitPack() throws IOException {
     float preValue = values.get(0);
     values.remove(0);
-    Vector<Integer>  convertBufferList = new Vector<>();
+    Vector<Integer> convertBufferList = new Vector<>();
     for (int itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
     this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(convertBufferList);
     packer = new IntPacker(this.bitWidth);
@@ -108,7 +107,6 @@ public class FloatSprintzEncoder extends SprintzEncoder {
     firePred.train(prev, val, err);
     return err;
   }
-
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {

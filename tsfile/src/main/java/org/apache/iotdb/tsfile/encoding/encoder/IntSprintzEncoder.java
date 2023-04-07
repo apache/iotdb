@@ -102,7 +102,6 @@ public class IntSprintzEncoder extends SprintzEncoder {
     return err;
   }
 
-
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
     if (byteCache.size() > 0) {

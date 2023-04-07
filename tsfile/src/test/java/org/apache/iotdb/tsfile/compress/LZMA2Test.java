@@ -56,4 +56,24 @@ public class LZMA2Test {
 
     Assert.assertArrayEquals(uncom, uncompressed);
   }
+
+  @Test
+  public void testBytes2() throws IOException {
+    String input = randomString(2000000);
+    byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
+    long time = System.currentTimeMillis();
+    ICompressor compressor = new ICompressor.LZMA2Compressor();
+
+    byte[] compressed = compressor.compress(uncom);
+    System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
+    time = System.currentTimeMillis();
+    System.out.println("ratio: " + (double) compressed.length / uncom.length);
+
+    IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
+    byte[] uncompressed = new byte[uncom.length];
+    unCompressor.uncompress(compressed, 0, compressed.length, uncompressed, 0);
+    System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
+
+    Assert.assertArrayEquals(uncom, uncompressed);
+  }
 }

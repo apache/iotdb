@@ -67,5 +67,4 @@ public abstract class SprintzEncoder extends Encoder {
   }
 
   protected abstract void bitPack() throws IOException;
-
 }
