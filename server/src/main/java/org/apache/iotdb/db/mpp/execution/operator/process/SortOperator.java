@@ -65,6 +65,16 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+
+    if (!inputOperator.hasNextWithTimer()) {
+      if (cachedData.size() > 1) {
+        cachedData.sort(comparator);
+      }
+      TsBlock result = buildTsBlock();
+      cachedData = null;
+      return result;
+    }
+
     TsBlock tsBlock = inputOperator.nextWithTimer();
     if (tsBlock == null) {
       return null;
@@ -73,17 +83,7 @@ public class SortOperator implements ProcessOperator {
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       cachedData.add(new MergeSortKey(tsBlock, i));
     }
-    // child has more data, can't calculate
-    if (inputOperator.hasNextWithTimer()) {
-      return null;
-    }
-
-    if (cachedData.size() > 1) {
-      cachedData.sort(comparator);
-    }
-    TsBlock result = buildTsBlock();
-    cachedData = null;
-    return result;
+    return null;
   }
 
   private TsBlock buildTsBlock() {
@@ -104,7 +104,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return inputOperator.hasNextWithTimer();
+    return inputOperator.hasNextWithTimer() || cachedData != null;
   }
 
   @Override

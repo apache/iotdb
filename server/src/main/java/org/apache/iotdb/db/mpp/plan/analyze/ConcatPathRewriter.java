@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -62,6 +63,12 @@ public class ConcatPathRewriter {
             prefixPaths,
             patternTree);
       }
+      if (queryStatement.hasOrderByExpression()) {
+        for (SortItem items : queryStatement.getOrderByComponent().getExpressionSortItemList()) {
+          ExpressionAnalyzer.constructPatternTreeFromExpression(
+              items.getExpression(), prefixPaths, patternTree);
+        }
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
@@ -69,7 +76,7 @@ public class ConcatPathRewriter {
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
-      // concat GROUP BY VARIATION with FROM
+      // concat GROUP BY with FROM
       if (queryStatement.hasGroupByExpression()) {
         queryStatement
             .getGroupByComponent()
@@ -77,6 +84,12 @@ public class ConcatPathRewriter {
                 contactGroupByWithFrom(
                     queryStatement.getGroupByComponent().getControlColumnExpression(),
                     prefixPaths));
+      }
+      if (queryStatement.hasOrderByExpression()) {
+        for (SortItem item : queryStatement.getOrderByComponent().getExpressionSortItemList()) {
+          Expression expression = contactOrderByWithFrom(item.getExpression(), prefixPaths);
+          item.setExpression(expression);
+        }
       }
     }
 
@@ -129,6 +142,15 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
     if (resultExpressions.size() != 1) {
       throw new IllegalStateException("Expression in group by should indicate one value");
+    }
+    return resultExpressions.get(0);
+  }
+
+  private Expression contactOrderByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+    if (resultExpressions.size() != 1) {
+      throw new IllegalStateException("Expression in order by should indicate one value");
     }
     return resultExpressions.get(0);
   }

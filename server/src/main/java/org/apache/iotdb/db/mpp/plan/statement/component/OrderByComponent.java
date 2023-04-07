@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -30,6 +31,8 @@ import static com.google.common.base.Preconditions.checkState;
 public class OrderByComponent extends StatementNode {
 
   private final List<SortItem> sortItemList;
+
+  private final List<SortItem> expressionSortItemList;
 
   private boolean orderByTime = false;
   private int timeOrderPriority = -1;
@@ -42,24 +45,44 @@ public class OrderByComponent extends StatementNode {
 
   public OrderByComponent() {
     this.sortItemList = new ArrayList<>();
+    this.expressionSortItemList = new ArrayList<>();
   }
 
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
-    if (sortItem.getSortKey() == SortKey.TIME) {
+    if (sortItem.getSortKey().equals(SortKey.TIME)) {
       orderByTime = true;
       timeOrderPriority = sortItemList.size() - 1;
-    } else if (sortItem.getSortKey() == SortKey.TIMESERIES) {
+    } else if (sortItem.getSortKey().equals(SortKey.TIMESERIES)) {
       orderByTimeseries = true;
       timeseriesOrderPriority = sortItemList.size() - 1;
-    } else {
+    } else if (sortItem.getSortKey().equals(SortKey.DEVICE)) {
       orderByDevice = true;
       deviceOrderPriority = sortItemList.size() - 1;
     }
   }
 
+  // if the sortItem can specify one unique time series
+  public boolean isUnique() {
+    return orderByDevice && orderByTime;
+  }
+
+  // if the first sortItem is device
+  public boolean isBasedOnDevice() {
+    return orderByDevice && deviceOrderPriority == 0;
+  }
+
+  public void addExpressionSortItem(SortItem sortItem) {
+    this.sortItemList.add(sortItem);
+    this.expressionSortItemList.add(sortItem);
+  }
+
   public List<SortItem> getSortItemList() {
     return sortItemList;
+  }
+
+  public List<SortItem> getExpressionSortItemList() {
+    return expressionSortItemList;
   }
 
   public boolean isOrderByTime() {

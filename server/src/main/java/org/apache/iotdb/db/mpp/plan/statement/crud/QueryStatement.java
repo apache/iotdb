@@ -311,6 +311,10 @@ public class QueryStatement extends Statement {
     return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
 
+  public boolean hasOrderByExpression() {
+    return !getExpressionSortItemList().isEmpty();
+  }
+
   public boolean isAlignByTime() {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_TIME;
   }
@@ -362,6 +366,13 @@ public class QueryStatement extends Statement {
       return Collections.emptyList();
     }
     return orderByComponent.getSortItemList();
+  }
+
+  public List<SortItem> getExpressionSortItemList() {
+    if (orderByComponent == null) {
+      return Collections.emptyList();
+    }
+    return orderByComponent.getExpressionSortItemList();
   }
 
   public boolean hasFill() {
@@ -416,6 +427,21 @@ public class QueryStatement extends Statement {
                 ? resultColumn.getAlias()
                 : resultColumn.getExpression().getExpressionString());
       }
+      for (SortItem item : getExpressionSortItemList()) {
+        Expression expression = item.getExpression();
+        if (expression instanceof FunctionExpression) {
+          if (!expression.isBuiltInAggregationFunctionExpression()) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          }
+        } else {
+          for (Expression subExpression : expression.getExpressions()) {
+            if (!subExpression.isBuiltInAggregationFunctionExpression()) {
+              throw new SemanticException(
+                  "Raw data and aggregation hybrid query is not supported.");
+            }
+          }
+        }
+      }
       if (isGroupByTag()) {
         if (hasHaving()) {
           throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
@@ -442,6 +468,11 @@ public class QueryStatement extends Statement {
       if (isGroupBy() || isGroupByLevel()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
+      for (SortItem item : getExpressionSortItemList()) {
+        if (item.getExpression().isBuiltInAggregationFunctionExpression()) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+        }
       }
     }
 

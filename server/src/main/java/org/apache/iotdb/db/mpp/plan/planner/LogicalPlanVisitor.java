@@ -169,8 +169,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (queryStatement.isAggregationQuery()) {
       planBuilder =
-          planBuilder.planHaving(
+          planBuilder.planHavingAndTransform(
               analysis.getHavingExpression(),
+              analysis.getSelectExpressions(),
+              analysis.getAggregationTransformExpressions(),
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
+    }
+
+    if (!queryStatement.isAlignByDevice()) {
+      planBuilder =
+          planBuilder.planOrderBy(
+              queryStatement,
+              queryStatement.getSortItemList(),
+              queryStatement.getExpressionSortItemList(),
               analysis.getSelectExpressions(),
               queryStatement.isGroupByTime(),
               queryStatement.getSelectComponent().getZoneId(),

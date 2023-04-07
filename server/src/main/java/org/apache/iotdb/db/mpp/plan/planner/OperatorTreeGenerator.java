@@ -846,12 +846,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       List<TSDataType> sortItemDataTypeList) {
     sortItemList.forEach(
         sortItem -> {
-          if (sortItem.getSortKey() == SortKey.TIME) {
+          if (sortItem.getSortKey().equals(SortKey.TIME)) {
             sortItemIndexList.add(-1);
             sortItemDataTypeList.add(TSDataType.INT64);
           } else {
             for (int i = 0; i < outputColumnNames.size(); i++) {
-              if (sortItem.getSortKey().toString().equalsIgnoreCase(outputColumnNames.get(i))) {
+              if (sortItem.getSortKey().equalsIgnoreCase(outputColumnNames.get(i))) {
                 sortItemIndexList.add(i);
                 sortItemDataTypeList.add(dataTypes.get(i));
                 break;
@@ -1594,7 +1594,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DeviceViewIntoOperator.class.getSimpleName());
+                SortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();

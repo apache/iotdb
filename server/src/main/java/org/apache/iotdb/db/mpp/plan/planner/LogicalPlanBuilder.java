@@ -90,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -104,10 +105,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -540,10 +544,10 @@ public class LogicalPlanBuilder {
 
     int timePriority = -1, devicePriority = -1;
     for (int i = 0; i < sortItemList.size(); i++) {
-      SortKey sortKey = sortItemList.get(i).getSortKey();
-      if (sortKey == SortKey.TIME) {
+      String sortKey = sortItemList.get(i).getSortKey();
+      if (sortKey.equals(SortKey.TIME)) {
         timePriority = sortItemList.size() - i;
-      } else if (sortKey == SortKey.DEVICE) {
+      } else if (sortKey.equals(SortKey.DEVICE)) {
         devicePriority = sortItemList.size() - i;
       }
     }
@@ -898,17 +902,23 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planHaving(
+  public LogicalPlanBuilder planHavingAndTransform(
       Expression havingExpression,
       Set<Expression> selectExpressions,
+      Set<Expression> aggregationTransformExpression,
       boolean isGroupByTime,
       ZoneId zoneId,
       Ordering scanOrder) {
+
+    Set<Expression> outputExpressions = new HashSet<>(selectExpressions);
+    if (aggregationTransformExpression != null) {
+      outputExpressions.addAll(aggregationTransformExpression);
+    }
     if (havingExpression != null) {
       return planFilterAndTransform(
-          havingExpression, selectExpressions, isGroupByTime, zoneId, scanOrder);
+          havingExpression, outputExpressions, isGroupByTime, zoneId, scanOrder);
     } else {
-      return planTransform(selectExpressions, isGroupByTime, zoneId, scanOrder);
+      return planTransform(outputExpressions, isGroupByTime, zoneId, scanOrder);
     }
   }
 
@@ -1190,6 +1200,52 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planOrderBy(
+      QueryStatement queryStatement,
+      List<SortItem> sortItems,
+      List<SortItem> expressionSortItems,
+      Set<Expression> selectExpression,
+      boolean isGroupByTime,
+      ZoneId zoneId,
+      Ordering ordering) {
+
+    if (!queryStatement.hasOrderByExpression()) {
+      return this;
+    }
+
+    //  combine the sortItems and expressionSortItems
+    Set<Expression> expressions = new LinkedHashSet<>();
+    int expressionIndex = 0;
+    for(int i=0;i<sortItems.size()&&expressionIndex<expressionSortItems.size();i++){
+      SortItem sortItem = sortItems.get(i);
+      if(sortItem.isExpression()){
+        Expression expression = expressionSortItems.get(expressionIndex).getExpression();
+        sortItem.setExpression(expression);
+        expressions.add(expression);
+        expressionIndex++;
+      }
+    }
+    updateTypeProvider(expressions);
+
+    OrderByParameter orderByParameter = new OrderByParameter(sortItems);
+    if (orderByParameter.isEmpty()) {
+      return this;
+    }
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+
+    if (root.getOutputColumnNames().size() != selectExpression.size()) {
+      this.root =
+          new TransformNode(
+              context.getQueryId().genPlanNodeId(),
+              root,
+              selectExpression.toArray(new Expression[0]),
+              isGroupByTime,
+              zoneId,
+              ordering);
+    }
     return this;
   }
 }

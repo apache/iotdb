@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,6 +97,12 @@ public class Analysis {
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
+  // Expressions of aggregations that need to be calculated which are just for internal use and
+  // won't appear in the resultSet
+  // The expressions of aggregations which will appear in the resultSet should be put in
+  // selectExpression
+  private Set<Expression> aggregationTransformExpressions;
+
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
   private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
@@ -137,6 +144,9 @@ public class Analysis {
   // expression of group by that need to be calculated
   private Map<String, Expression> deviceToGroupByExpression;
 
+  // expression of order by that need to be calculated
+  private Map<String, Set<SortItem>> deviceToOrderByExpressions;
+
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
@@ -161,6 +171,8 @@ public class Analysis {
   private Set<Expression> selectExpressions;
 
   private Expression havingExpression;
+
+  private Set<Expression> orderByExpressions;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -597,5 +609,29 @@ public class Analysis {
 
   public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
     return expressionTypes;
+  }
+
+  public void setOrderByExpressions(Set<Expression> orderByExpressions) {
+    this.orderByExpressions = orderByExpressions;
+  }
+
+  public Set<Expression> getOrderByExpressions() {
+    return orderByExpressions;
+  }
+
+  public Map<String, Set<SortItem>> getDeviceToOrderByExpressions() {
+    return deviceToOrderByExpressions;
+  }
+
+  public void setDeviceToOrderByExpressions(Map<String, Set<SortItem>> deviceToOrderByExpressions) {
+    this.deviceToOrderByExpressions = deviceToOrderByExpressions;
+  }
+
+  public void setAggregationTransformExpressions(Set<Expression> aggregationTransformExpressions) {
+    this.aggregationTransformExpressions = aggregationTransformExpressions;
+  }
+
+  public Set<Expression> getAggregationTransformExpressions() {
+    return aggregationTransformExpressions;
   }
 }
