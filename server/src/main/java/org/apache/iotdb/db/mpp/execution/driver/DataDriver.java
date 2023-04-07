@@ -39,6 +39,8 @@ import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.QUERY_RESOU
 public class DataDriver extends Driver {
 
   private boolean init;
+
+  // Unit : Byte
   private final long estimatedMemorySize;
 
   public DataDriver(Operator root, DriverContext driverContext, long estimatedMemorySize) {
