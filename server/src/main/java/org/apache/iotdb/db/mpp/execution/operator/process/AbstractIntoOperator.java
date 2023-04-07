@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.client.DataNodeInternalClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.IntoProcessException;
@@ -104,7 +105,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private void initMemoryEstimates(long statementSizePerLine) {
     long intoOperationBufferSizeInByte =
         IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
-    long memAllowedMaxRowNumber = intoOperationBufferSizeInByte / statementSizePerLine;
+    long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
     if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
       memAllowedMaxRowNumber = Integer.MAX_VALUE;
     }
@@ -339,6 +340,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @TestOnly
+  public int getMaxRowNumberInStatement() {
+    return maxRowNumberInStatement;
   }
 
   public static class InsertTabletStatementGenerator {
