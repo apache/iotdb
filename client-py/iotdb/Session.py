@@ -147,6 +147,8 @@ class Session(object):
                         raise e
                 break
         self.__client = self.__default_connection.client
+        self.__session_id = self.__default_connection.session_id
+        self.__statement_id = self.__default_connection.statement_id
         self.__is_close = False
         if self.__enable_redirection:
             self.__device_id_to_endpoint = {}
@@ -170,13 +172,12 @@ class Session(object):
         else:
             client = Client(TBinaryProtocol.TBinaryProtocol(transport))
 
-        connection = SessionConnection(client, transport)
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_0_13"},
+            configuration={"version": "V_1_0"},
         )
 
         try:
@@ -193,8 +194,8 @@ class Session(object):
                 if open_resp.serverProtocolVersion == 0:
                     raise TTransport.TException(message="Protocol not supported.")
 
-            self.__session_id = open_resp.sessionId
-            self.__statement_id = client.requestStatementId(self.__session_id)
+            session_id = open_resp.sessionId
+            statement_id = client.requestStatementId(session_id)
 
         except Exception as e:
             transport.close()
@@ -202,15 +203,14 @@ class Session(object):
             raise e
 
         if self.__zone_id is not None:
-            request = TSSetTimeZoneReq(self.__session_id, self.__zone_id)
+            request = TSSetTimeZoneReq(session_id, self.__zone_id)
             try:
                 client.setTimeZone(request)
             except TTransport.TException as e:
                 raise RuntimeError("Could not set time zone because: ", e)
         else:
             self.__zone_id = self.get_time_zone()
-
-        return connection
+        return SessionConnection(client, transport, session_id, statement_id)
 
     def is_open(self):
         return not self.__is_close
@@ -218,12 +218,13 @@ class Session(object):
     def close(self):
         if self.__is_close:
             return
-        req = TSCloseSessionReq(self.__session_id)
         try:
             if self.__enable_redirection:
                 for connection in self.__endpoint_to_connection.values():
+                    req = TSCloseSessionReq(connection.session_id)
                     connection.close_connection(req)
             else:
+                req = TSCloseSessionReq(self.__session_id)
                 self.__default_connection.close_connection(req)
         finally:
             self.__is_close = True
@@ -505,8 +506,10 @@ class Session(object):
             device_id, timestamp, measurements, string_values
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertStringRecord(request)
+                connection.client.insertStringRecord(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -535,8 +538,10 @@ class Session(object):
             device_id, timestamp, measurements, string_values, True
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertStringRecord(request)
+                connection.client.insertStringRecord(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -570,8 +575,10 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertRecord(request)
+                connection.client.insertRecord(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -605,9 +612,10 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
-                client = self.get_client(device_ids[i])
+                connection = self.get_connection(device_ids[i])
                 request = request_group.setdefault(
-                    client, TSInsertRecordsReq(self.__session_id, [], [], [], [])
+                    connection.client,
+                    TSInsertRecordsReq(connection.session_id, [], [], [], []),
                 )
                 request.prefixPaths.append(device_ids[i])
                 request.timestamps.append(times[i])
@@ -672,8 +680,10 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values, True
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertRecord(request)
+                connection.client.insertRecord(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -707,9 +717,10 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
-                client = self.get_client(device_ids[i])
+                connection = self.get_connection(device_ids[i])
                 request = request_group.setdefault(
-                    client, TSInsertRecordsReq(self.__session_id, [], [], [], [], True)
+                    connection.client,
+                    TSInsertRecordsReq(connection.session_id, [], [], [], [], True),
                 )
                 request.prefixPaths.append(device_ids[i])
                 request.timestamps.append(times[i])
@@ -899,8 +910,10 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
+            connection = self.get_connection(tablet.get_device_id())
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(tablet.get_device_id()).insertTablet(request)
+                connection.client.insertTablet(request)
             )
         except RedirectException as e:
             return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
@@ -923,11 +936,11 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                client = self.get_client(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_device_id())
                 request = request_group.setdefault(
-                    client,
+                    connection.client,
                     TSInsertTabletsReq(
-                        self.__session_id, [], [], [], [], [], [], False
+                        connection.session_id, [], [], [], [], [], [], False
                     ),
                 )
                 request.prefixPaths.append(tablet_lst[i].get_device_id())
@@ -989,8 +1002,10 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet, True)
         try:
+            connection = self.get_connection(tablet.get_device_id())
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(tablet.get_device_id()).insertTablet(request)
+                connection.client.insertTablet(request)
             )
         except RedirectException as e:
             return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
@@ -1013,10 +1028,12 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                client = self.get_client(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_device_id())
                 request = request_group.setdefault(
-                    client,
-                    TSInsertTabletsReq(self.__session_id, [], [], [], [], [], [], True),
+                    connection.client,
+                    TSInsertTabletsReq(
+                        connection.session_id, [], [], [], [], [], [], True
+                    ),
                 )
                 request.prefixPaths.append(tablet_lst[i].get_device_id())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
@@ -1114,8 +1131,10 @@ class Session(object):
             device_id, times_list, measurements_list, values_list, types_list
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertRecordsOfOneDevice(request)
+                connection.client.insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -1185,8 +1204,10 @@ class Session(object):
 
         # send request
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertRecordsOfOneDevice(request)
+                connection.client.insertRecordsOfOneDevice(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -1657,8 +1678,10 @@ class Session(object):
             device_id, times, measurements_list, values_list, have_sorted, False
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertStringRecordsOfOneDevice(request)
+                connection.client.insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -1691,8 +1714,10 @@ class Session(object):
             device_id, times, measurements_list, values, have_sorted, True
         )
         try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
-                self.get_client(device_id).insertStringRecordsOfOneDevice(request)
+                connection.client.insertStringRecordsOfOneDevice(request)
             )
         except RedirectException as e:
             return self.handle_redirection(device_id, e.redirect_node)
@@ -1714,16 +1739,17 @@ class Session(object):
             return False
         connected = False
         for i in range(1, self.RETRY_NUM + 1):
-            if self.__default_connection is not None and self.__default_connection.transport is not None:
+            if (
+                self.__default_connection is not None
+                and self.__default_connection.transport is not None
+            ):
                 self.__default_connection.transport.close()
             curr_host_index = random.randint(0, len(self.__hosts))
             try_host_num = 0
             for j in range(curr_host_index, len(self.__hosts)):
                 if try_host_num == len(self.__hosts):
                     break
-                self.__default_endpoint = TEndPoint(
-                    self.__hosts[j], self.__ports[j]
-                )
+                self.__default_endpoint = TEndPoint(self.__hosts[j], self.__ports[j])
                 if j == len(self.__hosts) - 1:
                     j = -1
                 try_host_num += 1
@@ -1732,6 +1758,8 @@ class Session(object):
                         self.__default_endpoint
                     )
                     self.__client = self.__default_connection.client
+                    self.__session_id = self.__default_connection.session_id
+                    self.__statement_id = self.__default_connection.statement_id
                     connected = True
                 except TTransport.TException:
                     continue
@@ -1740,7 +1768,7 @@ class Session(object):
                 break
         return connected
 
-    def get_client(self, device_id):
+    def get_connection(self, device_id):
         if (
             self.__enable_redirection
             and len(self.__device_id_to_endpoint) != 0
@@ -1748,8 +1776,8 @@ class Session(object):
         ):
             endpoint = self.__device_id_to_endpoint[device_id]
             if str(endpoint) in self.__endpoint_to_connection:
-                return self.__endpoint_to_connection[str(endpoint)].client
-        return self.__client
+                return self.__endpoint_to_connection[str(endpoint)]
+        return self.__default_connection
 
     def handle_redirection(self, device_id, endpoint: TEndPoint):
         if self.__enable_redirection:
@@ -2160,9 +2188,13 @@ class SessionConnection(object):
         self,
         client,
         transport,
+        session_id,
+        statement_id,
     ):
         self.client = client
         self.transport = transport
+        self.session_id = session_id
+        self.statement_id = statement_id
 
     def close_connection(self, req):
         try:
