@@ -53,14 +53,14 @@ public class ConcatPathRewriter {
 
     if (queryStatement.isAlignByDevice()) {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-        patternTree.appendPathPatterns(
-            ExpressionAnalyzer.constructPatternTreeFromExpression(
-                resultColumn.getExpression(), prefixPaths));
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            resultColumn.getExpression(), prefixPaths, patternTree);
       }
       if (queryStatement.hasGroupByExpression()) {
-        patternTree.appendPathPatterns(
-            ExpressionAnalyzer.constructPatternTreeFromExpression(
-                queryStatement.getGroupByComponent().getControlColumnExpression(), prefixPaths));
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            queryStatement.getGroupByComponent().getControlColumnExpression(),
+            prefixPaths,
+            patternTree);
       }
     } else {
       // concat SELECT with FROM
@@ -82,16 +82,14 @@ public class ConcatPathRewriter {
 
     // concat WHERE with FROM
     if (queryStatement.getWhereCondition() != null) {
-      patternTree.appendPathPatterns(
-          ExpressionAnalyzer.constructPatternTreeFromExpression(
-              queryStatement.getWhereCondition().getPredicate(), prefixPaths));
+      ExpressionAnalyzer.constructPatternTreeFromExpression(
+          queryStatement.getWhereCondition().getPredicate(), prefixPaths, patternTree);
     }
 
     // concat HAVING with FROM
     if (queryStatement.getHavingCondition() != null) {
-      patternTree.appendPathPatterns(
-          ExpressionAnalyzer.constructPatternTreeFromExpression(
-              queryStatement.getHavingCondition().getPredicate(), prefixPaths));
+      ExpressionAnalyzer.constructPatternTreeFromExpression(
+          queryStatement.getHavingCondition().getPredicate(), prefixPaths, patternTree);
     }
 
     return queryStatement;

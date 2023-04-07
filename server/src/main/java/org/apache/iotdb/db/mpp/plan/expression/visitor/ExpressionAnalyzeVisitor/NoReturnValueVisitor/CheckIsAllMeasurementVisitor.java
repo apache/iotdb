@@ -17,24 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.NoReturnValueVisitor;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 
-import java.util.List;
-
-public class CheckIsAllMeasurementVisitor extends MergeVisitor<Void, Void> {
-  @Override
-  Void merge(List<Void> childResults) {
-    return null;
-  }
-
+public class CheckIsAllMeasurementVisitor extends NoReturnValueVisitor<Void> {
   @Override
   public Void visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
     PartialPath path = timeSeriesOperand.getPath();
@@ -42,24 +32,6 @@ public class CheckIsAllMeasurementVisitor extends MergeVisitor<Void, Void> {
         || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       throw new SemanticException("the suffix paths can only be measurement or one-level wildcard");
     }
-    return null;
-  }
-
-  @Override
-  public Void visitTimeStampOperand(TimestampOperand timestampOperand, Void context) {
-    // do nothing
-    return null;
-  }
-
-  @Override
-  public Void visitConstantOperand(ConstantOperand constantOperand, Void context) {
-    // do nothing
-    return null;
-  }
-
-  @Override
-  public Void visitNullOperand(NullOperand nullOperand, Void context) {
-    // do nothing
     return null;
   }
 }

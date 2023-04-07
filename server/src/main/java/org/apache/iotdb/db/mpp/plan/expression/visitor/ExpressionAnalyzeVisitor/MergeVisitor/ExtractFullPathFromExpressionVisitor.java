@@ -30,9 +30,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class ConstructPatternTreeFromExpressionVisitor
+public class ExtractFullPathFromExpressionVisitor
     extends MergeVisitor<List<PartialPath>, List<PartialPath>> {
   @Override
   List<PartialPath> merge(List<List<PartialPath>> childResults) {
@@ -43,14 +42,18 @@ public class ConstructPatternTreeFromExpressionVisitor
 
   @Override
   public List<PartialPath> visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, List<PartialPath> prefixPaths) {
+      TimeSeriesOperand timeSeriesOperand, List<PartialPath> context) {
     PartialPath rawPath = timeSeriesOperand.getPath();
+    List<PartialPath> actualPaths = new ArrayList<>();
     if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-      return Collections.singletonList(rawPath);
+      actualPaths.add(rawPath);
+    } else {
+      for (PartialPath prefixPath : context) {
+        PartialPath concatPath = prefixPath.concatPath(rawPath);
+        actualPaths.add(concatPath);
+      }
     }
-    return prefixPaths.stream()
-        .map(prefixPath -> prefixPath.concatPath(rawPath))
-        .collect(Collectors.toList());
+    return actualPaths;
   }
 
   @Override

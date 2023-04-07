@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
@@ -45,12 +44,13 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CartesianProductVisitor.RemoveWildcardInFilterVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CollectVisitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CollectVisitor.CollectSourceExpressionsVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.IdentifyOutputColumnTypeVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.CheckIfTimeFilterExistVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.CheckIsAllMeasurementVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.CheckIsScalarExpression;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.ConcatExpressionWithSuffixPathsVisitor2;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.ConstructPatternTreeFromExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.ExtractFullPathFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor.IsDeviceViewNeedSpecialProcessVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.NoReturnValueVisitor.CheckIsAllMeasurementVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.NoReturnValueVisitor.ConstructPatternTreeFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor.RemoveAliasFromExpressionVisitor;
@@ -116,143 +116,151 @@ public class ExpressionAnalyzer {
 
   public static ResultColumn.ColumnType identifyOutputColumnType(
       Expression expression, boolean isRoot) {
-    if (expression instanceof TernaryExpression) {
-      ResultColumn.ColumnType firstType =
-          identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression(), false);
-      ResultColumn.ColumnType secondType =
-          identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
-      ResultColumn.ColumnType thirdType =
-          identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
-      boolean rawFlag = false, aggregationFlag = false;
-      if (firstType == ResultColumn.ColumnType.RAW
-          || secondType == ResultColumn.ColumnType.RAW
-          || thirdType == ResultColumn.ColumnType.RAW) {
-        rawFlag = true;
-      }
-      if (firstType == ResultColumn.ColumnType.AGGREGATION
-          || secondType == ResultColumn.ColumnType.AGGREGATION
-          || thirdType == ResultColumn.ColumnType.AGGREGATION) {
-        aggregationFlag = true;
-      }
-      if (rawFlag && aggregationFlag) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
-      }
-      if (firstType == ResultColumn.ColumnType.CONSTANT
-          && secondType == ResultColumn.ColumnType.CONSTANT
-          && thirdType == ResultColumn.ColumnType.CONSTANT) {
-        throw new SemanticException("Constant column is not supported.");
-      }
-      if (firstType != ResultColumn.ColumnType.CONSTANT) {
-        return firstType;
-      }
-      if (secondType != ResultColumn.ColumnType.CONSTANT) {
-        return secondType;
-      }
-      return thirdType;
-    } else if (expression instanceof BinaryExpression) {
-      ResultColumn.ColumnType leftType =
-          identifyOutputColumnType(((BinaryExpression) expression).getLeftExpression(), false);
-      ResultColumn.ColumnType rightType =
-          identifyOutputColumnType(((BinaryExpression) expression).getRightExpression(), false);
-      if ((leftType == ResultColumn.ColumnType.RAW
-              && rightType == ResultColumn.ColumnType.AGGREGATION)
-          || (leftType == ResultColumn.ColumnType.AGGREGATION
-              && rightType == ResultColumn.ColumnType.RAW)) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
-      }
-      if (isRoot
-          && leftType == ResultColumn.ColumnType.CONSTANT
-          && rightType == ResultColumn.ColumnType.CONSTANT) {
-        throw new SemanticException("Constant column is not supported.");
-      }
-      if (leftType != ResultColumn.ColumnType.CONSTANT) {
-        return leftType;
-      }
-      return rightType;
-    } else if (expression instanceof UnaryExpression) {
-      return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
-    } else if (expression instanceof FunctionExpression) {
-      List<Expression> inputExpressions = expression.getExpressions();
-      if (expression.isBuiltInAggregationFunctionExpression()) {
-        for (Expression inputExpression : inputExpressions) {
-          if (identifyOutputColumnType(inputExpression, false)
-              == ResultColumn.ColumnType.AGGREGATION) {
-            throw new SemanticException(
-                "Aggregation results cannot be as input of the aggregation function.");
-          }
-        }
-        return ResultColumn.ColumnType.AGGREGATION;
-      } else {
-        ResultColumn.ColumnType checkedType = null;
-        int lastCheckedIndex = 0;
-        for (int i = 0; i < inputExpressions.size(); i++) {
-          ResultColumn.ColumnType columnType =
-              identifyOutputColumnType(inputExpressions.get(i), false);
-          if (columnType != ResultColumn.ColumnType.CONSTANT) {
-            checkedType = columnType;
-            lastCheckedIndex = i;
-            break;
-          }
-        }
-        if (checkedType == null) {
-          throw new SemanticException(
-              String.format(
-                  "Input of '%s' is illegal.",
-                  ((FunctionExpression) expression).getFunctionName()));
-        }
-        for (int i = lastCheckedIndex; i < inputExpressions.size(); i++) {
-          ResultColumn.ColumnType columnType =
-              identifyOutputColumnType(inputExpressions.get(i), false);
-          if (columnType != ResultColumn.ColumnType.CONSTANT && columnType != checkedType) {
-            throw new SemanticException(
-                String.format(
-                    "Raw data and aggregation result hybrid input of '%s' is not supported.",
-                    ((FunctionExpression) expression).getFunctionName()));
-          }
-        }
-        return checkedType;
-      }
-    } else if (expression instanceof CaseWhenThenExpression) {
-      // first, get all subexpression's type
-      CaseWhenThenExpression caseExpression = (CaseWhenThenExpression) expression;
-      List<ResultColumn.ColumnType> typeList =
-          caseExpression.getExpressions().stream()
-              .map(e -> identifyOutputColumnType(e, false))
-              .collect(Collectors.toList());
-      // if at least one subexpression is RAW, I'm RAW too
-      boolean rawFlag =
-          typeList.stream().anyMatch(columnType -> columnType == ResultColumn.ColumnType.RAW);
-      // if at least one subexpression is AGGREGATION, I'm AGGREGATION too
-      boolean aggregationFlag =
-          typeList.stream()
-              .anyMatch(columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
-      // not allow RAW && AGGREGATION
-      if (rawFlag && aggregationFlag) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
-      }
-      // not allow all const
-      boolean allConst =
-          typeList.stream().allMatch(columnType -> columnType == ResultColumn.ColumnType.CONSTANT);
-      if (allConst) {
-        throw new SemanticException("Constant column is not supported.");
-      }
-      for (ResultColumn.ColumnType type : typeList) {
-        if (type != ResultColumn.ColumnType.CONSTANT) {
-          return type;
-        }
-      }
-      throw new IllegalArgumentException("shouldn't attach here");
-    } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
-      return ResultColumn.ColumnType.RAW;
-    } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {
-      return ResultColumn.ColumnType.CONSTANT;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new IdentifyOutputColumnTypeVisitor().process(expression, isRoot);
+    //    if (expression instanceof TernaryExpression) {
+    //      ResultColumn.ColumnType firstType =
+    //          identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression(),
+    // false);
+    //      ResultColumn.ColumnType secondType =
+    //          identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(),
+    // false);
+    //      ResultColumn.ColumnType thirdType =
+    //          identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(),
+    // false);
+    //      boolean rawFlag = false, aggregationFlag = false;
+    //      if (firstType == ResultColumn.ColumnType.RAW
+    //          || secondType == ResultColumn.ColumnType.RAW
+    //          || thirdType == ResultColumn.ColumnType.RAW) {
+    //        rawFlag = true;
+    //      }
+    //      if (firstType == ResultColumn.ColumnType.AGGREGATION
+    //          || secondType == ResultColumn.ColumnType.AGGREGATION
+    //          || thirdType == ResultColumn.ColumnType.AGGREGATION) {
+    //        aggregationFlag = true;
+    //      }
+    //      if (rawFlag && aggregationFlag) {
+    //        throw new SemanticException(
+    //            "Raw data and aggregation result hybrid calculation is not supported.");
+    //      }
+    //      if (firstType == ResultColumn.ColumnType.CONSTANT
+    //          && secondType == ResultColumn.ColumnType.CONSTANT
+    //          && thirdType == ResultColumn.ColumnType.CONSTANT) {
+    //        throw new SemanticException("Constant column is not supported.");
+    //      }
+    //      if (firstType != ResultColumn.ColumnType.CONSTANT) {
+    //        return firstType;
+    //      }
+    //      if (secondType != ResultColumn.ColumnType.CONSTANT) {
+    //        return secondType;
+    //      }
+    //      return thirdType;
+    //    } else if (expression instanceof BinaryExpression) {
+    //      ResultColumn.ColumnType leftType =
+    //          identifyOutputColumnType(((BinaryExpression) expression).getLeftExpression(),
+    // false);
+    //      ResultColumn.ColumnType rightType =
+    //          identifyOutputColumnType(((BinaryExpression) expression).getRightExpression(),
+    // false);
+    //      if ((leftType == ResultColumn.ColumnType.RAW
+    //              && rightType == ResultColumn.ColumnType.AGGREGATION)
+    //          || (leftType == ResultColumn.ColumnType.AGGREGATION
+    //              && rightType == ResultColumn.ColumnType.RAW)) {
+    //        throw new SemanticException(
+    //            "Raw data and aggregation result hybrid calculation is not supported.");
+    //      }
+    //      if (isRoot
+    //          && leftType == ResultColumn.ColumnType.CONSTANT
+    //          && rightType == ResultColumn.ColumnType.CONSTANT) {
+    //        throw new SemanticException("Constant column is not supported.");
+    //      }
+    //      if (leftType != ResultColumn.ColumnType.CONSTANT) {
+    //        return leftType;
+    //      }
+    //      return rightType;
+    //    } else if (expression instanceof UnaryExpression) {
+    //      return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
+    //    } else if (expression instanceof FunctionExpression) {
+    //      List<Expression> inputExpressions = expression.getExpressions();
+    //      if (expression.isBuiltInAggregationFunctionExpression()) {
+    //        for (Expression inputExpression : inputExpressions) {
+    //          if (identifyOutputColumnType(inputExpression, false)
+    //              == ResultColumn.ColumnType.AGGREGATION) {
+    //            throw new SemanticException(
+    //                "Aggregation results cannot be as input of the aggregation function.");
+    //          }
+    //        }
+    //        return ResultColumn.ColumnType.AGGREGATION;
+    //      } else {
+    //        ResultColumn.ColumnType checkedType = null;
+    //        int lastCheckedIndex = 0;
+    //        for (int i = 0; i < inputExpressions.size(); i++) {
+    //          ResultColumn.ColumnType columnType =
+    //              identifyOutputColumnType(inputExpressions.get(i), false);
+    //          if (columnType != ResultColumn.ColumnType.CONSTANT) {
+    //            checkedType = columnType;
+    //            lastCheckedIndex = i;
+    //            break;
+    //          }
+    //        }
+    //        if (checkedType == null) {
+    //          throw new SemanticException(
+    //              String.format(
+    //                  "Input of '%s' is illegal.",
+    //                  ((FunctionExpression) expression).getFunctionName()));
+    //        }
+    //        for (int i = lastCheckedIndex; i < inputExpressions.size(); i++) {
+    //          ResultColumn.ColumnType columnType =
+    //              identifyOutputColumnType(inputExpressions.get(i), false);
+    //          if (columnType != ResultColumn.ColumnType.CONSTANT && columnType != checkedType) {
+    //            throw new SemanticException(
+    //                String.format(
+    //                    "Raw data and aggregation result hybrid input of '%s' is not supported.",
+    //                    ((FunctionExpression) expression).getFunctionName()));
+    //          }
+    //        }
+    //        return checkedType;
+    //      }
+    //    } else if (expression instanceof CaseWhenThenExpression) {
+    //      // first, get all subexpression's type
+    //      CaseWhenThenExpression caseExpression = (CaseWhenThenExpression) expression;
+    //      List<ResultColumn.ColumnType> typeList =
+    //          caseExpression.getExpressions().stream()
+    //              .map(e -> identifyOutputColumnType(e, false))
+    //              .collect(Collectors.toList());
+    //      // if at least one subexpression is RAW, I'm RAW too
+    //      boolean rawFlag =
+    //          typeList.stream().anyMatch(columnType -> columnType == ResultColumn.ColumnType.RAW);
+    //      // if at least one subexpression is AGGREGATION, I'm AGGREGATION too
+    //      boolean aggregationFlag =
+    //          typeList.stream()
+    //              .anyMatch(columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
+    //      // not allow RAW && AGGREGATION
+    //      if (rawFlag && aggregationFlag) {
+    //        throw new SemanticException(
+    //            "Raw data and aggregation result hybrid calculation is not supported.");
+    //      }
+    //      // not allow all const
+    //      boolean allConst =
+    //          typeList.stream().allMatch(columnType -> columnType ==
+    // ResultColumn.ColumnType.CONSTANT);
+    //      if (allConst) {
+    //        throw new SemanticException("Constant column is not supported.");
+    //      }
+    //      for (ResultColumn.ColumnType type : typeList) {
+    //        if (type != ResultColumn.ColumnType.CONSTANT) {
+    //          return type;
+    //        }
+    //      }
+    //      throw new IllegalArgumentException("shouldn't attach here");
+    //    } else if (expression instanceof TimeSeriesOperand || expression instanceof
+    // TimestampOperand) {
+    //      return ResultColumn.ColumnType.RAW;
+    //    } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {
+    //      return ResultColumn.ColumnType.CONSTANT;
+    //    } else {
+    //      throw new IllegalArgumentException(
+    //          "unsupported expression type: " + expression.getExpressionType());
+    //    }
   }
 
   /**
@@ -279,9 +287,9 @@ public class ExpressionAnalyzer {
    * @param prefixPaths prefix paths in the FROM clause
    * @return the concatenated partialPath list
    */
-  public static List<PartialPath> concatExpressionWithSuffixPaths(
+  public static List<PartialPath> extractFullPathFromExpression(
       Expression expression, List<PartialPath> prefixPaths) {
-    return new ConcatExpressionWithSuffixPathsVisitor2().process(expression, prefixPaths);
+    return new ExtractFullPathFromExpressionVisitor().process(expression, prefixPaths);
     //    Set<PartialPath> resultPaths = new HashSet<>();
     //    if (expression instanceof TernaryExpression) {
     //      List<PartialPath> firstExpressions =
@@ -354,9 +362,12 @@ public class ExpressionAnalyzer {
    * @param predicate expression in WHERE clause
    * @param prefixPaths prefix paths in the FROM clause
    */
-  public static List<PartialPath> constructPatternTreeFromExpression(
-      Expression predicate, List<PartialPath> prefixPaths) {
-    return new ConstructPatternTreeFromExpressionVisitor().process(predicate, prefixPaths);
+  public static void constructPatternTreeFromExpression(
+      Expression predicate, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+    new ConstructPatternTreeFromExpressionVisitor()
+        .process(
+            predicate,
+            new ConstructPatternTreeFromExpressionVisitor.Context(prefixPaths, patternTree));
     //    if (predicate instanceof TernaryExpression) {
     //      constructPatternTreeFromExpression(
     //          ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, patternTree);
