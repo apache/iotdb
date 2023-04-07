@@ -201,7 +201,6 @@ public class ClusterQuotaManager {
     TThrottleQuotaResp throttleQuotaResp = new TThrottleQuotaResp();
     if (req.getUserName() == null) {
       throttleQuotaResp.setThrottleQuota(quotaInfo.getThrottleQuotaLimit());
-
     } else {
       Map<String, TThrottleQuota> throttleLimit = new HashMap<>();
       throttleLimit.put(

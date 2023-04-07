@@ -43,7 +43,7 @@ public class DataNodeThrottleQuotaManager {
     recover();
   }
 
-  /** SingleTone */
+  /** Singleton */
   private static class DataNodeThrottleQuotaManagerHolder {
     private static final DataNodeThrottleQuotaManager INSTANCE = new DataNodeThrottleQuotaManager();
 

@@ -106,9 +106,9 @@ public class QuotaInfo implements SnapshotProcessor {
       }
 
       // about cpu
-      if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() != -1) {
+      if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() == -1) {
         throttleQuotaLimit.get(userName).setCpuLimit(0);
-      } else if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() == 0) {
+      } else if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() != 0) {
         throttleQuotaLimit.get(userName).setCpuLimit(throttleQuota.getCpuLimit());
       }
       if (!throttleQuota.getThrottleLimit().isEmpty()) {
