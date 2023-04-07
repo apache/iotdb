@@ -21,12 +21,14 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -35,8 +37,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -45,15 +51,21 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.junit.Assert.fail;
 
 public class AbstractCompactionTest {
   protected int seqFileNum = 5;
   protected int unseqFileNum = 0;
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
+
+  protected TsFileManager tsFileManager =
+      new TsFileManager(TsFileGeneratorUtils.testStorageGroup, "0", STORAGE_GROUP_DIR.getPath());
   private int chunkGroupSize = 0;
   private int pageSize = 0;
   protected String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
@@ -337,6 +349,70 @@ public class AbstractCompactionTest {
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
+      }
+    }
+  }
+
+  protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
+      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
+    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
+    for (PartialPath path : timeseriesPaths) {
+      List<TimeValuePair> dataList = new ArrayList<>();
+      sourceData.put(path, dataList);
+      IBatchReader tsFilesReader =
+          new SeriesRawDataBatchReader(
+              path,
+              path.getSeriesType(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
+              tsFileManager.getTsFileList(true),
+              tsFileManager.getTsFileList(false),
+              null,
+              null,
+              true);
+      while (tsFilesReader.hasNextBatch()) {
+        BatchData batchData = tsFilesReader.nextBatch();
+        while (batchData.hasCurrent()) {
+          dataList.add(
+              new TimeValuePair(
+                  batchData.currentTime(),
+                  TsPrimitiveType.getByType(path.getSeriesType(), batchData.currentValue())));
+          batchData.next();
+        }
+      }
+    }
+    return sourceData;
+  }
+
+  protected void validateTargetDatas(
+      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
+      throws IOException {
+    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
+      IBatchReader tsFilesReader =
+          new SeriesRawDataBatchReader(
+              entry.getKey(),
+              entry.getKey().getSeriesType(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
+              tsFileManager.getTsFileList(true),
+              tsFileManager.getTsFileList(false),
+              null,
+              null,
+              true);
+      List<TimeValuePair> timeseriesData = entry.getValue();
+      while (tsFilesReader.hasNextBatch()) {
+        BatchData batchData = tsFilesReader.nextBatch();
+        while (batchData.hasCurrent()) {
+          TimeValuePair data = timeseriesData.remove(0);
+          Assert.assertEquals(data.getTimestamp(), batchData.currentTime());
+          Assert.assertEquals(
+              data.getValue(),
+              TsPrimitiveType.getByType(entry.getKey().getSeriesType(), batchData.currentValue()));
+          batchData.next();
+        }
+      }
+      if (timeseriesData.size() > 0) {
+        // there are still data points left, which are not in the target file. Lost the data after
+        // compaction.
+        fail();
       }
     }
   }

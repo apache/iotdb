@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore.DeviceInfo;
@@ -48,7 +49,8 @@ import java.util.Map;
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   CrossSpaceCompactionResource resource;
@@ -189,6 +191,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
+      if (tmpSelectedSeqFiles.isEmpty() && !tryToSelectLatestSealedSeqFile(unseqFile)) {
+        break;
+      }
       boolean isSeqFilesValid = checkIsSeqFilesValid();
       if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
@@ -227,6 +232,25 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
       }
     }
+  }
+
+  /**
+   * If the unseq file does not overlap with any seq files, then select the latest sealed seq file
+   * for it to compact with. Notice: If the data is deleted and then start an inner space
+   * compaction, it may cause unseqStartTime > seqEndTime or partial devices are in the unseq files
+   * but not in seq files, which will cause the unseq file not overlap with any seq files
+   */
+  private boolean tryToSelectLatestSealedSeqFile(TsFileResource unseqFile) {
+    logger.info("Unseq file {} does not overlap with seq files.", unseqFile);
+    List<TsFileResource> seqResources = resource.getSeqFiles();
+    for (int i = seqResources.size() - 1; i >= 0; i--) {
+      if (seqResources.get(i).isClosed()) {
+        logger.info("Select the latest closed seq file {} for it to compact.", seqResources.get(i));
+        tmpSelectedSeqFiles.add(i);
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
