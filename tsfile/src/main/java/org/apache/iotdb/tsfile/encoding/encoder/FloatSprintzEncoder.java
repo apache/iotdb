@@ -85,7 +85,7 @@ public class FloatSprintzEncoder extends SprintzEncoder {
   protected void bitPack() throws IOException {
     float preValue = values.get(0);
     values.remove(0);
-    List<Integer> convertBufferList = null;
+    Vector<Integer>  convertBufferList = new Vector<>();
     for (int itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
     this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(convertBufferList);
     packer = new IntPacker(this.bitWidth);

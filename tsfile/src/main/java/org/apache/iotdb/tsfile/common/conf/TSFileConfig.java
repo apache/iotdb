@@ -477,6 +477,6 @@ public class TSFileConfig implements Serializable {
   }
 
   public String getSprintzPredictScheme() {
-    return "FIRE";
+    return "fire";
   }
 }

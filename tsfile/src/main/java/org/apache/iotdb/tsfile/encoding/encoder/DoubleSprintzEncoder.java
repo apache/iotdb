@@ -86,7 +86,7 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
   protected void bitPack() throws IOException {
     double preValue = values.get(0);
     values.remove(0);
-    List<Long> convertBufferList = null;
+    Vector<Long>  convertBufferList = new Vector<>();
     for (long itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
     this.bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(convertBufferList);
     packer = new LongPacker(this.bitWidth);
