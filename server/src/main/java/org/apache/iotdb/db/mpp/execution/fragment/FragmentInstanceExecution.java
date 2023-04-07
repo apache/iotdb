@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -137,8 +138,17 @@ public class FragmentInstanceExecution {
             context.releaseResource();
             // help for gc
             drivers = null;
+            MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .deRegisterFragmentInstanceFromMemoryPool(
+                    instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
+            }
+          } catch (Throwable t) {
+            try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+              LOGGER.error(
+                  "Errors happened while trying to finish FI, resource may already leak!", t);
             }
           }
         });

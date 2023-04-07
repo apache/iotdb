@@ -126,6 +126,9 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
+  /** multi-tenancy */
+  private boolean quotaEnable = false;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -369,5 +372,13 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
   }
 }

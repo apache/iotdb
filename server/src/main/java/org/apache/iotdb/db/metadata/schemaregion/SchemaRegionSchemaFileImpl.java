@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanSerializer;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -90,10 +92,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -190,19 +194,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               new PartialPath(storageGroupFullPath),
               tagManager::readTags,
               this::flushCallback,
-              measurementMNode -> {
-                if (measurementMNode.getOffset() == -1) {
-                  return;
-                }
-                try {
-                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
-                  logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
-                }
-              },
+              measurementInitProcess(),
+              deviceInitProcess(),
               schemaRegionId.getId(),
               regionStatistics);
 
@@ -224,6 +217,32 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           e);
     }
     initialized = true;
+  }
+
+  private Consumer<IMeasurementMNode<ICachedMNode>> measurementInitProcess() {
+    return measurementMNode -> {
+      regionStatistics.addTimeseries(1L);
+      if (measurementMNode.getOffset() == -1) {
+        return;
+      }
+      try {
+        tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+      } catch (IOException e) {
+        logger.error(
+            "Failed to recover tagIndex for {} in schemaRegion {}.",
+            storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+            schemaRegionId);
+      }
+    };
+  }
+
+  private Consumer<IDeviceMNode<ICachedMNode>> deviceInitProcess() {
+    return deviceMNode -> {
+      regionStatistics.addDevice();
+      if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
+        regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
+      }
+    };
   }
 
   private void flushCallback() {
@@ -505,25 +524,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               storageGroupFullPath,
               schemaRegionId.getId(),
               regionStatistics,
-              measurementMNode -> {
-                regionStatistics.addTimeseries(1L);
-                if (measurementMNode.getOffset() == -1) {
-                  return;
-                }
-                try {
-                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
-                  logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
-                }
-              },
-              deviceMNode -> {
-                if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
-                  regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
-                }
-              },
+              measurementInitProcess(),
+              deviceInitProcess(),
               tagManager::readTags,
               this::flushCallback);
       logger.info(
@@ -1322,6 +1324,48 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getNodeReader(showNodesPlan);
   }
   // endregion
+
+  @Override
+  public long countDeviceNumBySchemaRegion() throws MetadataException {
+    ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        this.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath(
+                    IoTDBConstant.PATH_ROOT
+                        + IoTDBConstant.PATH_SEPARATOR
+                        + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                false));
+    long count = 0;
+    while (deviceReader.hasNext()) {
+      deviceReader.next();
+      count++;
+    }
+    return count;
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        this.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath(
+                    IoTDBConstant.PATH_ROOT
+                        + IoTDBConstant.PATH_SEPARATOR
+                        + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                new HashMap<>(),
+                false,
+                null,
+                null,
+                0,
+                0,
+                false));
+    long count = 0;
+    while (timeSeriesReader.hasNext()) {
+      timeSeriesReader.next();
+      count++;
+    }
+    return count;
+  }
 
   private static class RecoverOperationResult {
 

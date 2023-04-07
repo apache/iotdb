@@ -72,7 +72,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesOfSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -628,6 +628,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
+    properties.setLogo(IoTDBConstant.LOGO);
     properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
     LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
@@ -1870,7 +1871,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus createTimeseriesOfSchemaTemplate(TCreateTimeseriesOfSchemaTemplateReq req)
+  public TSStatus createTimeseriesUsingSchemaTemplate(TCreateTimeseriesUsingSchemaTemplateReq req)
       throws TException {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();

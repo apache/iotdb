@@ -258,13 +258,13 @@ public class IoTDBSessionSchemaTemplateIT {
         new HashSet<>(Arrays.asList("root.db.v4", "root.db.v5", "root.db.v6")),
         new HashSet<>(session.showPathsTemplateSetOn("template2")));
 
-    session.createTimeseriesOfSchemaTemplate(Collections.singletonList("root.db.v1.GPS"));
+    session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.v1.GPS"));
 
     assertEquals(
         new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template1")));
 
-    session.createTimeseriesOfSchemaTemplate(Collections.singletonList("root.db.v5.GPS"));
+    session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.v5.GPS"));
 
     assertEquals(
         new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
@@ -274,7 +274,7 @@ public class IoTDBSessionSchemaTemplateIT {
         new HashSet<>(Collections.singletonList("root.db.v5.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template2")));
 
-    session.createTimeseriesOfSchemaTemplate(
+    session.createTimeseriesUsingSchemaTemplate(
         Arrays.asList("root.db.v2.GPS", "root.db.v3.GPS", "root.db.v4.GPS", "root.db.v6.GPS"));
 
     assertEquals(

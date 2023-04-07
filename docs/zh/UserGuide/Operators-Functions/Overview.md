@@ -232,12 +232,20 @@ OR, |, ||
 | EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`<br>`type`取值为`avg`或`stendis`或`cos`或`prenextdis`，默认为`avg`<br>`number`取值应大于0，默认`3`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例和桶内采样个数的等分桶离群值采样                |
 | M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`displayWindowBegin`和`displayWindowEnd`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
 
+## 条件表达式
+
+| 表达式名称                     | 含义        |
+|---------------------------|-----------|
+| `CASE` | 类似if else |
+
+详细说明及示例见文档 [条件表达式](./Conditional.md)
+
 ## 数据质量函数库
 
 对基于时序数据的应用而言，数据质量至关重要。基于用户自定义函数能力，IoTDB 提供了一系列关于数据质量的函数，包括数据画像、数据质量评估与修复等，能够满足工业领域对数据质量的需求。
 
 **该函数库中的函数不是内置函数，使用前要先加载到系统中。** 操作流程如下：
-1. 下载包含全部依赖的 jar 包和注册脚本 [【点击下载】](https://archive.apache.org/dist/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-library-udf-bin.zip) ；
+1. 下载包含全部依赖的 jar 包和注册脚本 [【点击下载】](https://archive.apache.org/dist/iotdb/1.0.1/apache-iotdb-1.0.1-library-udf-bin.zip) ；
 2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下 (若您使用的是集群，请将jar包复制到所有DataNode的该目录下)；
 3. 启动 IoTDB；
 4. 将注册脚本复制到 IoTDB 的程序目录下（与`sbin`目录同级的根目录下），修改脚本中的参数（如果需要）并运行注册脚本以注册 UDF。

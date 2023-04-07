@@ -41,7 +41,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
-  /** Each ISinkHandle in the list matches one downStream ISourceHandle */
+  /** Each ISinkChannel in the list matches one downStream ISourceHandle */
   private final List<ISinkChannel> downStreamChannelList;
 
   private final boolean[] hasSetNoMoreTsBlocks;
@@ -88,8 +88,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
-    // open first channel
-    tryOpenChannel(0);
   }
 
   @Override
@@ -103,12 +101,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized ListenableFuture<?> isFull() {
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // try open channel
+    tryOpenChannel(currentIndex);
     // It is safe to use currentChannel.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
-    ISinkChannel currentChannel =
-        downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
-    return currentChannel.isFull();
+    return downStreamChannelList.get(currentIndex).isFull();
   }
 
   @Override
@@ -234,7 +233,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private void switchChannelIfNecessary() {
     shuffleStrategy.shuffle();
-    tryOpenChannel(downStreamChannelIndex.getCurrentIndex());
   }
 
   public void tryOpenChannel(int channelIndex) {
