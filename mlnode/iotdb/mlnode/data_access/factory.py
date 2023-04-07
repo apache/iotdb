@@ -56,7 +56,7 @@ def create_forecast_dataset(
 
     Args:
         dataset_type: see data_access/enums for available choices
-        source_type:  see data_access/enums for available choices
+        source_type:  see data_access/enums for available cho ices
         kwargs: for specific dataset configs, see returned `dataset_config` with kwargs=None
 
     Returns:

@@ -40,16 +40,16 @@ class TrainingTrialObjective:
 
     def __call__(self, trial: optuna.Trial):
         # TODO: decide which parameters to tune
-        # trial_configs = self.trial_configs
-        # trial_configs['learning_rate'] = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        trial_configs = self.trial_configs
+        trial_configs['learning_rate'] = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
         #
         # # TODO: check args
-        # model, model_cfg = create_forecast_model(**self.model_configs)
-        # dataset, dataset_cfg = create_forecasting_dataset(**self.data_configs)
-        #
-        # self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
-        # trial = ForecastingTrainingTrial(self.trial_configs, model, self.model_configs, dataset)
-        # loss = trial.start()
+        model, model_cfg = create_forecast_model(**self.model_configs)
+        dataset, dataset_cfg = create_forecasting_dataset(**self.data_configs)
+
+        self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
+        trial = ForecastingTrainingTrial(self.trial_configs, model, self.model_configs, dataset)
+        loss = trial.start()
         loss = 0.0
         return loss
 
@@ -89,7 +89,7 @@ class ForecastingTrainingTask(_BasicTask):
         try:
             if self.tuning:
                 self.study.optimize(TrainingTrialObjective(
-                    self.task_configs,  # TODO: How to generate diff trial_id by optuna
+                    self.task_configs,
                     self.model_configs,
                     self.dataset,
                     self.task_trial_map
