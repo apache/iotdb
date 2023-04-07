@@ -43,7 +43,7 @@ public class DriverContext {
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
   private int dependencyDriverIndex = -1;
-  private ExchangeOperator upstreamOperator;
+  private ExchangeOperator downstreamOperator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
@@ -88,12 +88,12 @@ public class DriverContext {
     return dependencyDriverIndex;
   }
 
-  public void setUpstreamOperator(ExchangeOperator upstreamOperator) {
-    this.upstreamOperator = upstreamOperator;
+  public void setDownstreamOperator(ExchangeOperator downstreamOperator) {
+    this.downstreamOperator = downstreamOperator;
   }
 
-  public ExchangeOperator getUpstreamOperator() {
-    return upstreamOperator;
+  public ExchangeOperator getDownstreamOperator() {
+    return downstreamOperator;
   }
 
   public void setSink(ISink sink) {

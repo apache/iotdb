@@ -75,7 +75,7 @@ public class PipelineDriverFactory {
     return this.driverContext.getDependencyDriverIndex();
   }
 
-  public void setUpstreamOperator(ExchangeOperator exchangeOperator) {
-    this.driverContext.setUpstreamOperator(exchangeOperator);
+  public void setDownstreamOperator(ExchangeOperator exchangeOperator) {
+    this.driverContext.setDownstreamOperator(exchangeOperator);
   }
 }

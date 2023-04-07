@@ -140,7 +140,7 @@ public class DriverTask implements IDIndexedAccessible {
   }
 
   public SettableFuture<Void> getBlockedDependencyDriver() {
-    return driver.getDriverContext().getUpstreamOperator().getBlockedDependencyDriver();
+    return driver.getDriverContext().getDownstreamOperator().getBlockedDependencyDriver();
   }
 
   public Priority getPriority() {
