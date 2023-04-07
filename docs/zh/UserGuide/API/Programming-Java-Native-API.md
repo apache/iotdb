@@ -66,7 +66,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 
 * 初始化 Session
 
-```java
+``` java
 // 全部使用默认配置
 session = new Session.Builder.build();
 
@@ -100,13 +100,13 @@ session =
 
 * 开启 Session
 
-```java
+``` java
 void open()
 ```
 
 * 开启 Session，并决定是否开启 RPC 压缩
 
-```java
+``` java
 void open(boolean enableRPCCompression)
 ```
 
@@ -114,7 +114,7 @@ void open(boolean enableRPCCompression)
 
 * 关闭 Session
 
-```java
+``` java
 void close()
 ```
 
@@ -124,13 +124,13 @@ void close()
 
 * 设置 database
 
-```java
+``` java
 void setStorageGroup(String storageGroupId)
 ```
 
 * 删除单个或多个 database
 
-```java
+``` java
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
@@ -138,7 +138,7 @@ void deleteStorageGroups(List<String> storageGroups)
 
 * 创建单个或多个时间序列
 
-```java
+``` java
 void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor, Map<String, String> props,
       Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
@@ -161,14 +161,14 @@ void createAlignedTimeseries(String prefixPath, List<String> measurements,
 
 * 删除一个或多个时间序列
 
-```java
+``` java
 void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
 * 检测时间序列是否存在
 
-```java
+``` java
 boolean checkTimeseriesExists(String path)
 ```
 
@@ -176,7 +176,7 @@ boolean checkTimeseriesExists(String path)
 
 * 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
-```java
+``` java
 public void createSchemaTemplate(Template template);
 
 Class Template {
@@ -209,7 +209,7 @@ Class MeasurementNode extends Node {
 
 通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
 
-```java
+``` java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
@@ -223,23 +223,10 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-* 对于已经创建的元数据模板，还可以通过以下接口查询模板信息：
+* 完成模板挂载操作后，可以通过如下的接口在给定的设备上使用模板注册序列，或者也可以直接向相应的设备写入数据以自动使用模板注册序列。
 
-```java
-// 查询返回目前模板中所有物理量的数量
-public int countMeasurementsInTemplate(String templateName);
-
-// 检查模板内指定路径是否为物理量
-public boolean isMeasurementInTemplate(String templateName, String path);
-
-// 检查在指定模板内是否存在某路径
-public boolean isPathExistInTemplate(String templateName, String path);
-
-// 返回指定模板内所有物理量的路径
-public List<String> showMeasurementsInTemplate(String templateName);
-
-// 返回指定模板内某前缀路径下的所有物理量的路径
-public List<String> showMeasurementsInTemplate(String templateName, String pattern);
+``` java
+void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
@@ -251,7 +238,7 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 - 将模板挂载到 MTree 上之后，你可以随时查询所有模板的名称、某模板被设置到 MTree 的所有路径、所有正在使用某模板的所有路径，即如下接口：
 
-```java
+``` java
 /** @return All template names. */
 public List<String> showAllTemplates();
 
@@ -286,7 +273,7 @@ public void dropSchemaTemplate(String templateName);
   * **写入效率高**
   * **支持写入空值**：空值处可以填入任意值，然后通过 BitMap 标记空值
 
-```java
+``` java
 void insertTablet(Tablet tablet)
 
 public class Tablet {
@@ -311,7 +298,7 @@ public class Tablet {
 
 * 插入多个 Tablet
 
-```java
+``` java
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
@@ -328,14 +315,14 @@ void insertTablets(Map<String, Tablet> tablets)
   | DOUBLE     | Double         |
   | TEXT       | String, Binary |
 
-```java
+``` java
 void insertRecord(String prefixPath, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
 * 插入多个 Record
 
-```java
+``` java
 void insertRecords(List<String> deviceIds,
         List<Long> times,
         List<List<String>> measurementsList,
@@ -345,7 +332,7 @@ void insertRecords(List<String> deviceIds,
 
 * 插入同属于一个 device 的多个 Record
 
-```java
+``` java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
@@ -357,20 +344,20 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
-```java
+``` java
 void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
 * 插入多个 Record
 
-```java
+``` java
 void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
 * 插入同属于一个 device 的多个 Record
 
-```java
+``` java
 void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
@@ -390,7 +377,7 @@ void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
 
 * 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 
-```java
+``` java
 void deleteData(String path, long endTime)
 void deleteData(List<String> paths, long endTime)
 ```
@@ -400,14 +387,14 @@ void deleteData(List<String> paths, long endTime)
 * 时间序列原始数据范围查询：
   - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
 
-```java
+``` java
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
 * 最新点查询：
   - 查询最后一条时间戳大于等于某个时间点的数据。
 
-```java
+``` java
 SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
 ```
 
@@ -415,7 +402,7 @@ SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
   - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
   - 支持按照时间区间分段查询。
 
-```java
+``` java
 SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
 
 SessionDataSet executeAggregationQuery(
@@ -441,13 +428,13 @@ SessionDataSet executeAggregationQuery(
 
 * 执行查询语句
 
-```java
+``` java
 SessionDataSet executeQueryStatement(String sql)
 ```
 
 * 执行非查询语句
 
-```java
+``` java
 void executeNonQueryStatement(String sql)
 ```
 
@@ -457,7 +444,7 @@ void executeNonQueryStatement(String sql)
 
 * 测试 insertRecord
 
-```java
+``` java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
 
 void testInsertRecord(String deviceId, long time, List<String> measurements,
@@ -466,7 +453,7 @@ void testInsertRecord(String deviceId, long time, List<String> measurements,
 
 * 测试 testInsertRecords
 
-```java
+``` java
 void testInsertRecords(List<String> deviceIds, List<Long> times,
         List<List<String>> measurementsList, List<List<String>> valuesList)
 
@@ -477,13 +464,13 @@ void testInsertRecords(List<String> deviceIds, List<Long> times,
 
 * 测试 insertTablet
 
-```java
+``` java
 void testInsertTablet(Tablet tablet)
 ```
 
 * 测试 insertTablets
 
-```java
+``` java
 void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
@@ -568,7 +555,7 @@ API 列表：
 
 * 获取集群中的各个节点的信息（构成哈希环）
 
-```java
+``` java
 list<Node> getRing();
 ```
 
@@ -593,7 +580,7 @@ list<Node> getMetaPartition(1:string path);
 ```
 
 * 获取所有节点的死活状态：
-```java
+``` java
 /**
  * @return key: node, value: live or not
  */
