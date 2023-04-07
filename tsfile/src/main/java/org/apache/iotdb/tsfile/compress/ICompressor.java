@@ -474,8 +474,7 @@ public interface ICompressor extends Serializable {
     @Override
     public int getMaxBytesForCompression(int uncompressedDataSize) {
       // hard to estimate
-      return 40 + uncompressedDataSize;
-      // return Math.max(40 + uncompressedDataSize / 2, uncompressedDataSize);
+      return 100 + uncompressedDataSize;
     }
 
     @Override

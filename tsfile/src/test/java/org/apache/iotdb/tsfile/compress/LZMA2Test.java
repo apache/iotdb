@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -53,7 +55,6 @@ public class LZMA2Test {
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
     byte[] compressed = compressor.compress(uncom);
     byte[] uncompressed = unCompressor.uncompress(compressed);
-
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 
@@ -75,5 +76,27 @@ public class LZMA2Test {
     System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
 
     Assert.assertArrayEquals(uncom, uncompressed);
+  }
+  @Test
+  public void testBytes3() throws IOException {
+    for (int i = 0; i < 500; i += 1) {
+      String input = randomString(i);
+      ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
+      source.put(input.getBytes());
+      source.flip();
+
+      ICompressor compressor = new ICompressor.LZMA2Compressor();
+      ByteBuffer compressed =
+              ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.getBytes().length));
+      compressor.compress(source, compressed);
+      IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
+      ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(input.getBytes().length);
+      compressed.flip();
+      unCompressor.uncompress(compressed, uncompressedByteBuffer);
+
+      uncompressedByteBuffer.flip();
+      String afterDecode = ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer);
+      Assert.assertEquals(afterDecode, input);
+    }
   }
 }
