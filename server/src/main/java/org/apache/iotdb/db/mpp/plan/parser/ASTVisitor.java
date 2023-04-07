@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -3484,7 +3483,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSetThrottleQuota(IoTDBSqlParser.SetThrottleQuotaContext ctx) {
-    if (!CommonDescriptor.getInstance().getConfig().isQuotaEnable()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       throw new SemanticException("Limit configuration is not enabled, please enable it first.");
     }
     if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
@@ -3584,7 +3583,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowThrottleQuota(IoTDBSqlParser.ShowThrottleQuotaContext ctx) {
-    if (!CommonDescriptor.getInstance().getConfig().isQuotaEnable()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       throw new SemanticException("Limit configuration is not enabled, please enable it first.");
     }
     ShowThrottleQuotaStatement showThrottleQuotaStatement = new ShowThrottleQuotaStatement();

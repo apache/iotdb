@@ -21,9 +21,9 @@ package org.apache.iotdb.db.quotas;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -76,7 +76,7 @@ public class DataNodeThrottleQuotaManager {
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
   public OperationQuota checkQuota(String userName, Statement s) throws RpcThrottlingException {
-    if (!CommonDescriptor.getInstance().getConfig().isQuotaEnable()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       return NoopOperationQuota.get();
     }
     switch (s.getType()) {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -225,7 +224,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
     }
 
-    if (CommonDescriptor.getInstance().getConfig().isQuotaEnable()
+    if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()
         && sessionInfo != null
         && !sessionInfo.getUserName().equals(IoTDBConstant.PATH_ROOT)) {
       AtomicInteger usedCpu = new AtomicInteger();

@@ -187,12 +187,6 @@ public class CommonDescriptor {
                     "disk_space_warning_threshold",
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
-    config.setQuotaEnable(
-        Boolean.parseBoolean(
-            properties.getProperty("quota_enable", String.valueOf(config.isQuotaEnable()))));
-
-    config.setRateLimiterType(
-        properties.getProperty("rate_limiter_type", config.getRateLimiterType()));
 
     String endPointUrl =
         properties.getProperty(

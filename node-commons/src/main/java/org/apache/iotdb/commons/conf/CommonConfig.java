@@ -126,16 +126,6 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
-  /** multi-tenancy */
-  private boolean quotaEnable = false;
-
-  /**
-   * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
-   * interval of time. 2. AverageIntervalRateLimiter : This limiter will refill resources at every
-   * TimeUnit/resources interval.
-   */
-  private String RateLimiterType = "FixedIntervalRateLimiter";
-
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -379,21 +369,5 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
-  }
-
-  public boolean isQuotaEnable() {
-    return quotaEnable;
-  }
-
-  public void setQuotaEnable(boolean quotaEnable) {
-    this.quotaEnable = quotaEnable;
-  }
-
-  public String getRateLimiterType() {
-    return RateLimiterType;
-  }
-
-  public void setRateLimiterType(String rateLimiterType) {
-    RateLimiterType = rateLimiterType;
   }
 }

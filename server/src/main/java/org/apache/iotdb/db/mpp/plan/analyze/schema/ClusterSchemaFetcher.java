@@ -55,7 +55,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
-  private MPPQueryContext context;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
       new AutoCreateSchemaExecutor(
@@ -101,7 +100,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
-    this.context = context;
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> fullPathList = new ArrayList<>();

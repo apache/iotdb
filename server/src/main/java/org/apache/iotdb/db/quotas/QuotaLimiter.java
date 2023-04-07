@@ -21,9 +21,9 @@ package org.apache.iotdb.db.quotas;
 
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Map;
@@ -35,7 +35,7 @@ public class QuotaLimiter {
     AverageIntervalRateLimiter;
   }
 
-  private CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private RateLimiter reqsLimiter = null;
   private RateLimiter reqSizeLimiter = null;
   private RateLimiter writeReqsLimiter = null;
