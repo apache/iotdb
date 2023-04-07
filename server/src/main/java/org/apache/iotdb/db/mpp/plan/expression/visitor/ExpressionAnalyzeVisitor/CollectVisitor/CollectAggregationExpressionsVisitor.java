@@ -17,23 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CollectVisitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R, C> {
+public class CollectAggregationExpressionsVisitor extends CollectVisitor {
   @Override
-  public R visitExpression(Expression expression, C context) {
-    throw new IllegalArgumentException(
-        "unsupported expression type: " + expression.getExpressionType());
+  public List<Expression> visitFunctionExpression(
+      FunctionExpression functionExpression, Void context) {
+    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      return Collections.singletonList(functionExpression);
+    }
+    return collect(getResultsFromChild(functionExpression, null));
   }
 
-  List<R> getResultsFromChild(Expression expression, C context) {
-    return expression.getExpressions().stream()
-        .map(child -> this.process(child, context))
-        .collect(Collectors.toList());
+  @Override
+  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
+    return Collections.emptyList();
   }
 }

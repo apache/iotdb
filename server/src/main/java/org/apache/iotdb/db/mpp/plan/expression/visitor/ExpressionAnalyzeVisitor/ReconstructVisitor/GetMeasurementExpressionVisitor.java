@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -36,8 +36,8 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
       childExpressions.add(process(suffixExpression, null));
     }
     return new FunctionExpression(
-        ((FunctionExpression) functionExpression).getFunctionName(),
-        ((FunctionExpression) functionExpression).getFunctionAttributes(),
+        functionExpression.getFunctionName(),
+        functionExpression.getFunctionAttributes(),
         childExpressions);
   }
 

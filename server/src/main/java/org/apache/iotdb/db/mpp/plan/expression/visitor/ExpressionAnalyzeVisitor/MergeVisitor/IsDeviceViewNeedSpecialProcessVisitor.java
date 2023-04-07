@@ -17,27 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.MergeVisitor;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
-import java.util.Collections;
 import java.util.List;
 
-public class CollectAggregationExpressionsVisitor extends CollectVisitor {
+public class IsDeviceViewNeedSpecialProcessVisitor extends MergeVisitor<Boolean, Void> {
   @Override
-  public List<Expression> visitFunctionExpression(
-      FunctionExpression functionExpression, Void context) {
-    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-      return Collections.singletonList(functionExpression);
-    }
-    return mergeList(getResultsFromChild(functionExpression, null));
+  Boolean merge(List<Boolean> childResults) {
+    return childResults.stream().reduce(false, Boolean::logicalOr);
   }
 
   @Override
-  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
-    return Collections.emptyList();
+  public Boolean visitFunctionExpression(FunctionExpression functionExpression, Void context) {
+    if (functionExpression.isBuiltInScalarFunction()
+        && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+            functionExpression.getFunctionName().toLowerCase())) {
+      return true;
+    }
+    return merge(getResultsFromChild(functionExpression, context));
+  }
+
+  @Override
+  public Boolean visitLeafOperand(LeafOperand leafOperand, Void context) {
+    return false;
   }
 }

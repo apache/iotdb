@@ -92,6 +92,10 @@ public class PathPatternTree {
     }
   }
 
+  public void appendPathPatterns(List<PartialPath> partialPaths) {
+    partialPaths.forEach(this::appendPathPattern);
+  }
+
   /** Construct tree according to the pathPatternList. */
   public void constructTree() {
     for (PartialPath path : pathPatternList) {
