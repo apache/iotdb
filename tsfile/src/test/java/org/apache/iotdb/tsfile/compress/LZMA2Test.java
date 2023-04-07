@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -77,6 +78,7 @@ public class LZMA2Test {
 
     Assert.assertArrayEquals(uncom, uncompressed);
   }
+
   @Test
   public void testBytes3() throws IOException {
     for (int i = 0; i < 500; i += 1) {
@@ -87,7 +89,7 @@ public class LZMA2Test {
 
       ICompressor compressor = new ICompressor.LZMA2Compressor();
       ByteBuffer compressed =
-              ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.getBytes().length));
+          ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.getBytes().length));
       compressor.compress(source, compressed);
       IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
       ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(input.getBytes().length);
