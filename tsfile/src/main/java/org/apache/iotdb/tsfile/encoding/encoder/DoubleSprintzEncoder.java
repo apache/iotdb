@@ -111,11 +111,6 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
   }
 
   @Override
-  protected void entropy() {
-    // TODO
-  }
-
-  @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
     if (byteCache.size() > 0) {
       byteCache.writeTo(out);

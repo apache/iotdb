@@ -109,10 +109,6 @@ public class FloatSprintzEncoder extends SprintzEncoder {
     return err;
   }
 
-  @Override
-  protected void entropy() {
-    // TODO
-  }
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
