@@ -62,7 +62,7 @@ public class DataNodeSchemaQuotaManager {
   public void updateConfiguration() {
     this.level =
         ClusterSchemaQuotaLevel.valueOf(
-            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel());
+            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel().toUpperCase());
     long oldLimit = limit;
     this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterMaxSchemaCount();
     this.remain.addAndGet(limit - oldLimit);
