@@ -40,7 +40,7 @@ public class DataNodeSchemaQuotaManager {
   }
 
   public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
-    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.MEASUREMENT)) {
+    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
       if (remain.get() <= 0) {
         throw new SchemaQuotaExceededException(level, limit);
       } else {
