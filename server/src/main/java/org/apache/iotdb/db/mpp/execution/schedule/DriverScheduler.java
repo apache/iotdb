@@ -269,18 +269,24 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    Set<DriverTask> instanceRelatedTasks = queryMap.get(instanceId.getQueryId()).remove(instanceId);
-    if (instanceRelatedTasks != null) {
-      for (DriverTask task : instanceRelatedTasks) {
-        if (task == null) {
-          return;
-        }
-        task.lock();
-        try {
-          task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
-          clearDriverTask(task);
-        } finally {
-          task.unlock();
+    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
+        queryMap.get(instanceId.getQueryId());
+    if (queryRelatedTasks != null) {
+      Set<DriverTask> instanceRelatedTasks = queryRelatedTasks.remove(instanceId);
+      if (instanceRelatedTasks != null) {
+        synchronized (instanceRelatedTasks) {
+          for (DriverTask task : instanceRelatedTasks) {
+            if (task == null) {
+              return;
+            }
+            task.lock();
+            try {
+              task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+              clearDriverTask(task);
+            } finally {
+              task.unlock();
+            }
+          }
         }
       }
     }
