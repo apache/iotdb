@@ -45,7 +45,6 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         try:
             # parse request, check required config and config type
             data_config, model_config, task_config = parse_training_request(req)
-
             # create dataset & check data config legitimacy
             dataset, data_config = create_forecast_dataset(**data_config)
 
@@ -57,7 +56,6 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
             model_config['input_vars'] = data_config['input_vars']
             model_config['output_vars'] = data_config['output_vars']
-
             # create task & check task config legitimacy
             task = self.__task_manager.create_training_task(dataset, model, model_config, task_config)
 

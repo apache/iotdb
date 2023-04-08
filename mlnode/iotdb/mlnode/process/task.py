@@ -23,7 +23,9 @@ import optuna
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
-
+from iotdb.mlnode.algorithm.factory import create_forecast_model
+from iotdb.mlnode.client import client_manager
+from iotdb.thrift.common.ttypes import TrainingState
 
 class TrainingTrialObjective:
     """
@@ -32,25 +34,23 @@ class TrainingTrialObjective:
     Optuna will try to minimize the objective.
     """
 
-    def __init__(self, trial_configs, model_configs, data_configs, task_trial_map):
+    def __init__(self, trial_configs, model_configs, dataset, task_trial_map):
         self.trial_configs = trial_configs
         self.model_configs = model_configs
-        self.data_configs = data_configs
+        self.dataset = dataset
         self.task_trial_map = task_trial_map
 
     def __call__(self, trial: optuna.Trial):
         # TODO: decide which parameters to tune
         trial_configs = self.trial_configs
-        trial_configs['learning_rate'] = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-        #
-        # # TODO: check args
+        trial_configs['learning_rate'] = trial.suggest_float("lr", 1e-7, 1e-1, log=True)
+        trial_configs['trial_id'] = 'tid_' + str(trial._trial_id)
+        # TODO: check args
         model, model_cfg = create_forecast_model(**self.model_configs)
-        dataset, dataset_cfg = create_forecasting_dataset(**self.data_configs)
-
         self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
-        trial = ForecastingTrainingTrial(self.trial_configs, model, self.model_configs, dataset)
-        loss = trial.start()
-        loss = 0.0
+        _trial = ForecastingTrainingTrial(trial_configs, model, self.model_configs, self.dataset)
+        loss = _trial.start()
+        print(trial._trial_id, loss)
         return loss
 
 
@@ -76,14 +76,16 @@ class ForecastingTrainingTask(_BasicTask):
     def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
         super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, task_trial_map)
         self.model_id = self.task_configs['model_id']
-        self.tuning = self.task_configs["tuning"]
+        self.tuning = self.task_configs['tuning']
+        self.confignode_client = client_manager.borrow_config_node_client()
 
-        if self.tuning:  # TODO implement tuning task
+        if self.tuning:
             self.study = optuna.create_study(direction='minimize')
         else:
-            self.task_configs['trial_id'] = 'tid_0'  # TODO: set a default trial id
+            self.default_trial_id = 'tid_0'
+            self.task_configs['trial_id'] = self.default_trial_id
             self.trial = ForecastingTrainingTrial(self.task_configs, self.model, self.model_configs, self.dataset)
-            self.task_trial_map[self.model_id]['tid_0'] = os.getpid()
+            self.task_trial_map[self.model_id][self.default_trial_id] = os.getpid()
 
     def __call__(self):
         try:
@@ -94,8 +96,11 @@ class ForecastingTrainingTask(_BasicTask):
                     self.dataset,
                     self.task_trial_map
                 ), n_trials=20)
+                best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
+                self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
             else:
                 self.trial.start()
+                self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.default_trial_id)
         except Exception as e:
             logger.warn(e)
             raise e
