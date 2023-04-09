@@ -75,6 +75,10 @@ public class OrderByComponent extends StatementNode {
     return orderByDevice && deviceOrderPriority == 0;
   }
 
+  public boolean isBasedOnTime() {
+    return orderByTime && timeOrderPriority == 0;
+  }
+
   public void addExpressionSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
     this.sortItemExpressionList.add(sortItem.getExpression());

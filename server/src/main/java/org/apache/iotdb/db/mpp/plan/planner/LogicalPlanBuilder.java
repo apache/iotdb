@@ -542,9 +542,7 @@ public class LogicalPlanBuilder {
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
     // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
-    if (sortItemList.size() == 2
-        && queryStatement.isOrderByDevice()
-        && queryStatement.isOrderByTime()) {
+    if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
@@ -887,7 +885,7 @@ public class LogicalPlanBuilder {
       Ordering scanOrder) {
 
     Set<Expression> outputExpressions = new HashSet<>(selectExpressions);
-    if(orderByExpression!= null){
+    if (orderByExpression != null) {
       outputExpressions.addAll(orderByExpression);
     }
 
