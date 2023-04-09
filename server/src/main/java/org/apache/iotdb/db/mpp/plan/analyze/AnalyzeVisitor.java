@@ -291,8 +291,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceSet);
         analyzeHaving(
             analysis, queryStatement, schemaTree, deviceSet, deviceToAggregationExpressions);
-        analyzeDeviceToAggregationTransform(
-            analysis, queryStatement, deviceSet, deviceToAggregationExpressions);
         analyzeDeviceToAggregation(analysis, queryStatement, deviceToAggregationExpressions);
         analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
 
@@ -329,7 +327,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         analysis.setSelectExpressions(selectExpressions);
 
-        analyzeAggregationTransform(analysis, queryStatement);
         analyzeAggregation(analysis, queryStatement);
 
         analyzeWhere(analysis, queryStatement, schemaTree);
@@ -877,6 +874,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
           .addAll(aggregationExpressions);
     }
+
+    if (queryStatement.hasOrderByExpression()) {
+      Map<String, Set<Expression>> deviceToOrderByExpressions =
+          analysis.getDeviceToOrderByExpressions();
+      for (String deviceName : deviceToOrderByExpressions.keySet()) {
+        for (Expression orderByExpression : deviceToOrderByExpressions.get(deviceName)) {
+          deviceToAggregationExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .addAll(ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
+        }
+      }
+    }
   }
 
   private void analyzeAggregation(Analysis analysis, QueryStatement queryStatement) {
@@ -899,49 +908,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         aggregationExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
       }
-      for (Expression expression : analysis.getAggregationTransformExpressions()) {
-        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression expression : analysis.getOrderByExpressions()) {
+          aggregationExpressions.addAll(
+              ExpressionAnalyzer.searchAggregationExpressions(expression));
+        }
       }
       analysis.setAggregationExpressions(aggregationExpressions);
     }
-  }
-
-  private void analyzeDeviceToAggregationTransform(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      Set<PartialPath> deviceSet,
-      Map<String, Set<Expression>> deviceToAggregationExpressions) {
-    if (!queryStatement.isAggregationQuery()) {
-      return;
-    }
-
-    for (PartialPath deviceName : deviceSet) {
-
-      if (queryStatement.hasOrderByExpression()) {
-        Set<Expression> aggregationExpressionsForOneDevice = new LinkedHashSet<>();
-        for (Expression orderByExpression :
-            analysis.getDeviceToOrderByExpressions().get(deviceName.getFullPath())) {
-          aggregationExpressionsForOneDevice.addAll(
-              ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
-        }
-        deviceToAggregationExpressions
-            .computeIfAbsent(deviceName.getFullPath(), key -> new LinkedHashSet<>())
-            .addAll(aggregationExpressionsForOneDevice);
-      }
-    }
-  }
-
-  private void analyzeAggregationTransform(Analysis analysis, QueryStatement queryStatement) {
-    if (!queryStatement.isAggregationQuery()) {
-      return;
-    }
-
-    Set<Expression> aggregationTransformExpressions = new HashSet<>();
-    if (queryStatement.hasOrderByExpression()) {
-      aggregationTransformExpressions.addAll(analysis.getOrderByExpressions());
-    }
-
-    analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
   }
 
   private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {
@@ -967,8 +941,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       deviceToSourceTransformExpressions = analysis.getDeviceToSelectExpressions();
       if (queryStatement.hasOrderByExpression()) {
-        for (String deviceName : deviceToSourceTransformExpressions.keySet()) {
-          for (Expression expression : analysis.getDeviceToOrderByExpressions().get(deviceName)) {
+        Map<String, Set<Expression>> deviceToOrderByExpressions =
+            analysis.getDeviceToOrderByExpressions();
+        for (String deviceName : deviceToOrderByExpressions.keySet()) {
+          for (Expression expression : deviceToOrderByExpressions.get(deviceName)) {
             deviceToSourceTransformExpressions.get(deviceName).add(expression);
           }
         }
@@ -1150,7 +1126,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
       }
     }
-
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
 
     List<String> deviceViewOutputColumns =
@@ -1236,6 +1211,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
   }
 
+  // For last query
   private void analyzeOrderBy(Analysis analysis, QueryStatement queryStatement) {
     analysis.setMergeOrderParameter(new OrderByParameter(queryStatement.getSortItemList()));
   }
@@ -1244,9 +1220,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     if (!queryStatement.hasOrderByExpression()) return;
 
-    List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
     Set<Expression> orderByExpressions = new LinkedHashSet<>();
-    for (Expression expressionForItem : sortItemExpressions) {
+    for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.removeWildcardInExpression(expressionForItem, schemaTree);
@@ -1262,6 +1237,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       orderByExpressions.add(expressionForItem);
     }
     analysis.setOrderByExpressions(orderByExpressions);
+    queryStatement.updateSortItems(orderByExpressions);
   }
 
   private TSDataType analyzeExpression(Analysis analysis, Expression expression) {
@@ -1348,7 +1324,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    // for the sortOperator below the deviceViewOperator
     Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
     // build the device-view outputColumn for the sortNode above the deviceViewNode
     Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
@@ -1373,14 +1348,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Expression devicerViewExpression =
             ExpressionAnalyzer.getMeasurementExpression(expressionForItem);
         analyzeExpression(analysis, devicerViewExpression);
-        deviceViewOrderByExpression.add(devicerViewExpression);
 
+        deviceViewOrderByExpression.add(devicerViewExpression);
         orderByExpressionsForOneDevice.add(expressionForItem);
       }
       deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
+    queryStatement.updateSortItems(deviceViewOrderByExpression);
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
 

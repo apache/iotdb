@@ -379,6 +379,20 @@ public class QueryStatement extends Statement {
     return orderByComponent.getExpressionSortItemList();
   }
 
+  //  update the sortItems with expressionSortItems
+  public void updateSortItems(Set<Expression> orderByExpressions) {
+    Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
+    List<SortItem> sortItems = getSortItemList();
+    int expressionIndex = 0;
+    for (int i = 0; i < sortItems.size() && expressionIndex < sortItemExpressions.length; i++) {
+      SortItem sortItem = sortItems.get(i);
+      if (sortItem.isExpression()) {
+        sortItem.setExpression(sortItemExpressions[expressionIndex]);
+        expressionIndex++;
+      }
+    }
+  }
+
   public boolean hasFill() {
     return fillComponent != null;
   }
@@ -473,8 +487,10 @@ public class QueryStatement extends Statement {
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
       for (Expression expression : getExpressionSortItemList()) {
-        if (expression.isBuiltInAggregationFunctionExpression()) {
-          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+        for (Expression subExpression : expression.getExpressions()) {
+          if (subExpression.isBuiltInAggregationFunctionExpression()) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          }
         }
       }
     }

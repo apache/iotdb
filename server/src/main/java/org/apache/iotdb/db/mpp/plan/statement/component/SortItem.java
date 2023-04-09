@@ -85,17 +85,20 @@ public class SortItem {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(sortKey, byteBuffer);
     ReadWriteIOUtils.write(ordering.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(nullOrdering.ordinal(), byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sortKey, stream);
     ReadWriteIOUtils.write(ordering.ordinal(), stream);
+    ReadWriteIOUtils.write(nullOrdering.ordinal(), stream);
   }
 
   public static SortItem deserialize(ByteBuffer byteBuffer) {
     String sortKey = ReadWriteIOUtils.readString(byteBuffer);
     Ordering ordering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    return new SortItem(sortKey, ordering);
+    NullOrdering nullOrdering = NullOrdering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return new SortItem(sortKey, ordering, nullOrdering);
   }
 
   @Override
@@ -107,15 +110,17 @@ public class SortItem {
       return false;
     }
     SortItem sortItem = (SortItem) o;
-    return Objects.equals(sortKey, sortItem.sortKey) && ordering == sortItem.ordering;
+    return Objects.equals(sortKey, sortItem.sortKey)
+        && ordering == sortItem.ordering
+        && nullOrdering == sortItem.nullOrdering;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(sortKey, ordering);
+    return Objects.hash(sortKey, ordering, nullOrdering);
   }
 
   public String toSQLString() {
-    return getSortKey() + " " + getOrdering().toString();
+    return getSortKey() + " " + getOrdering().toString() + " " + getNullOrdering().toString();
   }
 }

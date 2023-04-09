@@ -149,12 +149,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       // convert to ALIGN BY DEVICE view
       planBuilder =
           planBuilder.planDeviceView(
-              analysis,
               deviceToSubPlanMap,
               analysis.getDeviceViewOutputExpressions(),
-              analysis.getOrderByExpressions(),
               analysis.getDeviceViewInputIndexesMap(),
-              queryStatement.getOrderByComponent());
+              queryStatement);
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -174,7 +172,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           planBuilder.planHavingAndTransform(
               analysis.getHavingExpression(),
               analysis.getSelectExpressions(),
-              analysis.getAggregationTransformExpressions(),
+              analysis.getOrderByExpressions(),
               queryStatement.isGroupByTime(),
               queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
@@ -182,13 +180,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     planBuilder =
         planBuilder.planOrderBy(
-            queryStatement,
-            queryStatement.getSortItemList(),
-            analysis.getOrderByExpressions(),
-            analysis.getSelectExpressions(),
-            queryStatement.isGroupByTime(),
-            queryStatement.getSelectComponent().getZoneId(),
-            queryStatement.getResultTimeOrder());
+            queryStatement, analysis.getOrderByExpressions(), analysis.getSelectExpressions());
 
     // other upstream node
     planBuilder =

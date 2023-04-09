@@ -96,12 +96,6 @@ public class Analysis {
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
-  // Expressions of aggregations that need to be calculated which are just for internal use and
-  // won't appear in the resultSet
-  // The expressions of aggregations which will appear in the resultSet should be put in
-  // selectExpression
-  private Set<Expression> aggregationTransformExpressions;
-
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
   private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
@@ -632,14 +626,6 @@ public class Analysis {
   public void setDeviceToOrderByExpressions(
       Map<String, Set<Expression>> deviceToOrderByExpressions) {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
-  }
-
-  public void setAggregationTransformExpressions(Set<Expression> aggregationTransformExpressions) {
-    this.aggregationTransformExpressions = aggregationTransformExpressions;
-  }
-
-  public Set<Expression> getAggregationTransformExpressions() {
-    return aggregationTransformExpressions;
   }
 
   public void setOrderByExpressionInDeviceView(boolean orderByExpressionInDeviceView) {

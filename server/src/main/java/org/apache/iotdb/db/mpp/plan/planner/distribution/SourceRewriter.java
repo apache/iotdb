@@ -271,6 +271,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public List<PlanNode> visitSort(SortNode node, DistributionPlanContext context) {
+
+    if (node.getChild() instanceof DeviceViewNode) {
+      analysis.setOrderByExpressionInDeviceView(true);
+    }
+
     List<PlanNode> children = rewrite(node.getChild(), context);
     if (children.size() == 1) {
       node.setChild(children.get(0));

@@ -87,10 +87,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -102,14 +100,12 @@ import org.apache.commons.lang.Validate;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -533,37 +529,39 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceView(
-      Analysis analysis,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       Set<Expression> deviceViewOutputExpressions,
-      Set<Expression> orderByMeasurement,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      OrderByComponent orderByComponent) {
+      QueryStatement queryStatement) {
     List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    Ordering deviceOrdering =
-        orderByComponent != null && orderByComponent.isDeviceOrderInitialized()
-            ? orderByComponent.getDeviceOrder()
-            : Ordering.ASC;
-    Ordering timeOrdering =
-        orderByComponent != null && orderByComponent.isTimeOrderInitialized()
-            ? orderByComponent.getTimeOrder()
-            : Ordering.ASC;
+    List<SortItem> sortItemList = queryStatement.getSortItemList();
+    OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
-    // order by device...
-    if (orderByComponent == null || orderByComponent.isBasedOnDevice()) {
-
-      OrderByParameter orderByParameter =
-          orderByComponent == null
-              ? new OrderByParameter(
-                  Arrays.asList(
-                      new SortItem(SortKey.DEVICE, deviceOrdering),
-                      new SortItem(SortKey.TIME, timeOrdering)))
-              : new OrderByParameter(orderByComponent.getSortItemList());
-
+    // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
+    if (sortItemList.size() == 2
+        && queryStatement.isOrderByDevice()
+        && queryStatement.isOrderByTime()) {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+        String deviceName = entry.getKey();
+        PlanNode subPlan = entry.getValue();
+        SingleDeviceViewNode singleDeviceViewNode =
+            new SingleDeviceViewNode(
+                context.getQueryId().genPlanNodeId(),
+                outputColumnNames,
+                deviceName,
+                deviceToMeasurementIndexesMap.get(deviceName));
+        singleDeviceViewNode.addChild(subPlan);
+        mergeSortNode.addChild(singleDeviceViewNode);
+      }
+      this.root = mergeSortNode;
+    } else {
       DeviceViewNode deviceViewNode =
           new DeviceViewNode(
               context.getQueryId().genPlanNodeId(),
@@ -577,49 +575,6 @@ public class LogicalPlanBuilder {
         deviceViewNode.addChildDeviceNode(deviceName, subPlan);
       }
       this.root = deviceViewNode;
-      analysis.setOrderByExpressionInDeviceView(true);
-    } else {
-      // order by time... or order by expression...
-      List<SortItem> sortItemList = orderByComponent.getSortItemList();
-      //  combine the sortItems and expressionSortItems(orderByMeasurement)
-      //      combineSortItem(orderByMeasurement, sortItemList);
-      OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
-
-      if (sortItemList.size() == 2
-          && orderByComponent.isOrderByDevice()
-          && orderByComponent.isOrderByTime()) {
-        MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-        for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-          String deviceName = entry.getKey();
-          PlanNode subPlan = entry.getValue();
-          SingleDeviceViewNode singleDeviceViewNode =
-              new SingleDeviceViewNode(
-                  context.getQueryId().genPlanNodeId(),
-                  outputColumnNames,
-                  deviceName,
-                  deviceToMeasurementIndexesMap.get(deviceName));
-          singleDeviceViewNode.addChild(subPlan);
-          mergeSortNode.addChild(singleDeviceViewNode);
-        }
-        this.root = mergeSortNode;
-      } else {
-
-        DeviceViewNode deviceViewNode =
-            new DeviceViewNode(
-                context.getQueryId().genPlanNodeId(),
-                orderByParameter,
-                outputColumnNames,
-                deviceToMeasurementIndexesMap);
-        for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-          String deviceName = entry.getKey();
-          PlanNode subPlan = entry.getValue();
-          deviceViewNode.addChildDeviceNode(deviceName, subPlan);
-        }
-        this.root = deviceViewNode;
-        analysis.setOrderByExpressionInDeviceView(true);
-      }
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
@@ -926,15 +881,16 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planHavingAndTransform(
       Expression havingExpression,
       Set<Expression> selectExpressions,
-      Set<Expression> aggregationTransformExpression,
+      Set<Expression> orderByExpression,
       boolean isGroupByTime,
       ZoneId zoneId,
       Ordering scanOrder) {
 
     Set<Expression> outputExpressions = new HashSet<>(selectExpressions);
-    if (aggregationTransformExpression != null) {
-      outputExpressions.addAll(aggregationTransformExpression);
+    if(orderByExpression!= null){
+      outputExpressions.addAll(orderByExpression);
     }
+
     if (havingExpression != null) {
       return planFilterAndTransform(
           havingExpression, outputExpressions, isGroupByTime, zoneId, scanOrder);
@@ -1224,37 +1180,17 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public Set<Expression> combineSortItem(
-      Set<Expression> orderByExpressions, List<SortItem> sortItems) {
-    //  combine the sortItems and expressionSortItems
-    Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
-    Set<Expression> expressions = new LinkedHashSet<>();
-    int expressionIndex = 0;
-    for (int i = 0; i < sortItems.size() && expressionIndex < sortItemExpressions.length; i++) {
-      SortItem sortItem = sortItems.get(i);
-      if (sortItem.isExpression()) {
-        Expression expression = sortItemExpressions[expressionIndex];
-        sortItem.setExpression(expression);
-        expressions.add(expression);
-        expressionIndex++;
-      }
-    }
-    return expressions;
-  }
-
   public LogicalPlanBuilder planOrderBy(
       QueryStatement queryStatement,
-      List<SortItem> sortItems,
       Set<Expression> orderByExpressions,
-      Set<Expression> selectExpression,
-      boolean isGroupByTime,
-      ZoneId zoneId,
-      Ordering ordering) {
-
+      Set<Expression> selectExpression) {
+    // only the order by clause having expression needs a sortNode
     if (!queryStatement.hasOrderByExpression()) {
       return this;
     }
 
+    List<SortItem> sortItems = queryStatement.getSortItemList();
+    queryStatement.updateSortItems(orderByExpressions);
     updateTypeProvider(orderByExpressions);
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItems);
@@ -1269,9 +1205,9 @@ public class LogicalPlanBuilder {
               context.getQueryId().genPlanNodeId(),
               root,
               selectExpression.toArray(new Expression[0]),
-              isGroupByTime,
-              zoneId,
-              ordering);
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
     }
     return this;
   }
