@@ -27,7 +27,7 @@ public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterMeasurementQuotaIT {
 
   @Override
   protected void setUpQuotaConfig() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("DEVICE");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("device");
     EnvFactory.getEnv().getConfig().getCommonConfig().setClusterMaxSchemaCount(3);
   }
 }
