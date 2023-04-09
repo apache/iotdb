@@ -781,6 +781,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000                                                                    |
 |Effective| After restarting system                                                 |
 
+* 0.13\_data\_insert\_adapt
+
+|Name| 0.13\_data\_insert\_adapt                                             |
+|:---:|:----------------------------------------------------------------------|
+|Description| if using v0.13 client to insert data, set this configuration to true. |
+|Type| Boolean                                                               |
+|Default| false                                                                 |
+|Effective| After restarting system                                               |
+
 * upgrade\_thread\_count
 
 |   Name    | upgrade\_thread\_count                                                                            |

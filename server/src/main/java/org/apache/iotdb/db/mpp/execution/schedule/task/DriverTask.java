@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.schedule.task;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
@@ -58,8 +59,6 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
-
-  private SettableFuture<Void> blockedDependencyDriver = null;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -140,17 +139,8 @@ public class DriverTask implements IDIndexedAccessible {
     this.abortCause = abortCause;
   }
 
-  public void submitDependencyDriver() {
-    if (blockedDependencyDriver != null) {
-      this.blockedDependencyDriver.set(null);
-    }
-  }
-
   public SettableFuture<Void> getBlockedDependencyDriver() {
-    if (blockedDependencyDriver == null) {
-      blockedDependencyDriver = SettableFuture.create();
-    }
-    return blockedDependencyDriver;
+    return driver.getDriverContext().getDownstreamOperator().getBlockedDependencyDriver();
   }
 
   public Priority getPriority() {
@@ -269,8 +259,8 @@ public class DriverTask implements IDIndexedAccessible {
     }
 
     @Override
-    public int getDependencyDriverIndex() {
-      return -1;
+    public DriverContext getDriverContext() {
+      return null;
     }
   }
 }

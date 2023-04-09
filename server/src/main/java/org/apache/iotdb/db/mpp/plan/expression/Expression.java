@@ -33,11 +33,13 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -301,6 +303,14 @@ public abstract class Expression extends StatementNode {
 
       case 20:
         expression = new NullOperand();
+        break;
+
+      case 21:
+        expression = new CaseWhenThenExpression(byteBuffer);
+        break;
+
+      case 22:
+        expression = new WhenThenExpression(byteBuffer);
         break;
 
       default:
