@@ -40,7 +40,7 @@ public class DataNodeSchemaQuotaManager {
   }
 
   public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
-    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.MEASUREMENT)) {
+    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
       if (remain.get() <= 0) {
         throw new SchemaQuotaExceededException(level, limit);
       } else {
@@ -62,7 +62,7 @@ public class DataNodeSchemaQuotaManager {
   public void updateConfiguration() {
     this.level =
         ClusterSchemaQuotaLevel.valueOf(
-            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel());
+            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel().toUpperCase());
     long oldLimit = limit;
     this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitThreshold();
     this.remain.addAndGet(limit - oldLimit);

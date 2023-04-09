@@ -1079,7 +1079,7 @@ public class IoTDBConfig {
   private boolean enableAuditLog = false;
 
   /** This configuration parameter sets the level at which the time series limit is applied.* */
-  private String clusterSchemaLimitLevel = "MEASUREMENT";
+  private String clusterSchemaLimitLevel = "timeseries";
 
   /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
   private long clusterSchemaLimitThreshold = -1;

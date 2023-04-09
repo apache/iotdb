@@ -392,7 +392,7 @@ public class SchemaEngine {
     }
     Map<TConsensusGroupId, Long> res = new HashMap<>();
     switch (schemaQuotaManager.getLevel()) {
-      case MEASUREMENT:
+      case TIMESERIES:
         schemaRegionMap.values().stream()
             .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
             .forEach(
