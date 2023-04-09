@@ -254,6 +254,9 @@ public class IoTDBNullOperandIT {
 
     retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where notExist>0", expectedHeader, retArray);
+    resultSetEqualTest("select s1, s3, s4 from root.** where notExist=0", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where notExist!=0", expectedHeader, retArray);
 
     resultSetEqualTest(
         "select s1, s3, s4 from root.** where diff(notExist)>0", expectedHeader, retArray);

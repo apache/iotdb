@@ -52,11 +52,14 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -2415,6 +2418,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseConstantOperand(context.constant(0));
     }
 
+    if (context.caseWhenThenExpression() != null) {
+      return parseCaseWhenThenExpression(context.caseWhenThenExpression(), canUseFullPath);
+    }
+
     throw new UnsupportedOperationException();
   }
 
@@ -2480,6 +2487,42 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       functionExpression.addAttribute(ROUND_PLACES, parseConstant(roundClause.constant()));
     }
     return functionExpression;
+  }
+
+  private CaseWhenThenExpression parseCaseWhenThenExpression(
+      IoTDBSqlParser.CaseWhenThenExpressionContext context, boolean canUseFullPath) {
+    // handle CASE
+    Expression caseExpression = null;
+    boolean simpleCase = false;
+    if (context.caseExpression != null) {
+      caseExpression = parseExpression(context.caseExpression, canUseFullPath);
+      simpleCase = true;
+    }
+    // handle WHEN-THEN
+    List<WhenThenExpression> whenThenList = new ArrayList<>();
+    if (simpleCase) {
+      for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
+          context.whenThenExpression()) {
+        Expression when = parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath);
+        Expression then = parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath);
+        Expression comparison = new EqualToExpression(caseExpression, when);
+        whenThenList.add(new WhenThenExpression(comparison, then));
+      }
+    } else {
+      for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
+          context.whenThenExpression()) {
+        whenThenList.add(
+            new WhenThenExpression(
+                parseExpression(whenThenExpressionContext.whenExpression, canUseFullPath),
+                parseExpression(whenThenExpressionContext.thenExpression, canUseFullPath)));
+      }
+    }
+    // handle ELSE
+    Expression elseExpression = new NullOperand();
+    if (context.elseExpression != null) {
+      elseExpression = parseExpression(context.elseExpression, canUseFullPath);
+    }
+    return new CaseWhenThenExpression(whenThenList, elseExpression);
   }
 
   private Expression parseFunctionExpression(
@@ -3106,8 +3149,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitCreateTimeseriesOfSchemaTemplate(
-      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+  public Statement visitCreateTimeseriesUsingSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesUsingSchemaTemplateContext ctx) {
     ActivateTemplateStatement statement = new ActivateTemplateStatement();
     statement.setPath(parsePrefixPath(ctx.prefixPath()));
     return statement;

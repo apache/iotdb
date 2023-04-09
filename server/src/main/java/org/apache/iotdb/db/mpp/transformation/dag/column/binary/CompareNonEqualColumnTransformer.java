@@ -30,7 +30,7 @@ public class CompareNonEqualColumnTransformer extends CompareBinaryColumnTransfo
 
   @Override
   protected final void checkType() {
-    if (leftTransformer.getType().getTypeEnum().equals(rightTransformer.getType().getTypeEnum())) {
+    if (typeEquals(leftTransformer, rightTransformer)) {
       return;
     }
 
