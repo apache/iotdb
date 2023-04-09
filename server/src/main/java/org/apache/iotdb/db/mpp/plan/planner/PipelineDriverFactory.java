@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 
 import static java.util.Objects.requireNonNull;
 
@@ -34,7 +35,6 @@ public class PipelineDriverFactory {
   private final DriverContext driverContext;
   // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
-  private int dependencyPipelineIndex = -1;
 
   public PipelineDriverFactory(Operator operation, DriverContext driverContext) {
     this.operation = requireNonNull(operation, "rootOperator is null");
@@ -54,9 +54,6 @@ public class PipelineDriverFactory {
       } else {
         driver = new SchemaDriver(operation, (SchemaDriverContext) driverContext);
       }
-      if (dependencyPipelineIndex != -1) {
-        driver.getDriverContext().setDependencyDriverIndex(dependencyPipelineIndex);
-      }
       return driver;
     } catch (Throwable failure) {
       try {
@@ -70,11 +67,15 @@ public class PipelineDriverFactory {
     }
   }
 
-  public void setDependencyPipeline(int dependencyPipelineIndex) {
-    this.dependencyPipelineIndex = dependencyPipelineIndex;
+  public void setDependencyPipeline(int dependencyDriverIndex) {
+    this.driverContext.setDependencyDriverIndex(dependencyDriverIndex);
   }
 
   public int getDependencyPipelineIndex() {
-    return dependencyPipelineIndex;
+    return this.driverContext.getDependencyDriverIndex();
+  }
+
+  public void setDownstreamOperator(ExchangeOperator exchangeOperator) {
+    this.driverContext.setDownstreamOperator(exchangeOperator);
   }
 }
