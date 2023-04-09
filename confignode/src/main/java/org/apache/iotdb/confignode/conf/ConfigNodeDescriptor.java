@@ -486,6 +486,14 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))
                 .trim()));
 
+    conf.setDataRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
+                .trim()));
+
     conf.setConfigNodeRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties
@@ -556,6 +564,14 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "schema_region_ratis_grpc_flow_control_window",
                     String.valueOf(conf.getSchemaRegionRatisGrpcFlowControlWindow()))
+                .trim()));
+
+    conf.setDataRegionRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax()))
                 .trim()));
 
     conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
