@@ -119,6 +119,7 @@ public class DataRegionConsensusImpl {
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           conf.isDataRatisConsensusLogUnsafeFlushEnable())
+                                      .setForceSyncNum(conf.getDataRatisConsensusLogForceSyncNum())
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusLogSegmentSizeMax()))
@@ -130,6 +131,9 @@ public class DataRegionConsensusImpl {
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          conf
+                                              .getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()

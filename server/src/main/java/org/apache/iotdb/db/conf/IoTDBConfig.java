@@ -1041,11 +1041,16 @@ public class IoTDBConfig {
   private boolean dataRatisConsensusLogUnsafeFlushEnable = false;
   private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
+  private int dataRatisConsensusLogForceSyncNum = 128;
+
   private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   private long dataRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
+  private int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -3502,6 +3507,14 @@ public class IoTDBConfig {
     this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
   }
 
+  public int getDataRatisConsensusLogForceSyncNum() {
+    return dataRatisConsensusLogForceSyncNum;
+  }
+
+  public void setDataRatisConsensusLogForceSyncNum(int dataRatisConsensusLogForceSyncNum) {
+    this.dataRatisConsensusLogForceSyncNum = dataRatisConsensusLogForceSyncNum;
+  }
+
   public long getDataRatisConsensusLogSegmentSizeMax() {
     return dataRatisConsensusLogSegmentSizeMax;
   }
@@ -3517,6 +3530,16 @@ public class IoTDBConfig {
   public void setDataRatisConsensusGrpcFlowControlWindow(
       long dataRatisConsensusGrpcFlowControlWindow) {
     this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public int getDataRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int dataRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.dataRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
@@ -3583,6 +3606,16 @@ public class IoTDBConfig {
   public void setSchemaRatisConsensusGrpcFlowControlWindow(
       long schemaRatisConsensusGrpcFlowControlWindow) {
     this.schemaRatisConsensusGrpcFlowControlWindow = schemaRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public long getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.schemaRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getSchemaRatisConsensusLeaderElectionTimeoutMinMs() {

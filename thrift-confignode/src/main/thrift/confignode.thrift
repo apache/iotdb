@@ -77,8 +77,12 @@ struct TRatisConfig {
   25: required i64 firstElectionTimeoutMin
   26: required i64 firstElectionTimeoutMax
 
-  27: required i64 schemaRegionRatisLogMax
-  28: required i64 dataRegionRatisLogMax
+  29: required i64 schemaRegionRatisLogMax
+  30: required i64 dataRegionRatisLogMax
+
+  31: required i32 schemaGrpcLeaderOutstandingAppendsMax
+  32: required i32 dataGrpcLeaderOutstandingAppendsMax
+  33: required i32 dataLogForceSyncNum
 }
 
 struct TCQConfig {
