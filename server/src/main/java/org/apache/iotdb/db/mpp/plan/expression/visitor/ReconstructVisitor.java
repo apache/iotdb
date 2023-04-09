@@ -22,12 +22,14 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
@@ -54,6 +56,13 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   public Expression visitUnaryExpression(UnaryExpression unaryExpression, C context) {
     List<Expression> childResults = getResultsFromChild(unaryExpression, context);
     return reconstructUnaryExpression(unaryExpression, childResults.get(0));
+  }
+
+  @Override
+  public Expression visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, C context) {
+    List<Expression> childResults = getResultsFromChild(caseWhenThenExpression, context);
+    return reconstructCaseWHenThenExpression(childResults);
   }
 
   @Override

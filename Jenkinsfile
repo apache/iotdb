@@ -158,7 +158,9 @@ pipeline {
 
         stage('Deploy') {
             when {
-                branch 'master'
+                expression {
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
+                }
             }
             steps {
                 echo 'Deploying'

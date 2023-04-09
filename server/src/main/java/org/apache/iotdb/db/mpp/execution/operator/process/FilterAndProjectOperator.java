@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -312,6 +314,26 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   .getInputColumnTransformers()
                   .length,
           childMaxLevel);
+    } else if (columnTransformer instanceof CaseWhenThenColumnTransformer) {
+      int childMaxLevel = 0;
+      int childCount = 0;
+      for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+          ((CaseWhenThenColumnTransformer) columnTransformer).getWhenThenColumnTransformers()) {
+        childMaxLevel =
+            Math.max(
+                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.left));
+        childMaxLevel =
+            Math.max(
+                childMaxLevel, getMaxLevelOfColumnTransformerTree(whenThenColumnTransformer.right));
+        childCount++;
+      }
+      childMaxLevel =
+          Math.max(
+              childMaxLevel,
+              getMaxLevelOfColumnTransformerTree(
+                  ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
+      childMaxLevel = Math.max(childMaxLevel, childCount + 2);
+      return childMaxLevel;
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }

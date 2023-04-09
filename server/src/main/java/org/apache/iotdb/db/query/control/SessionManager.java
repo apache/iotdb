@@ -351,7 +351,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    return new SessionInfo(session.getId(), session.getUsername(), session.getZoneId().getId());
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId().getId(),
+        session.getClientVersion());
   }
 
   @Override

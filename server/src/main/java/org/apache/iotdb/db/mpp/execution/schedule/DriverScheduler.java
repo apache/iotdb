@@ -188,9 +188,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
     List<DriverTask> submittedTasks = new ArrayList<>();
     for (DriverTask task : tasks) {
       IDriver driver = task.getDriver();
-      if (driver.getDependencyDriverIndex() != -1) {
+      int dependencyDriverIndex = driver.getDriverContext().getDependencyDriverIndex();
+      if (dependencyDriverIndex != -1) {
         SettableFuture<?> blockedDependencyFuture =
-            tasks.get(driver.getDependencyDriverIndex()).getBlockedDependencyDriver();
+            tasks.get(dependencyDriverIndex).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(
             () -> {
               // Only if query is alive, we can submit this task
@@ -216,6 +217,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     for (DriverTask task : submittedTasks) {
       registerTaskToQueryMap(queryId, task);
     }
+    timeoutQueue.push(submittedTasks.get(submittedTasks.size() - 1));
     for (DriverTask task : submittedTasks) {
       submitTaskToReadyQueue(task);
     }
@@ -225,12 +227,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     // If query has not been registered by other fragment instances,
     // add the first task as timeout checking task to timeoutQueue.
     queryMap
-        .computeIfAbsent(
-            queryId,
-            v -> {
-              timeoutQueue.push(driverTask);
-              return new ConcurrentHashMap<>();
-            })
+        .computeIfAbsent(queryId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(
             driverTask.getDriverTaskId().getFragmentInstanceId(),
             v -> Collections.synchronizedSet(new HashSet<>()))
@@ -272,18 +269,24 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    Set<DriverTask> instanceRelatedTasks = queryMap.get(instanceId.getQueryId()).remove(instanceId);
-    if (instanceRelatedTasks != null) {
-      for (DriverTask task : instanceRelatedTasks) {
-        if (task == null) {
-          return;
-        }
-        task.lock();
-        try {
-          task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
-          clearDriverTask(task);
-        } finally {
-          task.unlock();
+    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
+        queryMap.get(instanceId.getQueryId());
+    if (queryRelatedTasks != null) {
+      Set<DriverTask> instanceRelatedTasks = queryRelatedTasks.remove(instanceId);
+      if (instanceRelatedTasks != null) {
+        synchronized (instanceRelatedTasks) {
+          for (DriverTask task : instanceRelatedTasks) {
+            if (task == null) {
+              return;
+            }
+            task.lock();
+            try {
+              task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+              clearDriverTask(task);
+            } finally {
+              task.unlock();
+            }
+          }
         }
       }
     }
@@ -485,8 +488,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
       } finally {
         task.unlock();
       }
-      // Dependency driver must be submitted before this task is cleared
-      task.submitDependencyDriver();
       task.lock();
       try {
         clearDriverTask(task);

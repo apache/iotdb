@@ -29,7 +29,8 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-  && mv apache-iotdb-${version}-server-bin iotdb
+  && mv ${target} iotdb
+#  && mv apache-iotdb-${version}-server-bin iotdb
 
 ENV IOTDB_HOME=/iotdb VERSION=${version}
 WORKDIR ${IOTDB_HOME}/sbin
