@@ -50,6 +50,7 @@ public class SortItem {
     this.expression = expression;
     this.ordering = ordering;
     this.nullOrdering = nullOrdering;
+    this.sortKey = expression.getExpressionString();
   }
 
   public String getSortKey() {

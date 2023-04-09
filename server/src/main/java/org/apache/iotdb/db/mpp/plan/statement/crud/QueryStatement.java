@@ -361,6 +361,10 @@ public class QueryStatement extends Statement {
     return orderByComponent.getDeviceOrder();
   }
 
+  public boolean isOrderByBasedOnDevice() {
+    return orderByComponent != null && orderByComponent.isBasedOnDevice();
+  }
+
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();
@@ -368,7 +372,7 @@ public class QueryStatement extends Statement {
     return orderByComponent.getSortItemList();
   }
 
-  public List<SortItem> getExpressionSortItemList() {
+  public List<Expression> getExpressionSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();
     }
@@ -427,8 +431,7 @@ public class QueryStatement extends Statement {
                 ? resultColumn.getAlias()
                 : resultColumn.getExpression().getExpressionString());
       }
-      for (SortItem item : getExpressionSortItemList()) {
-        Expression expression = item.getExpression();
+      for (Expression expression : getExpressionSortItemList()) {
         if (expression instanceof FunctionExpression) {
           if (!expression.isBuiltInAggregationFunctionExpression()) {
             throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
@@ -469,8 +472,8 @@ public class QueryStatement extends Statement {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
-      for (SortItem item : getExpressionSortItemList()) {
-        if (item.getExpression().isBuiltInAggregationFunctionExpression()) {
+      for (Expression expression : getExpressionSortItemList()) {
+        if (expression.isBuiltInAggregationFunctionExpression()) {
           throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }

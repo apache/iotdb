@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -145,7 +144,7 @@ public class Analysis {
   private Map<String, Expression> deviceToGroupByExpression;
 
   // expression of order by that need to be calculated
-  private Map<String, Set<SortItem>> deviceToOrderByExpressions;
+  private Map<String, Set<Expression>> deviceToOrderByExpressions;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
@@ -172,7 +171,14 @@ public class Analysis {
 
   private Expression havingExpression;
 
+  // The expressions in order by clause
+  // In align by device orderByExpression is the deviceView of expression which doesn't have
+  // device-prefix
+  // for example, in device root.sg1.d1, [root.sg1.d1.s1] is expression and [s1] is the device-view
+  // one.
   private Set<Expression> orderByExpressions;
+
+  private boolean orderByExpressionInDeviceView = false;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -619,11 +625,12 @@ public class Analysis {
     return orderByExpressions;
   }
 
-  public Map<String, Set<SortItem>> getDeviceToOrderByExpressions() {
+  public Map<String, Set<Expression>> getDeviceToOrderByExpressions() {
     return deviceToOrderByExpressions;
   }
 
-  public void setDeviceToOrderByExpressions(Map<String, Set<SortItem>> deviceToOrderByExpressions) {
+  public void setDeviceToOrderByExpressions(
+      Map<String, Set<Expression>> deviceToOrderByExpressions) {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
   }
 
@@ -633,5 +640,13 @@ public class Analysis {
 
   public Set<Expression> getAggregationTransformExpressions() {
     return aggregationTransformExpressions;
+  }
+
+  public void setOrderByExpressionInDeviceView(boolean orderByExpressionInDeviceView) {
+    this.orderByExpressionInDeviceView = orderByExpressionInDeviceView;
+  }
+
+  public boolean isOrderByExpressionInDeviceView() {
+    return orderByExpressionInDeviceView;
   }
 }

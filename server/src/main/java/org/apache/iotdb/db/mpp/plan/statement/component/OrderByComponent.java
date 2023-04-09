@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -31,8 +31,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class OrderByComponent extends StatementNode {
 
   private final List<SortItem> sortItemList;
-
-  private final List<SortItem> expressionSortItemList;
+  private final List<Expression> sortItemExpressionList;
 
   private boolean orderByTime = false;
   private int timeOrderPriority = -1;
@@ -45,20 +44,24 @@ public class OrderByComponent extends StatementNode {
 
   public OrderByComponent() {
     this.sortItemList = new ArrayList<>();
-    this.expressionSortItemList = new ArrayList<>();
+    this.sortItemExpressionList = new ArrayList<>();
   }
 
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
-    if (sortItem.getSortKey().equals(SortKey.TIME)) {
-      orderByTime = true;
-      timeOrderPriority = sortItemList.size() - 1;
-    } else if (sortItem.getSortKey().equals(SortKey.TIMESERIES)) {
-      orderByTimeseries = true;
-      timeseriesOrderPriority = sortItemList.size() - 1;
-    } else if (sortItem.getSortKey().equals(SortKey.DEVICE)) {
-      orderByDevice = true;
-      deviceOrderPriority = sortItemList.size() - 1;
+    switch (sortItem.getSortKey()) {
+      case SortKey.TIME:
+        orderByTime = true;
+        timeOrderPriority = sortItemList.size() - 1;
+        break;
+      case SortKey.TIMESERIES:
+        orderByTimeseries = true;
+        timeseriesOrderPriority = sortItemList.size() - 1;
+        break;
+      case SortKey.DEVICE:
+        orderByDevice = true;
+        deviceOrderPriority = sortItemList.size() - 1;
+        break;
     }
   }
 
@@ -74,15 +77,15 @@ public class OrderByComponent extends StatementNode {
 
   public void addExpressionSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
-    this.expressionSortItemList.add(sortItem);
+    this.sortItemExpressionList.add(sortItem.getExpression());
   }
 
   public List<SortItem> getSortItemList() {
     return sortItemList;
   }
 
-  public List<SortItem> getExpressionSortItemList() {
-    return expressionSortItemList;
+  public List<Expression> getExpressionSortItemList() {
+    return sortItemExpressionList;
   }
 
   public boolean isOrderByTime() {
@@ -110,6 +113,14 @@ public class OrderByComponent extends StatementNode {
   public Ordering getDeviceOrder() {
     checkState(deviceOrderPriority != -1, "The device order is not specified.");
     return sortItemList.get(deviceOrderPriority).getOrdering();
+  }
+
+  public boolean isDeviceOrderInitialized() {
+    return deviceOrderPriority != -1;
+  }
+
+  public boolean isTimeOrderInitialized() {
+    return timeOrderPriority != -1;
   }
 
   public String toSQLString() {

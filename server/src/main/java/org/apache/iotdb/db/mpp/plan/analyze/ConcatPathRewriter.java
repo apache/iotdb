@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -64,9 +63,9 @@ public class ConcatPathRewriter {
             patternTree);
       }
       if (queryStatement.hasOrderByExpression()) {
-        for (SortItem items : queryStatement.getOrderByComponent().getExpressionSortItemList()) {
+        for (Expression sortItemExpression : queryStatement.getExpressionSortItemList()) {
           ExpressionAnalyzer.constructPatternTreeFromExpression(
-              items.getExpression(), prefixPaths, patternTree);
+              sortItemExpression, prefixPaths, patternTree);
         }
       }
     } else {
@@ -86,10 +85,9 @@ public class ConcatPathRewriter {
                     prefixPaths));
       }
       if (queryStatement.hasOrderByExpression()) {
-        for (SortItem item : queryStatement.getOrderByComponent().getExpressionSortItemList()) {
-          Expression expression = contactOrderByWithFrom(item.getExpression(), prefixPaths);
-          item.setExpression(expression);
-        }
+        List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+        sortItemExpressions.replaceAll(
+            expression -> contactOrderByWithFrom(expression, prefixPaths));
       }
     }
 

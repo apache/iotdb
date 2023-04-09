@@ -152,8 +152,8 @@ public enum TSDataType {
       case FLOAT:
       case DOUBLE:
       case TEXT:
-        return true;
       case BOOLEAN:
+        return true;
       case VECTOR:
         return false;
       default:

@@ -86,7 +86,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -289,10 +288,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
         Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
-        analyzeDeviceToOrderBy(
-            analysis, queryStatement, schemaTree, deviceSet, deviceToAggregationExpressions);
+        analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceSet);
         analyzeHaving(
             analysis, queryStatement, schemaTree, deviceSet, deviceToAggregationExpressions);
+        analyzeDeviceToAggregationTransform(
+            analysis, queryStatement, deviceSet, deviceToAggregationExpressions);
         analyzeDeviceToAggregation(analysis, queryStatement, deviceToAggregationExpressions);
         analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
 
@@ -329,6 +329,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         analysis.setSelectExpressions(selectExpressions);
 
+        analyzeAggregationTransform(analysis, queryStatement);
         analyzeAggregation(analysis, queryStatement);
 
         analyzeWhere(analysis, queryStatement, schemaTree);
@@ -413,8 +414,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (orderByParameter != null && !orderByParameter.getSortItemList().isEmpty()) {
       List<SortItem> sortItemList = orderByParameter.getSortItemList();
       checkState(
-          sortItemList.size() == 1
-              && sortItemList.get(0).getSortKey().equals(SortKey.TIMESERIES),
+          sortItemList.size() == 1 && sortItemList.get(0).getSortKey().equals(SortKey.TIMESERIES),
           "Last queries only support sorting by timeseries now.");
       boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
       sourceExpressions =
@@ -899,14 +899,49 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         aggregationExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
       }
-      if (queryStatement.hasOrderByExpression()) {
-        for (Expression expression : analysis.getOrderByExpressions()) {
-          aggregationExpressions.addAll(
-              ExpressionAnalyzer.searchAggregationExpressions(expression));
-        }
+      for (Expression expression : analysis.getAggregationTransformExpressions()) {
+        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
       }
       analysis.setAggregationExpressions(aggregationExpressions);
     }
+  }
+
+  private void analyzeDeviceToAggregationTransform(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      Set<PartialPath> deviceSet,
+      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+    if (!queryStatement.isAggregationQuery()) {
+      return;
+    }
+
+    for (PartialPath deviceName : deviceSet) {
+
+      if (queryStatement.hasOrderByExpression()) {
+        Set<Expression> aggregationExpressionsForOneDevice = new LinkedHashSet<>();
+        for (Expression orderByExpression :
+            analysis.getDeviceToOrderByExpressions().get(deviceName.getFullPath())) {
+          aggregationExpressionsForOneDevice.addAll(
+              ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
+        }
+        deviceToAggregationExpressions
+            .computeIfAbsent(deviceName.getFullPath(), key -> new LinkedHashSet<>())
+            .addAll(aggregationExpressionsForOneDevice);
+      }
+    }
+  }
+
+  private void analyzeAggregationTransform(Analysis analysis, QueryStatement queryStatement) {
+    if (!queryStatement.isAggregationQuery()) {
+      return;
+    }
+
+    Set<Expression> aggregationTransformExpressions = new HashSet<>();
+    if (queryStatement.hasOrderByExpression()) {
+      aggregationTransformExpressions.addAll(analysis.getOrderByExpressions());
+    }
+
+    analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
   }
 
   private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {
@@ -933,8 +968,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       deviceToSourceTransformExpressions = analysis.getDeviceToSelectExpressions();
       if (queryStatement.hasOrderByExpression()) {
         for (String deviceName : deviceToSourceTransformExpressions.keySet()) {
-          for (SortItem items : analysis.getDeviceToOrderByExpressions().get(deviceName)) {
-            deviceToSourceTransformExpressions.get(deviceName).add(items.getExpression());
+          for (Expression expression : analysis.getDeviceToOrderByExpressions().get(deviceName)) {
+            deviceToSourceTransformExpressions.get(deviceName).add(expression);
           }
         }
       }
@@ -1103,9 +1138,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceViewOutputExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
       }
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression orderByExpression : analysis.getOrderByExpressions()) {
+          deviceViewOutputExpressions.addAll(
+              ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
+        }
+      }
     } else {
-      deviceViewOutputExpressions = selectExpressions;
+      deviceViewOutputExpressions.addAll(selectExpressions);
+      if (queryStatement.hasOrderByExpression()) {
+        deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
+      }
     }
+
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
 
     List<String> deviceViewOutputColumns =
@@ -1199,11 +1244,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     if (!queryStatement.hasOrderByExpression()) return;
 
-    List<SortItem> sortItems = queryStatement.getExpressionSortItemList();
-    Set<Expression> orderByExpressions = new HashSet<>();
-    for (SortItem item : sortItems) {
+    List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+    Set<Expression> orderByExpressions = new LinkedHashSet<>();
+    for (Expression expressionForItem : sortItemExpressions) {
       // Expression in a sortItem only indicates one column
-      Expression expressionForItem = item.getExpression();
       List<Expression> expressions =
           ExpressionAnalyzer.removeWildcardInExpression(expressionForItem, schemaTree);
       if (expressions.size() != 1) {
@@ -1216,10 +1260,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             String.format("The data type of sort item %s is not comparable", dataType));
       }
       orderByExpressions.add(expressionForItem);
-      item.setExpression(expressionForItem);
-    }
-    if(queryStatement.isAggregationQuery()){
-      analysis.setAggregationTransformExpressions(orderByExpressions);
     }
     analysis.setOrderByExpressions(orderByExpressions);
   }
@@ -1302,23 +1342,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet,
-      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+      Set<PartialPath> deviceSet) {
 
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
-    List<SortItem> sortItems = queryStatement.getExpressionSortItemList();
-    Map<String, Set<SortItem>> deviceToOrderByExpressionItems = new LinkedHashMap<>();
 
+    // for the sortOperator below the deviceViewOperator
+    Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
+    // build the device-view outputColumn for the sortNode above the deviceViewNode
+    Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
     for (PartialPath device : deviceSet) {
-      Set<SortItem> orderByExpressionsOfOneDevice = new HashSet<>();
-      for (SortItem item : sortItems) {
-        Expression expressionForItem = item.getExpression();
+      Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
+      for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
             ExpressionAnalyzer.concatDeviceAndRemoveWildcard(expressionForItem, device, schemaTree);
         if (expressions.size() != 1) {
-          throw new SemanticException("One sort item in order by should only indicate one value");
+          throw new SemanticException(
+              String.format(
+                  "One sort item in order by should only indicate one value, got %s value(s)",
+                  expressions.size()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpression(analysis, expressionForItem);
@@ -1326,19 +1369,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           throw new SemanticException(
               String.format("The data type of sort item %s is not comparable", dataType));
         }
-        if (queryStatement.isAggregationQuery()) {
-          Set<Expression> aggregationExpressions =
-              new HashSet<>(ExpressionAnalyzer.searchAggregationExpressions(expressionForItem));
-          deviceToAggregationExpressions
-              .computeIfAbsent(device.getFullPath(), k -> new LinkedHashSet<>())
-              .addAll(aggregationExpressions);
-        }
-        item.setExpression(expressionForItem);
-        orderByExpressionsOfOneDevice.add(item);
+
+        Expression devicerViewExpression =
+            ExpressionAnalyzer.getMeasurementExpression(expressionForItem);
+        analyzeExpression(analysis, devicerViewExpression);
+        deviceViewOrderByExpression.add(devicerViewExpression);
+
+        orderByExpressionsForOneDevice.add(expressionForItem);
       }
-      deviceToOrderByExpressionItems.put(device.getFullPath(), orderByExpressionsOfOneDevice);
+      deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
     }
-    analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressionItems);
+
+    analysis.setOrderByExpressions(deviceViewOrderByExpression);
+    analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
 
   private void analyzeGroupBy(
@@ -2715,9 +2758,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         schemaTree
             .getMatchedDevices(new PartialPath(devicePattern))
             .forEach(
-                deviceSchemaInfo -> {
-                  deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath());
-                });
+                deviceSchemaInfo ->
+                    deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
       } catch (IllegalPathException ignored) {
         // won't happen
       }
