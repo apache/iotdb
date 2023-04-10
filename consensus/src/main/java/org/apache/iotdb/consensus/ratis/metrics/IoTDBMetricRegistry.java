@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
-import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;

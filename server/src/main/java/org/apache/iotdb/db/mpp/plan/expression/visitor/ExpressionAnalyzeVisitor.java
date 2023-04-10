@@ -33,7 +33,7 @@ public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R
 
   List<R> getResultsFromChild(Expression expression, C context) {
     return expression.getExpressions().stream()
-        .map(child -> process(child, context))
+        .map(child -> this.process(child, context))
         .collect(Collectors.toList());
   }
 }

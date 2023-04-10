@@ -21,12 +21,18 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
@@ -53,5 +59,26 @@ public abstract class CartesianProductVisitor<C>
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(unaryExpression, context);
     return reconstructUnaryExpressions(unaryExpression, childResultsList.get(0));
+  }
+
+  @Override
+  public List<Expression> visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, C context) {
+    List<List<Expression>> childResultsList = getResultsFromChild(caseWhenThenExpression, context);
+    List<List<Expression>> cartesianResults = new ArrayList<>();
+    boolean hasEmptyList = childResultsList.stream().anyMatch(List::isEmpty);
+    if (!hasEmptyList) {
+      cartesianProduct(childResultsList, cartesianResults, 0, new ArrayList<>());
+    }
+    List<Expression> result = new ArrayList<>();
+    for (List<Expression> cartesianResult : cartesianResults) {
+      result.add(reconstructCaseWHenThenExpression(cartesianResult));
+    }
+    return result;
+  }
+
+  @Override
+  public List<Expression> visitNullOperand(NullOperand nullOperand, C context) {
+    return Collections.singletonList(nullOperand);
   }
 }
