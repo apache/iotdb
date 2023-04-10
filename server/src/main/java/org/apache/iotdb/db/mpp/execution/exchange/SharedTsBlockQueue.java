@@ -165,7 +165,7 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Remove a tsblock from the head of the queue and return. Should be invoked only when the future
+   * Remove a TsBlock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
    */
   public TsBlock remove() {
@@ -193,7 +193,7 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Add tsblocks to the queue. Except the first invocation, this method should be invoked only when
+   * Add TsBlocks to the queue. Except the first invocation, this method should be invoked only when
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {

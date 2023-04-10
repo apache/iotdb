@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -48,7 +47,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private final boolean[] channelOpened;
 
-  private final Set<Integer> closedChannel = Sets.newConcurrentHashSet();
+  private final Set<Integer> closedChannels;
 
   private final DownStreamChannelIndex downStreamChannelIndex;
 
@@ -78,7 +77,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       String localPlanNodeId,
-      MPPDataExchangeManager.SinkListener sinkListener) {
+      MPPDataExchangeManager.SinkListener sinkListener,
+      Set<Integer> closedChannels) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
@@ -88,6 +88,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
+    this.closedChannels = closedChannels;
   }
 
   @Override
@@ -146,7 +147,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isClosed() {
-    return closedChannel.size() == downStreamChannelList.size();
+    return closedChannels.size() == downStreamChannelList.size();
   }
 
   @Override
@@ -244,11 +245,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isChannelClosed(int index) {
-    if (closedChannel.contains(index)) {
+    if (closedChannels.contains(index)) {
       return true;
     } else {
       if (downStreamChannelList.get(index).isClosed()) {
-        closedChannel.add(index);
+        closedChannels.add(index);
         return true;
       }
       return false;
