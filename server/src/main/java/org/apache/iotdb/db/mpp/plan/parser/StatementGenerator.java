@@ -66,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -110,6 +111,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.service.thrift.impl.MLNodeRPCServiceImpl.ML_METRICS_PATH_PREFIX;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -807,10 +811,10 @@ public class StatementGenerator {
     return databasePath;
   }
 
-  public static InsertRowStatement createStatement(
-      TRecordModelMetricsReq recordModelMetricsReq, String prefix) throws IllegalPathException {
+  public static InsertRowStatement createStatement(TRecordModelMetricsReq recordModelMetricsReq)
+      throws IllegalPathException {
     String path =
-        prefix
+        ML_METRICS_PATH_PREFIX
             + TsFileConstant.PATH_SEPARATOR
             + recordModelMetricsReq.getModelId()
             + TsFileConstant.PATH_SEPARATOR
@@ -872,5 +876,16 @@ public class StatementGenerator {
       queryStatement.setWhereCondition(whereCondition);
     }
     return queryStatement;
+  }
+
+  public static DeleteTimeSeriesStatement createStatement(TDeleteModelMetricsReq req)
+      throws IllegalPathException {
+    String path =
+        ML_METRICS_PATH_PREFIX
+            + TsFileConstant.PATH_SEPARATOR
+            + req.getModelId()
+            + TsFileConstant.PATH_SEPARATOR
+            + MULTI_LEVEL_PATH_WILDCARD;
+    return new DeleteTimeSeriesStatement(Collections.singletonList(new PartialPath(path)));
   }
 }

@@ -42,7 +42,11 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         pass
 
     def deleteModel(self, req: TDeleteModelReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        try:
+            model_storage.delete_model(req.modelId)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            return get_status(TSStatusCode.FAIL_STATUS, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
