@@ -25,6 +25,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -57,6 +60,8 @@ public class DeviceViewNode extends MultiChildProcessNode {
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeviceViewNode.class);
 
   public DeviceViewNode(
       PlanNodeId id,
@@ -143,17 +148,26 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    int initPos = stream.size();
+    int pos = stream.size();
     PlanNodeType.DEVICE_VIEW.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+    LOGGER.info("Size of outputColumnNamesList is : {}", outputColumnNames.size());
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, stream);
     }
+    LOGGER.info("Size of outputColumnNames is : {}", stream.size() - pos);
+    pos = stream.size();
     ReadWriteIOUtils.write(devices.size(), stream);
+    LOGGER.info("Size of deviceList is : {}", devices.size());
     for (String deviceName : devices) {
       ReadWriteIOUtils.write(deviceName, stream);
     }
+    LOGGER.info("Size of devices is : {}", stream.size() - pos);
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
+    pos = stream.size();
+    LOGGER.info("deviceToMeasurementIndexMap.size() is : {}", deviceToMeasurementIndexesMap.size());
     for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue().size(), stream);
@@ -161,6 +175,8 @@ public class DeviceViewNode extends MultiChildProcessNode {
         ReadWriteIOUtils.write(index, stream);
       }
     }
+    LOGGER.info("Size of deviceToMeasurementIndexMap is : {}", stream.size() - pos);
+    LOGGER.info("Size of DeviceViewNode attributes is : {}", stream.size() - initPos);
   }
 
   public static DeviceViewNode deserialize(ByteBuffer byteBuffer) {

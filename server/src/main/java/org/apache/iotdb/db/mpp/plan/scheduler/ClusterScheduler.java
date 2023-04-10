@@ -119,6 +119,7 @@ public class ClusterScheduler implements IScheduler {
     // So we need to start the state fetcher after the dispatching stage.
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
+      logger.info("Dispatch cost is: {}ms", (System.nanoTime() - startTime) / 1000000);
       if (!result.isSuccessful()) {
         if (needRetry(result.getFailureStatus())) {
           stateMachine.transitionToPendingRetry(result.getFailureStatus());

@@ -46,7 +46,7 @@ import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
 
-  private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
+  private static final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -170,6 +170,8 @@ public class FragmentInstance implements IConsensusRequest {
   }
 
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
+    logger.info("Size of FI bytebuffer is: {}B", buffer.capacity());
+    long startTime = System.currentTimeMillis();
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     long timeOut = ReadWriteIOUtils.readLong(buffer);
@@ -183,12 +185,14 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
+    logger.info("Cost of deserialize FI is: {}ms", System.currentTimeMillis() - startTime);
     return fragmentInstance;
   }
 
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      long startTime = System.currentTimeMillis();
       id.serialize(outputStream);
       fragment.serialize(outputStream);
       ReadWriteIOUtils.write(timeOut, outputStream);
@@ -205,6 +209,7 @@ public class FragmentInstance implements IConsensusRequest {
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
+      logger.info("cost of Serializing a FI is: {}ms", System.currentTimeMillis() - startTime);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when serializing this FragmentInstance.", e);
