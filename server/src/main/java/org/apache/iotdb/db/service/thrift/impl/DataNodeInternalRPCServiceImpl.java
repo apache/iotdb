@@ -885,20 +885,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     IClientSession session = new InternalClientSession(req.getModelId());
     SESSION_MANAGER.registerSession(session);
     SESSION_MANAGER.supplySession(
-            session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
+        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
 
     try {
       DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-              COORDINATOR.execute(
-                      deleteTimeSeriesStatement,
-                      queryId,
-                      SESSION_MANAGER.getSessionInfo(session),
-                      "",
-                      PARTITION_FETCHER,
-                      SCHEMA_FETCHER);
+          COORDINATOR.execute(
+              deleteTimeSeriesStatement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
       return result.status;
     } catch (Exception e) {
       return onQueryException(e, OperationType.DELETE_TIMESERIES);
