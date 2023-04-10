@@ -62,6 +62,8 @@ public enum CompressionType {
         return CompressionType.LZ4;
       case 8:
         return CompressionType.ZSTD;
+      case 9:
+        return CompressionType.LZMA2;
       default:
         throw new IllegalArgumentException("Invalid input: " + compressor);
     }
