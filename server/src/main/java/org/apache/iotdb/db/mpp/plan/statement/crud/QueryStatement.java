@@ -455,9 +455,8 @@ public class QueryStatement extends Statement {
             throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
           }
         } else {
-          if(expression instanceof TimeSeriesOperand){
-            throw new SemanticException(
-                    "Raw data and aggregation hybrid query is not supported.");
+          if (expression instanceof TimeSeriesOperand) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
           }
           for (Expression subExpression : expression.getExpressions()) {
             if (!subExpression.isBuiltInAggregationFunctionExpression()) {

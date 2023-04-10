@@ -87,6 +87,12 @@ public class MergeSortComparator {
                 (MergeSortKey sortKey) ->
                     sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
         break;
+      case BOOLEAN:
+        comparator =
+            Comparator.comparing(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
+        break;
       default:
         throw new IllegalArgumentException("Data type: " + dataType + " cannot be ordered");
     }
