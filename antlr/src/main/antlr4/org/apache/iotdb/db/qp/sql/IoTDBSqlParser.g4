@@ -59,7 +59,7 @@ ddlStatement
     // ML Model
     | createModel | dropModel | showModels | showTrails
     // Quota
-    | setSpaceQuota | showSpaceQuota
+    | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     ;
 
 dmlStatement
@@ -325,6 +325,16 @@ showSpaceQuota
 // Set Space Quota
 setSpaceQuota
     : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
+    ;
+
+// Set Throttle Quota
+setThrottleQuota
+    : SET THROTTLE QUOTA attributePair (COMMA attributePair)* ON userName=identifier
+    ;
+
+// Show Throttle Quota
+showThrottleQuota
+    : SHOW THROTTLE QUOTA (userName=identifier)?
     ;
 
 // Trigger =========================================================================================
@@ -1014,8 +1024,8 @@ wildcard
 
 constant
     : dateExpression
-    | (MINUS|PLUS)? realLiteral
-    | (MINUS|PLUS)? INTEGER_LITERAL
+    | (MINUS|PLUS|DIV)? realLiteral
+    | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
     | BOOLEAN_LITERAL
     | NULL_LITERAL
@@ -1054,6 +1064,7 @@ expression
     | fullPathInExpression
     | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
+    | caseWhenThenExpression
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
@@ -1064,6 +1075,14 @@ expression
     | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression
+    ;
+
+caseWhenThenExpression
+    : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END
+    ;
+
+whenThenExpression
+    : WHEN whenExpression=expression THEN thenExpression=expression
     ;
 
 functionName

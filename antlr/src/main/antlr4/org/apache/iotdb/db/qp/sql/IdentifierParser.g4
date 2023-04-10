@@ -83,6 +83,7 @@ keyWords
     | DISCARD
     | DROP
     | ELAPSEDTIME
+    | ELSE
     | END
     | ENDTIME
     | EVERY
@@ -143,6 +144,7 @@ keyWords
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
+    | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROPERTY
     | PRUNE
@@ -187,6 +189,8 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | THEN
+    | THROTTLE
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID
@@ -210,9 +214,9 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
-    | PRIVILEGE_VALUE
     ;

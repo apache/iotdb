@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -381,10 +382,13 @@ public class MTreeBelowSGMemoryImpl {
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
-      if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(storageGroupMNode.getName())) {
-        throw new ExceedQuotaException(
-            "The number of devices has reached the upper limit",
-            TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
+      if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+        if (!DataNodeSpaceQuotaManager.getInstance()
+            .checkDeviceLimit(storageGroupMNode.getName())) {
+          throw new ExceedQuotaException(
+              "The number of devices has reached the upper limit",
+              TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
+        }
       }
       device =
           store.addChild(
@@ -438,13 +442,15 @@ public class MTreeBelowSGMemoryImpl {
             new AliasAlreadyExistException(
                 devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
       }
-      if (!DataNodeSpaceQuotaManager.getInstance()
-          .checkTimeSeriesNum(storageGroupMNode.getName())) {
-        failingMeasurementMap.put(
-            i,
-            new ExceedQuotaException(
-                "The number of timeSeries has reached the upper limit",
-                TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode()));
+      if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+        if (!DataNodeSpaceQuotaManager.getInstance()
+            .checkTimeSeriesNum(storageGroupMNode.getName())) {
+          failingMeasurementMap.put(
+              i,
+              new ExceedQuotaException(
+                  "The number of timeSeries has reached the upper limit",
+                  TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode()));
+        }
       }
     }
     return failingMeasurementMap;

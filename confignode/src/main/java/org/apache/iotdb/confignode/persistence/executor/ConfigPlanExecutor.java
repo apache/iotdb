@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -415,6 +416,8 @@ public class ConfigPlanExecutor {
         return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
       case setSpaceQuota:
         return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
+      case setThrottleQuota:
+        return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

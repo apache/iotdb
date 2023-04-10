@@ -162,7 +162,8 @@ public enum ConfigPhysicalPlanType {
   DropPipeV2((short) 1402),
 
   /** Quota */
-  setSpaceQuota((short) 1500);
+  setSpaceQuota((short) 1500),
+  setThrottleQuota((short) 1501);
 
   private final short planType;
 

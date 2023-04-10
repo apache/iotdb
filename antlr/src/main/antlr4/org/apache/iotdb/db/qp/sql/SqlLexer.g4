@@ -690,6 +690,10 @@ TEMPLATES
     : T E M P L A T E S
     ;
 
+THROTTLE
+    : T H R O T T L E
+    ;
+
 TIME
     : T I M E
     ;
@@ -818,6 +822,21 @@ WRITABLE
     : W R I T A B L E
     ;
 
+CASE
+    : C A S E
+    ;
+
+WHEN
+    : W H E N
+    ;
+
+THEN
+    : T H E N
+    ;
+
+ELSE
+    : E L S E
+    ;
 
 // Privileges Keywords
 
