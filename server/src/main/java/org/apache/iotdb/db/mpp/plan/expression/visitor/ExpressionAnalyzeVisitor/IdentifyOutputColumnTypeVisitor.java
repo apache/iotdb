@@ -99,7 +99,7 @@ public class IdentifyOutputColumnTypeVisitor
   @Override
   public ResultColumn.ColumnType visitUnaryExpression(
       UnaryExpression unaryExpression, Boolean context) {
-    return this.process(unaryExpression, false);
+    return this.process(unaryExpression.getExpression(), false);
   }
 
   @Override
