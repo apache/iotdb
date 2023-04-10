@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -26,6 +27,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
@@ -37,8 +42,10 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Multilev
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
@@ -55,6 +62,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
@@ -169,7 +177,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void submitDrivers(QueryId queryId, List<IDriver> drivers, long timeOut) {
+  public void submitDrivers(
+      QueryId queryId, List<IDriver> drivers, long timeOut, SessionInfo sessionInfo)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
     DriverTaskHandle driverTaskHandle =
         new DriverTaskHandle(
             getNextDriverTaskHandleId(),
@@ -183,14 +193,16 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     driver,
                     timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS,
                     DriverTaskStatus.READY,
-                    driverTaskHandle)));
+                    driverTaskHandle,
+                    driver.getEstimatedMemorySize())));
 
     List<DriverTask> submittedTasks = new ArrayList<>();
     for (DriverTask task : tasks) {
       IDriver driver = task.getDriver();
-      if (driver.getDependencyDriverIndex() != -1) {
+      int dependencyDriverIndex = driver.getDriverContext().getDependencyDriverIndex();
+      if (dependencyDriverIndex != -1) {
         SettableFuture<?> blockedDependencyFuture =
-            tasks.get(driver.getDependencyDriverIndex()).getBlockedDependencyDriver();
+            tasks.get(dependencyDriverIndex).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(
             () -> {
               // Only if query is alive, we can submit this task
@@ -213,9 +225,44 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
     }
 
+    if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()
+        && sessionInfo != null
+        && !sessionInfo.getUserName().equals(IoTDBConstant.PATH_ROOT)) {
+      AtomicInteger usedCpu = new AtomicInteger();
+      AtomicLong estimatedMemory = new AtomicLong();
+      queryMap
+          .get(queryId)
+          .values()
+          .forEach(
+              driverTasks ->
+                  driverTasks.forEach(
+                      driverTask -> {
+                        if (driverTask.getStatus().equals(DriverTaskStatus.RUNNING)
+                            && driverTask.getDriver() instanceof DataDriver) {
+                          usedCpu.addAndGet(1);
+                          estimatedMemory.addAndGet(driverTask.getEstimatedMemorySize());
+                        }
+                      }));
+      if (!DataNodeThrottleQuotaManager.getInstance()
+          .getThrottleQuotaLimit()
+          .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {
+        throw new CpuNotEnoughException(
+            "There is not enough cpu to execute current fragment instance",
+            TSStatusCode.QUERY_CPU_QUERY_NOT_ENOUGH.ordinal());
+      }
+      if (!DataNodeThrottleQuotaManager.getInstance()
+          .getThrottleQuotaLimit()
+          .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
+        throw new MemoryNotEnoughException(
+            "There is not enough memory to execute current fragment instance",
+            TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode());
+      }
+    }
+
     for (DriverTask task : submittedTasks) {
       registerTaskToQueryMap(queryId, task);
     }
+    timeoutQueue.push(submittedTasks.get(submittedTasks.size() - 1));
     for (DriverTask task : submittedTasks) {
       submitTaskToReadyQueue(task);
     }
@@ -225,12 +272,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     // If query has not been registered by other fragment instances,
     // add the first task as timeout checking task to timeoutQueue.
     queryMap
-        .computeIfAbsent(
-            queryId,
-            v -> {
-              timeoutQueue.push(driverTask);
-              return new ConcurrentHashMap<>();
-            })
+        .computeIfAbsent(queryId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(
             driverTask.getDriverTaskId().getFragmentInstanceId(),
             v -> Collections.synchronizedSet(new HashSet<>()))
@@ -272,18 +314,24 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    Set<DriverTask> instanceRelatedTasks = queryMap.get(instanceId.getQueryId()).remove(instanceId);
-    if (instanceRelatedTasks != null) {
-      for (DriverTask task : instanceRelatedTasks) {
-        if (task == null) {
-          return;
-        }
-        task.lock();
-        try {
-          task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
-          clearDriverTask(task);
-        } finally {
-          task.unlock();
+    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
+        queryMap.get(instanceId.getQueryId());
+    if (queryRelatedTasks != null) {
+      Set<DriverTask> instanceRelatedTasks = queryRelatedTasks.remove(instanceId);
+      if (instanceRelatedTasks != null) {
+        synchronized (instanceRelatedTasks) {
+          for (DriverTask task : instanceRelatedTasks) {
+            if (task == null) {
+              return;
+            }
+            task.lock();
+            try {
+              task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+              clearDriverTask(task);
+            } finally {
+              task.unlock();
+            }
+          }
         }
       }
     }
@@ -401,6 +449,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
     private static final DriverScheduler instance = new DriverScheduler();
   }
+
   /** the default scheduler implementation */
   private class Scheduler implements ITaskScheduler {
     @Override
@@ -485,8 +534,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
       } finally {
         task.unlock();
       }
-      // Dependency driver must be submitted before this task is cleared
-      task.submitDependencyDriver();
       task.lock();
       try {
         clearDriverTask(task);

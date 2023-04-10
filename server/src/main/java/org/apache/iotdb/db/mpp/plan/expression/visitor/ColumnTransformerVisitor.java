@@ -22,12 +22,14 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
@@ -69,6 +72,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -333,6 +337,46 @@ public class ColumnTransformerVisitor
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });
+    res.addReferenceCount();
+    return res;
+  }
+
+  @Override
+  public ColumnTransformer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, ColumnTransformerVisitorContext context) {
+    if (!context.cache.containsKey(caseWhenThenExpression)) {
+      if (context.hasSeen.containsKey(caseWhenThenExpression)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(caseWhenThenExpression);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(caseWhenThenExpression));
+        context.cache.put(caseWhenThenExpression, identity);
+      } else {
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
+        for (WhenThenExpression whenThenExpression :
+            caseWhenThenExpression.getWhenThenExpressions()) {
+          whenList.add(this.process(whenThenExpression.getWhen(), context));
+          thenList.add(this.process(whenThenExpression.getThen(), context));
+        }
+        ColumnTransformer elseColumnTransformer =
+            this.process(caseWhenThenExpression.getElseExpression(), context);
+        context.cache.put(
+            caseWhenThenExpression,
+            new CaseWhenThenColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                whenList,
+                thenList,
+                elseColumnTransformer));
+      }
+    }
+
+    ColumnTransformer res = context.cache.get(caseWhenThenExpression);
     res.addReferenceCount();
     return res;
   }

@@ -2518,7 +2518,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             // Attention, there is no parent node, use first child node instead
             subContext.getDriverContext(), childNode.getPlanNodeId().getId());
     subContext.setISink(localSinkChannel);
-    subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+    subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext(), 0);
 
     ExchangeOperator sourceOperator =
         new ExchangeOperator(
@@ -2575,7 +2575,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   // Attention, there is no parent node, use first child node instead
                   context.getDriverContext(), childNode.getPlanNodeId().getId());
           subContext.setISink(localSinkChannel);
-          subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+          subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext(), 0);
 
           // OneByOneChild may be divided into more than dop pipelines, but the number of running
           // actually is dop
@@ -2614,6 +2614,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       context.getDriverContext()),
                   childNode.getPlanNodeId(),
                   childOperation.calculateMaxReturnSize());
+          context.getCurrentPipelineDriverFactory().setDownstreamOperator(sourceOperator);
           context
               .getTimeSliceAllocator()
               .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);

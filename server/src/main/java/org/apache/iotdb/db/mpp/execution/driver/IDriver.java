@@ -57,6 +57,10 @@ public interface IDriver {
    */
   DriverTaskId getDriverTaskId();
 
+  default long getEstimatedMemorySize() {
+    return 0;
+  }
+
   void setDriverTaskId(DriverTaskId driverTaskId);
 
   /** clear resource used by this fragment instance */
@@ -72,5 +76,5 @@ public interface IDriver {
   /** @return get Sink of current IDriver */
   ISink getSink();
 
-  int getDependencyDriverIndex();
+  DriverContext getDriverContext();
 }

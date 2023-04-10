@@ -730,6 +730,24 @@ struct TUpdateModelStateReq {
   3: optional string bestTrailId
 }
 
+// ====================================================
+// Quota
+// ====================================================
+struct TSpaceQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TSpaceQuota> spaceQuota
+  3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+}
+
+struct TThrottleQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TThrottleQuota> throttleQuota
+}
+
+struct TShowThrottleReq{
+  1: optional string userName;
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1333,5 +1351,26 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
+
+  // ======================================================
+  // Quota
+  // ======================================================
+  /** Set Space Quota */
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
+
+  /** Show space quota */
+  TSpaceQuotaResp showSpaceQuota(list<string> databases);
+
+  /** Get space quota information */
+  TSpaceQuotaResp getSpaceQuota();
+
+  /** Set throttle quota */
+  common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+
+  /** Show throttle quota */
+  TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req)
+
+  /** Get throttle quota information */
+  TThrottleQuotaResp getThrottleQuota()
 }
 

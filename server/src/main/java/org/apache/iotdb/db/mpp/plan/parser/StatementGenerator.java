@@ -110,6 +110,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.thrift.impl.MLNodeRPCServiceImpl.ML_METRICS_PATH_PREFIX;
@@ -832,7 +833,7 @@ public class StatementGenerator {
   }
 
   public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
-      throws IllegalPathException {
+          throws IllegalPathException {
     QueryStatement queryStatement = new QueryStatement();
 
     FromComponent fromComponent = new FromComponent();
@@ -840,38 +841,40 @@ public class StatementGenerator {
       PartialPath path = new PartialPath(pathStr);
       fromComponent.addPrefixPath(path);
     }
+    queryStatement.setFromComponent(fromComponent);
 
     SelectComponent selectComponent = new SelectComponent(zoneId);
     selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
-
-    //    WhereCondition whereCondition = new WhereCondition();
-    //    String queryFilter = fetchTimeseriesReq.getQueryFilter();
-    //    String[] times = queryFilter.split(",");
-    //    int predictNum = 0;
-    //    LessThanExpression rightPredicate = null;
-    //    GreaterEqualExpression leftPredicate = null;
-    //    if (!Objects.equals(times[0], "-1")) {
-    //      leftPredicate =
-    //          new GreaterEqualExpression(
-    //              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
-    //      predictNum += 1;
-    //    }
-    //    if (!Objects.equals(times[1], "-1")) {
-    //      rightPredicate =
-    //          new LessThanExpression(
-    //              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
-    //      predictNum += 2;
-    //    }
-    //    whereCondition.setPredicate(
-    //        predictNum == 3
-    //            ? new LogicAndExpression(leftPredicate, rightPredicate)
-    //            : (predictNum == 1 ? leftPredicate : rightPredicate));
-    //
-    //    queryStatement.setWhereCondition(whereCondition);
-    queryStatement.setFromComponent(fromComponent);
+            new ResultColumn(
+                    new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
     queryStatement.setSelectComponent(selectComponent);
+
+    if (fetchTimeseriesReq.isSetQueryFilter()) {
+      WhereCondition whereCondition = new WhereCondition();
+      String queryFilter = fetchTimeseriesReq.getQueryFilter();
+      String[] times = queryFilter.split(",");
+      int predictNum = 0;
+      LessThanExpression rightPredicate = null;
+      GreaterEqualExpression leftPredicate = null;
+      if (!Objects.equals(times[0], "-1")) {
+        leftPredicate =
+                new GreaterEqualExpression(
+                        new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
+        predictNum += 1;
+      }
+      if (!Objects.equals(times[1], "-1")) {
+        rightPredicate =
+                new LessThanExpression(
+                        new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
+        predictNum += 2;
+      }
+      whereCondition.setPredicate(
+              predictNum == 3
+                      ? new LogicAndExpression(leftPredicate, rightPredicate)
+                      : (predictNum == 1 ? leftPredicate : rightPredicate));
+
+      queryStatement.setWhereCondition(whereCondition);
+    }
     return queryStatement;
   }
 

@@ -25,7 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -107,6 +109,8 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
+import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -226,6 +230,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
+
+  private final DataNodeSpaceQuotaManager spaceQuotaManager =
+      DataNodeSpaceQuotaManager.getInstance();
+
+  private final DataNodeThrottleQuotaManager throttleQuotaManager =
+      DataNodeThrottleQuotaManager.getInstance();
 
   public DataNodeInternalRPCServiceImpl() {
     super();
@@ -875,20 +885,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     IClientSession session = new InternalClientSession(req.getModelId());
     SESSION_MANAGER.registerSession(session);
     SESSION_MANAGER.supplySession(
-        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
+            session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
 
     try {
       DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(
-              deleteTimeSeriesStatement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(session),
-              "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              COORDINATOR.execute(
+                      deleteTimeSeriesStatement,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(session),
+                      "",
+                      PARTITION_FETCHER,
+                      SCHEMA_FETCHER);
       return result.status;
     } catch (Exception e) {
       return onQueryException(e, OperationType.DELETE_TIMESERIES);
@@ -896,6 +906,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    return spaceQuotaManager.setSpaceQuota(req);
+  }
+
+  @Override
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
+    return throttleQuotaManager.setThrottleQuota(req);
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
@@ -953,6 +973,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
       resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
+    }
+    if (req.getSchemaRegionIds() != null) {
+      spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
+      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+      resp.setTimeSeriesNum(
+          schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+    }
+    if (req.getDataRegionIds() != null) {
+      spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
+      resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     return resp;
   }

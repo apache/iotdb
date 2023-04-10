@@ -31,8 +31,8 @@ public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransform
 
   @Override
   protected void checkType() {
-    if (!leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
-        || !rightTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+    if (!leftTransformer.typeEquals(TypeEnum.BOOLEAN)
+        || !rightTransformer.typeEquals(TypeEnum.BOOLEAN)) {
       throw new UnsupportedOperationException("Unsupported Type");
     }
   }

@@ -406,7 +406,7 @@ public class IoTDBConfig {
   private boolean enableCrossSpaceCompaction = true;
 
   /** Enable the service for MLNode */
-  private boolean enableMLNodeService = true;
+  private boolean enableMLNodeService = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -764,6 +764,8 @@ public class IoTDBConfig {
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
 
+  private boolean enable13DataInsertAdapt = false;
+
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
    * value to be slightly larger than the average length of all text records.
@@ -1062,6 +1064,19 @@ public class IoTDBConfig {
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
+
+  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
+  private int pipeMaxThreadNum = 5;
+
+  /** multi-tenancy */
+  private boolean quotaEnable = false;
+
+  /**
+   * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
+   * interval of time. 2. AverageIntervalRateLimiter : This limiter will refill resources at every
+   * TimeUnit/resources interval.
+   */
+  private String RateLimiterType = "FixedIntervalRateLimiter";
 
   IoTDBConfig() {}
 
@@ -1870,6 +1885,14 @@ public class IoTDBConfig {
 
   public void setEnablePartialInsert(boolean enablePartialInsert) {
     this.enablePartialInsert = enablePartialInsert;
+  }
+
+  public boolean isEnable13DataInsertAdapt() {
+    return enable13DataInsertAdapt;
+  }
+
+  public void setEnable13DataInsertAdapt(boolean enable13DataInsertAdapt) {
+    this.enable13DataInsertAdapt = enable13DataInsertAdapt;
   }
 
   public int getCompactionThreadCount() {
@@ -3684,5 +3707,29 @@ public class IoTDBConfig {
 
   public int getModeMapSizeThreshold() {
     return modeMapSizeThreshold;
+  }
+
+  public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
+    this.pipeMaxThreadNum = pipeMaxThreadNum;
+  }
+
+  public int getPipeSubtaskExecutorMaxThreadNum() {
+    return pipeMaxThreadNum;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
+  }
+
+  public String getRateLimiterType() {
+    return RateLimiterType;
+  }
+
+  public void setRateLimiterType(String rateLimiterType) {
+    RateLimiterType = rateLimiterType;
   }
 }

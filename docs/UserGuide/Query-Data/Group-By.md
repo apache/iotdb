@@ -135,7 +135,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
     </center>
 
 There are three typical examples of frequency reduction aggregation: 
@@ -613,7 +613,7 @@ The supported return types of controlExpression and how to deal with null value 
 | delta!=0 | INT32、INT64、FLOAT、DOUBLE                   | If the processing group doesn't contains null, null value should be treated as infinity/infinitesimal and will end current group.<br/>Continuous null values are treated as stable values and assigned to the same group. | 
 | delta=0  | TEXT、BINARY、INT32、INT64、FLOAT、DOUBLE       | Null is treated as a new value in a new group and continuous nulls belong to the same group.                                                                                                                              |            
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
 
 ### Precautions for Use
 1. The result of controlExpression should be a unique value. If multiple columns appear after using wildcard stitching, an error will be reported.
@@ -790,7 +790,7 @@ A given interval threshold to create a new group of data when the difference bet
 
 The figure below is a grouping diagram under `GROUP BY SESSION`.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
 
 ### Precautions for Use
 1. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.

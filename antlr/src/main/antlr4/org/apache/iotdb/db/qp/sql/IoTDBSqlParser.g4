@@ -42,7 +42,7 @@ ddlStatement
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
     // Schema Template
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
+    | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
     // TTL
@@ -58,6 +58,8 @@ ddlStatement
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
     | createModel | dropModel | showModels | showTrails
+    // Quota
+    | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     ;
 
 dmlStatement
@@ -223,8 +225,8 @@ templateMeasurementClause
     ;
 
 // ---- Create Timeseries Of Schema Template
-createTimeseriesOfSchemaTemplate
-    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
+createTimeseriesUsingSchemaTemplate
+    : CREATE TIMESERIES (OF | USING) SCHEMA TEMPLATE ON prefixPath
     ;
 
 // ---- Drop Schema Template
@@ -314,6 +316,26 @@ showFunctions
     : SHOW FUNCTIONS
     ;
 
+// Quota =========================================================================================
+// Show Space Quota
+showSpaceQuota
+    : SHOW SPACE QUOTA (prefixPath (COMMA prefixPath)*)?
+    ;
+
+// Set Space Quota
+setSpaceQuota
+    : SET SPACE QUOTA attributePair (COMMA attributePair)* ON prefixPath (COMMA prefixPath)*
+    ;
+
+// Set Throttle Quota
+setThrottleQuota
+    : SET THROTTLE QUOTA attributePair (COMMA attributePair)* ON userName=identifier
+    ;
+
+// Show Throttle Quota
+showThrottleQuota
+    : SHOW THROTTLE QUOTA (userName=identifier)?
+    ;
 
 // Trigger =========================================================================================
 // ---- Create Trigger
@@ -446,7 +468,6 @@ getSeriesSlotList
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
-
 
 // Pipe Plugin =========================================================================================
 // Create Pipe Plugin
@@ -1003,8 +1024,8 @@ wildcard
 
 constant
     : dateExpression
-    | (MINUS|PLUS)? realLiteral
-    | (MINUS|PLUS)? INTEGER_LITERAL
+    | (MINUS|PLUS|DIV)? realLiteral
+    | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
     | BOOLEAN_LITERAL
     | NULL_LITERAL
@@ -1043,6 +1064,7 @@ expression
     | fullPathInExpression
     | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
+    | caseWhenThenExpression
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
@@ -1053,6 +1075,14 @@ expression
     | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression
+    ;
+
+caseWhenThenExpression
+    : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END
+    ;
+
+whenThenExpression
+    : WHEN whenExpression=expression THEN thenExpression=expression
     ;
 
 functionName
