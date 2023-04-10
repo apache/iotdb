@@ -16,13 +16,12 @@
 # under the License.
 #
 
-
 import os
 import time
 
 import torch.nn as nn
 
-from iotdb.mlnode.config import config
+from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.storage import model_storage
 
@@ -48,7 +47,8 @@ def test_save_model():
     trial_id = 'tid_0'
     model_id = 'mid_test_model_save'
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
-    assert os.path.exists(os.path.join(config.get_mn_model_storage_dir(), f'{model_id}', f'{trial_id}.pt'))
+    assert os.path.exists(
+        os.path.join(descriptor.get_config().get_mn_model_storage_dir(), f'{model_id}', f'{trial_id}.pt'))
 
 
 def test_load_model():
@@ -66,7 +66,7 @@ def test_load_not_exist_model():
         model_loaded, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
     except Exception as e:
         assert e.message == ModelNotExistError(
-            os.path.join(os.getcwd(), config.get_mn_model_storage_dir(),
+            os.path.join('.', descriptor.get_config().get_mn_model_storage_dir(),
                          model_id, f'{trial_id}.pt')).message
 
 
@@ -77,9 +77,11 @@ def test_delete_model():
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id1)
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id2)
     model_storage.delete_model(model_id=model_id)
-    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), f'{model_id}', f'{trial_id1}.pt'))
-    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), f'{model_id}', f'{trial_id2}.pt'))
-    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), f'{model_id}'))
+    assert not os.path.exists(
+        os.path.join(descriptor.get_config().get_mn_model_storage_dir(), f'{model_id}', f'{trial_id1}.pt'))
+    assert not os.path.exists(
+        os.path.join(descriptor.get_config().get_mn_model_storage_dir(), f'{model_id}', f'{trial_id2}.pt'))
+    assert not os.path.exists(os.path.join(descriptor.get_config().get_mn_model_storage_dir(), f'{model_id}'))
 
 
 def test_delete_trial():
@@ -87,4 +89,5 @@ def test_delete_trial():
     model_id = 'mid_test_model_delete'
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
     model_storage.delete_trial(model_id=model_id, trial_id=trial_id)
-    assert not os.path.exists(os.path.join(config.get_mn_model_storage_dir(), f'{model_id}', f'{trial_id}.pt'))
+    assert not os.path.exists(
+        os.path.join(descriptor.get_config().get_mn_model_storage_dir(), f'{model_id}', f'{trial_id}.pt'))
