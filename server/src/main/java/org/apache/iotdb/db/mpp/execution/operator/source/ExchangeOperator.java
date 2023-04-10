@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
@@ -38,6 +39,8 @@ public class ExchangeOperator implements SourceOperator {
   private ListenableFuture<?> isBlocked = NOT_BLOCKED;
 
   private long maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
+  private SettableFuture<Void> blockedDependencyDriver = null;
 
   public ExchangeOperator(
       OperatorContext operatorContext, ISourceHandle sourceHandle, PlanNodeId sourceId) {
@@ -122,5 +125,15 @@ public class ExchangeOperator implements SourceOperator {
   @Override
   public void close() throws Exception {
     sourceHandle.close();
+    if (blockedDependencyDriver != null) {
+      blockedDependencyDriver.set(null);
+    }
+  }
+
+  public SettableFuture<Void> getBlockedDependencyDriver() {
+    if (blockedDependencyDriver == null) {
+      blockedDependencyDriver = SettableFuture.create();
+    }
+    return blockedDependencyDriver;
   }
 }

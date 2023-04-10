@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.schema;
 
 public enum ClusterSchemaQuotaLevel {
-  MEASUREMENT(0),
+  TIMESERIES(0),
   DEVICE(1);
 
   private final int code;
