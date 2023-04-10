@@ -28,11 +28,14 @@ from iotdb.mlnode.process.task import ForecastingTrainingTask
 
 
 class TaskManager(object):
-    def __init__(self, pool_num):
+    def __init__(self, pool_num: int):
         """
-        resource_manager: a manager that manage resources shared between processes
-        task_map: a map shared between processes and storing the tasks' states
-        pool: a multiprocessing process pool
+        Args:
+            pool_num: specify the maximum process number of the process pool
+
+        __shared_resource_manager: a manager that manage resources shared between processes
+        __pid_info: a map shared between processes, can be used to find the pid with model_id and trial_id
+        __training_process_pool: a multiprocessing process pool
         """
         self.__shared_resource_manager = mp.Manager()
         self.__pid_info = self.__shared_resource_manager.dict()
@@ -43,6 +46,17 @@ class TaskManager(object):
                              model: nn.Module,
                              model_configs: Dict,
                              task_configs: Dict) -> ForecastingTrainingTask:
+        """
+
+        Args:
+            dataset: a torch dataset to be used for training
+            model: torch.nn.Module
+            model_configs: dict of model configurations
+            task_configs: dict of task configurations
+
+        Returns:
+            task: a training task for forecasting, which can be submitted to self.__training_process_pool
+        """
         model_id = task_configs['model_id']
         self.__pid_info[model_id] = self.__shared_resource_manager.dict()
         task = ForecastingTrainingTask(

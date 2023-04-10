@@ -17,7 +17,7 @@
 #
 import time
 from abc import abstractmethod
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -43,7 +43,7 @@ def _parse_trial_config(**kwargs):
         "gpu": 0,
         "use_multi_gpu": False,
         "devices": [0],
-        "metric_names": ["MSE"],  # TODO: CHECK
+        "metric_names": ["MSE"],
         "model_id": 'default',
         "trial_id": 'default_trial'
     }
@@ -115,7 +115,17 @@ class BasicTrial(object):
 
 
 class ForecastingTrainingTrial(BasicTrial):
-    def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
+    def __init__(self, trial_configs: dict, model: nn.Module, model_configs: dict, dataset: Dataset, **kwargs):
+        """
+        A training trial, accept all parameters needed and train a single model.
+
+        Args:
+            trial_configs: dict of trial's configurations
+            model: torch.nn.Module
+            model_configs: dict of model's configurations
+            dataset: training dataset
+            **kwargs:
+        """
         super(ForecastingTrainingTrial, self).__init__(trial_configs, model, model_configs, dataset, **kwargs)
 
         self.dataloader = self._build_dataloader()
@@ -125,7 +135,11 @@ class ForecastingTrainingTrial(BasicTrial):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.metrics_dict = build_metrics(self.metric_names)
 
-    def _build_dataloader(self):
+    def _build_dataloader(self) -> DataLoader:
+        """
+        Returns:
+            training dataloader built with the dataset
+        """
         return DataLoader(
             self.dataset,
             shuffle=True,
@@ -134,7 +148,7 @@ class ForecastingTrainingTrial(BasicTrial):
             num_workers=self.num_workers
         )
 
-    def _train(self, epoch):
+    def _train(self, epoch: int) -> float:
         self.model.train()
         train_loss = []
         epoch_time = time.time()
@@ -169,7 +183,7 @@ class ForecastingTrainingTrial(BasicTrial):
                     .format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
 
-    def _validate(self, epoch):
+    def _validate(self, epoch: int) -> Tuple[float, Dict]:
         self.model.eval()
         val_loss = []
         metrics_value_dict = {name: [] for name in self.metric_names}
@@ -209,6 +223,9 @@ class ForecastingTrainingTrial(BasicTrial):
         return val_loss, metrics_value_dict
 
     def start(self) -> float:
+        """
+        Start training with the specified parameters, save the best model and report metrics to the db.
+        """
         try:
             self.confignode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             best_loss = np.inf

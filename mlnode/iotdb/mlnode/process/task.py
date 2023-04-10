@@ -15,11 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import multiprocessing
 import os
 from abc import abstractmethod
+from typing import Dict
 
 import optuna
+from torch import nn
+from torch.utils.data import Dataset
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
@@ -34,11 +37,11 @@ class TrainingTrialObjective:
     Optuna will try to minimize the objective.
     """
 
-    def __init__(self, trial_configs, model_configs, dataset, task_trial_map):
+    def __init__(self, trial_configs: Dict, model_configs: Dict, dataset: Dataset, pid_info):
         self.trial_configs = trial_configs
         self.model_configs = model_configs
         self.dataset = dataset
-        self.task_trial_map = task_trial_map
+        self.pid_info = pid_info
 
     def __call__(self, trial: optuna.Trial):
         # TODO: decide which parameters to tune
@@ -47,7 +50,7 @@ class TrainingTrialObjective:
         trial_configs['trial_id'] = 'tid_' + str(trial._trial_id)
         # TODO: check args
         model, model_cfg = create_forecast_model(**self.model_configs)
-        self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
+        self.pid_info[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
         _trial = ForecastingTrainingTrial(trial_configs, model, self.model_configs, self.dataset)
         loss = _trial.start()
         print(trial._trial_id, loss)
@@ -60,8 +63,23 @@ class _BasicTask(object):
     according to the configs.
     """
 
-    def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
-        self.task_trial_map = task_trial_map
+    def __init__(
+        self,
+        task_configs: Dict,
+        model_configs: Dict,
+        model: nn.Module,
+        dataset: Dataset,
+        pid_info: multiprocessing.managers.SyncManager
+    ):
+        """
+        Args:
+            task_configs:
+            model_configs:
+            model:
+            dataset:
+            pid_info:
+        """
+        self.pid_info = pid_info
         self.task_configs = task_configs
         self.model_configs = model_configs
         self.model = model
@@ -73,8 +91,16 @@ class _BasicTask(object):
 
 
 class ForecastingTrainingTask(_BasicTask):
-    def __init__(self, task_configs, model_configs, model, dataset, task_trial_map):
-        super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, task_trial_map)
+    def __init__(self, task_configs: Dict, model_configs: Dict, model: nn.Module, dataset: Dataset, pid_info: Dict):
+        """
+        Args:
+            task_configs: dict of task configurations
+            model_configs: dict of model configurations
+            model: nn.Module
+            dataset: training dataset
+            pid_info: a map shared between processes, can be used to find the pid with model_id and trial_id
+        """
+        super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, model, dataset, pid_info)
         self.model_id = self.task_configs['model_id']
         self.tuning = self.task_configs['tuning']
         self.confignode_client = client_manager.borrow_config_node_client()
@@ -85,7 +111,7 @@ class ForecastingTrainingTask(_BasicTask):
             self.default_trial_id = 'tid_0'
             self.task_configs['trial_id'] = self.default_trial_id
             self.trial = ForecastingTrainingTrial(self.task_configs, self.model, self.model_configs, self.dataset)
-            self.task_trial_map[self.model_id][self.default_trial_id] = os.getpid()
+            self.pid_info[self.model_id][self.default_trial_id] = os.getpid()
 
     def __call__(self):
         try:
@@ -94,7 +120,7 @@ class ForecastingTrainingTask(_BasicTask):
                     self.task_configs,
                     self.model_configs,
                     self.dataset,
-                    self.task_trial_map
+                    self.pid_info
                 ), n_trials=20)
                 best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
                 self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
