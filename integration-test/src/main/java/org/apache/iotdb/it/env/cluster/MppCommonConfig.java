@@ -366,8 +366,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
-    setProperty("cluster_max_schema_count", String.valueOf(clusterMaxSchemaCount));
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
     return this;
   }
 }

@@ -273,7 +273,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
     return this;
   }
 }

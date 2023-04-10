@@ -44,8 +44,8 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
   }
 
   protected void setUpQuotaConfig() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("MEASUREMENT");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterMaxSchemaCount(6);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("timeseries");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitThreshold(6);
   }
 
   @After

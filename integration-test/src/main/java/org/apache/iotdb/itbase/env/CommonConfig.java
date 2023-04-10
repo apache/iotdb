@@ -115,6 +115,8 @@ public interface CommonConfig {
 
   CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
 
+  CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+
   CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount);
 
   CommonConfig setQuotaEnable(boolean quotaEnable);
