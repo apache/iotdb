@@ -1761,6 +1761,10 @@ class Session(object):
                     self.__session_id = self.__default_connection.session_id
                     self.__statement_id = self.__default_connection.statement_id
                     connected = True
+                    if self.__enable_redirection:
+                        self.__endpoint_to_connection = {
+                            str(self.__default_endpoint): self.__default_connection
+                        }
                 except TTransport.TException:
                     continue
                 break
