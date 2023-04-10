@@ -34,7 +34,8 @@ from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
 from iotdb.thrift.datanode import IMLNodeInternalRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
-                                          TRecordModelMetricsReq)
+                                          TRecordModelMetricsReq,
+                                          TFetchMoreDataReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
@@ -137,6 +138,11 @@ class DataNodeClient(object):
         )
         try:
             resp = self.__client.fetchTimeseries(req)
+            column_name_list = resp.columnNameList
+            column_type_list = resp.columnTypeList
+            column_name_index_map = resp.columnNameIndexMap
+            has_more_data = resp.hasMoreData
+            query_id = resp.queryId
             verify_success(resp.status, "An error occurs when calling fetch_timeseries()")
 
             if len(resp.tsDataset) == 0:
@@ -149,11 +155,26 @@ class DataNodeClient(object):
             if data.empty:
                 raise RuntimeError(
                     f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
-            return resp.queryId, resp.hasMoreData, data
+            # return resp.queryId, resp.hasMoreData, data
         except Exception as e:
             logger.warn(
                 f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
+        while has_more_data:
+            req = TFetchMoreDataReq(queryId=resp.queryId)
+            try:
+                resp = self.__client.fetchMoreData(req)
+                has_more_data = resp.hasMoreData
+                verify_success(resp.status, "An error occurs when calling fetch_more_data()")
+                data = data.append(serde.convert_to_df(column_name_list,
+                                                       column_type_list,
+                                                       column_name_index_map,
+                                                       resp.tsDataset))
+            except Exception as e:
+                logger.warn(
+                    f'Fail to fetch more data with query expressions: {query_expressions} and query filter: {query_filter}')
+                raise e
+        return query_id, has_more_data, data
 
     def fetch_window_batch(self,
                            query_expressions: list,
