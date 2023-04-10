@@ -35,10 +35,13 @@ public class PipelineDriverFactory {
   private final DriverContext driverContext;
   // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
+  private long estimatedMemorySize;
 
-  public PipelineDriverFactory(Operator operation, DriverContext driverContext) {
+  public PipelineDriverFactory(
+      Operator operation, DriverContext driverContext, long estimatedMemorySize) {
     this.operation = requireNonNull(operation, "rootOperator is null");
     this.driverContext = driverContext;
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
   public DriverContext getDriverContext() {
@@ -50,7 +53,7 @@ public class PipelineDriverFactory {
     try {
       Driver driver = null;
       if (driverContext instanceof DataDriverContext) {
-        driver = new DataDriver(operation, driverContext);
+        driver = new DataDriver(operation, driverContext, estimatedMemorySize);
       } else {
         driver = new SchemaDriver(operation, (SchemaDriverContext) driverContext);
       }

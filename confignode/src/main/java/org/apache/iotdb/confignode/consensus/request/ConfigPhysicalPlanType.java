@@ -157,7 +157,8 @@ public enum ConfigPhysicalPlanType {
   GetPipePluginJar((short) 1303),
 
   /** Quota */
-  setSpaceQuota((short) 1400);
+  setSpaceQuota((short) 1400),
+  setThrottleQuota((short) 1401);
 
   private final short planType;
 

@@ -294,7 +294,7 @@ public class Util {
   private static ISchemaFetcher getFakeSchemaFetcher() {
     return new ISchemaFetcher() {
       @Override
-      public ISchemaTree fetchSchema(PathPatternTree patternTree) {
+      public ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
