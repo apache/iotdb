@@ -59,7 +59,7 @@ ddlStatement
     // ML Model
     | createModel | dropModel | showModels | showTrails
     // Quota
-    | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
+    | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota | showSpaceResource
     ;
 
 dmlStatement
@@ -335,6 +335,11 @@ setThrottleQuota
 // Show Throttle Quota
 showThrottleQuota
     : SHOW THROTTLE QUOTA (userName=identifier)?
+    ;
+
+// Show Space Resource
+showSpaceResource
+    : SHOW SPACE RESOURCE
     ;
 
 // Trigger =========================================================================================

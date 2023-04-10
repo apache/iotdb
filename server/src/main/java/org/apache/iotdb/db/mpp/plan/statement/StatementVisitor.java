@@ -106,6 +106,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceResourceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -542,5 +543,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, C context) {
     return visitStatement(showThrottleQuotaStatement, context);
+  }
+
+  public R visitShowSpaceResource(
+      ShowSpaceResourceStatement showSpaceResourceStatement, C context) {
+    return visitStatement(showSpaceResourceStatement, context);
   }
 }

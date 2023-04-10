@@ -150,6 +150,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceResourceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
@@ -1004,5 +1005,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TThrottleQuotaResp getThrottleQuota() throws TException {
     return configManager.getThrottleQuota();
+  }
+
+  @Override
+  public TShowSpaceResourceResp showSpaceResource() throws TException {
+    return configManager.showSpaceResource();
   }
 }

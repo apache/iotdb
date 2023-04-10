@@ -161,6 +161,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceResourceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
@@ -1927,5 +1928,12 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.getThrottleQuota()
         : new TThrottleQuotaResp(status);
+  }
+
+  public TShowSpaceResourceResp showSpaceResource() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.showSpaceResource()
+        : new TShowSpaceResourceResp(status);
   }
 }

@@ -289,6 +289,11 @@ public class IoTDBConstant {
   public static final String REQUEST_TYPE_READ = "read";
   public static final String REQUEST_TYPE_WRITE = "write";
   public static final String REQ_UNIT = "req";
+  public static final String TOTAL = "Total";
+  public static final String NON_USED = "Non-IoTDB-Used";
+  public static final String ALLOCATED = "Allocated";
+  public static final String AVAILABLE = "Available";
+  public static final String USED = "IoTDB-Used";
 
   // client version number
   public enum ClientVersion {

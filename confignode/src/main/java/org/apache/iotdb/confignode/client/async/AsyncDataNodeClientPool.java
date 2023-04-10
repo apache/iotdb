@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetSpaceResourceRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
@@ -365,6 +366,11 @@ public class AsyncDataNodeClientPool {
           client.setThrottleQuota(
               (TSetThrottleQuotaReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case GET_SPACE_RESOURCE:
+          client.getSpaceResource(
+              (GetSpaceResourceRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         default:
