@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import static org.apache.iotdb.db.mpp.common.QueryId.mockQueryId;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.ANALYZER;
@@ -48,7 +49,9 @@ public class Analyzer {
         new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
 
     if (statement.isQuery()) {
-      QueryMetricsManager.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
+      long costTime = System.nanoTime() - startTime;
+      QueryMetricsManager.getInstance().recordPlanCost(ANALYZER, costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.ANALYZER, costTime);
     }
     return analysis;
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.query.reader.chunk.MemPageReader;
@@ -66,6 +67,7 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.PAGE_READER;
 
 public class SeriesScanUtil {
 
@@ -1120,7 +1122,7 @@ public class SeriesScanUtil {
     return scanOptions.getGlobalTimeFilter();
   }
 
-  protected static class VersionPageReader {
+  protected class VersionPageReader {
 
     private final PriorityMergeReader.MergeReaderPriority version;
     private final IPageReader data;
@@ -1164,6 +1166,7 @@ public class SeriesScanUtil {
         }
         return tsBlock;
       } finally {
+        long costTime = System.nanoTime() - startTime;
         QUERY_METRICS.recordSeriesScanCost(
             isAligned
                 ? (isMem
@@ -1172,7 +1175,8 @@ public class SeriesScanUtil {
                 : (isMem
                     ? BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM
                     : BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK),
-            System.nanoTime() - startTime);
+            costTime);
+        QueryStatistics.getInstance().addCost(PAGE_READER, costTime);
       }
     }
 

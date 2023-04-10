@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -133,6 +134,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SERVER_RPC_RT;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -164,16 +166,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SelectResult SELECT_RESULT =
       (resp, queryExecution, fetchSize) -> {
+        long startTime = System.nanoTime();
         Pair<List<ByteBuffer>, Boolean> pair =
             QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.SERIALIZE_TSBLOCK, System.nanoTime() - startTime);
         resp.setQueryResult(pair.left);
         return pair.right;
       };
 
   private static final SelectResult OLD_SELECT_RESULT =
       (resp, queryExecution, fetchSize) -> {
+        long startTime = System.nanoTime();
         Pair<TSQueryDataSet, Boolean> pair =
             QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize);
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.SERIALIZE_TSBLOCK, System.nanoTime() - startTime);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
@@ -194,6 +202,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     long startTime = System.currentTimeMillis();
+    long startTimeInNano = System.nanoTime();
     StatementType statementType = null;
     try {
       Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
@@ -203,6 +212,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             RpcUtils.getStatus(
                 TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
       }
+
+      if (s.isQuery()) {
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.PARSER, System.nanoTime() - startTimeInNano);
+      }
+
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -215,6 +230,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      long start = System.nanoTime();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -225,6 +241,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout());
+      if (s.isQuery()) {
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.CREATE_QUERY_EXEC, System.nanoTime() - start);
+      }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -469,7 +489,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
-    return executeStatementV2(req);
+    long startTime = System.nanoTime();
+    try {
+      return executeStatementV2(req);
+    } finally {
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -499,6 +524,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) {
+    long startTimeNanos = System.nanoTime();
     long startTime = System.currentTimeMillis();
     boolean finished = false;
     StatementType statementType = null;
@@ -545,6 +571,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
       SESSION_MANAGER.updateIdleTime();
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 
@@ -1000,7 +1027,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
-    return executeStatement(req);
+    long startTime = System.nanoTime();
+    try {
+      return executeStatement(req);
+    } finally {
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -1011,6 +1043,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     boolean finished = false;
+    long startTimeNanos = System.nanoTime();
     long startTime = System.currentTimeMillis();
     StatementType statementType = null;
     try {
@@ -1056,6 +1089,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
       SESSION_MANAGER.updateIdleTime();
+      QueryStatistics.getInstance().addCost(SERVER_RPC_RT, System.nanoTime() - startTimeNanos);
     }
   }
 

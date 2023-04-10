@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import java.util.List;
 
@@ -46,8 +47,9 @@ public class LogicalPlanner {
 
     // optimize the query logical plan
     if (analysis.getStatement().isQuery()) {
-      QueryMetricsManager.getInstance()
-          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);
+      long endTime = System.nanoTime() - startTime;
+      QueryMetricsManager.getInstance().recordPlanCost(LOGICAL_PLANNER, endTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.LOGICAL_PLANNER, endTime);
 
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
