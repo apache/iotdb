@@ -198,12 +198,13 @@ public class SharedTsBlockQueue {
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      LOGGER.warn("queue has been destroyed");
+      // queue may have been closed
       return immediateVoidFuture();
     }
 
     Validate.notNull(tsBlock, "TsBlock cannot be null");
-    Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
+    Validate.isTrue(
+        blockedOnMemory == null || blockedOnMemory.isDone(), "SharedTsBlockQueue is full");
     if (!alreadyRegistered) {
       localMemoryManager
           .getQueryPool()
@@ -268,6 +269,7 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    sinkChannel.close();
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */

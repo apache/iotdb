@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 
@@ -46,8 +45,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private final boolean[] hasSetNoMoreTsBlocks;
 
   private final boolean[] channelOpened;
-
-  private final Set<Integer> closedChannels;
 
   private final DownStreamChannelIndex downStreamChannelIndex;
 
@@ -77,8 +74,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       String localPlanNodeId,
-      MPPDataExchangeManager.SinkListener sinkListener,
-      Set<Integer> closedChannels) {
+      MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
@@ -88,7 +84,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
-    this.closedChannels = closedChannels;
   }
 
   @Override
@@ -147,7 +142,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isClosed() {
-    return closedChannels.size() == downStreamChannelList.size();
+    return closed;
   }
 
   @Override
@@ -245,15 +240,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isChannelClosed(int index) {
-    if (closedChannels.contains(index)) {
-      return true;
-    } else {
-      if (downStreamChannelList.get(index).isClosed()) {
-        closedChannels.add(index);
-        return true;
-      }
-      return false;
-    }
+    return downStreamChannelList.get(index).isClosed();
   }
 
   // region ============ Shuffle Related ============

@@ -49,7 +49,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
-import com.google.common.collect.Sets;
 import org.apache.commons.lang3.Validate;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -62,7 +61,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -401,32 +399,23 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     private final FragmentInstanceContext context;
     private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
 
-    private final Set<Integer> closedChannels;
-
-    private final int currentIndex;
-
-    private final int channelNum;
+    private final AtomicInteger cnt;
 
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
         FragmentInstanceContext context,
         IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
-        Set<Integer> closedChannels,
-        int currentIndex,
-        int channelNum) {
+        AtomicInteger cnt) {
       this.shuffleSinkHandleId = localFragmentInstanceId;
       this.context = context;
       this.onFailureCallback = onFailureCallback;
-      this.closedChannels = closedChannels;
-      this.currentIndex = currentIndex;
-      this.channelNum = channelNum;
+      this.cnt = cnt;
     }
 
     @Override
     public void onFinish(ISink sink) {
       LOGGER.debug("[SkHListenerOnFinish]");
-      closedChannels.add(currentIndex);
-      if (closedChannels.size() == channelNum) {
+      if (cnt.decrementAndGet() == 0) {
         closeShuffleSinkHandle();
       }
     }
@@ -439,8 +428,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
       LOGGER.debug("[SkHListenerOnAbort]");
-      closedChannels.add(currentIndex);
-      if (closedChannels.size() == channelNum) {
+      if (cnt.decrementAndGet() == 0) {
         closeShuffleSinkHandle();
       }
       return context.getFailureCause();
@@ -449,8 +437,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       LOGGER.warn("ISinkChannel failed due to", t);
-      closedChannels.add(currentIndex);
-      if (closedChannels.size() == channelNum) {
+      if (cnt.decrementAndGet() == 0) {
         closeShuffleSinkHandle();
       }
       if (onFailureCallback != null) {
@@ -560,9 +547,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      Set<Integer> closedChannels,
-      int currentIndex,
-      int channelNum) {
+      AtomicInteger cnt) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -588,12 +573,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localFragmentInstanceId,
         queue,
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId,
-            instanceContext,
-            instanceContext::failed,
-            closedChannels,
-            currentIndex,
-            channelNum));
+            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
   }
 
   /**
@@ -626,9 +606,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      Set<Integer> closedChannels,
-      int currentIndex,
-      int channelNum) {
+      AtomicInteger cnt) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -648,12 +626,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         executorService,
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId,
-            instanceContext,
-            instanceContext::failed,
-            closedChannels,
-            currentIndex,
-            channelNum),
+            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
         mppDataExchangeServiceClientManager);
   }
 
@@ -672,9 +645,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           "ShuffleSinkHandle for " + localFragmentInstanceId + " exists.");
     }
 
-    Set<Integer> closedChannels = Sets.newConcurrentHashSet();
-    AtomicInteger index = new AtomicInteger(0);
     int channelNum = downStreamChannelLocationList.size();
+    AtomicInteger cnt = new AtomicInteger(channelNum);
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -684,9 +656,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localPlanNodeId,
                         downStreamChannelLocation,
                         instanceContext,
-                        closedChannels,
-                        index.getAndIncrement(),
-                        channelNum))
+                        cnt))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -696,8 +666,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             downStreamChannelIndex,
             shuffleStrategyEnum,
             localPlanNodeId,
-            new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed),
-            closedChannels);
+            new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
     shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
     return shuffleSinkHandle;
   }
@@ -707,9 +676,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext,
-      Set<Integer> closedChannels,
-      int currentIndex,
-      int channelNum) {
+      AtomicInteger cnt) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -717,9 +684,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          closedChannels,
-          currentIndex,
-          channelNum);
+          cnt);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -728,9 +693,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          closedChannels,
-          currentIndex,
-          channelNum);
+          cnt);
     }
   }
 

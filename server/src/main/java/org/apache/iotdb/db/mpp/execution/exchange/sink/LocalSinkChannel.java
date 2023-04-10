@@ -194,8 +194,6 @@ public class LocalSinkChannel implements ISinkChannel {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("LocalSinkChannel is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("LocalSinkChannel is closed.");
     }
   }
 
