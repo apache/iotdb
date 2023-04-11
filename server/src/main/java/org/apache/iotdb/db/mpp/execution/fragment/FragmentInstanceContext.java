@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -171,7 +172,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private void updateStatsIfDone(FragmentInstanceState newState) {
-    if (newState.isDone()) {
+    if (newState == FragmentInstanceState.FLUSHING || newState.isDone()) {
       long now = System.currentTimeMillis();
 
       // before setting the end times, make sure a start has been recorded
@@ -185,6 +186,11 @@ public class FragmentInstanceContext extends QueryContext {
       // were a duplicate notification, which shouldn't happen
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
+      if (dataRegion != null) {
+        try (SetThreadName threadName = new SetThreadName(id.getFullId())) {
+          LOGGER.info("FI cost: {}ms", (endNanos.get() - startNanos.get()) / 1_000 / 1_000);
+        }
+      }
     }
   }
 
