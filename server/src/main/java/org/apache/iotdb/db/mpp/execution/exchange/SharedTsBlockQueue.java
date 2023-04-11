@@ -148,7 +148,7 @@ public class SharedTsBlockQueue {
     this.sourceHandle = sourceHandle;
   }
 
-  /** Notify no more tsblocks will be added to the queue. */
+  /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
@@ -180,12 +180,12 @@ public class SharedTsBlockQueue {
             fullFragmentInstanceId,
             localPlanNodeId,
             tsBlock.getRetainedSizeInBytes());
+    bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
     // corresponding LocalSinkChannel.
     if (sinkChannel != null) {
       sinkChannel.checkAndInvokeOnFinished();
     }
-    bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
