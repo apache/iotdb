@@ -180,6 +180,7 @@ export const enSidebar = sidebar({
         { text: 'Sample', link: 'Sample' },
         { text: 'Time-Series', link: 'Time-Series' },
         { text: 'Lambda', link: 'Lambda' },
+        { text: 'Conditional Expression', link: 'Conditional' },
 
         // IoTDB-Quality
         { text: 'Data Profiling', link: 'Data-Profiling' },
