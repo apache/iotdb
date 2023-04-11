@@ -166,7 +166,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void abort() {
-    if (aborted) {
+    if (aborted || closed) {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
@@ -192,7 +192,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void close() {
-    if (closed) {
+    if (closed || aborted) {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
