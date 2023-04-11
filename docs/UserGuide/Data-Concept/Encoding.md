@@ -72,13 +72,10 @@ Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure th
 
 * SPRINTZ
 
-The SPRINTZ encoding combines encodings in four steps: predicting, bit-packing, run-length encoding and entropy encoding. SPRINTZ algorithm is suitable for predictable time series. For delta function, the vast repeats or linearly increasing time series is the best target.
-
+SPRINTZ coding is a type of lossless data compression technique that involves predicting the original time series data, applying Zigzag encoding, bit-packing encoding, and run-length encoding. SPRINTZ encoding is effective for time series data with small absolute differences between values. However, it may not be as effective for time series data with large differences between values, indicating large fluctuation.
 * RLBE
 
-The RLBE encoding proposes to combine delta, run-length and Fibonacci based encoding ideas. It has five steps: differential coding, binary encoding, run-length, Fibonacci coding and concatenation.
-It is more suitable for the differential value of time series is positive and small.
-
+RLBE is a lossless encoding that combines the ideas of differential encoding, bit-packing encoding, run-length encoding, Fibonacci encoding and concatenation. RLBE encoding is suitable for time series data with increasing and small increment value, and is not suitable for time series data with large fluctuation.
 
 
 ## Correspondence between data type and encoding
