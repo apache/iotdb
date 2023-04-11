@@ -162,7 +162,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void abort() {
-    if (aborted) {
+    if (closed || aborted) {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
@@ -188,25 +188,25 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void close() {
-    if (closed) {
+    if (closed || aborted) {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
     boolean meetError = false;
     Exception firstException = null;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        channel.close();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
-        }
-      }
-    }
-    if (meetError) {
-      LOGGER.warn("Error occurred when try to close channel.", firstException);
-    }
+    //    for (ISink channel : downStreamChannelList) {
+    //      try {
+    //        channel.close();
+    //      } catch (Exception e) {
+    //        if (!meetError) {
+    //          firstException = e;
+    //          meetError = true;
+    //        }
+    //      }
+    //    }
+    //    if (meetError) {
+    //      LOGGER.warn("Error occurred when try to close channel.", firstException);
+    //    }
     closed = true;
     sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");

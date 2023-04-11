@@ -49,7 +49,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
@@ -102,8 +101,6 @@ public class SinkChannel implements ISinkChannel {
   private boolean closed = false;
 
   private boolean noMoreTsBlocks = false;
-
-  private final AtomicBoolean hasCalledOnFinished = new AtomicBoolean();
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
@@ -214,7 +211,7 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void abort() {
     LOGGER.debug("[StartAbortSinkChannel]");
-    if (aborted) {
+    if (aborted || closed) {
       return;
     }
     sequenceIdToTsBlock.clear();
@@ -237,7 +234,7 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void close() {
     LOGGER.debug("[StartCloseSinkChannel]");
-    if (closed) {
+    if (closed || aborted) {
       return;
     }
     sequenceIdToTsBlock.clear();
@@ -252,7 +249,7 @@ public class SinkChannel implements ISinkChannel {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    invokeOnFinish();
+    sinkListener.onFinish(this);
     closed = true;
     LOGGER.debug("[EndCloseSinkChannel]");
   }
@@ -270,12 +267,6 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized boolean isFinished() {
     return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
-  }
-
-  private void invokeOnFinish() {
-    if (!hasCalledOnFinished.getAndSet(true)) {
-      sinkListener.onFinish(this);
-    }
   }
 
   @Override
@@ -330,7 +321,7 @@ public class SinkChannel implements ISinkChannel {
       }
     }
     if (isFinished()) {
-      invokeOnFinish();
+      sinkListener.onFinish(this);
     }
     // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
     // ack message's freedBytes may be zero
@@ -512,7 +503,7 @@ public class SinkChannel implements ISinkChannel {
         }
         noMoreTsBlocks = true;
         if (isFinished()) {
-          invokeOnFinish();
+          sinkListener.onFinish(SinkChannel.this);
         }
         sinkListener.onEndOfBlocks(SinkChannel.this);
       }

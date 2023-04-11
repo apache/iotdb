@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
@@ -47,8 +46,6 @@ public class LocalSinkChannel implements ISinkChannel {
   private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
-
-  private final AtomicBoolean hasCalledOnFinished = new AtomicBoolean(false);
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -105,9 +102,7 @@ public class LocalSinkChannel implements ISinkChannel {
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
-          if (!hasCalledOnFinished.getAndSet(true)) {
-            sinkListener.onFinish(this);
-          }
+          sinkListener.onFinish(this);
         }
       }
     }
@@ -186,9 +181,7 @@ public class LocalSinkChannel implements ISinkChannel {
         }
         closed = true;
         queue.close();
-        if (!hasCalledOnFinished.getAndSet(true)) {
-          sinkListener.onFinish(this);
-        }
+        sinkListener.onFinish(this);
       }
     }
     LOGGER.debug("[EndCloseLocalSinkChannel]");

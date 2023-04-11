@@ -401,6 +401,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private final AtomicInteger cnt;
 
+    private volatile boolean hasDecremented = false;
+
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
         FragmentInstanceContext context,
@@ -415,9 +417,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinish(ISink sink) {
       LOGGER.debug("[SkHListenerOnFinish]");
-      if (cnt.decrementAndGet() == 0) {
-        closeShuffleSinkHandle();
-      }
+      decrementCnt();
     }
 
     @Override
@@ -428,20 +428,25 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
       LOGGER.debug("[SkHListenerOnAbort]");
-      if (cnt.decrementAndGet() == 0) {
-        closeShuffleSinkHandle();
-      }
+      decrementCnt();
       return context.getFailureCause();
     }
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
       LOGGER.warn("ISinkChannel failed due to", t);
-      if (cnt.decrementAndGet() == 0) {
-        closeShuffleSinkHandle();
-      }
+      decrementCnt();
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
+      }
+    }
+
+    private synchronized void decrementCnt() {
+      if (!hasDecremented) {
+        hasDecremented = true;
+        if (cnt.decrementAndGet() == 0) {
+          closeShuffleSinkHandle();
+        }
       }
     }
 
