@@ -61,9 +61,8 @@ public class OffsetOperator implements ProcessOperator {
       return null;
     }
     if (remainingOffset > 0) {
-      int offset = Math.min((int) remainingOffset, block.getPositionCount());
+      int offset = (int) Math.min(remainingOffset, block.getPositionCount());
       remainingOffset -= offset;
-      LOGGER.info("current remaining offset: {}", remainingOffset);
       return block.getRegion(offset, block.getPositionCount() - offset);
     } else {
       return block;
