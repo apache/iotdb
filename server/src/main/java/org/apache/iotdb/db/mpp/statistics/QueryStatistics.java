@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @ThreadSafe
 public class QueryStatistics {
 
-  private static final long QUERY_STATISTICS_PRINT_INTERVAL_IN_MS = 10_000;
+  private static final long QUERY_STATISTICS_PRINT_INTERVAL_IN_MS = 1_000_000;
 
   private static final Logger QUERY_STATISTICS_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.QUERY_STATISTICS_LOGGER_NAME);
