@@ -80,7 +80,6 @@
         <dependency>
             <groupId>org.tukaani</groupId>
             <artifactId>xz</artifactId>
-            <version>1.9</version>
             <scope>compile</scope>
         </dependency>
         <!-- for mocked test-->
