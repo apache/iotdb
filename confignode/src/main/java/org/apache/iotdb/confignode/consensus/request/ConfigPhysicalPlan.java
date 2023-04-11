@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipeP
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -433,6 +434,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case setSpaceQuota:
           plan = new SetSpaceQuotaPlan();
+          break;
+        case setThrottleQuota:
+          plan = new SetThrottleQuotaPlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);

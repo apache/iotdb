@@ -19,6 +19,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.ratis.protocol.RaftGroupId;

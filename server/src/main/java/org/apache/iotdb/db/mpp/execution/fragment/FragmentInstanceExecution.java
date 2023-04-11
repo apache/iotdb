@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
@@ -58,12 +60,13 @@ public class FragmentInstanceExecution {
       ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances,
-      long timeOut) {
+      long timeOut)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(instanceId, context, drivers, sinkHandle, stateMachine);
     execution.initialize(failedInstances, scheduler);
     LOGGER.debug("timeout is {}ms.", timeOut);
-    scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut);
+    scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
 
@@ -144,6 +147,11 @@ public class FragmentInstanceExecution {
                     instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
+            }
+          } catch (Throwable t) {
+            try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+              LOGGER.error(
+                  "Errors happened while trying to finish FI, resource may already leak!", t);
             }
           }
         });
