@@ -173,11 +173,6 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
-    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
-    // corresponding LocalSinkChannel.
-    if (sinkChannel != null) {
-      sinkChannel.checkAndInvokeOnFinished();
-    }
     localMemoryManager
         .getQueryPool()
         .free(
@@ -185,6 +180,11 @@ public class SharedTsBlockQueue {
             fullFragmentInstanceId,
             localPlanNodeId,
             tsBlock.getRetainedSizeInBytes());
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // corresponding LocalSinkChannel.
+    if (sinkChannel != null) {
+      sinkChannel.checkAndInvokeOnFinished();
+    }
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
