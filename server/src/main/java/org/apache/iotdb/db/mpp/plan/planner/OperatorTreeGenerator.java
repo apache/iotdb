@@ -231,6 +231,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -790,7 +791,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeSelector selector = null;
     TimeComparator timeComparator = null;
     for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      if (sortItem.getSortKey() == SortKey.TIME) {
+      if (Objects.equals(sortItem.getSortKey(), SortKey.TIME)) {
         Ordering ordering = sortItem.getOrdering();
         if (ordering == Ordering.ASC) {
           selector = new TimeSelector(node.getChildren().size() << 1, true);
@@ -1595,15 +1596,26 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SortOperator.class.getSimpleName());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    List<TSDataType> outputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    List<String> inputColumnNames = node.getChild().getOutputColumnNames();
+    List<String> outputColumnNames = node.getOutputColumnNames();
+    List<Integer> columnsLocations = new LinkedList<>();
+    for (String columnName : outputColumnNames) {
+      if (inputColumnNames.contains(columnName)) {
+        columnsLocations.add(inputColumnNames.indexOf(columnName));
+      }
+    }
 
     List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
     List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node.getChild(), context.getTypeProvider());
     genSortInformation(
-        node.getOutputColumnNames(),
+        node.getChild().getOutputColumnNames(),
         dataTypes,
         sortItemList,
         sortItemIndexList,
@@ -1611,7 +1623,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SortOperator(
         operatorContext,
         child,
-        dataTypes,
+        outputDataTypes,
+        columnsLocations,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
@@ -2201,7 +2214,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     checkArgument(
         sortItemList.isEmpty()
-            || (sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES),
+            || (sortItemList.size() == 1 && Objects.equals(sortItemList.get(0).getSortKey(), SortKey.TIMESERIES)),
         "Last query only support order by timeseries asc/desc");
 
     context.setLastQueryTimeFilter(node.getTimeFilter());

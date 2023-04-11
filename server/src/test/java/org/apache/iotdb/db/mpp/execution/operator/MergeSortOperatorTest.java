@@ -328,8 +328,8 @@ public class MergeSortOperatorTest {
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -796,8 +796,8 @@ public class MergeSortOperatorTest {
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -810,8 +810,8 @@ public class MergeSortOperatorTest {
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -825,8 +825,8 @@ public class MergeSortOperatorTest {
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -1269,8 +1269,8 @@ public class MergeSortOperatorTest {
                   Arrays.asList(
                       new SortItem(SortKey.DEVICE, deviceOrdering),
                       new SortItem(SortKey.TIME, timeOrdering)),
-                  null,
-                  null));
+                  Arrays.asList(0, -1),
+                  Arrays.asList(TSDataType.TEXT, TSDataType.INT64)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -1561,9 +1561,19 @@ public class MergeSortOperatorTest {
       ShowQueriesOperator showQueriesOperator2 =
           new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
       SortOperator sortOperator1 =
-          new SortOperator(operatorContexts.get(2), showQueriesOperator1, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(2),
+              showQueriesOperator1,
+              dataTypes,
+              new ArrayList<>(),
+              comparator);
       SortOperator sortOperator2 =
-          new SortOperator(operatorContexts.get(3), showQueriesOperator2, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(3),
+              showQueriesOperator2,
+              dataTypes,
+              new ArrayList<>(),
+              comparator);
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),

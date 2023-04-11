@@ -476,6 +476,7 @@ public class OperatorMemoryTest {
             Mockito.mock(OperatorContext.class),
             child,
             Collections.singletonList(TSDataType.INT32),
+            new ArrayList<>(),
             null);
 
     assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());

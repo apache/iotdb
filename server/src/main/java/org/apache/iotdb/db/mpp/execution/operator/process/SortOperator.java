@@ -32,6 +32,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class SortOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
@@ -40,17 +42,25 @@ public class SortOperator implements ProcessOperator {
 
   private List<MergeSortKey> cachedData;
   private final Comparator<MergeSortKey> comparator;
+  private final List<Integer> outputColumnsLocations;
 
   public SortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
+      List<Integer> outputColumnLocations,
       Comparator<MergeSortKey> comparator) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.cachedData = new ArrayList<>();
     this.comparator = comparator;
+    if (outputColumnLocations.isEmpty()) {
+      outputColumnsLocations =
+          IntStream.range(0, dataTypes.size()).boxed().collect(Collectors.toList());
+    } else {
+      this.outputColumnsLocations = outputColumnLocations;
+    }
   }
 
   @Override
@@ -94,8 +104,8 @@ public class SortOperator implements ProcessOperator {
           TsBlock tsBlock = mergeSortKey.tsBlock;
           int row = mergeSortKey.rowIndex;
           timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(row));
-          for (int i = 0; i < valueColumnBuilders.length; i++) {
-            valueColumnBuilders[i].write(tsBlock.getColumn(i), row);
+          for (int i = 0; i < outputColumnsLocations.size(); i++) {
+            valueColumnBuilders[i].write(tsBlock.getColumn(outputColumnsLocations.get(i)), row);
           }
           tsBlockBuilder.declarePosition();
         });

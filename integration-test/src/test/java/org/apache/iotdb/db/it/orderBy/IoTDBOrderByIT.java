@@ -219,6 +219,40 @@ public class IoTDBOrderByIT {
     testNormalOrderBy(sql, Arrays.reverse(ans));
   }
 
+  @Test
+  public void orderByTest15() {
+    String sql = "select num+bigNum,floatNum from root.sg.d order by str";
+    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        checkHeader(
+            metaData,
+            new String[] {"Time", "root.sg.d.num + root.sg.d.bigNum", "root.sg.d.floatNum"});
+        int i = 0;
+        while (resultSet.next()) {
+
+          String actualTime = resultSet.getString(1);
+          double actualNum = resultSet.getDouble(2);
+          double actualFloat = resultSet.getDouble(3);
+
+          assertEquals(res[ans[i]][0], actualTime);
+          assertEquals(
+              Long.parseLong(res[ans[i]][1]) + Long.parseLong(res[ans[i]][2]), actualNum, 0.0001);
+          assertEquals(Double.parseDouble(res[ans[i]][3]), actualFloat, 0.0001);
+
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   // 2. Multi-level order by test
   @Test
   public void orderByTest9() {
@@ -256,6 +290,35 @@ public class IoTDBOrderByIT {
         "select num,bigNum,floatNum,str,bool from root.sg.d order by num+floatNum desc, floatNum desc";
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     testNormalOrderBy(sql, ans);
+  }
+
+  @Test
+  public void orderByTest14() {
+    String sql = "select num+bigNum from root.sg.d order by num+floatNum desc, floatNum desc";
+    int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        checkHeader(metaData, new String[] {"Time", "root.sg.d.num + root.sg.d.bigNum"});
+        int i = 0;
+        while (resultSet.next()) {
+
+          String actualTime = resultSet.getString(1);
+          double actualNum = resultSet.getDouble(2);
+
+          assertEquals(res[ans[i]][0], actualTime);
+          assertEquals(
+              Long.parseLong(res[ans[i]][1]) + Long.parseLong(res[ans[i]][2]), actualNum, 0.001);
+
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   // 3. aggregation query
@@ -390,6 +453,68 @@ public class IoTDBOrderByIT {
           long actualMinValue = resultSet.getLong(2);
           assertEquals(times[order[i]], actualTime);
           assertEquals(ans[order[i]], actualMinValue, 0.0001);
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void orderByInAggregationTest6() {
+    String sql =
+        "select min_value(num)+min_value(bigNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+    long[] ans =
+        new long[] {2147483647L, 2147483654L, 2147468659L, 2146483660L, 2107483661L, 3147483663L};
+    long[] times =
+        new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
+    int[] order = new int[] {2, 4, 3, 5, 1, 0};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int i = 0;
+        while (resultSet.next()) {
+          long actualTime = resultSet.getLong(1);
+          double actualMinValue = resultSet.getDouble(2);
+          assertEquals(times[order[i]], actualTime);
+          assertEquals(ans[order[i]], actualMinValue, 0.0001);
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void orderByInAggregationTest7() {
+    String sql =
+        "select avg(num)+min_value(floatNum) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
+    double[][] ans =
+        new double[][] {
+          {13.0, 54.12, 54.12},
+          {11.0, 54.121, 54.121},
+          {13.0, 231.34, 45.231},
+          {15.0, 235.213, 235.213},
+          {6.4, 1231.21, 56.32},
+          {4.6, 4654.231, 12.123}
+        };
+    long[] times =
+        new long[] {41536900000L, 31536100000L, 41536000000L, 51536000000L, 31536000000L, 0L};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int i = 0;
+        while (resultSet.next()) {
+          long actualTime = resultSet.getLong(1);
+          double actualAvg = resultSet.getDouble(2);
+          assertEquals(times[i], actualTime);
+          assertEquals(ans[i][0] + ans[i][2], actualAvg, 0.0001);
           i++;
         }
         assertEquals(i, ans.length);
