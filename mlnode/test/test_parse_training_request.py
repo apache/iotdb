@@ -93,9 +93,8 @@ def test_missing_argument():
         queryFilter=str(query_filter),
     )
     try:
-        data_config, model_config, task_config = parse_training_request(req)
+        parse_training_request(req)
     except Exception as e:
-
         assert e.message == MissingConfigError(config_name='model_name').message
 
 

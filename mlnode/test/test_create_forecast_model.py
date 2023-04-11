@@ -16,7 +16,6 @@
 # under the License.
 #
 import torch
-
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.exception import BadConfigValueError
@@ -39,10 +38,10 @@ def test_create_forecast_model():
 
 def test_bad_config_model1():
     try:
-        model, models = create_forecast_model(model_name='dlinear_dummpy',
+        model, models = create_forecast_model(model_name='dlinear_dummy',
                                               kernel_size=25, input_vars=8, output_vars=8)
     except BadConfigValueError as e:
-        print(e)  # BadConfigValueError: ('model_name', 'dlinear_dummpy')
+        print(e)  # BadConfigValueError: ('model_name', 'dlinear_dummy')
 
 
 def test_bad_config_model2():

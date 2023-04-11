@@ -20,7 +20,6 @@ import os
 import time
 
 import torch.nn as nn
-
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.storage import model_storage
@@ -63,7 +62,7 @@ def test_load_not_exist_model():
     trial_id = 'dummy_trial'
     model_id = 'dummy_model'
     try:
-        model_loaded, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
+        model_storage.load_model(model_id=model_id, trial_id=trial_id)
     except Exception as e:
         assert e.message == ModelNotExistError(
             os.path.join('.', descriptor.get_config().get_mn_model_storage_dir(),
