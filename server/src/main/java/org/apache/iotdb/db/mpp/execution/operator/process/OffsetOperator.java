@@ -23,11 +23,15 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class OffsetOperator implements ProcessOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(OffsetOperator.class);
 
   private final OperatorContext operatorContext;
   private long remainingOffset;
@@ -59,6 +63,7 @@ public class OffsetOperator implements ProcessOperator {
     if (remainingOffset > 0) {
       int offset = Math.min((int) remainingOffset, block.getPositionCount());
       remainingOffset -= offset;
+      LOGGER.info("current remaining offset: {}", remainingOffset);
       return block.getRegion(offset, block.getPositionCount() - offset);
     } else {
       return block;
