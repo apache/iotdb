@@ -1254,7 +1254,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   名字   | compressor                                                   |
 |:------:|:-------------------------------------------------------------|
 |   描述   | 数据压缩方法                                                       |
-|   类型   | 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4”, “ZSTD”, "LZMA2" |
+|   类型   | 枚举 String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
 |  默认值   | SNAPPY                                                       |
 | 改后生效方式 | 热加载                                                          |
 
