@@ -57,7 +57,9 @@ public class OffsetOperator implements ProcessOperator {
       return null;
     }
     if (remainingOffset > 0) {
-      int offset = Math.min((int) remainingOffset, block.getPositionCount());
+      // It's safe to narrow long to int here, because block.getPositionCount() will always be less
+      // than Integer.MAX_VALUE
+      int offset = (int) Math.min(remainingOffset, block.getPositionCount());
       remainingOffset -= offset;
       return block.getRegion(offset, block.getPositionCount() - offset);
     } else {
