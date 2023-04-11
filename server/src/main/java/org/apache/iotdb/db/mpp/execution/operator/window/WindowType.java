@@ -20,11 +20,16 @@
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
 public enum WindowType {
+
+  // aggregation window
   TIME_WINDOW((byte) 0),
   VARIATION_WINDOW((byte) 1),
   CONDITION_WINDOW((byte) 2),
   SESSION_WINDOW((byte) 3),
-  COUNT_WINDOW((byte) 4);
+  COUNT_WINDOW((byte) 4),
+
+  // raw data splitting window
+  RAW_DATA_COUNT_WINDOW((byte) 10);
 
   private final byte type;
 

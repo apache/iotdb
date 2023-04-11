@@ -21,8 +21,21 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.List;
 
 public class WindowManagerFactory {
+
+  public static RawDataWindowManager genRawDataWindowManager(
+      WindowType windowType, long interval, long step, List<TSDataType> dataTypesLists) {
+    if (windowType == WindowType.RAW_DATA_COUNT_WINDOW) {
+      return new CountSplitWindowManager(interval, step, dataTypesLists);
+    } else {
+      throw new IllegalArgumentException(
+          "Not support this type of splitting window :" + windowType.name());
+    }
+  }
 
   public static IWindowManager genWindowManager(
       WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator, boolean ascending) {
