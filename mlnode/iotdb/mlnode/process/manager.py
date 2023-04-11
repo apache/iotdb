@@ -26,7 +26,7 @@ from iotdb.mlnode.process.task import ForecastingTrainingTask
 
 
 class TaskManager(object):
-    def __init__(self, pool_num):
+    def __init__(self, pool_size):
         """
         resource_manager: a manager that manage resources shared between processes
         task_map: a map shared between processes and storing the tasks' states
@@ -34,7 +34,7 @@ class TaskManager(object):
         """
         self.__shared_resource_manager = mp.Manager()
         self.__pid_info = self.__shared_resource_manager.dict()
-        self.__training_process_pool = mp.Pool(pool_num)
+        self.__training_process_pool = mp.Pool(pool_size)
 
     def create_training_task(self,
                              dataset: Dataset,

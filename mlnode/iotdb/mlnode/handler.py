@@ -15,10 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.constant import TSStatusCode
-from iotdb.mlnode.storage import model_storage
-from iotdb.mlnode.util import get_status
-
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
@@ -34,7 +30,7 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
-        self.__task_manager = TaskManager(pool_num=10)  # TODO: add pool num to config
+        self.__task_manager = TaskManager(pool_size=10)
 
     def deleteModel(self, req: TDeleteModelReq):
         try:
@@ -60,12 +56,12 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
-            return get_status(TSStatusCode.FAIL_STATUS, str(e))
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
         finally:
             # submit task stage & check resource and decide pending/start
             self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
+        status = get_status(TSStatusCode.SUCCESS_STATUS)
         forecast_result = b'forecast result'
         return TForecastResp(status, forecast_result)
