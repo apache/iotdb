@@ -26,11 +26,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -172,19 +171,20 @@ public class MemoryPool {
    */
   public void deRegisterFragmentInstanceToQueryMemoryMap(
       String queryId, String fragmentInstanceId) {
-    Map<String, Long> planNodeRelatedMemory =
-        queryMemoryReservations.get(queryId).get(fragmentInstanceId);
-    for (Long memoryReserved : planNodeRelatedMemory.values()) {
-      if (memoryReserved != 0) {
-        throw new MemoryLeakException(
-            "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+    Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
+    if (queryRelatedMemory != null) {
+      Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      for (Long memoryReserved : fragmentRelatedMemory.values()) {
+        if (memoryReserved != 0) {
+          throw new MemoryLeakException(
+              "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+        }
       }
-    }
-    synchronized (queryMemoryReservations) {
-      Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
-      queryRelatedMemory.remove(fragmentInstanceId);
-      if (queryRelatedMemory.isEmpty()) {
-        queryMemoryReservations.remove(queryId);
+      synchronized (queryMemoryReservations) {
+        queryRelatedMemory.remove(fragmentInstanceId);
+        if (queryRelatedMemory.isEmpty()) {
+          queryMemoryReservations.remove(queryId);
+        }
       }
     }
   }
