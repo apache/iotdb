@@ -1215,7 +1215,7 @@ Different configuration parameters take effect in the following three ways:
 |    Name     | compressor                                                     |
 |:-----------:|:---------------------------------------------------------------|
 | Description | Data compression method                                        |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4", "ZSTD", "lZMA2" |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
 |   Default   | SNAPPY                                                         |
 |  Effective  | hot-load                                                       |
 
