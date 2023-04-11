@@ -105,11 +105,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  private static final ConcurrentHashMap<String, PartialPath> partialPathCache =
+      new ConcurrentHashMap<>();
 
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
@@ -348,7 +352,11 @@ public class StatementGenerator {
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      String prefix = req.getPrefixPaths().get(i);
+      if (!partialPathCache.containsKey(prefix)) {
+        partialPathCache.put(prefix, new PartialPath(prefix));
+      }
+      statement.setDevicePath(partialPathCache.get(prefix));
       statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
