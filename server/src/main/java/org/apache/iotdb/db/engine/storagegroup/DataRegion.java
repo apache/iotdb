@@ -1156,7 +1156,8 @@ public class DataRegion implements IDataRegionForQuery {
       // Update cached last value with high priority
       DataNodeSchemaCache.getInstance()
           .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.getDevicePath(),
+              node.getMeasurements()[i],
               node.composeLastTimeValuePair(i),
               true,
               latestFlushedTime);
@@ -1197,7 +1198,8 @@ public class DataRegion implements IDataRegionForQuery {
       // Update cached last value with high priority
       DataNodeSchemaCache.getInstance()
           .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.getDevicePath(),
+              node.getMeasurements()[i],
               node.composeTimeValuePair(i),
               true,
               latestFlushedTime);
