@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from iotdb.mlnode.constant import TSStatusCode
+from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.util import get_status
 
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.constant import TSStatusCode
@@ -38,7 +41,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             model_storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
-            return get_status(TSStatusCode.FAIL_STATUS, str(e))
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         task = None
@@ -63,6 +66,6 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS)
+        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
         forecast_result = b'forecast result'
         return TForecastResp(status, forecast_result)
