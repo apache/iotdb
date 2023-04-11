@@ -242,9 +242,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected boolean readAndCalcFromFile() throws IOException {
-    while (seriesScanUtil.hasNextFile()) {
-      long startTime = System.nanoTime();
-      try {
+    long startTime = System.nanoTime();
+    try {
+      while (seriesScanUtil.hasNextFile()) {
         if (canUseCurrentFileStatistics()) {
           Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
           if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -273,21 +273,21 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         }
 
         // read chunk
+
         if (readAndCalcFromChunk()) {
           return true;
         }
-      } finally {
-        operatorContext.addOperatorTime(CAL_AGG_FROM_FILE, System.nanoTime() - startTime);
       }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(CAL_AGG_FROM_FILE, System.nanoTime() - startTime);
     }
-
-    return false;
   }
 
   protected boolean readAndCalcFromChunk() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
-      long startTime = System.nanoTime();
-      try {
+    long startTime = System.nanoTime();
+    try {
+      while (seriesScanUtil.hasNextChunk()) {
         if (canUseCurrentChunkStatistics()) {
           Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
           if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -320,17 +320,17 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         if (readAndCalcFromPage()) {
           return true;
         }
-      } finally {
-        operatorContext.addOperatorTime(CAL_AGG_FROM_CHUNK, System.nanoTime() - startTime);
       }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(CAL_AGG_FROM_CHUNK, System.nanoTime() - startTime);
     }
-    return false;
   }
 
   protected boolean readAndCalcFromPage() throws IOException {
-    while (seriesScanUtil.hasNextPage()) {
-      long startTime = System.nanoTime();
-      try {
+    long startTime = System.nanoTime();
+    try {
+      while (seriesScanUtil.hasNextPage()) {
         if (canUseCurrentPageStatistics()) {
           Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
           // There is no more eligible points in current time range
@@ -369,11 +369,11 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         if (calcFromRawData(tsBlock)) {
           return true;
         }
-      } finally {
-        operatorContext.addOperatorTime(CAL_AGG_FROM_PAGE, System.nanoTime() - startTime);
       }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(CAL_AGG_FROM_PAGE, System.nanoTime() - startTime);
     }
-    return false;
   }
 
   protected boolean canUseCurrentFileStatistics() throws IOException {
