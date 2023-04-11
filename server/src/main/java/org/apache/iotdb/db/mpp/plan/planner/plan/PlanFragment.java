@@ -30,6 +30,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,6 +49,8 @@ public class PlanFragment {
 
   // indicate whether this PlanFragment is the root of the whole Fragment-Plan-Tree or not
   private boolean isRoot;
+
+  private final Logger logger = LoggerFactory.getLogger(PlanFragment.class);
 
   public PlanFragment(PlanFragmentId id, PlanNode planNodeTree) {
     this.id = id;
@@ -145,13 +150,18 @@ public class PlanFragment {
 
   public void serialize(DataOutputStream stream) throws IOException {
     id.serialize(stream);
+    long bytes = stream.size();
     planNodeTree.serialize(stream);
+    logger.info("Size of planNodeTree in PlanFragment is: {}", stream.size() - bytes);
+    bytes = stream.size();
+
     if (typeProvider == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
       typeProvider.serialize(stream);
     }
+    logger.info("Size of TypeProvider in PlanFragment is: {}", stream.size() - bytes);
   }
 
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {

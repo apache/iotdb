@@ -40,7 +40,9 @@ public class IdentitySinkNodeSerdeTest {
   public void testSerializeAndDeserialize() throws IllegalPathException {
     DownStreamChannelLocation downStreamChannelLocation =
         new DownStreamChannelLocation(
-            new TEndPoint("test", 1), new TFragmentInstanceId("test", 1, "test"), "test");
+            new TEndPoint("192.168.130.9", 6667),
+            new TFragmentInstanceId("20230410_061855_00000_2", 1, "test"),
+            "300000");
     IdentitySinkNode identitySinkNode1 =
         new IdentitySinkNode(
             new PlanNodeId("testIdentitySinkNode"),

@@ -244,6 +244,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
+    long startTime = System.currentTimeMillis();
 
     // deserialize ConsensusGroupId
     ConsensusGroupId groupId = null;
@@ -278,6 +279,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
+    LOGGER.info("Cost of sendFI is: {}ms", System.currentTimeMillis() - startTime);
     // TODO
     return resp;
   }

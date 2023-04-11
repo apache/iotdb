@@ -200,7 +200,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.currentTimeMillis();
     StatementType statementType = null;
     try {
+      long start = System.currentTimeMillis();
       Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+      LOGGER.info("Cost of createStatement is: {}ms", System.currentTimeMillis() - start);
 
       if (s == null) {
         return RpcUtils.getTSExecuteStatementResp(

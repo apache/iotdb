@@ -155,7 +155,9 @@ public class QueryExecution implements IQueryExecution {
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
+    long startTime = System.currentTimeMillis();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
+    logger.info("Cost of Analyze is: {}ms", System.currentTimeMillis() - startTime);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -205,8 +207,13 @@ public class QueryExecution implements IQueryExecution {
 
     // check timeout for query first
     checkTimeOutForQuery();
+    long currentTime;
+    currentTime = System.currentTimeMillis();
     doLogicalPlan();
+    logger.info("Cost of doLogicalPlan is: {}ms", System.currentTimeMillis() - currentTime);
+    currentTime = System.currentTimeMillis();
     doDistributedPlan();
+    logger.info("Cost of doDistributedPlan is: {}ms", System.currentTimeMillis() - currentTime);
     // update timeout after finishing plan stage
     context.setTimeOut(
         context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));

@@ -256,8 +256,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             sendFragmentInstanceReq.setConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
           }
+          long startTime = System.currentTimeMillis();
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
+          logger.info(
+              "Cost of sendFI in dispatchRemote is : {}ms", System.currentTimeMillis() - startTime);
           if (!sendFragmentInstanceResp.accepted) {
             logger.warn(sendFragmentInstanceResp.message);
             throw new FragmentInstanceDispatchException(

@@ -26,6 +26,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,6 +37,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class IdentitySinkNode extends MultiChildrenSinkNode {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IdentitySinkNode.class);
 
   public IdentitySinkNode(PlanNodeId id) {
     super(id);
@@ -81,14 +86,18 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.IDENTITY_SINK.serialize(stream);
+    int pos = stream.size();
+    LOGGER.info("DownStreamLocationList.size() is {}", downStreamChannelLocationList.size());
     ReadWriteIOUtils.write(downStreamChannelLocationList.size(), stream);
     for (DownStreamChannelLocation downStreamChannelLocation : downStreamChannelLocationList) {
       downStreamChannelLocation.serialize(stream);
     }
+    LOGGER.info("Size of IdentitySinkNode attributes is : {}", stream.size() - pos);
   }
 
   public static IdentitySinkNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
+    LOGGER.info("DownStreamLocationList.size() is {}", size);
     List<DownStreamChannelLocation> downStreamChannelLocationList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       downStreamChannelLocationList.add(DownStreamChannelLocation.deserialize(byteBuffer));
