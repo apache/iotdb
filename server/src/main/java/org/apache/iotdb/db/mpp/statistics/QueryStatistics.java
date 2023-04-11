@@ -101,6 +101,10 @@ public class QueryStatistics {
 
   public static final String CAL_AGG_FROM_FILE = "CalcAggFromFile";
 
+  public static final String CAL_AGG_FROM_FILE_STAT = "CalcAggFromFileStat";
+  public static final String CAL_AGG_FROM_CHUNK_STAT = "CalcAggFromChunkStat";
+  public static final String CAL_AGG_FROM_PAGE_STAT = "CalcAggFromPageStat";
+
   public static final String BUILD_AGG_RES = "BuildAggRes";
 
   public static final String FILTER_AND_PROJECT_OPERATOR = "FilterAndProjectOperator";
@@ -283,12 +287,12 @@ public class QueryStatistics {
           .append(operationStatistics.get(AGG_SCAN_OPERATOR))
           .append(System.lineSeparator());
       builder
-          .append("|   |   |___AggFromStat ")
-          .append(operationStatistics.get(CAL_AGG_FROM_STAT))
-          .append(System.lineSeparator());
-      builder
           .append("|   |   |___CalcNextAggRes ")
           .append(operationStatistics.get(CAL_NEXT_AGG_RES))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |   |___AggFromStat ")
+          .append(operationStatistics.get(CAL_AGG_FROM_STAT))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___loadTSMeta ")
@@ -299,6 +303,10 @@ public class QueryStatistics {
           .append(operationStatistics.get(CAL_AGG_FROM_FILE))
           .append(System.lineSeparator());
       builder
+          .append("|   |       |   |___AggFromFileStat ")
+          .append(operationStatistics.get(CAL_AGG_FROM_FILE_STAT))
+          .append(System.lineSeparator());
+      builder
           .append("|   |       |   |___loadChunkMeta ")
           .append(operationStatistics.get(LOAD_CHUNK_METADATA_LIST))
           .append(System.lineSeparator());
@@ -307,12 +315,20 @@ public class QueryStatistics {
           .append(operationStatistics.get(CAL_AGG_FROM_CHUNK))
           .append(System.lineSeparator());
       builder
+          .append("|   |       |       |___AggFromChunkStat ")
+          .append(operationStatistics.get(CAL_AGG_FROM_CHUNK_STAT))
+          .append(System.lineSeparator());
+      builder
           .append("|   |       |       |___loadChunk ")
           .append(operationStatistics.get(LOAD_PAGE_READER_LIST))
           .append(System.lineSeparator());
       builder
           .append("|   |       |       |___AggFromPage ")
           .append(operationStatistics.get(CAL_AGG_FROM_PAGE))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |           |___AggFromPageStat ")
+          .append(operationStatistics.get(CAL_AGG_FROM_PAGE_STAT))
           .append(System.lineSeparator());
       builder
           .append("|   |       |           |___loadPage ")
