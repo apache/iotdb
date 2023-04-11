@@ -28,12 +28,8 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4SafeDecompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.tukaani.xz.LZMA2Options;
-import org.tukaani.xz.XZInputStream;
 import org.xerial.snappy.Snappy;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -361,36 +357,7 @@ public interface IUnCompressor {
     }
   }
 
-  class Lzma2UnCompress {
-    private static LZMA2Options options;
-
-    public Lzma2UnCompress() {
-      options = new LZMA2Options();
-    }
-
-    public static byte[] uncompress(byte[] data) throws IOException {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      ByteArrayInputStream in = new ByteArrayInputStream(data);
-
-      XZInputStream unlzma2 = new XZInputStream(in);
-
-      byte[] buffer = new byte[256];
-      int n;
-      while ((n = unlzma2.read(buffer)) > 0) {
-        out.write(buffer, 0, n);
-      }
-      in.close();
-      byte[] r = out.toByteArray();
-      return r;
-    }
-  }
-
   class LZMA2UnCompressor implements IUnCompressor {
-    private static Lzma2UnCompress UnCompress;
-
-    public LZMA2UnCompressor() {
-      UnCompress = new Lzma2UnCompress();
-    }
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {
@@ -407,7 +374,7 @@ public interface IUnCompressor {
       if (null == byteArray) {
         return new byte[0];
       }
-      return UnCompress.uncompress(byteArray);
+      return ICompressor.LZMA2Compress.uncompress(byteArray);
     }
 
     @Override
@@ -415,7 +382,7 @@ public interface IUnCompressor {
         throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(byteArray, offset, dataBefore, 0, length);
-      byte[] res = UnCompress.uncompress(dataBefore);
+      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
       System.arraycopy(res, 0, output, outOffset, res.length);
       return res.length;
     }
@@ -426,7 +393,7 @@ public interface IUnCompressor {
       byte[] dataBefore = new byte[length];
       compressed.get(dataBefore, 0, length);
 
-      byte[] res = UnCompress.uncompress(dataBefore);
+      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
       uncompressed.put(res);
       return res.length;
     }

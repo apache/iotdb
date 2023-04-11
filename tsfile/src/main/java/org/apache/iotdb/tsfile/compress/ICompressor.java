@@ -378,13 +378,9 @@ public interface ICompressor extends Serializable {
   }
 
   class LZMA2Compress {
-    private static LZMA2Options options;
-
-    public LZMA2Compress() {
-      options = new LZMA2Options();
-    }
 
     public static byte[] compress(byte[] data) throws IOException {
+      LZMA2Options options = new LZMA2Options();
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       XZOutputStream lzma2 = new XZOutputStream(out, options);
       lzma2.write(data);
@@ -410,37 +406,14 @@ public interface ICompressor extends Serializable {
     }
   }
 
-  class Lzma2Compress {
-    private static LZMA2Options options;
-
-    public Lzma2Compress() {
-      options = new LZMA2Options();
-    }
-
-    public static byte[] compress(byte[] data) throws IOException {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      XZOutputStream lzma2 = new XZOutputStream(out, options);
-      lzma2.write(data);
-      lzma2.close();
-      byte[] r = out.toByteArray();
-      return r;
-    }
-  }
-
   class LZMA2Compressor implements ICompressor {
-
-    private static Lzma2Compress Compress;
-
-    public LZMA2Compressor() {
-      Compress = new Lzma2Compress();
-    }
 
     @Override
     public byte[] compress(byte[] data) throws IOException {
       if (null == data) {
         return new byte[0];
       }
-      byte[] r = Compress.compress(data);
+      byte[] r = LZMA2Compress.compress(data);
       return r;
     }
 
@@ -448,7 +421,7 @@ public interface ICompressor extends Serializable {
     public byte[] compress(byte[] data, int offset, int length) throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(data, offset, dataBefore, 0, length);
-      byte[] r = Compress.compress(dataBefore);
+      byte[] r = LZMA2Compress.compress(dataBefore);
       return r;
     }
 
@@ -456,7 +429,7 @@ public interface ICompressor extends Serializable {
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(data, offset, dataBefore, 0, length);
-      byte[] res = Compress.compress(dataBefore);
+      byte[] res = LZMA2Compress.compress(dataBefore);
       System.arraycopy(res, 0, compressed, 0, res.length);
       return res.length;
     }
@@ -466,7 +439,7 @@ public interface ICompressor extends Serializable {
       int length = data.remaining();
       byte[] dataBefore = new byte[length];
       data.get(dataBefore, 0, length);
-      byte[] res = Lzma2Compress.compress(dataBefore);
+      byte[] res = LZMA2Compress.compress(dataBefore);
       compressed.put(res);
       return res.length;
     }
