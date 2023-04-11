@@ -15,26 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
-
-from iotdb.thrift.common.ttypes import TSStatus
+from iotdb.mlnode.constant import TSStatusCode
+from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
                                         TForecastResp)
-
-
-class TSStatusCode(Enum):
-    SUCCESS_STATUS = 200
-
-    def get_status_code(self) -> int:
-        return self.value
-
-
-def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
-    status = TSStatus(status_code.get_status_code())
-    status.message = message
-    return status
 
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
@@ -42,12 +29,16 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         pass
 
     def deleteModel(self, req: TDeleteModelReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        try:
+            model_storage.delete_model(req.modelId)
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        return get_status(TSStatusCode.SUCCESS_STATUS)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
+        status = get_status(TSStatusCode.SUCCESS_STATUS)
         forecast_result = b'forecast result'
         return TForecastResp(status, forecast_result)

@@ -16,38 +16,33 @@
 # under the License.
 #
 import time
+from typing import Dict, List
 
+import pandas as pd
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
-from iotdb.mlnode.config import config
+from iotdb.mlnode import serde
+from iotdb.mlnode.config import descriptor
+from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.log import logger
-from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
+from iotdb.mlnode.util import verify_success
+from iotdb.thrift.common.ttypes import TEndPoint, TrainingState, TSStatus
 from iotdb.thrift.confignode import IConfigNodeRPCService
-from iotdb.thrift.confignode.ttypes import TUpdateModelInfoReq
-from iotdb.thrift.datanode import IDataNodeRPCService
+from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
+                                            TUpdateModelStateReq)
+from iotdb.thrift.datanode import IMLNodeInternalRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
-                                          TFetchTimeseriesResp,
                                           TRecordModelMetricsReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
-# status code
-SUCCESS_STATUS = 200
-REDIRECTION_RECOMMEND = 400
-
-
-def verify_success(status: TSStatus, err_msg: str) -> None:
-    if status.code != SUCCESS_STATUS:
-        logger.warn(err_msg + ", error status is ", status)
-        raise RuntimeError(str(status.code) + ": " + status.message)
-
 
 class ClientManager(object):
     def __init__(self):
-        self.__data_node_endpoint = config.get_mn_target_data_node()
-        self.__config_node_endpoint = config.get_mn_target_config_node()
+        self.__data_node_endpoint = descriptor.get_config().get_mn_target_data_node()
+        self.__config_node_endpoint = descriptor.get_config().get_mn_target_config_node()
 
     def borrow_data_node_client(self):
         return DataNodeClient(host=self.__data_node_endpoint.ip,
@@ -77,9 +72,9 @@ class MLNodeClient(object):
     def create_training_task(self,
                              model_id: str,
                              is_auto: bool,
-                             model_configs: dict,
-                             query_expressions: list[str],
-                             query_filter: str = None) -> None:
+                             model_configs: Dict,
+                             query_expressions: List[str],
+                             query_filter: str = '') -> None:
         req = TCreateTrainingTaskReq(
             modelId=model_id,
             isAuto=is_auto,
@@ -124,20 +119,17 @@ class DataNodeClient(object):
                 transport.open()
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
+                raise e
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
-        self.__client = IDataNodeRPCService.Client(protocol)
+        self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         session_id: int,
-                         statement_id: int,
-                         query_expressions: list[str],
+                         query_expressions: List[str],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
-                         timeout: int = DEFAULT_TIMEOUT) -> TFetchTimeseriesResp:
+                         timeout: int = DEFAULT_TIMEOUT) -> [int, bool, pd.DataFrame]:
         req = TFetchTimeseriesReq(
-            sessionId=session_id,
-            statementId=statement_id,
             queryExpressions=query_expressions,
             queryFilter=query_filter,
             fetchSize=fetch_size,
@@ -146,15 +138,35 @@ class DataNodeClient(object):
         try:
             resp = self.__client.fetchTimeseries(req)
             verify_success(resp.status, "An error occurs when calling fetch_timeseries()")
-            return resp
-        except TTransport.TException as e:
+
+            if len(resp.tsDataset) == 0:
+                raise RuntimeError(f'No data fetched with query filter: {query_filter}')
+
+            data = serde.convert_to_df(resp.columnNameList,
+                                       resp.columnTypeList,
+                                       resp.columnNameIndexMap,
+                                       resp.tsDataset)
+            if data.empty:
+                raise RuntimeError(
+                    f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
+            return resp.queryId, resp.hasMoreData, data
+        except Exception as e:
+            logger.warn(
+                f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
+
+    def fetch_window_batch(self,
+                           query_expressions: list,
+                           query_filter: str = None,
+                           fetch_size: int = DEFAULT_FETCH_SIZE,
+                           timeout: int = DEFAULT_TIMEOUT) -> [int, bool, List[pd.DataFrame]]:
+        pass
 
     def record_model_metrics(self,
                              model_id: str,
                              trial_id: str,
-                             metrics: list[str],
-                             values: list[float]) -> None:
+                             metrics: List[str],
+                             values: List) -> None:
         req = TRecordModelMetricsReq(
             modelId=model_id,
             trialId=trial_id,
@@ -192,6 +204,7 @@ class ConfigNodeClient(object):
         if self.__config_leader is not None:
             try:
                 self.__connect(self.__config_leader)
+                return
             except TException:
                 logger.warn("The current node {} may have been down, try next node", self.__config_leader)
                 self.__config_leader = None
@@ -206,6 +219,7 @@ class ConfigNodeClient(object):
             try_endpoint = self.__config_nodes[self.__cursor]
             try:
                 self.__connect(try_endpoint)
+                return
             except TException:
                 logger.warn("The current node {} may have been down, try next node", try_endpoint)
 
@@ -223,7 +237,7 @@ class ConfigNodeClient(object):
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
 
-        protocol = TCompactProtocol.TBinaryProtocol(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IConfigNodeRPCService.Client(protocol)
 
     def __wait_and_reconnect(self) -> None:
@@ -242,7 +256,7 @@ class ConfigNodeClient(object):
         pass
 
     def __update_config_node_leader(self, status: TSStatus) -> bool:
-        if status.code == REDIRECTION_RECOMMEND:
+        if status.code == TSStatusCode.REDIRECTION_RECOMMEND:
             if status.redirectNode is not None:
                 self.__config_leader = status.redirectNode
             else:
@@ -250,15 +264,38 @@ class ConfigNodeClient(object):
             return True
         return False
 
+    def update_model_state(self,
+                           model_id: str,
+                           training_state: TrainingState,
+                           best_trail_id: str = None) -> None:
+        req = TUpdateModelStateReq(
+            modelId=model_id,
+            state=training_state,
+            bestTrailId=best_trail_id
+        )
+        for i in range(0, self.__RETRY_NUM):
+            try:
+                status = self.__client.updateModelState(req)
+                if not self.__update_config_node_leader(status):
+                    verify_success(status, "An error occurs when calling update_model_state()")
+                    return
+            except TTransport.TException:
+                logger.warn("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
+                            self.__config_leader)
+                self.__config_leader = None
+            self.__wait_and_reconnect()
+
+        raise TException(self.__MSG_RECONNECTION_FAIL)
+
     def update_model_info(self,
                           model_id: str,
                           trial_id: str,
-                          model_info: dict) -> None:
+                          model_info: Dict) -> None:
         if model_info is None:
             model_info = {}
         req = TUpdateModelInfoReq(
             modelId=model_id,
-            trialId=trial_id,
+            trailId=trial_id,
             modelInfo={k: str(v) for k, v in model_info.items()},
         )
 

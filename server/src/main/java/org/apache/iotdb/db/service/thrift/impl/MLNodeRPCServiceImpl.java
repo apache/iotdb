@@ -60,13 +60,13 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
 
+  public static final String ML_METRICS_PATH_PREFIX = "root.__system.ml.exp";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(MLNodeRPCServiceImpl.class);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-
-  private static final String ML_METRICS_STORAGE_GROUP = "root.__system.ml.exp";
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -176,8 +176,7 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
   @Override
   public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
     try {
-      InsertRowStatement insertRowStatement =
-          StatementGenerator.createStatement(req, ML_METRICS_STORAGE_GROUP);
+      InsertRowStatement insertRowStatement = StatementGenerator.createStatement(req);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
