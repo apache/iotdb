@@ -95,7 +95,7 @@ public class TagSchemaRegionTest {
   public void testCreateTimeseries() {
     try {
       tagSchemaRegion =
-          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null, null);
+          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null);
       createTimeseries();
     } catch (Exception e) {
       e.printStackTrace();
@@ -107,7 +107,7 @@ public class TagSchemaRegionTest {
   public void testCreateAlignedTimeSeries() {
     try {
       tagSchemaRegion =
-          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null, null);
+          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null);
       createAlignedTimeseries();
     } catch (Exception e) {
       e.printStackTrace();
@@ -119,13 +119,13 @@ public class TagSchemaRegionTest {
   public void testRecover() {
     try {
       tagSchemaRegion =
-          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null, null);
+          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null);
       createAlignedTimeseries();
       createTimeseries();
 
       tagSchemaRegion.clear();
       tagSchemaRegion =
-          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null, null);
+          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null);
 
       getMeasurementPathsTest();
     } catch (Exception e) {
@@ -138,7 +138,7 @@ public class TagSchemaRegionTest {
   public void testGetMeasurementPaths() {
     try {
       tagSchemaRegion =
-          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null, null);
+          new TagSchemaRegion(new PartialPath(storageGroup), new SchemaRegionId(0), null);
       createAlignedTimeseries();
       createTimeseries();
       getMeasurementPathsTest();
