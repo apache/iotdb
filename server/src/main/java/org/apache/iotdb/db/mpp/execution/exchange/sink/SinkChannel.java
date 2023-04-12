@@ -138,7 +138,7 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.queryId,
             localFragmentInstanceId.fragmentId,
             localFragmentInstanceId.instanceId);
-    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.bufferRetainedSizeInBytes = 0;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
@@ -389,6 +389,7 @@ public class SinkChannel implements ISinkChannel {
             // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
             // at first this SinkChannel has not reserved memory.
             .left;
+    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
