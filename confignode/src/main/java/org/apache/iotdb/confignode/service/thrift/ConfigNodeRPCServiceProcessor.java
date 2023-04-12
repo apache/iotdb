@@ -921,8 +921,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
-    TConsensusGroupType type = req.isSetType() ? req.getType() : TConsensusGroupType.ConfigRegion;
-    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), type);
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase());
     return configManager.getSeriesSlotList(plan);
   }
 

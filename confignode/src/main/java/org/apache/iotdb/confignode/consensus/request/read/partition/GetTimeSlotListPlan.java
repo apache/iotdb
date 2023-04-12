@@ -36,6 +36,10 @@ public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
 
   private TSeriesPartitionSlot seriesSlotId;
 
+  private String device;
+
+  private long regionid;
+
   private long startTime;
 
   private long endTime;

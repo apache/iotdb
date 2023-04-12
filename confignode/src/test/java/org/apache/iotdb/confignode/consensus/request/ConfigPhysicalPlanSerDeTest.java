@@ -1199,7 +1199,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetSeriesSlotListPlanTest() throws IOException {
     GetSeriesSlotListPlan getSeriesSlotListPlan0 =
-        new GetSeriesSlotListPlan("root.test", SchemaRegion);
+        new GetSeriesSlotListPlan("root.test");
     GetSeriesSlotListPlan getSeriesSlotListPlan1 =
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
