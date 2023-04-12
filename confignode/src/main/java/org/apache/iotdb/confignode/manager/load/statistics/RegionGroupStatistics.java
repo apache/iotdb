@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.load.statistics;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,8 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupStatistics {
 
-  private RegionGroupStatus regionGroupStatus;
+  // The DataNodeId where the leader of current RegionGroup resides
+  private volatile int leaderId = -1;
+  // Indicate the routing priority of read/write requests for current RegionGroup.
+  // The replica with higher sorting order have higher priority.
+  // TODO: Might be split into readRouteMap and writeRouteMap in the future
+  private TRegionReplicaSet regionPriority;
 
+  private volatile RegionGroupStatus regionGroupStatus;
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
 
   public RegionGroupStatistics() {

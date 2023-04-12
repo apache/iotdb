@@ -21,39 +21,21 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.statistics.StatisticsService;
-import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
-import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
-import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.load.statistics.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.load.statistics.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -62,13 +44,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -87,15 +64,10 @@ public class LoadManager {
   private final RouteBalancer routeBalancer;
 
   /** Cluster load services */
+  private final LoadCache loadCache;
+
   private final HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
-
-
-  /** Load statistics executor service */
-  private final Object statisticsScheduleMonitor = new Object();
-  private Future<?> currentLoadStatisticsFuture;
-  private final ScheduledExecutorService loadStatisticsExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
 
   private final EventBus eventBus =
       new AsyncEventBus("LoadManager-EventBus", Executors.newFixedThreadPool(5));
@@ -107,8 +79,9 @@ public class LoadManager {
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
 
-    this.heartbeatService = new HeartbeatService(configManager);
-    this.statisticsService = new StatisticsService(configManager);
+    this.loadCache = new LoadCache();
+    this.heartbeatService = new HeartbeatService(configManager, loadCache);
+    this.statisticsService = new StatisticsService(configManager, loadCache, eventBus);
 
     eventBus.register(configManager.getClusterSchemaManager());
     eventBus.register(configManager.getSyncManager());
@@ -124,8 +97,8 @@ public class LoadManager {
    * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
-    Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-    throws NotEnoughDataNodeException, DatabaseNotExistsException {
+      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
@@ -136,8 +109,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-    Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
-    throws NoAvailableRegionGroupException {
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
 
@@ -148,8 +121,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
-    throws NoAvailableRegionGroupException {
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
+      throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
@@ -189,182 +162,20 @@ public class LoadManager {
     return routeBalancer.getLatestRegionPriorityMap();
   }
 
-  /** Start the load statistics service */
-  public void startLoadStatisticsService() {
-    synchronized (heartbeatScheduleMonitor) {
-      if (currentLoadStatisticsFuture == null) {
-        currentLoadStatisticsFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                loadStatisticsExecutor,
-                this::updateLoadStatistics,
-                0,
-                HEARTBEAT_INTERVAL,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("LoadStatistics service is started successfully.");
-      }
-    }
-  }
-
-  /** Stop the load statistics service */
-  public void stopLoadStatisticsService() {
-    synchronized (heartbeatScheduleMonitor) {
-      if (currentLoadStatisticsFuture != null) {
-        currentLoadStatisticsFuture.cancel(false);
-        currentLoadStatisticsFuture = null;
-        LOGGER.info("LoadStatistics service is stopped successfully.");
-      }
-    }
-  }
-
-  private void updateLoadStatistics() {
-    // Broadcast the RegionRouteMap if some LoadStatistics has changed
-    boolean isNeedBroadcast = false;
-
-    // Update NodeStatistics:
-    // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one
-    // means the previous NodeStatistics
-    Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
-        new ConcurrentHashMap<>();
-    getNodeManager()
-        .getNodeCacheMap()
-        .forEach(
-            (nodeId, nodeCache) -> {
-              NodeStatistics preNodeStatistics = nodeCache.getPreviousStatistics().deepCopy();
-              if (nodeCache.periodicUpdate()) {
-                // Update and record the changed NodeStatistics
-                differentNodeStatisticsMap.put(
-                    nodeId, new Pair<>(nodeCache.getStatistics(), preNodeStatistics));
-              }
-            });
-    if (!differentNodeStatisticsMap.isEmpty()) {
-      isNeedBroadcast = true;
-      recordNodeStatistics(differentNodeStatisticsMap);
-      eventBus.post(new NodeStatisticsEvent(differentNodeStatisticsMap));
-    }
-
-    // Update RegionGroupStatistics
-    Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap =
-        new ConcurrentHashMap<>();
-    getPartitionManager()
-        .getRegionGroupCacheMap()
-        .forEach(
-            (regionGroupId, regionGroupCache) -> {
-              if (regionGroupCache.periodicUpdate()) {
-                // Update and record the changed RegionGroupStatistics
-                differentRegionGroupStatisticsMap.put(
-                    regionGroupId, regionGroupCache.getStatistics());
-              }
-            });
-    if (!differentRegionGroupStatisticsMap.isEmpty()) {
-      isNeedBroadcast = true;
-      recordRegionGroupStatistics(differentRegionGroupStatisticsMap);
-    }
-
-    // Update RegionRouteMap
-    if (routeBalancer.updateRegionRouteMap()) {
-      isNeedBroadcast = true;
-      recordRegionRouteMap(routeBalancer.getRegionRouteMap());
-    }
-
-    if (isNeedBroadcast) {
-      broadcastLatestRegionRouteMap();
-    }
-  }
-
-  private void recordNodeStatistics(
-      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
-        differentNodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue().left);
-    }
-  }
-
-  private void recordRegionGroupStatistics(
-      Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
-    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-        differentRegionGroupStatisticsMap.entrySet()) {
-      LOGGER.info("[UpdateLoadStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
-      LOGGER.info("[UpdateLoadStatistics]\t {}", regionGroupStatisticsEntry.getValue());
-      for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
-          regionGroupStatisticsEntry.getValue().getRegionStatisticsMap().entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t dataNodeId{}={}",
-            regionStatisticsEntry.getKey(),
-            regionStatisticsEntry.getValue());
-      }
-    }
-  }
-
-  private void recordRegionRouteMap(RegionRouteMap regionRouteMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
-    for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
-        regionRouteMap.getRegionLeaderMap().entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionLeaderEntry.getKey(),
-          regionLeaderEntry.getValue());
-    }
-
-    LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
-    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
-        regionRouteMap.getRegionPriorityMap().entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionPriorityEntry.getKey(),
-          regionPriorityEntry.getValue().getDataNodeLocations().stream()
-              .map(TDataNodeLocation::getDataNodeId)
-              .collect(Collectors.toList()));
-    }
-  }
-
-  public void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = getLatestRegionRouteMap();
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
-    getNodeManager()
-        .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Removing, NodeStatus.ReadOnly)
-        .forEach(
-            onlineDataNode ->
-                dataNodeLocationMap.put(
-                    onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
-
-    LOGGER.info("[UpdateLoadStatistics] Begin to broadcast RegionRouteMap:");
-    long broadcastTime = System.currentTimeMillis();
-
-    AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
-            dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    LOGGER.info("[UpdateLoadStatistics] Broadcast the latest RegionRouteMap finished.");
-  }
-
-  /** Initialize all kinds of the HeartbeatCache when the ConfigNode-Leader is switched */
-  public void initHeartbeatCache() {
-    getNodeManager().initNodeHeartbeatCache();
-    getPartitionManager().initRegionGroupHeartbeatCache();
+  public void startLoadServices() {
+    loadCache.initHeartbeatCache(configManager);
     routeBalancer.initRegionRouteMap();
+    heartbeatService.startHeartbeatService();
+    statisticsService.startLoadStatisticsService();
+  }
+
+  public void stopLoadServices() {
+    heartbeatService.stopHeartbeatService();
+    statisticsService.stopLoadStatisticsService();
+    loadCache.clearHeartbeatCache();
   }
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
-  }
-
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
-  }
-
-  private PartitionManager getPartitionManager() {
-    return configManager.getPartitionManager();
-  }
-
-  public EventBus getEventBus() {
-    return eventBus;
   }
 }

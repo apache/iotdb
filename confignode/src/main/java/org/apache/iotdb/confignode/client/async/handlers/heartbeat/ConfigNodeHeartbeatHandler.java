@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatSampleCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.LoadCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -27,9 +26,9 @@ import org.apache.thrift.async.AsyncMethodCallback;
 public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
   private final int nodeId;
-  private final HeartbeatSampleCache cache;
+  private final LoadCache cache;
 
-  public ConfigNodeHeartbeatHandler(int nodeId, HeartbeatSampleCache cache) {
+  public ConfigNodeHeartbeatHandler(int nodeId, LoadCache cache) {
     this.nodeId = nodeId;
     this.cache = cache;
   }

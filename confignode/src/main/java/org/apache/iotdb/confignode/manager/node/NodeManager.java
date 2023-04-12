@@ -666,7 +666,6 @@ public class NodeManager {
     }
   }
 
-
   public Map<Integer, BaseNodeCache> getNodeCacheMap() {
     return nodeCacheMap;
   }
@@ -801,36 +800,6 @@ public class NodeManager {
     LOGGER.info(
         "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
     return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
-  }
-
-  /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched */
-  public void initNodeHeartbeatCache() {
-    final int CURRENT_NODE_ID = ConfigNodeHeartbeatCache.CURRENT_NODE_ID;
-    nodeCacheMap.clear();
-
-    // Init ConfigNodeHeartbeatCache
-    getRegisteredConfigNodes()
-        .forEach(
-            configNodeLocation -> {
-              if (configNodeLocation.getConfigNodeId() != CURRENT_NODE_ID) {
-                nodeCacheMap.put(
-                    configNodeLocation.getConfigNodeId(),
-                    new ConfigNodeHeartbeatCache(configNodeLocation.getConfigNodeId()));
-              }
-            });
-    // Force set itself and never update
-    nodeCacheMap.put(
-        ConfigNodeHeartbeatCache.CURRENT_NODE_ID,
-        new ConfigNodeHeartbeatCache(
-            CURRENT_NODE_ID, ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS));
-
-    // Init DataNodeHeartbeatCache
-    getRegisteredDataNodes()
-        .forEach(
-            dataNodeConfiguration ->
-                nodeCacheMap.put(
-                    dataNodeConfiguration.getLocation().getDataNodeId(),
-                    new DataNodeHeartbeatCache()));
   }
 
   private ConsensusManager getConsensusManager() {

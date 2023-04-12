@@ -91,6 +91,12 @@ public class RouteBalancer {
   private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
       ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
+  // Key: RegionGroupId
+  // Value: Pair<Timestamp, LeaderDataNodeId>, where
+  // the left value stands for sampling timestamp
+  // and the right value stands for the index of DataNode that leader resides.
+  private final Map<TConsensusGroupId, Pair<Long, Integer>> leaderCache;
+
   private final IManager configManager;
 
   /** RegionRouteMap */
@@ -111,6 +117,7 @@ public class RouteBalancer {
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
     this.regionRouteMap = new RegionRouteMap();
+    this.leaderCache = new ConcurrentHashMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
       case ILeaderBalancer.GREEDY_POLICY:
@@ -130,6 +137,27 @@ public class RouteBalancer {
       default:
         this.priorityRouter = new LeaderPriorityBalancer();
         break;
+    }
+  }
+
+  /**
+   * Cache the latest leader of a RegionGroup.
+   *
+   * @param regionGroupId the id of the RegionGroup
+   * @param leaderSample the latest leader of a RegionGroup
+   */
+  public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
+    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+        && IS_DATA_REGION_IOT_CONSENSUS) {
+      // The leadership of IoTConsensus protocol is decided by ConfigNode-leader
+      return;
+    }
+
+    leaderCache.putIfAbsent(regionGroupId, leaderSample);
+    synchronized (leaderCache.get(regionGroupId)) {
+      if (leaderCache.get(regionGroupId).getLeft() < leaderSample.getLeft()) {
+        leaderCache.replace(regionGroupId, leaderSample);
+      }
     }
   }
 

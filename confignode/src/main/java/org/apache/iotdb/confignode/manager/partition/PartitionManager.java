@@ -68,7 +68,6 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -1147,17 +1146,6 @@ public class PartitionManager {
     return regionGroupCacheMap.containsKey(consensusGroupId)
         ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionGroupStatus()
         : RegionGroupStatus.Disabled;
-  }
-
-  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched. */
-  public void initRegionGroupHeartbeatCache() {
-    regionGroupCacheMap.clear();
-    getAllReplicaSets()
-        .forEach(
-            regionReplicaSet ->
-                regionGroupCacheMap.put(
-                    regionReplicaSet.getRegionId(),
-                    new RegionGroupCache(regionReplicaSet.getRegionId())));
   }
 
   public void getSchemaRegionIds(

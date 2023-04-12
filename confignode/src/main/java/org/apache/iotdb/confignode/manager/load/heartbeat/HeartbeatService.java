@@ -30,10 +30,11 @@ import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeart
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.LoadCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.node.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,23 +50,24 @@ public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);
 
-  private static final long HEARTBEAT_INTERVAL = ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
+  private static final long HEARTBEAT_INTERVAL =
+      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   private final IManager configManager;
+  private final LoadCache loadCache;
 
   /** Heartbeat executor service */
   // Monitor for leadership change
   private final Object heartbeatScheduleMonitor = new Object();
+
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
-    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
 
-  private final HeartbeatSampleCache heartbeatSampleCache;
-
-  public HeartbeatService(IManager configManager) {
+  public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
-    this.heartbeatSampleCache = new HeartbeatSampleCache();
+    this.loadCache = loadCache;
   }
 
   /** Start the heartbeat service */
@@ -73,12 +75,12 @@ public class HeartbeatService {
     synchronized (heartbeatScheduleMonitor) {
       if (currentHeartbeatFuture == null) {
         currentHeartbeatFuture =
-          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-            heartBeatExecutor,
-            this::heartbeatLoopBody,
-            0,
-            HEARTBEAT_INTERVAL,
-            TimeUnit.MILLISECONDS);
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                heartBeatExecutor,
+                this::heartbeatLoopBody,
+                0,
+                HEARTBEAT_INTERVAL,
+                TimeUnit.MILLISECONDS);
         LOGGER.info("Heartbeat service is started successfully.");
       }
     }
@@ -90,10 +92,27 @@ public class HeartbeatService {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
-        heartbeatSampleCache.clear();
         LOGGER.info("Heartbeat service is stopped successfully.");
       }
     }
+  }
+
+  /** loop body of the heartbeat thread */
+  private void heartbeatLoopBody() {
+    // The consensusManager of configManager may not be fully initialized at this time
+    Optional.ofNullable(getConsensusManager())
+        .ifPresent(
+            consensusManager -> {
+              if (getConsensusManager().isLeader()) {
+                // Generate HeartbeatReq
+                THeartbeatReq heartbeatReq = genHeartbeatReq();
+                // Send heartbeat requests to all the registered ConfigNodes
+                pingRegisteredConfigNodes(
+                    heartbeatReq, getNodeManager().getRegisteredConfigNodes());
+                // Send heartbeat requests to all the registered DataNodes
+                pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes());
+              }
+            });
   }
 
   private THeartbeatReq genHeartbeatReq() {
@@ -115,30 +134,13 @@ public class HeartbeatService {
     return heartbeatReq;
   }
 
-  /** loop body of the heartbeat thread */
-  private void heartbeatLoopBody() {
-    // The consensusManager of configManager may not be fully initialized at this time
-    Optional.ofNullable(getConsensusManager())
-      .ifPresent(
-        consensusManager -> {
-          if (getConsensusManager().isLeader()) {
-            // Generate HeartbeatReq
-            THeartbeatReq heartbeatReq = genHeartbeatReq();
-            // Send heartbeat requests to all the registered ConfigNodes
-            pingRegisteredConfigNodes(heartbeatReq, getNodeManager().getRegisteredConfigNodes());
-            // Send heartbeat requests to all the registered DataNodes
-            pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes());
-          }
-        });
-  }
-
   /**
    * Send heartbeat requests to all the Registered ConfigNodes
    *
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
   private void pingRegisteredConfigNodes(
-    THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
+      THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
@@ -147,12 +149,12 @@ public class HeartbeatService {
       }
 
       ConfigNodeHeartbeatHandler handler =
-        new ConfigNodeHeartbeatHandler(configNodeLocation.getConfigNodeId(), heartbeatSampleCache);
+          new ConfigNodeHeartbeatHandler(configNodeLocation.getConfigNodeId(), loadCache);
       AsyncConfigNodeHeartbeatClientPool.getInstance()
-        .getConfigNodeHeartBeat(
-          configNodeLocation.getInternalEndPoint(),
-          heartbeatReq.getHeartbeatTimestamp(),
-          handler);
+          .getConfigNodeHeartBeat(
+              configNodeLocation.getInternalEndPoint(),
+              heartbeatReq.getHeartbeatTimestamp(),
+              handler);
     }
   }
 
@@ -162,20 +164,20 @@ public class HeartbeatService {
    * @param registeredDataNodes DataNodes that registered in cluster
    */
   private void pingRegisteredDataNodes(
-    THeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
+      THeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
-        new DataNodeHeartbeatHandler(
-          dataNodeInfo.getLocation().getDataNodeId(),
-          heartbeatSampleCache,
-          configManager.getClusterQuotaManager().getDeviceNum(),
-          configManager.getClusterQuotaManager().getTimeSeriesNum(),
-          configManager.getClusterQuotaManager().getRegionDisk());
+          new DataNodeHeartbeatHandler(
+              dataNodeInfo.getLocation().getDataNodeId(),
+              loadCache,
+              configManager.getClusterQuotaManager().getDeviceNum(),
+              configManager.getClusterQuotaManager().getTimeSeriesNum(),
+              configManager.getClusterQuotaManager().getRegionDisk());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       AsyncDataNodeHeartbeatClientPool.getInstance()
-        .getDataNodeHeartBeat(
-          dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
+          .getDataNodeHeartBeat(
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 
@@ -186,5 +188,4 @@ public class HeartbeatService {
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
   }
-
 }

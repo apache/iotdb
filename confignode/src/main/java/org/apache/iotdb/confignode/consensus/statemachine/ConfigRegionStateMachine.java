@@ -204,13 +204,11 @@ public class ConfigRegionStateMachine
           newLeaderId,
           currentNodeTEndPoint);
 
-      // Always initiate all kinds of HeartbeatCache first
-      configManager.getLoadManager().initHeartbeatCache();
+      // Always start load services first
+      configManager.getLoadManager().startLoadServices();
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().startHeartbeatService();
-      configManager.getLoadManager().startLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
       configManager.getPartitionManager().startRegionCleaner();
@@ -229,9 +227,8 @@ public class ConfigRegionStateMachine
           newLeaderId);
 
       // Stop leader scheduling services
+      configManager.getLoadManager().stopLoadServices();
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stopHeartbeatService();
-      configManager.getLoadManager().stopLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getPartitionManager().stopRegionCleaner();
