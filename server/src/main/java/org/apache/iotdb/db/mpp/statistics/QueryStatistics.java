@@ -401,6 +401,26 @@ public class QueryStatistics {
           .append(operationStatistics.get(INIT_FIRST_PAGE))
           .append(System.lineSeparator());
       builder
+          .append("|   |       |___mergeReader#addReader ")
+          .append(operationStatistics.get(MERGE_READER_ADD_READER))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___mergeReader#nextTimeValuePair ")
+          .append(operationStatistics.get(MERGE_READER_NEXT))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___mergeReader#updateHeap ")
+          .append(operationStatistics.get(MERGE_READER_UPDATE_HEAP))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___mergeReader#fillNullValue ")
+          .append(operationStatistics.get(MERGE_READER_FILL_NULL_VALUE))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___mergeReader#buildRes ")
+          .append(operationStatistics.get(MERGE_READER_BUILD_RES))
+          .append(System.lineSeparator());
+      builder
           .append("|   |___SendTsBlock ")
           .append(operationStatistics.get(SEND_TSBLOCK))
           .append(System.lineSeparator());
