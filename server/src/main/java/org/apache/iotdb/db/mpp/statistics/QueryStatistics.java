@@ -160,6 +160,18 @@ public class QueryStatistics {
   public static final String TIME_SERIES_METADATA_CACHE_MISS = "TimeSeriesMetadataCacheMiss";
   public static final String CHUNK_CACHE_MISS = "ChunkCacheMiss";
 
+  public static final String HAS_NEXT_FILE = "hasNextFile";
+  public static final String HAS_NEXT_CHUNK = "hasNextChunk";
+  public static final String HAS_NEXT_PAGE = "hasNextPage";
+  public static final String HAS_NEXT_OVERLAPPED_PAGE = "hasNextOverlappedPage";
+
+  public static final String FILTER_FIRST_TIMESERIES_METADATA = "filterFirstTimeSeriesMetadata";
+  public static final String FILTER_FIRST_CHUNK_METADATA = "filterFirstChunkMetadata";
+
+  public static final String FIND_END_TIME = "findEndTime";
+  public static final String PICK_FIRST_TIMESERIES_METADATA = "pickFirstTimeSeriesMetadata";
+  public static final String INIT_FIRST_PAGE = "initFirstPage";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");
@@ -345,6 +357,42 @@ public class QueryStatistics {
       builder
           .append("|   |       |___BuildAggRes ")
           .append(operationStatistics.get(BUILD_AGG_RES))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___hasNextFile ")
+          .append(operationStatistics.get(HAS_NEXT_FILE))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___hasNextChunk ")
+          .append(operationStatistics.get(HAS_NEXT_CHUNK))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___hasNextPage ")
+          .append(operationStatistics.get(HAS_NEXT_PAGE))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___hasNextOverlappedPage ")
+          .append(operationStatistics.get(HAS_NEXT_OVERLAPPED_PAGE))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___filterFirstTimeSeriesMetadata ")
+          .append(operationStatistics.get(FILTER_FIRST_TIMESERIES_METADATA))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___filterFirstChunkMetadata ")
+          .append(operationStatistics.get(FILTER_FIRST_CHUNK_METADATA))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___findEndTime ")
+          .append(operationStatistics.get(FIND_END_TIME))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___pickFirstTimeSeriesMetadata ")
+          .append(operationStatistics.get(PICK_FIRST_TIMESERIES_METADATA))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___initFirstPage ")
+          .append(operationStatistics.get(INIT_FIRST_PAGE))
           .append(System.lineSeparator());
       builder
           .append("|   |___SendTsBlock ")
