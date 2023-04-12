@@ -769,6 +769,11 @@ service IDataNodeRPCService {
    * Set space quota
    **/
   common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
+
+  /**
+   * Set throttle quota
+   **/
+  common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
 }
 
 service MPPDataExchangeService {
@@ -804,4 +809,3 @@ service IMLNodeInternalRPCService{
   */
   common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
 }
-

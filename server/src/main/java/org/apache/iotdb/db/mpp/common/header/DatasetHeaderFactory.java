@@ -173,6 +173,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowThrottleQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showThrottleQuotaColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowModelsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
   }

@@ -28,7 +28,10 @@ import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
+import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -85,6 +88,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
@@ -1365,5 +1369,25 @@ public class ConfigPhysicalPlanSerDeTest {
         (SetSpaceQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getPrefixPathList(), deserializedPlan.getPrefixPathList());
     Assert.assertEquals(plan.getSpaceLimit(), deserializedPlan.getSpaceLimit());
+  }
+
+  @Test
+  public void setThrottleQuotaPlanTest() throws IOException {
+    TTimedQuota timedQuota1 = new TTimedQuota(3600, 5);
+    TTimedQuota timedQuota2 = new TTimedQuota(3600, 5);
+    Map<ThrottleType, TTimedQuota> throttleLimit = new HashMap<>();
+    throttleLimit.put(ThrottleType.READ_NUMBER, timedQuota1);
+    throttleLimit.put(ThrottleType.READ_SIZE, timedQuota2);
+    SetThrottleQuotaPlan plan = new SetThrottleQuotaPlan();
+    TThrottleQuota throttleQuota = new TThrottleQuota();
+    throttleQuota.setThrottleLimit(throttleLimit);
+    throttleQuota.setMemLimit(1000000);
+    throttleQuota.setCpuLimit(100);
+    plan.setThrottleQuota(throttleQuota);
+    plan.setUserName("tempuser");
+    SetThrottleQuotaPlan deserializedPlan =
+        (SetThrottleQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan.getUserName(), deserializedPlan.getUserName());
+    Assert.assertEquals(plan.getThrottleQuota(), deserializedPlan.getThrottleQuota());
   }
 }

@@ -21,14 +21,19 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -162,6 +167,60 @@ public class ClusterQuotaManager {
             new ArrayList<>(quotaInfo.getSpaceQuotaLimit().keySet()), dataRegionIdMap);
     dataRegionIdMap.values().forEach(dataRegionIds::addAll);
     return dataRegionIds;
+  }
+
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
+    ConsensusWriteResponse response =
+        configManager
+            .getConsensusManager()
+            .write(new SetThrottleQuotaPlan(req.getUserName(), req.getThrottleQuota()));
+    if (response.getStatus() != null) {
+      if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+            configManager.getNodeManager().getRegisteredDataNodeLocations();
+        AsyncClientHandler<TSetThrottleQuotaReq, TSStatus> clientHandler =
+            new AsyncClientHandler<>(
+                DataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
+        AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+      }
+      return response.getStatus();
+    } else {
+      LOGGER.warn(
+          "Unexpected error happened while setting throttle quota on user: {}: ",
+          req.getUserName(),
+          response.getException());
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(response.getErrorMessage());
+      return res;
+    }
+  }
+
+  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) {
+    TThrottleQuotaResp throttleQuotaResp = new TThrottleQuotaResp();
+    if (req.getUserName() == null) {
+      throttleQuotaResp.setThrottleQuota(quotaInfo.getThrottleQuotaLimit());
+    } else {
+      Map<String, TThrottleQuota> throttleLimit = new HashMap<>();
+      throttleLimit.put(
+          req.getUserName(),
+          quotaInfo.getThrottleQuotaLimit().get(req.getUserName()) == null
+              ? new TThrottleQuota()
+              : quotaInfo.getThrottleQuotaLimit().get(req.getUserName()));
+      throttleQuotaResp.setThrottleQuota(throttleLimit);
+    }
+    throttleQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return throttleQuotaResp;
+  }
+
+  public TThrottleQuotaResp getThrottleQuota() {
+    TThrottleQuotaResp throttleQuotaResp = new TThrottleQuotaResp();
+    if (!quotaInfo.getThrottleQuotaLimit().isEmpty()) {
+      throttleQuotaResp.setThrottleQuota(quotaInfo.getThrottleQuotaLimit());
+    }
+    throttleQuotaResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return throttleQuotaResp;
   }
 
   public Map<String, TSpaceQuota> getSpaceQuotaUsage() {

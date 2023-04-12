@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -116,16 +115,9 @@ public class ConcatPathRewriter {
     // resultColumns after concat
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-      boolean needAliasCheck = resultColumn.hasAlias() && !isGroupByLevel;
       List<Expression> resultExpressions =
           ExpressionAnalyzer.concatExpressionWithSuffixPaths(
               resultColumn.getExpression(), prefixPaths, patternTree);
-      if (needAliasCheck && resultExpressions.size() > 1) {
-        throw new SemanticException(
-            String.format(
-                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-      }
-
       for (Expression resultExpression : resultExpressions) {
         resultColumns.add(
             new ResultColumn(

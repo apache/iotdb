@@ -172,19 +172,20 @@ public class MemoryPool {
    */
   public void deRegisterFragmentInstanceToQueryMemoryMap(
       String queryId, String fragmentInstanceId) {
-    Map<String, Long> planNodeRelatedMemory =
-        queryMemoryReservations.get(queryId).get(fragmentInstanceId);
-    for (Long memoryReserved : planNodeRelatedMemory.values()) {
-      if (memoryReserved != 0) {
-        throw new MemoryLeakException(
-            "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+    Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
+    if (queryRelatedMemory != null) {
+      Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      for (Long memoryReserved : fragmentRelatedMemory.values()) {
+        if (memoryReserved != 0) {
+          throw new MemoryLeakException(
+              "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+        }
       }
-    }
-    synchronized (queryMemoryReservations) {
-      Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
-      queryRelatedMemory.remove(fragmentInstanceId);
-      if (queryRelatedMemory.isEmpty()) {
-        queryMemoryReservations.remove(queryId);
+      synchronized (queryMemoryReservations) {
+        queryRelatedMemory.remove(fragmentInstanceId);
+        if (queryRelatedMemory.isEmpty()) {
+          queryMemoryReservations.remove(queryId);
+        }
       }
     }
   }

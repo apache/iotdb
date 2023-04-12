@@ -698,6 +698,10 @@ TEMPLATES
     : T E M P L A T E S
     ;
 
+THROTTLE
+    : T H R O T T L E
+    ;
+
 TIME
     : T I M E
     ;

@@ -64,7 +64,8 @@ session = Session(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 
@@ -76,7 +77,8 @@ session = Session.init_from_node_urls(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 

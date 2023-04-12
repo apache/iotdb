@@ -190,6 +190,7 @@ keyWords
     | TASK
     | TEMPLATE
     | THEN
+    | THROTTLE
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID

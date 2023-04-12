@@ -20,7 +20,11 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
+import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
+import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 
 import org.apache.commons.io.FileUtils;
@@ -33,7 +37,9 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -57,7 +63,7 @@ public class QuotaInfoTest {
     }
   }
 
-  private void prepareQuotaInfo() {
+  private void prepareSpaceQuotaInfo() {
     List<String> prefixPathList = new ArrayList<>();
     prefixPathList.add("root.sg");
     prefixPathList.add("root.ln");
@@ -69,14 +75,29 @@ public class QuotaInfoTest {
     quotaInfo.setSpaceQuota(setSpaceQuotaPlan);
   }
 
+  private void prepareThrottleQuotaInfo() {
+    String userName = "tempUser";
+    Map<ThrottleType, TTimedQuota> quotaLimit = new HashMap<>();
+    quotaLimit.put(ThrottleType.READ_NUMBER, new TTimedQuota(1000, 1000));
+    quotaLimit.put(ThrottleType.READ_SIZE, new TTimedQuota(2000, 2000));
+    TThrottleQuota throttleQuota = new TThrottleQuota();
+    throttleQuota.setThrottleLimit(quotaLimit);
+    throttleQuota.setMemLimit(1000);
+    throttleQuota.setCpuLimit(3);
+    SetThrottleQuotaPlan setThrottleQuotaPlan = new SetThrottleQuotaPlan(userName, throttleQuota);
+    quotaInfo.setThrottleQuota(setThrottleQuotaPlan);
+  }
+
   @Test
   public void testSnapshot() throws TException, IOException {
-    prepareQuotaInfo();
+    prepareSpaceQuotaInfo();
+    prepareThrottleQuotaInfo();
 
     quotaInfo.processTakeSnapshot(snapshotDir);
     QuotaInfo quotaInfo2 = new QuotaInfo();
     quotaInfo2.processLoadSnapshot(snapshotDir);
 
     Assert.assertEquals(quotaInfo.getSpaceQuotaLimit(), quotaInfo2.getSpaceQuotaLimit());
+    Assert.assertEquals(quotaInfo.getThrottleQuotaLimit(), quotaInfo2.getThrottleQuotaLimit());
   }
 }
