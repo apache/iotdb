@@ -928,7 +928,7 @@ public class AnalyzeTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail(sql + ", " + e.getMessage());
-          }
+    }
   }
 
   @Test

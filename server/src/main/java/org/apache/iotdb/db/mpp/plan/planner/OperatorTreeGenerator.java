@@ -2214,7 +2214,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     checkArgument(
         sortItemList.isEmpty()
-            || (sortItemList.size() == 1 && Objects.equals(sortItemList.get(0).getSortKey(), SortKey.TIMESERIES)),
+            || (sortItemList.size() == 1
+                && Objects.equals(sortItemList.get(0).getSortKey(), SortKey.TIMESERIES)),
         "Last query only support order by timeseries asc/desc");
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
