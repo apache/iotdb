@@ -89,6 +89,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -539,6 +540,17 @@ public class LogicalPlanBuilder {
             .collect(Collectors.toList());
 
     List<SortItem> sortItemList = queryStatement.getSortItemList();
+
+    if (sortItemList.isEmpty()) {
+      sortItemList = new ArrayList<>();
+    }
+    if (!queryStatement.isOrderByDevice()) {
+      sortItemList.add(new SortItem(SortKey.DEVICE, Ordering.ASC));
+    }
+    if (!queryStatement.isOrderByTime()) {
+      sortItemList.add(new SortItem(SortKey.TIME, Ordering.ASC));
+    }
+
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
     // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
