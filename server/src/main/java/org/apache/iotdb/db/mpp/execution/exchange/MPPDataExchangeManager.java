@@ -451,8 +451,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
 
     private void closeShuffleSinkHandle() {
-      ISinkHandle sinkHandle = shuffleSinkHandles.get(shuffleSinkHandleId);
+      ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
       if (sinkHandle != null) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Close ShuffleSinkHandle: {}", shuffleSinkHandleId);
+        }
         sinkHandle.close();
       }
     }

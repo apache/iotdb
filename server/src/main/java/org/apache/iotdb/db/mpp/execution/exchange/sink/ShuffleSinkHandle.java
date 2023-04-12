@@ -126,14 +126,22 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void setNoMoreTsBlocks() {
-    for (int i = 0; i < downStreamChannelList.size(); i++) {
-      if (!hasSetNoMoreTsBlocks[i]) {
-        downStreamChannelList.get(i).setNoMoreTsBlocks();
-        hasSetNoMoreTsBlocks[i] = true;
-      }
+  public void setNoMoreTsBlocks() {
+    if (closed || aborted) {
+      return;
     }
-    sinkListener.onEndOfBlocks(this);
+    try {
+      lock.lock();
+      for (int i = 0; i < downStreamChannelList.size(); i++) {
+        if (!hasSetNoMoreTsBlocks[i]) {
+          downStreamChannelList.get(i).setNoMoreTsBlocks();
+          hasSetNoMoreTsBlocks[i] = true;
+        }
+      }
+      sinkListener.onEndOfBlocks(this);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
@@ -226,7 +234,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (meetError) {
       LOGGER.warn("Error occurred when try to close channel.", firstException);
     }
-
     sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
   }
