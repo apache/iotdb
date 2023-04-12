@@ -1439,6 +1439,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 #### SELECT-INTO配置
 
+* into\_operation\_buffer\_size\_in\_byte
+
+|     名字     | into\_operation\_buffer\_size\_in\_byte                              |
+| :----------: | :-------------------------------------------------------------------- |
+|     描述     | 执行 select-into 语句时，待写入数据占用的最大内存（单位：Byte） |
+|     类型     | int64                                                        |
+|    默认值    | 100MB                                                        |
+| 改后生效方式 | 热加载                                                     |
+
 * select\_into\_insert\_tablet\_plan\_row\_limit
 
 |     名字     | select\_into\_insert\_tablet\_plan\_row\_limit                              |
