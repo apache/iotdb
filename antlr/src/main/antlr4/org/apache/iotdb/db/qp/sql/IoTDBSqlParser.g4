@@ -1001,12 +1001,17 @@ intoPath
 
 nodeName
     : wildcard
-    | wildcard? identifier wildcard?
-    | identifier
+    | wildcard? nodeNameSlice wildcard?
+    | nodeNameWithoutWildcard
     ;
 
 nodeNameWithoutWildcard
     : identifier
+    ;
+
+nodeNameSlice
+    : identifier
+    | INTEGER_LITERAL
     ;
 
 nodeNameInIntoPath
