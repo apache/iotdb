@@ -200,6 +200,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
   }
 
+  // Add synchronized on this method may lead to Dead Lock
+  // It is possible that when LocalSinkChannel revokes this close method and try to get Lock
+  // ShuffleSinkHandle while synchronized methods of ShuffleSinkHandle
+  // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
   public void close() {
     if (closed || aborted) {
