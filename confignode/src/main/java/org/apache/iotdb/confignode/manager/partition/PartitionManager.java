@@ -68,7 +68,7 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -128,15 +128,11 @@ public class PartitionManager {
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
 
-  // Map<RegionId, RegionGroupCache>
-  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
-
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionMaintainer =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Maintainer");
-    this.regionGroupCacheMap = new ConcurrentHashMap<>();
     setSeriesPartitionExecutor();
   }
 
@@ -1068,10 +1064,6 @@ public class PartitionManager {
         LOGGER.info("RegionCleaner is stopped successfully.");
       }
     }
-  }
-
-  public Map<TConsensusGroupId, RegionGroupCache> getRegionGroupCacheMap() {
-    return regionGroupCacheMap;
   }
 
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {

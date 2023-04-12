@@ -21,11 +21,11 @@ package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatSampleCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -35,27 +35,23 @@ import java.util.Map;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
-  // Update DataNodeHeartbeatCache when success
-  private final TDataNodeLocation dataNodeLocation;
-  private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
-  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
-  private final RouteBalancer routeBalancer;
+  private final int nodeId;
+
+  private final HeartbeatSampleCache heartbeatSampleCache;
+
   private final Map<Integer, Long> deviceNum;
   private final Map<Integer, Long> timeSeriesNum;
   private final Map<Integer, Long> regionDisk;
 
   public DataNodeHeartbeatHandler(
-      TDataNodeLocation dataNodeLocation,
-      DataNodeHeartbeatCache dataNodeHeartbeatCache,
-      Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap,
-      RouteBalancer routeBalancer,
+      int nodeId,
+      HeartbeatSampleCache heartbeatSampleCache,
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk) {
-    this.dataNodeLocation = dataNodeLocation;
-    this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
-    this.regionGroupCacheMap = regionGroupCacheMap;
-    this.routeBalancer = routeBalancer;
+
+    this.nodeId = nodeId;
+    this.heartbeatSampleCache = heartbeatSampleCache;
     this.deviceNum = deviceNum;
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
@@ -66,31 +62,29 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     long receiveTime = System.currentTimeMillis();
 
     // Update NodeCache
-    dataNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(heartbeatResp, receiveTime));
+    heartbeatSampleCache.cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp, receiveTime));
 
-    // Update RegionGroupCache And leaderCache
     heartbeatResp
         .getJudgedLeaders()
         .forEach(
             (regionGroupId, isLeader) -> {
-              regionGroupCacheMap
-                  .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-                  .cacheHeartbeatSample(
-                      dataNodeLocation.getDataNodeId(),
-                      new RegionHeartbeatSample(
-                          heartbeatResp.getHeartbeatTimestamp(),
-                          receiveTime,
-                          // Region will inherit DataNode's status
-                          RegionStatus.parse(heartbeatResp.getStatus())));
+              // Update RegionGroupCache
+              heartbeatSampleCache.cacheRegionHeartbeatSample(regionGroupId, nodeId,
+                new RegionHeartbeatSample(
+                  heartbeatResp.getHeartbeatTimestamp(),
+                  receiveTime,
+                  // Region will inherit DataNode's status
+                  RegionStatus.parse(heartbeatResp.getStatus())));
 
               if (isLeader) {
-                routeBalancer.cacheLeaderSample(
+                // Update leaderCache
+                heartbeatSampleCache.cacheLeaderSample(
                     regionGroupId,
                     new Pair<>(
-                        heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId()));
+                        heartbeatResp.getHeartbeatTimestamp(), nodeId));
               }
             });
+
     if (heartbeatResp.getDeviceNum() != null) {
       deviceNum.putAll(heartbeatResp.getDeviceNum());
     }

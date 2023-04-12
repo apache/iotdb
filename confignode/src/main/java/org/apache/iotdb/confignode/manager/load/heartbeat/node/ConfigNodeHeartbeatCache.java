@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node.heartbeat;
+package org.apache.iotdb.confignode.manager.load.heartbeat.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
 
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 

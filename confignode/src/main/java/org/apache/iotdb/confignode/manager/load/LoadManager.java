@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -32,23 +33,24 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
+import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatService;
+import org.apache.iotdb.confignode.manager.load.statistics.StatisticsService;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
+import org.apache.iotdb.confignode.manager.load.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.statistics.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -76,9 +78,6 @@ public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
-
   private final IManager configManager;
 
   /** Balancers */
@@ -87,12 +86,16 @@ public class LoadManager {
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
 
-  /** Load statistics executor service */
-  private Future<?> currentLoadStatisticsFuture;
+  /** Cluster load services */
+  private final HeartbeatService heartbeatService;
+  private final StatisticsService statisticsService;
 
+
+  /** Load statistics executor service */
+  private final Object statisticsScheduleMonitor = new Object();
+  private Future<?> currentLoadStatisticsFuture;
   private final ScheduledExecutorService loadStatisticsExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
-  private final Object scheduleMonitor = new Object();
 
   private final EventBus eventBus =
       new AsyncEventBus("LoadManager-EventBus", Executors.newFixedThreadPool(5));
@@ -103,6 +106,9 @@ public class LoadManager {
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+
+    this.heartbeatService = new HeartbeatService(configManager);
+    this.statisticsService = new StatisticsService(configManager);
 
     eventBus.register(configManager.getClusterSchemaManager());
     eventBus.register(configManager.getSyncManager());
@@ -118,8 +124,8 @@ public class LoadManager {
    * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
-      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+    throws NotEnoughDataNodeException, DatabaseNotExistsException {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
@@ -130,8 +136,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
-      throws NoAvailableRegionGroupException {
+    Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+    throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
   }
 
@@ -142,8 +148,8 @@ public class LoadManager {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
-      throws NoAvailableRegionGroupException {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
+    throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
@@ -185,7 +191,7 @@ public class LoadManager {
 
   /** Start the load statistics service */
   public void startLoadStatisticsService() {
-    synchronized (scheduleMonitor) {
+    synchronized (heartbeatScheduleMonitor) {
       if (currentLoadStatisticsFuture == null) {
         currentLoadStatisticsFuture =
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
@@ -201,7 +207,7 @@ public class LoadManager {
 
   /** Stop the load statistics service */
   public void stopLoadStatisticsService() {
-    synchronized (scheduleMonitor) {
+    synchronized (heartbeatScheduleMonitor) {
       if (currentLoadStatisticsFuture != null) {
         currentLoadStatisticsFuture.cancel(false);
         currentLoadStatisticsFuture = null;

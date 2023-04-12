@@ -16,24 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.observer;
+package org.apache.iotdb.confignode.manager.load.heartbeat.region;
 
-import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 
-import java.util.Map;
+public class RegionHeartbeatSample {
 
-public class NodeStatisticsEvent implements IEvent {
+  // Unit: ms
+  private final long sendTimestamp;
+  private final long receiveTimestamp;
+  private final RegionStatus status;
 
-  // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one means
-  // the previous NodeStatistics
-  private Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap;
+  // TODO: Add load sample
 
-  public NodeStatisticsEvent(Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap) {
-    this.nodeStatisticsMap = nodeStatisticsMap;
+  public RegionHeartbeatSample(long sendTimestamp, long receiveTimestamp, RegionStatus status) {
+    this.sendTimestamp = sendTimestamp;
+    this.receiveTimestamp = receiveTimestamp;
+    this.status = status;
   }
 
-  public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getNodeStatisticsMap() {
-    return nodeStatisticsMap;
+  public long getSendTimestamp() {
+    return sendTimestamp;
+  }
+
+  public long getReceiveTimestamp() {
+    return receiveTimestamp;
+  }
+
+  public RegionStatus getStatus() {
+    return status;
   }
 }

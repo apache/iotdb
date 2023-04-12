@@ -209,10 +209,10 @@ public class ConfigRegionStateMachine
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
+      configManager.getLoadManager().startHeartbeatService();
       configManager.getLoadManager().startLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
-      configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
 
       // we do cq recovery async for two reasons:
@@ -230,10 +230,10 @@ public class ConfigRegionStateMachine
 
       // Stop leader scheduling services
       configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getLoadManager().stopHeartbeatService();
       configManager.getLoadManager().stopLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-      configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
     }

@@ -18,24 +18,26 @@
  */
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
-import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatSampleCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
-  // Update ConfigNodeHeartbeatCache when success
-  private final ConfigNodeHeartbeatCache configNodeHeartbeatCache;
+  private final int nodeId;
+  private final HeartbeatSampleCache cache;
 
-  public ConfigNodeHeartbeatHandler(ConfigNodeHeartbeatCache configNodeHeartbeatCache) {
-    this.configNodeHeartbeatCache = configNodeHeartbeatCache;
+  public ConfigNodeHeartbeatHandler(int nodeId, HeartbeatSampleCache cache) {
+    this.nodeId = nodeId;
+    this.cache = cache;
   }
 
   @Override
   public void onComplete(Long timestamp) {
-    configNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(timestamp, System.currentTimeMillis()));
+    long receiveTime = System.currentTimeMillis();
+    cache.cacheConfigNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(timestamp, receiveTime));
   }
 
   @Override

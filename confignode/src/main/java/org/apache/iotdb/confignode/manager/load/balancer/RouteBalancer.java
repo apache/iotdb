@@ -93,12 +93,6 @@ public class RouteBalancer {
 
   private final IManager configManager;
 
-  // Key: RegionGroupId
-  // Value: Pair<Timestamp, LeaderDataNodeId>, where
-  // the left value stands for sampling timestamp
-  // and the right value stands for the index of DataNode that leader resides.
-  private final Map<TConsensusGroupId, Pair<Long, Integer>> leaderCache;
-
   /** RegionRouteMap */
   private final RegionRouteMap regionRouteMap;
   // For generating optimal RegionLeaderMap
@@ -107,6 +101,7 @@ public class RouteBalancer {
   private final IPriorityBalancer priorityRouter;
 
   /** Leader Balancing service */
+  // TODO: leader balancing should be triggered by cluster events
   private Future<?> currentLeaderBalancingFuture;
 
   private final ScheduledExecutorService leaderBalancingExecutor =
@@ -115,8 +110,6 @@ public class RouteBalancer {
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
-
-    this.leaderCache = new ConcurrentHashMap<>();
     this.regionRouteMap = new RegionRouteMap();
 
     switch (CONF.getLeaderDistributionPolicy()) {
@@ -137,27 +130,6 @@ public class RouteBalancer {
       default:
         this.priorityRouter = new LeaderPriorityBalancer();
         break;
-    }
-  }
-
-  /**
-   * Cache the newest leaderHeartbeatSample
-   *
-   * @param regionGroupId Corresponding RegionGroup's index
-   * @param leaderSample <Sample timestamp, leaderDataNodeId>, The newest HeartbeatSample
-   */
-  public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && IS_DATA_REGION_IOT_CONSENSUS) {
-      // The leadership of IoTConsensus protocol is decided by ConfigNode-leader
-      return;
-    }
-
-    leaderCache.putIfAbsent(regionGroupId, leaderSample);
-    synchronized (leaderCache.get(regionGroupId)) {
-      if (leaderCache.get(regionGroupId).getLeft() < leaderSample.getLeft()) {
-        leaderCache.replace(regionGroupId, leaderSample);
-      }
     }
   }
 

@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition.heartbeat;
+package org.apache.iotdb.confignode.manager.load.heartbeat.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.confignode.manager.load.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.statistics.RegionStatistics;
 
 import java.util.HashMap;
 import java.util.Map;

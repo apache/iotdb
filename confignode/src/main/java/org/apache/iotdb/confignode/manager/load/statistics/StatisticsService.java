@@ -16,34 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition.heartbeat;
 
-import org.apache.iotdb.commons.cluster.RegionStatus;
+package org.apache.iotdb.confignode.manager.load.statistics;
 
-public class RegionHeartbeatSample {
+public class StatisticsService {
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
-  private final RegionStatus status;
-
-  // TODO: Add load sample
-
-  public RegionHeartbeatSample(long sendTimestamp, long receiveTimestamp, RegionStatus status) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
-    this.status = status;
-  }
-
-  public long getSendTimestamp() {
-    return sendTimestamp;
-  }
-
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
-  }
-
-  public RegionStatus getStatus() {
-    return status;
-  }
+  
 }
