@@ -230,19 +230,21 @@ public class DriverScheduler implements IDriverScheduler, IService {
         && !sessionInfo.getUserName().equals(IoTDBConstant.PATH_ROOT)) {
       AtomicInteger usedCpu = new AtomicInteger();
       AtomicLong estimatedMemory = new AtomicLong();
-      queryMap
-          .get(queryId)
-          .values()
-          .forEach(
-              driverTasks ->
-                  driverTasks.forEach(
-                      driverTask -> {
-                        if (driverTask.getStatus().equals(DriverTaskStatus.RUNNING)
-                            && driverTask.getDriver() instanceof DataDriver) {
-                          usedCpu.addAndGet(1);
-                          estimatedMemory.addAndGet(driverTask.getEstimatedMemorySize());
-                        }
-                      }));
+      if (queryMap.get(queryId) != null) {
+        queryMap
+            .get(queryId)
+            .values()
+            .forEach(
+                driverTasks ->
+                    driverTasks.forEach(
+                        driverTask -> {
+                          if (driverTask.getStatus().equals(DriverTaskStatus.RUNNING)
+                              && driverTask.getDriver() instanceof DataDriver) {
+                            usedCpu.addAndGet(1);
+                            estimatedMemory.addAndGet(driverTask.getEstimatedMemorySize());
+                          }
+                        }));
+      }
       if (!DataNodeThrottleQuotaManager.getInstance()
           .getThrottleQuotaLimit()
           .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {

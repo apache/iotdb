@@ -76,12 +76,12 @@ public class ShowSpaceQuotaTask implements IConfigTask {
                   Binary.valueOf(
                       spaceQuotaEntry.getValue().getDiskSize() == 0
                           ? IoTDBConstant.QUOTA_UNLIMITED
-                          : spaceQuotaEntry.getValue().getDiskSize() / 1024 + "G"));
+                          : spaceQuotaEntry.getValue().getDiskSize() / 1024.0 + "G"));
           builder
               .getColumnBuilder(3)
               .writeBinary(
                   Binary.valueOf(
-                      resp.getSpaceQuotaUsage().get(spaceQuotaEntry.getKey()).getDiskSize() / 1024
+                      resp.getSpaceQuotaUsage().get(spaceQuotaEntry.getKey()).getDiskSize() / 1024.0
                           + "G"));
           builder.declarePosition();
         }
