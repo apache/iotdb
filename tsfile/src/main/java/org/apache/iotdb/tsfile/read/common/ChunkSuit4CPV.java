@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
@@ -244,61 +245,107 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateFPwithTheClosetPointEqualOrAfter(long targetTimestamp) throws IOException {
-    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
-    // infer position starts from 1, so minus 1 here
-    // TODO debug buffer.get(index)
-    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+      StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+      // infer position starts from 1, so minus 1 here
+      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
 
-    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
-    // than the given timestamp
-    if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
-        estimatedPos++;
-        IOMonitor.incPointsTravered();
-      }
-    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-        estimatedPos--;
-        IOMonitor.incPointsTravered();
-      }
+      // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
+      // than the given timestamp
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+          estimatedPos++;
+          IOMonitor.incPointsTravered();
+        }
+      } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+          estimatedPos--;
+          IOMonitor.incPointsTravered();
+        }
+        if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+          estimatedPos++;
+          IOMonitor.incPointsTravered();
+        } // else equal
+      } // else equal
+      this.startPos = estimatedPos; // note this
+
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // we can definitely find such a point with the closet timestamp equal to or larger than the
+      // given timestamp in the chunk.
+      long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
+      statistics.setStartTime(timestamp);
+      switch (chunkMetadata.getDataType()) {
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        case INT64:
+          long longVal =
+              pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
+          ((LongStatistics) statistics).setFirstValue(longVal);
+          break;
+        case FLOAT:
+          float floatVal =
+              pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
+          ((FloatStatistics) statistics).setFirstValue(floatVal);
+          break;
+        case DOUBLE:
+          double doubleVal =
+              pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
+          ((DoubleStatistics) statistics).setFirstValue(doubleVal);
+          break;
+        default:
+          throw new IOException("Unsupported data type!");
+      }
+      return estimatedPos;
+    } else {
+      // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
+      // than the given timestamp
+      int estimatedPos = -1;
+      pageReader.timeBuffer.position(0);
+      pageReader.valueBuffer.position(pageReader.timeBufferLength);
+      while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         IOMonitor.incPointsTravered();
-      } // else equal
-    } // else equal
-    this.startPos = estimatedPos; // note this
+        long t = pageReader.timeBuffer.getLong();
+        if (t >= targetTimestamp) {
+          break;
+        }
+      }
+      this.startPos = estimatedPos; // note this
 
-    // since we have constrained that targetTimestamp must be within the chunk time range
-    // [startTime, endTime],
-    // we can definitely find such a point with the closet timestamp equal to or larger than the
-    // given timestamp in the chunk.
-    long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
-    statistics.setStartTime(timestamp);
-    switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
-      case INT64:
-        long longVal =
-            pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
-        ((LongStatistics) statistics).setFirstValue(longVal);
-        break;
-      case FLOAT:
-        float floatVal =
-            pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
-        ((FloatStatistics) statistics).setFirstValue(floatVal);
-        break;
-      case DOUBLE:
-        double doubleVal =
-            pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
-        ((DoubleStatistics) statistics).setFirstValue(doubleVal);
-        break;
-      default:
-        throw new IOException("Unsupported data type!");
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // we can definitely find such a point with the closet timestamp equal to or larger than the
+      // given timestamp in the chunk.
+      long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
+      statistics.setStartTime(timestamp);
+      switch (chunkMetadata.getDataType()) {
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        case INT64:
+          long longVal =
+              pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
+          ((LongStatistics) statistics).setFirstValue(longVal);
+          break;
+        case FLOAT:
+          float floatVal =
+              pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
+          ((FloatStatistics) statistics).setFirstValue(floatVal);
+          break;
+        case DOUBLE:
+          double doubleVal =
+              pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
+          ((DoubleStatistics) statistics).setFirstValue(doubleVal);
+          break;
+        default:
+          throw new IOException("Unsupported data type!");
+      }
+      return estimatedPos;
     }
-
-    return estimatedPos;
   }
 
   /**
@@ -309,59 +356,112 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateLPwithTheClosetPointEqualOrBefore(long targetTimestamp) throws IOException {
-    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
-    // infer position starts from 1, so minus 1 here
-    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+      StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+      // infer position starts from 1, so minus 1 here
+      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
 
-    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
-    // than the given timestamp
-    if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-        estimatedPos--;
-        IOMonitor.incPointsTravered();
+      // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
+      // than the given timestamp
+      if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+          estimatedPos--;
+          IOMonitor.incPointsTravered();
+        }
+      } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+          estimatedPos++;
+          IOMonitor.incPointsTravered();
+        }
+        if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+          estimatedPos--;
+          IOMonitor.incPointsTravered();
+        } // else equal
+      } // else equal
+      this.endPos = estimatedPos; // note this
+
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // we can definitely find such a point with the closet timestamp equal to or smaller than the
+      // given timestamp in the chunk.
+      long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
+      statistics.setEndTime(timestamp);
+      switch (chunkMetadata.getDataType()) {
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        case INT64:
+          long longVal =
+              pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
+          ((LongStatistics) statistics).setLastValue(longVal);
+          break;
+        case FLOAT:
+          float floatVal =
+              pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
+          ((FloatStatistics) statistics).setLastValue(floatVal);
+          break;
+        case DOUBLE:
+          double doubleVal =
+              pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
+          ((DoubleStatistics) statistics).setLastValue(doubleVal);
+          break;
+        default:
+          throw new IOException("Unsupported data type!");
       }
-    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+      return estimatedPos;
+    } else {
+      // to find the closet timestamp equal to or smaller
+      // than the given timestamp
+      int estimatedPos = -1;
+      pageReader.timeBuffer.position(0);
+      pageReader.valueBuffer.position(pageReader.timeBufferLength);
+      while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         IOMonitor.incPointsTravered();
+        long t = pageReader.timeBuffer.getLong();
+        if (t >= targetTimestamp) {
+          break;
+        }
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-        estimatedPos--;
         IOMonitor.incPointsTravered();
-      } // else equal
-    } // else equal
-    this.endPos = estimatedPos; // note this
+        estimatedPos--;
+      } // else equals no need to minus 1
 
-    // since we have constrained that targetTimestamp must be within the chunk time range
-    // [startTime, endTime],
-    // we can definitely find such a point with the closet timestamp equal to or smaller than the
-    // given timestamp in the chunk.
-    long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
-    statistics.setEndTime(timestamp);
-    switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
-      case INT64:
-        long longVal =
-            pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
-        ((LongStatistics) statistics).setLastValue(longVal);
-        break;
-      case FLOAT:
-        float floatVal =
-            pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
-        ((FloatStatistics) statistics).setLastValue(floatVal);
-        break;
-      case DOUBLE:
-        double doubleVal =
-            pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
-        ((DoubleStatistics) statistics).setLastValue(doubleVal);
-        break;
-      default:
-        throw new IOException("Unsupported data type!");
+      this.endPos = estimatedPos; // note this
+
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // we can definitely find such a point with the closet timestamp equal to or smaller than the
+      // given timestamp in the chunk.
+      long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
+      statistics.setEndTime(timestamp);
+      switch (chunkMetadata.getDataType()) {
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        case INT64:
+          long longVal =
+              pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
+          ((LongStatistics) statistics).setLastValue(longVal);
+          break;
+        case FLOAT:
+          float floatVal =
+              pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4);
+          ((FloatStatistics) statistics).setLastValue(floatVal);
+          break;
+        case DOUBLE:
+          double doubleVal =
+              pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8);
+          ((DoubleStatistics) statistics).setLastValue(doubleVal);
+          break;
+        default:
+          throw new IOException("Unsupported data type!");
+      }
+      return estimatedPos;
     }
-    return estimatedPos;
   }
 
   /**
@@ -371,33 +471,54 @@ public class ChunkSuit4CPV {
    * @return true if exists; false not exist
    */
   public boolean checkIfExist(long targetTimestamp) throws IOException {
-    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
-    // infer position starts from 1, so minus 1 here
-    // TODO debug buffer.get(index)
-    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+      StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+      // infer position starts from 1, so minus 1 here
+      // TODO debug buffer.get(index)
+      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
 
-    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
-    // than the given timestamp
-    if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-        estimatedPos--;
-        IOMonitor.incPointsTravered();
-      }
-    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
-      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+      // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
+      // than the given timestamp
+      if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+          estimatedPos--;
+          IOMonitor.incPointsTravered();
+        }
+      } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+          estimatedPos++;
+          IOMonitor.incPointsTravered();
+        }
+        if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+          estimatedPos--;
+          IOMonitor.incPointsTravered();
+        } // else equal
+      } // else equal
+
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // estimatedPos will not be out of range.
+      return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
+    } else {
+      // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
+      // than the given timestamp
+      int estimatedPos = -1;
+      pageReader.timeBuffer.position(0);
+      pageReader.valueBuffer.position(pageReader.timeBufferLength);
+      while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         IOMonitor.incPointsTravered();
+        long t = pageReader.timeBuffer.getLong();
+        if (t >= targetTimestamp) {
+          break;
+        }
       }
-      if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
-        estimatedPos--;
-        IOMonitor.incPointsTravered();
-      } // else equal
-    } // else equal
 
-    // since we have constrained that targetTimestamp must be within the chunk time range
-    // [startTime, endTime],
-    // estimatedPos will not be out of range.
-    return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
+      // since we have constrained that targetTimestamp must be within the chunk time range
+      // [startTime, endTime],
+      // estimatedPos will not be out of range.
+      return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
+    }
   }
 
   public void updateFP(MinMaxInfo point) {

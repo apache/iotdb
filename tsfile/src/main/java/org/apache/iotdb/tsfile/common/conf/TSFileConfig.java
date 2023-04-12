@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 /** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
+  private boolean useChunkIndex = true;
+
   /** encoding configuration */
   public static final int RLE_MIN_REPEATED_NUM = 8;
 
@@ -146,6 +148,14 @@ public class TSFileConfig implements Serializable {
   private int batchSize = 1000;
 
   public TSFileConfig() {}
+
+  public boolean isUseChunkIndex() {
+    return useChunkIndex;
+  }
+
+  public void setUseChunkIndex(boolean useChunkIndex) {
+    this.useChunkIndex = useChunkIndex;
+  }
 
   public int getGroupSizeInByte() {
     return groupSizeInByte;

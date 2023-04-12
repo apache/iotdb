@@ -59,6 +59,7 @@ public class MyTest2 {
   private static int originalAvgSeriesPointNumberThreshold;
   private static long originalSeqTsFileSize;
   private static long originalUnSeqTsFileSize;
+  private static boolean originalUseChunkIndex;
 
   @Before
   public void setUp() throws Exception {
@@ -71,6 +72,9 @@ public class MyTest2 {
     originalAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     originalSeqTsFileSize = config.getSeqTsFileSize();
     originalUnSeqTsFileSize = config.getUnSeqTsFileSize();
+
+    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
+    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
 
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
@@ -92,6 +96,7 @@ public class MyTest2 {
     config.setEnableCPV(originalEnableCPV);
     config.setSeqTsFileSize(originalSeqTsFileSize);
     config.setUnSeqTsFileSize(originalUnSeqTsFileSize);
+    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
   }
 
   @Test

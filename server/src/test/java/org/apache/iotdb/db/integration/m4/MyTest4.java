@@ -58,6 +58,8 @@ public class MyTest4 {
   private static boolean originalEnableCPV;
   private static CompactionStrategy originalCompactionStrategy;
 
+  private static boolean originalUseChunkIndex;
+
   @Before
   public void setUp() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
@@ -66,6 +68,9 @@ public class MyTest4 {
 
     originalEnableCPV = config.isEnableCPV();
     config.setEnableCPV(true); // CPV
+
+    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
+    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
 
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -77,6 +82,7 @@ public class MyTest4 {
     EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
+    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
   }
 
   @Test

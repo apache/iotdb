@@ -105,6 +105,9 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
+      conf.setUseChunkIndex(
+          Boolean.parseBoolean(
+              properties.getProperty("use_ChunkIndex", Boolean.toString(conf.isUseChunkIndex()))));
       conf.setGroupSizeInByte(
           Integer.parseInt(
               properties.getProperty(
