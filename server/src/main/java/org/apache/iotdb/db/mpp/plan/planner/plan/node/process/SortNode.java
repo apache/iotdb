@@ -74,8 +74,9 @@ public class SortNode extends SingleChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (this.outputColumnNames == null) return child.getOutputColumnNames();
-    else return outputColumnNames;
+    if (this.outputColumnNames == null || this.outputColumnNames.isEmpty())
+      return child.getOutputColumnNames();
+    else return this.outputColumnNames;
   }
 
   @Override
@@ -105,13 +106,13 @@ public class SortNode extends SingleChildProcessNode {
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
     while (columnSize > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SortNode(planNodeId, orderByParameter, outputColumnNames);
   }
 
