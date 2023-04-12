@@ -48,7 +48,7 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   private String device;
 
-  private long regionId;
+  private long regionId = -1;
 
   private long startTime = -1;
 

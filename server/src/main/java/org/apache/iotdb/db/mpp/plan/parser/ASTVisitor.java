@@ -3389,7 +3389,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new TTimePartitionSlot(
               Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
     } else if (ctx.time != null) {
-      getRegionIdStatement.setTimeStamp(parseTimeValue(ctx.time,DateTimeUtils.currentTime()));
+      getRegionIdStatement.setTimeStamp(parseTimeValue(ctx.time, DateTimeUtils.currentTime()));
     }
     return getRegionIdStatement;
   }
