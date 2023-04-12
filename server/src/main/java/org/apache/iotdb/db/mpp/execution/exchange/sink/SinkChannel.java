@@ -364,6 +364,9 @@ public class SinkChannel implements ISinkChannel {
   // region ============ ISinkChannel related ============
 
   public void open() {
+    if (closed || aborted) {
+      return;
+    }
     // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
     this.blocked =
         localMemoryManager

@@ -32,6 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 
@@ -60,9 +62,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private boolean aborted = false;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
+  private final Lock lock = new ReentrantLock();
 
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
@@ -133,10 +137,20 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    if (!hasSetNoMoreTsBlocks[channelIndex]) {
-      downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
-      hasSetNoMoreTsBlocks[channelIndex] = true;
+  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+    if (closed || aborted) {
+      // if this ShuffleSinkHandle has been closed, Driver.close() will attempt to setNoMoreTsBlocks
+      // for all the channels
+      return;
+    }
+    try {
+      lock.lock();
+      if (!hasSetNoMoreTsBlocks[channelIndex]) {
+        downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
+        hasSetNoMoreTsBlocks[channelIndex] = true;
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -187,27 +201,28 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void close() {
+  public void close() {
     if (closed || aborted) {
       return;
     }
+    closed = true;
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
     boolean meetError = false;
     Exception firstException = null;
-    //    for (ISink channel : downStreamChannelList) {
-    //      try {
-    //        channel.close();
-    //      } catch (Exception e) {
-    //        if (!meetError) {
-    //          firstException = e;
-    //          meetError = true;
-    //        }
-    //      }
-    //    }
-    //    if (meetError) {
-    //      LOGGER.warn("Error occurred when try to close channel.", firstException);
-    //    }
-    closed = true;
+    for (ISink channel : downStreamChannelList) {
+      try {
+        channel.close();
+      } catch (Exception e) {
+        if (!meetError) {
+          firstException = e;
+          meetError = true;
+        }
+      }
+    }
+    if (meetError) {
+      LOGGER.warn("Error occurred when try to close channel.", firstException);
+    }
+
     sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
   }
