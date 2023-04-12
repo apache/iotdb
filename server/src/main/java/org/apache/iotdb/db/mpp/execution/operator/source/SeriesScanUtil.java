@@ -794,66 +794,73 @@ public class SeriesScanUtil {
              */
             timeValuePair = mergeReader.nextTimeValuePair();
 
-            Object valueForFilter = timeValuePair.getValue().getValue();
+            long st = System.nanoTime();
+            try {
+              Object valueForFilter = timeValuePair.getValue().getValue();
 
-            // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
-            // only accept AlignedPath with only one sub sensor
-            if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
-              for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
-                if (tsPrimitiveType != null) {
-                  valueForFilter = tsPrimitiveType.getValue();
-                  break;
+              // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it
+              // will
+              // only accept AlignedPath with only one sub sensor
+              if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+                for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+                  if (tsPrimitiveType != null) {
+                    valueForFilter = tsPrimitiveType.getValue();
+                    break;
+                  }
                 }
               }
-            }
 
-            Filter queryFilter = scanOptions.getQueryFilter();
-            if (queryFilter != null
-                && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timeValuePair.getTimestamp());
-              switch (dataType) {
-                case BOOLEAN:
-                  builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
-                  break;
-                case INT32:
-                  builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-                  break;
-                case INT64:
-                  builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
-                  break;
-                case FLOAT:
-                  builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
-                  break;
-                case DOUBLE:
-                  builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
-                  break;
-                case TEXT:
-                  builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
-                  break;
-                case VECTOR:
-                  TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-                  for (int i = 0; i < values.length; i++) {
-                    if (values[i] == null) {
-                      builder.getColumnBuilder(i).appendNull();
-                    } else {
-                      builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-                    }
-                  }
-                  break;
-                default:
-                  throw new UnSupportedDataTypeException(String.valueOf(dataType));
+              Filter queryFilter = scanOptions.getQueryFilter();
+              if (queryFilter != null
+                  && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
+                continue;
               }
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
+              if (paginationController.hasCurOffset()) {
+                paginationController.consumeOffset();
+                continue;
+              }
+              if (paginationController.hasCurLimit()) {
+                timeBuilder.writeLong(timeValuePair.getTimestamp());
+                switch (dataType) {
+                  case BOOLEAN:
+                    builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
+                    break;
+                  case INT32:
+                    builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
+                    break;
+                  case INT64:
+                    builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
+                    break;
+                  case FLOAT:
+                    builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
+                    break;
+                  case DOUBLE:
+                    builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
+                    break;
+                  case TEXT:
+                    builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+                    break;
+                  case VECTOR:
+                    TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+                    for (int i = 0; i < values.length; i++) {
+                      if (values[i] == null) {
+                        builder.getColumnBuilder(i).appendNull();
+                      } else {
+                        builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+                      }
+                    }
+                    break;
+                  default:
+                    throw new UnSupportedDataTypeException(String.valueOf(dataType));
+                }
+                builder.declarePosition();
+                paginationController.consumeLimit();
+              } else {
+                break;
+              }
+            } finally {
+              QueryStatistics.getInstance()
+                  .addCost(QueryStatistics.MERGE_READER_BUILD_RES, System.nanoTime() - st);
             }
           }
           hasCachedNextOverlappedPage = !builder.isEmpty();

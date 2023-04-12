@@ -172,6 +172,12 @@ public class QueryStatistics {
   public static final String PICK_FIRST_TIMESERIES_METADATA = "pickFirstTimeSeriesMetadata";
   public static final String INIT_FIRST_PAGE = "initFirstPage";
 
+  public static final String MERGE_READER_ADD_READER = "mergeReader#addReader";
+  public static final String MERGE_READER_NEXT = "mergeReader#nextTimeValuePair";
+  public static final String MERGE_READER_UPDATE_HEAP = "mergeReader#updateHeap";
+  public static final String MERGE_READER_FILL_NULL_VALUE = "mergeReader#fillNullValue";
+  public static final String MERGE_READER_BUILD_RES = "mergeReader#buildRes";
+
   private QueryStatistics() {
     ScheduledExecutorService scheduledExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "Query-Statistics-Print");
