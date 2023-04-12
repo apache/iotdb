@@ -60,23 +60,35 @@ public class DriverTask implements IDIndexedAccessible {
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
 
+  private long estimatedMemorySize;
+
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
-    this(new StubFragmentInstance(), 0L, null, null);
+    this(new StubFragmentInstance(), 0L, null, null, 0);
   }
 
   public DriverTask(
-      IDriver driver, long timeoutMs, DriverTaskStatus status, DriverTaskHandle driverTaskHandle) {
+      IDriver driver,
+      long timeoutMs,
+      DriverTaskStatus status,
+      DriverTaskHandle driverTaskHandle,
+      long estimatedMemorySize) {
     this.driver = driver;
     this.setStatus(status);
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
+  @Override
   public DriverTaskId getDriverTaskId() {
     return driver.getDriverTaskId();
+  }
+
+  public long getEstimatedMemorySize() {
+    return driver.getEstimatedMemorySize();
   }
 
   @Override

@@ -135,9 +135,34 @@ struct TSpaceQuota {
   3: optional i64 timeserieNum
 }
 
+enum ThrottleType {
+  REQUEST_NUMBER,
+  REQUEST_SIZE,
+  WRITE_NUMBER,
+  WRITE_SIZE,
+  READ_NUMBER,
+  READ_SIZE
+}
+
+struct TTimedQuota {
+  1: required i64 timeUnit
+  2: required i64 softLimit
+}
+
+struct TThrottleQuota {
+  1: optional map<ThrottleType, TTimedQuota> throttleLimit
+  2: optional i64 memLimit
+  3: optional i32 cpuLimit
+}
+
 struct TSetSpaceQuotaReq {
   1: required list<string> database
   2: required TSpaceQuota spaceLimit
+}
+
+struct TSetThrottleQuotaReq {
+  1: required string userName
+  2: required TThrottleQuota throttleQuota
 }
 
 enum TAggregationType {

@@ -60,7 +60,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private final MPPDataExchangeManager.SinkListener sinkListener;
 
-  private boolean aborted = false;
+  private volatile boolean aborted = false;
 
   private volatile boolean closed = false;
 
@@ -175,10 +175,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void abort() {
-    if (closed || aborted) {
+  public void abort() {
+    if (aborted || closed) {
       return;
     }
+    aborted = true;
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
     boolean meetError = false;
     Exception firstException = null;
@@ -195,7 +196,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (meetError) {
       LOGGER.warn("Error occurred when try to abort channel.", firstException);
     }
-    aborted = true;
     sinkListener.onAborted(this);
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
   }

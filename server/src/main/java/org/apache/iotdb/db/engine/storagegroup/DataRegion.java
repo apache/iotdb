@@ -1156,7 +1156,8 @@ public class DataRegion implements IDataRegionForQuery {
       // Update cached last value with high priority
       DataNodeSchemaCache.getInstance()
           .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.getDevicePath(),
+              node.getMeasurements()[i],
               node.composeLastTimeValuePair(i),
               true,
               latestFlushedTime);
@@ -1197,7 +1198,8 @@ public class DataRegion implements IDataRegionForQuery {
       // Update cached last value with high priority
       DataNodeSchemaCache.getInstance()
           .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
+              node.getDevicePath(),
+              node.getMeasurements()[i],
               node.composeTimeValuePair(i),
               true,
               latestFlushedTime);
@@ -1256,12 +1258,14 @@ public class DataRegion implements IDataRegionForQuery {
     int retryCnt = 0;
     do {
       try {
-        if (!DataNodeSpaceQuotaManager.getInstance().checkRegionDisk(databaseName)) {
-          throw new ExceedQuotaException(
-              "Unable to continue writing data, because the space allocated to the database "
-                  + databaseName
-                  + " has already used the upper limit",
-              TSStatusCode.EXCEED_QUOTA_ERROR.getStatusCode());
+        if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+          if (!DataNodeSpaceQuotaManager.getInstance().checkRegionDisk(databaseName)) {
+            throw new ExceedQuotaException(
+                "Unable to continue writing data, because the space allocated to the database "
+                    + databaseName
+                    + " has already used the upper limit",
+                TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
+          }
         }
         if (sequence) {
           tsFileProcessor =

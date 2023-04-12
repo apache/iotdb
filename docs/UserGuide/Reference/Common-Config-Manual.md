@@ -1401,6 +1401,16 @@ Different configuration parameters take effect in the following three ways:
 
 ### SELECT-INTO
 
+* into\_operation\_buffer\_size\_in\_byte
+
+|    Name     | into\_operation\_buffer\_size\_in\_byte                                                                                            |
+| :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Description | When the select-into statement is executed, the maximum memory occupied by the data to be written (unit: Byte) |
+|    Type     | int64                                                        |
+|   Default   | 100MB                                                        |
+|  Effective  | hot-load                                                      |
+
+
 * select\_into\_insert\_tablet\_plan\_row\_limit
 
 |    Name     | select\_into\_insert\_tablet\_plan\_row\_limit                                                                                            |

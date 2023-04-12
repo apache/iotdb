@@ -683,6 +683,9 @@ public class IoTDBConfig {
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
+  /** How much memory may be used in ONE SELECT INTO operation (in Byte). */
+  private long intoOperationBufferSizeInByte = 100 * 1024 * 1024L;
+
   /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
@@ -1068,7 +1071,15 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
+  /** multi-tenancy */
   private boolean quotaEnable = false;
+
+  /**
+   * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
+   * interval of time. 2. AverageIntervalRateLimiter : This limiter will refill resources at every
+   * TimeUnit/resources interval.
+   */
+  private String RateLimiterType = "FixedIntervalRateLimiter";
 
   IoTDBConfig() {}
 
@@ -1911,12 +1922,20 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
-  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
-    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  public long getIntoOperationBufferSizeInByte() {
+    return intoOperationBufferSizeInByte;
+  }
+
+  public void setIntoOperationBufferSizeInByte(long intoOperationBufferSizeInByte) {
+    this.intoOperationBufferSizeInByte = intoOperationBufferSizeInByte;
   }
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
 
   public int getIntoOperationExecutionThreadCount() {
@@ -3715,5 +3734,13 @@ public class IoTDBConfig {
 
   public void setQuotaEnable(boolean quotaEnable) {
     this.quotaEnable = quotaEnable;
+  }
+
+  public String getRateLimiterType() {
+    return RateLimiterType;
+  }
+
+  public void setRateLimiterType(String rateLimiterType) {
+    RateLimiterType = rateLimiterType;
   }
 }

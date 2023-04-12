@@ -215,7 +215,9 @@ public class SinkChannel implements ISinkChannel {
       return;
     }
     sequenceIdToTsBlock.clear();
-    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
+    if (blocked != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
+    }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
@@ -238,7 +240,9 @@ public class SinkChannel implements ISinkChannel {
       return;
     }
     sequenceIdToTsBlock.clear();
-    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    if (blocked != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
@@ -363,8 +367,9 @@ public class SinkChannel implements ISinkChannel {
 
   // region ============ ISinkChannel related ============
 
-  public void open() {
-    if (closed || aborted) {
+  @Override
+  public synchronized void open() {
+    if (aborted || closed) {
       return;
     }
     // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
