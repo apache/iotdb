@@ -416,18 +416,37 @@ public class StepRegress {
           String.format(
               "t out of range. input within [%s,%s]", segmentKeys.get(0), segmentKeys.getLast()));
     }
-    int seg = 0;
-    for (; seg < segmentKeys.size() - 1; seg++) {
-      if (t <= segmentKeys.get(seg + 1)) { // t < the right end of the segment interval
-        break;
-      }
-    }
+    int seg = binarySearch(segmentKeys, t);
     // we have fixed that the first status is always tilt,
     // so for indexes starting from 0, even id is tilt, odd id is level.
     if (seg % 2 == 0) { // tilt
       return slope * t + segmentIntercepts.get(seg);
     } else {
       return segmentIntercepts.get(seg);
+    }
+  }
+
+  // find firstly strictly greater than or equal to the element in a sorted array
+  public int binarySearch(DoubleArrayList segmentKeys, double targetT) {
+    int start = 0;
+    int end = segmentKeys.size() - 1;
+    int ans = -1;
+    while (start <= end) {
+      int mid = (start + end) / 2;
+      // Move to right side if target is greater.
+      if (segmentKeys.get(mid) < targetT) {
+        start = mid + 1;
+      } else // Move left side.
+      {
+        ans = mid;
+        end = mid - 1;
+      }
+    }
+    if (ans == 0) {
+      return ans; // means that targetT equals the first segment keys, therefore ans is not the
+      // right point of the segment
+    } else {
+      return ans - 1; // the id of the segment
     }
   }
 }
