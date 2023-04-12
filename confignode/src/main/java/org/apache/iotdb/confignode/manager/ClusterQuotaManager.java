@@ -107,9 +107,16 @@ public class ClusterQuotaManager {
     for (String database : req.getDatabase()) {
       if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
         TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
-        if (spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()
-            || spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()
-            || spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
+        if (req.getSpaceLimit().getDeviceNum() != -1
+            && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
+          return false;
+        }
+        if (req.getSpaceLimit().getTimeserieNum() != -1
+            && spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()) {
+          return false;
+        }
+        if (req.getSpaceLimit().getDiskSize() != -1
+            && spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
           return false;
         }
       }

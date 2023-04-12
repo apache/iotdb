@@ -340,4 +340,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("write_memory_proportion", writeMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    setProperty("quota_enable", String.valueOf(quotaEnable));
+    return this;
+  }
 }

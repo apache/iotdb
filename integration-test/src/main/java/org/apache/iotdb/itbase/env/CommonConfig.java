@@ -112,4 +112,6 @@ public interface CommonConfig {
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
+
+  CommonConfig setQuotaEnable(boolean quotaEnable);
 }
