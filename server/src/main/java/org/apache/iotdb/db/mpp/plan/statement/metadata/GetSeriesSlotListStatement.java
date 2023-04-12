@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -42,8 +41,6 @@ public class GetSeriesSlotListStatement extends Statement implements IConfigStat
 
   private final String storageGroup;
 
-  private TConsensusGroupType partitionType;
-
   public GetSeriesSlotListStatement(String storageGroup) {
     super();
     this.storageGroup = storageGroup;
@@ -51,14 +48,6 @@ public class GetSeriesSlotListStatement extends Statement implements IConfigStat
 
   public String getStorageGroup() {
     return storageGroup;
-  }
-
-  public TConsensusGroupType getPartitionType() {
-    return partitionType;
-  }
-
-  public void setPartitionType(TConsensusGroupType partitionType) {
-    this.partitionType = partitionType;
   }
 
   @Override

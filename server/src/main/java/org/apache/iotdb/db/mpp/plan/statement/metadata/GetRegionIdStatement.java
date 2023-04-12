@@ -46,7 +46,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
 
   private final String storageGroup;
 
-  private String deviceId;
+  private String device;
 
   private TSeriesPartitionSlot seriesSlotId;
 
@@ -74,8 +74,8 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     return seriesSlotId;
   }
 
-  public String getDeviceId() {
-    return deviceId;
+  public String getDevice() {
+    return device;
   }
 
   public TTimePartitionSlot getTimeSlotId() {
@@ -94,8 +94,8 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     this.seriesSlotId = seriesSlotId;
   }
 
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+  public void setDevice(String device) {
+    this.device = device;
   }
 
   public void setTimeStamp(long timeStamp) {

@@ -447,21 +447,22 @@ showConfigNodes
 
 // ---- Get Region Id
 getRegionId
-    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
-        seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
-        TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
+    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+        |(DEVICE|DEVICEID) operator_eq device=prefixPath) (OPERATOR_AND ((TIMESLOTID|TIMEPARTITION) operator_eq timeSlot=INTEGER_LITERAL
+        |(TIMESTAMP|TIME) operator_eq time = timeValue))?
     ;
 
 // ---- Get Time Slot List
 getTimeSlotList
-    : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+    : SHOW (TIMESLOTID|TIMEPARTITION) OF path=prefixPath  (WHERE (SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+        |(DEVICE|DEVICEID) operator_eq device=prefixPath | REGIONID operator_eq regionId=INTEGER_LITERAL))?
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
         (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // ---- Get Series Slot List
 getSeriesSlotList
-    : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
+    : SHOW SERIESSLOTID OF path=prefixPath
     ;
 
 // ---- Migrate Region

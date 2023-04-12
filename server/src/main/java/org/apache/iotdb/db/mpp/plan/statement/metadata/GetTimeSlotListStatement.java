@@ -44,16 +44,19 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   private final String storageGroup;
 
-  private final TSeriesPartitionSlot seriesSlotId;
+  private TSeriesPartitionSlot seriesSlotId;
+
+  private String device;
+
+  private long regionId;
 
   private long startTime = -1;
 
   private long endTime = -1;
 
-  public GetTimeSlotListStatement(String storageGroup, TSeriesPartitionSlot seriesSlotId) {
+  public GetTimeSlotListStatement(String storageGroup) {
     super();
     this.storageGroup = storageGroup;
-    this.seriesSlotId = seriesSlotId;
   }
 
   public String getStorageGroup() {
@@ -78,6 +81,26 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   public void setEndTime(long endTime) {
     this.endTime = endTime;
+  }
+
+  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
+    this.seriesSlotId = seriesSlotId;
+  }
+
+  public void setDevice(String device) {
+    this.device = device;
+  }
+
+  public String getDevice() {
+    return this.device;
+  }
+
+  public void setRegionId(long regionId) {
+    this.regionId = regionId;
+  }
+
+  public long getRegionId() {
+    return this.regionId;
   }
 
   @Override

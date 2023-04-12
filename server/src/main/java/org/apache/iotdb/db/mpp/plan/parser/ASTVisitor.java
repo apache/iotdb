@@ -758,7 +758,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     try {
-      URI uri = new URI(uriString);
+      new URI(uriString);
     } catch (URISyntaxException e) {
       throw new SemanticException(String.format("Invalid URI: %s", uriString));
     }
@@ -3382,36 +3382,36 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getRegionIdStatement.setSeriesSlotId(
           new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
     } else {
-      getRegionIdStatement.setDeviceId(ctx.deviceId.getText());
+      getRegionIdStatement.setDevice(ctx.device.getText());
     }
     if (ctx.timeSlot != null) {
       getRegionIdStatement.setTimeSlotId(
           new TTimePartitionSlot(
               Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
-    } else if (ctx.timeStamp != null) {
-      getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
+    } else if (ctx.time != null) {
+      getRegionIdStatement.setTimeStamp(parseTimeValue(ctx.time,DateTimeUtils.currentTime()));
     }
     return getRegionIdStatement;
   }
 
   @Override
   public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
-    GetSeriesSlotListStatement getSeriesSlotListStatement =
-        new GetSeriesSlotListStatement(ctx.prefixPath().getText());
-    if (ctx.DATA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.DataRegion);
-    } else if (ctx.SCHEMA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.SchemaRegion);
-    }
-    return getSeriesSlotListStatement;
+    return new GetSeriesSlotListStatement(ctx.path.getText());
   }
 
   @Override
   public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
     GetTimeSlotListStatement getTimeSlotListStatement =
-        new GetTimeSlotListStatement(
-            ctx.prefixPath().getText(),
-            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+        new GetTimeSlotListStatement(ctx.path.getText());
+    if (ctx.seriesSlot != null) {
+      getTimeSlotListStatement.setSeriesSlotId(
+          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    } else if (ctx.device != null) {
+      getTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
+
     if (ctx.startTime != null) {
       getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
     }

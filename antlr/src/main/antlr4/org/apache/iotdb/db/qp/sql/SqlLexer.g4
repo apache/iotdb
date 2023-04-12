@@ -710,6 +710,10 @@ TIMESLOTID
     : T I M E S L O T I D
     ;
 
+TIMEPARTITION
+    : T I M E P A R T I T I O N
+    ;
+
 TIMESTAMP
     : T I M E S T A M P
     ;

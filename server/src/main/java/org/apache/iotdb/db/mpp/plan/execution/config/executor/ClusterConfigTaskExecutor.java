@@ -1652,7 +1652,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (getRegionIdStatement.getSeriesSlotId() != null) {
         tGetRegionIdReq.setSeriesSlotId(getRegionIdStatement.getSeriesSlotId());
       } else {
-        tGetRegionIdReq.setDeviceId(getRegionIdStatement.getDeviceId());
+        tGetRegionIdReq.setDeviceId(getRegionIdStatement.getDevice());
       }
       if (getRegionIdStatement.getTimeSlotId() != null) {
         tGetRegionIdReq.setTimeSlotId(getRegionIdStatement.getTimeSlotId());
@@ -1680,9 +1680,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetSeriesSlotListReq tGetSeriesSlotListReq =
           new TGetSeriesSlotListReq(getSeriesSlotListStatement.getStorageGroup());
-      if (getSeriesSlotListStatement.getPartitionType() != null) {
-        tGetSeriesSlotListReq.setType(getSeriesSlotListStatement.getPartitionType());
-      }
       resp = configNodeClient.getSeriesSlotList(tGetSeriesSlotListReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
@@ -1703,9 +1700,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTimeSlotListReq tGetTimeSlotListReq =
-          new TGetTimeSlotListReq(
-              getTimeSlotListStatement.getStorageGroup(),
-              getTimeSlotListStatement.getSeriesSlotId());
+          new TGetTimeSlotListReq(getTimeSlotListStatement.getStorageGroup());
       if (getTimeSlotListStatement.getStartTime() != -1) {
         tGetTimeSlotListReq.setStartTime(getTimeSlotListStatement.getStartTime());
       }
