@@ -27,6 +27,8 @@ import java.util.Arrays;
 
 public class StepRegress {
 
+  public static boolean useMad = false;
+
   // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
   // causing learn() executed more than once!!
   private boolean isLearned = false;
@@ -332,7 +334,11 @@ public class StepRegress {
 
   private boolean isBigInterval(long interval) {
     int bigIntervalParam = 3;
-    return interval > this.mean + bigIntervalParam * this.stdDev;
+    if (!useMad) {
+      return interval > this.mean + bigIntervalParam * this.stdDev;
+    } else {
+      return interval > this.median + bigIntervalParam * this.mad;
+    }
   }
 
   public double getMedian() {
