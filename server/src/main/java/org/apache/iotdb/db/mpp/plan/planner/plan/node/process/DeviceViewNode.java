@@ -23,16 +23,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,16 +64,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
-
-    if (mergeOrderParameter.isEmpty()) {
-      this.mergeOrderParameter =
-          new OrderByParameter(
-              Arrays.asList(
-                  new SortItem(SortKey.DEVICE, Ordering.ASC),
-                  new SortItem(SortKey.TIME, Ordering.ASC)));
-    } else {
-      this.mergeOrderParameter = mergeOrderParameter;
-    }
+    this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumnNames = outputColumnNames;
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
