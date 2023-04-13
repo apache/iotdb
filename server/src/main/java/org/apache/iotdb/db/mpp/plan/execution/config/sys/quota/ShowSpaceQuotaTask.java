@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
 public class ShowSpaceQuotaTask implements IConfigTask {
 
   private final ShowSpaceQuotaStatement showSpaceQuotaStatement;
+  private static final float unitSize = 1024.0F;
+  private static final String showUnit = "G";
 
   public ShowSpaceQuotaTask(ShowSpaceQuotaStatement showSpaceQuotaStatement) {
     this.showSpaceQuotaStatement = showSpaceQuotaStatement;
@@ -75,13 +77,14 @@ public class ShowSpaceQuotaTask implements IConfigTask {
                   Binary.valueOf(
                       spaceQuotaEntry.getValue().getDiskSize() == 0
                           ? IoTDBConstant.QUOTA_UNLIMITED
-                          : spaceQuotaEntry.getValue().getDiskSize() / 1024.0 + "G"));
+                          : spaceQuotaEntry.getValue().getDiskSize() / unitSize + showUnit));
           builder
               .getColumnBuilder(3)
               .writeBinary(
                   Binary.valueOf(
-                      resp.getSpaceQuotaUsage().get(spaceQuotaEntry.getKey()).getDiskSize() / 1024.0
-                          + "G"));
+                      resp.getSpaceQuotaUsage().get(spaceQuotaEntry.getKey()).getDiskSize()
+                              / unitSize
+                          + showUnit));
           builder.declarePosition();
         }
         if (spaceQuotaEntry.getValue().getDeviceNum() != -1) {

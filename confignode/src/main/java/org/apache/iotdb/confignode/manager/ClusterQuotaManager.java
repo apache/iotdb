@@ -59,6 +59,8 @@ public class ClusterQuotaManager {
   private final Map<String, List<Integer>> schemaRegionIdMap;
   private final Map<String, List<Integer>> dataRegionIdMap;
   private final Map<Integer, Long> regionDisk;
+  private static final int UNLIMITED_VALUE = -1;
+  private static final int DEFAULT_VALUE = 0;
 
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
@@ -107,15 +109,18 @@ public class ClusterQuotaManager {
     for (String database : req.getDatabase()) {
       if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
         TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
-        if (req.getSpaceLimit().getDeviceNum() != -1
+        if (req.getSpaceLimit().getDeviceNum() != UNLIMITED_VALUE
+            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
             && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
           return false;
         }
-        if (req.getSpaceLimit().getTimeserieNum() != -1
+        if (req.getSpaceLimit().getTimeserieNum() != UNLIMITED_VALUE
+            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
             && spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()) {
           return false;
         }
-        if (req.getSpaceLimit().getDiskSize() != -1
+        if (req.getSpaceLimit().getDiskSize() != UNLIMITED_VALUE
+            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
             && spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
           return false;
         }

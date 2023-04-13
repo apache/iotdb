@@ -386,6 +386,27 @@ public class IoTDBSpaceQuotaIT {
   }
 
   @Test
+  public void setSpaceQuotaTest7() {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute(
+          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute(
+          "create timeseries root.sg0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute(
+          "create timeseries root.sg0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute(
+          "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute(
+          "create timeseries root.sg0.wf05.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute("set space quota devices=5 on root.sg0;");
+      adminStmt.execute("set space quota disk='5g' on root.sg0;");
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void showSpaceQuotaTest0() throws SQLException {
     IoTDBDescriptor.getInstance().getConfig().setQuotaEnable(true);
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
