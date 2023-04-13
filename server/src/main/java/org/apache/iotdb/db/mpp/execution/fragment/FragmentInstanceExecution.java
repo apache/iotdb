@@ -117,6 +117,10 @@ public class FragmentInstanceExecution {
               return;
             }
 
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug("Enter the stateChangeListener");
+            }
+
             // Update failed tasks counter
             if (newState == FAILED) {
               failedInstances.update(1);
