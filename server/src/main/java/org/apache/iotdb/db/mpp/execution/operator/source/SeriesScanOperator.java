@@ -95,7 +95,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
-      scanOptionsBuilder.withQueryFilter(valueFilter);
+      scanOptionsBuilder.withQueryFilter(timeFilter);
       return new SeriesScanOperator(
           operatorContext,
           sourceId,

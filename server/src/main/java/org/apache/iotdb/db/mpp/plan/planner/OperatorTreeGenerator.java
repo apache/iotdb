@@ -281,13 +281,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SeriesScanOperator.class.getSimpleName());
 
     Filter timeFilter = node.getTimeFilter();
-    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
     if (timeFilter != null) {
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
-    }
-    if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(timeFilter.copy());
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
@@ -323,13 +320,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 AlignedSeriesScanOperator.class.getSimpleName());
 
     Filter timeFilter = node.getTimeFilter();
-    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
     if (timeFilter != null) {
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
-    }
-    if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(timeFilter.copy());
     }
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
