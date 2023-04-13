@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -45,7 +44,6 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
   public String getDatabase() {
     return storageGroup;
   }
-
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {

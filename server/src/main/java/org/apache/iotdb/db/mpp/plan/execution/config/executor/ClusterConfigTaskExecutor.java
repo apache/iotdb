@@ -1701,12 +1701,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTimeSlotListReq tGetTimeSlotListReq =
           new TGetTimeSlotListReq(getTimeSlotListStatement.getStorageGroup());
-      if(getTimeSlotListStatement.getSeriesSlotId() != null) {
+      if (getTimeSlotListStatement.getSeriesSlotId() != null) {
         tGetTimeSlotListReq.setSeriesSlotId(getTimeSlotListStatement.getSeriesSlotId());
-      } else if(getTimeSlotListStatement.getDevice()!=null) {
+      } else if (getTimeSlotListStatement.getDevice() != null) {
         tGetTimeSlotListReq.setDevice(getTimeSlotListStatement.getDevice());
-      }
-      else if(getTimeSlotListStatement.getRegionId()!=-1){
+      } else if (getTimeSlotListStatement.getRegionId() != -1) {
         tGetTimeSlotListReq.setRegionId(getTimeSlotListStatement.getRegionId());
       }
       if (getTimeSlotListStatement.getStartTime() != -1) {
