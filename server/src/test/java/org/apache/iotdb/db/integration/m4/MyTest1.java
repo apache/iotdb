@@ -58,6 +58,8 @@ public class MyTest1 {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static boolean originalEnableCPV;
   private static boolean originalUseChunkIndex;
+
+  private static boolean originalUseMad;
   private static CompactionStrategy originalCompactionStrategy;
 
   @Before
@@ -72,6 +74,9 @@ public class MyTest1 {
     originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
     TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
 
+    originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
+    TSFileDescriptor.getInstance().getConfig().setUseMad(true);
+
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     config.setTimestampPrecision("ms");
@@ -83,6 +88,7 @@ public class MyTest1 {
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
     TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
+    TSFileDescriptor.getInstance().getConfig().setUseMad(originalUseMad);
   }
 
   @Test

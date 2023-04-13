@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
@@ -27,7 +29,7 @@ import java.util.Arrays;
 
 public class StepRegress {
 
-  public static boolean useMad = false;
+  public static boolean useMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
 
   // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
   // causing learn() executed more than once!!

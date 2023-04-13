@@ -906,6 +906,13 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()))));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setUseMad(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "use_Mad",
+                    Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUseMad()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setGroupSizeInByte(
             Integer.parseInt(
                 properties.getProperty(

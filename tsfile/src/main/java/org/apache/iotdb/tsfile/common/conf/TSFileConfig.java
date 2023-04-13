@@ -29,6 +29,8 @@ public class TSFileConfig implements Serializable {
 
   private boolean useChunkIndex = true;
 
+  private boolean useMad = false;
+
   /** encoding configuration */
   public static final int RLE_MIN_REPEATED_NUM = 8;
 
@@ -155,6 +157,14 @@ public class TSFileConfig implements Serializable {
 
   public void setUseChunkIndex(boolean useChunkIndex) {
     this.useChunkIndex = useChunkIndex;
+  }
+
+  public boolean isUseMad() {
+    return useMad;
+  }
+
+  public void setUseMad(boolean useMad) {
+    this.useMad = useMad;
   }
 
   public int getGroupSizeInByte() {
