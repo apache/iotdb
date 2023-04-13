@@ -62,7 +62,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
   }
 
   @Override
-  public boolean hasSchemaStatistic() {
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
     return false;
   }
 

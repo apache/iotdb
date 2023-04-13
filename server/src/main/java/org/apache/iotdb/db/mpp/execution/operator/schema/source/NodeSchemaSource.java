@@ -80,7 +80,7 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
   }
 
   @Override
-  public boolean hasSchemaStatistic() {
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
     return false;
   }
 

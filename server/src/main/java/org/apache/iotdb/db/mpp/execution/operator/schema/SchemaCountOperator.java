@@ -76,8 +76,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     long count = 0;
-    if (schemaSource.hasSchemaStatistic()) {
-      count = schemaSource.getSchemaStatistic(getSchemaRegion());
+    ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+      count = schemaSource.getSchemaStatistic(schemaRegion);
     } else {
       if (schemaReader == null) {
         schemaReader = createSchemaReader();

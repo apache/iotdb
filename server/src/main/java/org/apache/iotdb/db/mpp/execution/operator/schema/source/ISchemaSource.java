@@ -48,7 +48,7 @@ public interface ISchemaSource<T extends ISchemaInfo> {
    */
   void transformToTsBlockColumns(T schemaInfo, TsBlockBuilder tsBlockBuilder, String database);
 
-  boolean hasSchemaStatistic();
+  boolean hasSchemaStatistic(ISchemaRegion schemaRegion);
 
   long getSchemaStatistic(ISchemaRegion schemaRegion);
 }

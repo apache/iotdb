@@ -88,7 +88,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   }
 
   @Override
-  public boolean hasSchemaStatistic() {
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
     return pathPattern.equals(ALL_MATCH_PATTERN);
   }
 
