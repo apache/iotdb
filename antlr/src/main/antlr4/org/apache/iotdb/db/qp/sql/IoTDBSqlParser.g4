@@ -1001,7 +1001,8 @@ intoPath
 
 nodeName
     : wildcard
-    | wildcard? nodeNameSlice wildcard?
+    | wildcard nodeNameSlice wildcard?
+    | nodeNameSlice wildcard
     | nodeNameWithoutWildcard
     ;
 
