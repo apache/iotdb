@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -137,37 +138,45 @@ public class ChunkReader implements IChunkReader {
   }
 
   private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
-    int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] compressedPageBody = new byte[compressedPageBodyLength];
+    ByteBuffer pageData;
+    if (chunkHeader.getCompressionType() != CompressionType.UNCOMPRESSED) {
+      int compressedPageBodyLength = pageHeader.getCompressedSize();
+      byte[] compressedPageBody = new byte[compressedPageBodyLength];
 
-    // doesn't has a complete page body
-    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
-      throw new IOException(
-          "do not has a complete page body. Expected:"
-              + compressedPageBodyLength
-              + ". Actual:"
-              + chunkDataBuffer.remaining());
+      // doesn't has a complete page body
+      if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
+        throw new IOException(
+            "do not has a complete page body. Expected:"
+                + compressedPageBodyLength
+                + ". Actual:"
+                + chunkDataBuffer.remaining());
+      }
+
+      chunkDataBuffer.get(compressedPageBody);
+      byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+      try {
+        unCompressor.uncompress(
+            compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
+      } catch (Exception e) {
+        throw new IOException(
+            "Uncompress error! uncompress size: "
+                + pageHeader.getUncompressedSize()
+                + "compressed size: "
+                + pageHeader.getCompressedSize()
+                + "page header: "
+                + pageHeader
+                + e.getMessage());
+      }
+
+      pageData = ByteBuffer.wrap(uncompressedPageData);
+    } else {
+      // get a slice from chunkDataBuffer, and position chunkDataBuffer
+      pageData = chunkDataBuffer.slice();
+      pageData.limit(pageHeader.getCompressedSize());
+      chunkDataBuffer.position(chunkDataBuffer.position() + pageHeader.getCompressedSize());
     }
-
-    chunkDataBuffer.get(compressedPageBody);
     Decoder valueDecoder =
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    try {
-      unCompressor.uncompress(
-          compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
-    } catch (Exception e) {
-      throw new IOException(
-          "Uncompress error! uncompress size: "
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage());
-    }
-
-    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
     PageReader reader =
         new PageReader(
             pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);

@@ -111,7 +111,7 @@ public class TSFileConfig implements Serializable {
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
-  private CompressionType compressor = CompressionType.SNAPPY;
+  private CompressionType compressor = CompressionType.UNCOMPRESSED;
   /** Line count threshold for checking page memory occupied size. */
   private int pageCheckSizeThreshold = 100;
   /** Default endian value is BIG_ENDIAN. */
