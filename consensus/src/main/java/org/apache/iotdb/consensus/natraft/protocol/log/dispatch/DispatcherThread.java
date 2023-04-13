@@ -50,6 +50,8 @@ class DispatcherThread implements Runnable {
   private final String baseName;
   private final RateLimiter rateLimiter;
   private final DispatcherGroup group;
+  private long idleTimeSum;
+  private long runningTimeSum;
 
   protected DispatcherThread(LogDispatcher logDispatcher, Peer receiver,
       BlockingQueue<VotingEntry> logBlockingDeque, RateLimiter rateLimiter,
@@ -68,6 +70,8 @@ class DispatcherThread implements Runnable {
       Thread.currentThread().setName(baseName);
     }
     try {
+      long idleStart = System.nanoTime();
+      long runningStart = 0;
       while (!Thread.interrupted()) {
         synchronized (logBlockingDeque) {
           VotingEntry poll = logBlockingDeque.poll();
@@ -79,24 +83,55 @@ class DispatcherThread implements Runnable {
             continue;
           }
         }
+        long currTime = System.nanoTime();
+        idleTimeSum = currTime - idleStart;
+        runningStart = currTime;
         if (logger.isDebugEnabled()) {
           logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
         }
+
         serializeEntries();
         if (!logDispatcher.queueOrdered) {
           currBatch.sort(Comparator.comparingLong(s -> s.getEntry().getCurrLogIndex()));
         }
         sendLogs(currBatch);
         currBatch.clear();
+
+        currTime = System.nanoTime();
+        runningTimeSum = currTime - runningStart;
+        idleStart = currTime;
+
+        // thread too idle
+        if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) < 0.5 &&
+        runningTimeSum > 10_000_000_000L) {
+          int remaining = group.getGroupThreadNum().decrementAndGet();
+          if (remaining > 1) {
+            logger.info("Dispatcher thread too idle");
+            break;
+          } else {
+            group.getGroupThreadNum().incrementAndGet();
+          }
+          // thread too busy
+        } else if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) > 0.5 &&
+            runningTimeSum > 10_000_000_000L) {
+          int groupThreadNum = group.getGroupThreadNum().get();
+          if (groupThreadNum < group.getMaxBindingThreadNum()) {
+            group.addThread();
+          }
+          // avoid frequent change
+          runningTimeSum = 0;
+          idleTimeSum = 0;
+        }
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
       logger.error("Unexpected error in log dispatcher", e);
     }
-    logger.info("Dispatcher exits");
+    logger.info("Dispatcher exits, idle ratio: {}", idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum));
     group.getGroupThreadNum().decrementAndGet();
   }
+
 
   protected void serializeEntries() throws InterruptedException {
     for (VotingEntry request : currBatch) {

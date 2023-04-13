@@ -40,15 +40,17 @@ public class DispatcherGroup {
   private final ExecutorService dispatcherThreadPool;
   private final LogDispatcher logDispatcher;
   private final AtomicInteger groupThreadNum = new AtomicInteger();
+  private int maxBindingThreadNum;
 
-  public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int bindingThreadNum) {
+  public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     this.logDispatcher = logDispatcher;
     this.peer = peer;
     this.entryQueue = new ArrayBlockingQueue<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
+    this.maxBindingThreadNum = maxBindingThreadNum;
     this.dispatcherThreadPool = createPool(peer, logDispatcher.getMember().getName());
-    for (int i = 0; i < bindingThreadNum; i++) {
+    for (int i = 0; i < maxBindingThreadNum; i++) {
       addThread();
     }
   }
@@ -67,9 +69,13 @@ public class DispatcherGroup {
     }
   }
   public void addThread() {
-    dispatcherThreadPool
-        .submit(newDispatcherThread(peer, entryQueue, rateLimiter));
-    groupThreadNum.incrementAndGet();
+    int threadNum = groupThreadNum.incrementAndGet();
+    if (threadNum <= maxBindingThreadNum) {
+      dispatcherThreadPool
+          .submit(newDispatcherThread(peer, entryQueue, rateLimiter));
+    } else {
+      groupThreadNum.decrementAndGet();
+    }
   }
 
   DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingEntry> logBlockingQueue,
@@ -107,5 +113,9 @@ public class DispatcherGroup {
 
   public AtomicInteger getGroupThreadNum() {
     return groupThreadNum;
+  }
+
+  public int getMaxBindingThreadNum() {
+    return maxBindingThreadNum;
   }
 }
