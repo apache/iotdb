@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
@@ -57,9 +56,7 @@ public class UDAFMedian implements UDTF {
     double error = parameters.getDoubleOrDefault("error", 0);
     exact = (error == 0);
     if (exact) {
-      statistics =
-          new ExactOrderStatistics(
-              UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
+      statistics = new ExactOrderStatistics(parameters.getDataType(0));
     } else {
       sketch = new GKArray(error);
     }
