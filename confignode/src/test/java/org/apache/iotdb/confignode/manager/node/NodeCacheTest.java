@@ -19,8 +19,8 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;

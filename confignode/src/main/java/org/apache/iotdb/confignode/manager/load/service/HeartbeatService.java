@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -30,8 +30,8 @@ import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeart
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.manager.load.LoadCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 
@@ -45,7 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Maintain the Cluster-Heartbeat-Service */
+/** Maintain the Cluster-Heartbeat-Service. */
 public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);
@@ -56,7 +56,7 @@ public class HeartbeatService {
   private final IManager configManager;
   private final LoadCache loadCache;
 
-  /** Heartbeat executor service */
+  /** Heartbeat executor service. */
   // Monitor for leadership change
   private final Object heartbeatScheduleMonitor = new Object();
 
@@ -70,7 +70,7 @@ public class HeartbeatService {
     this.loadCache = loadCache;
   }
 
-  /** Start the heartbeat service */
+  /** Start the heartbeat service. */
   public void startHeartbeatService() {
     synchronized (heartbeatScheduleMonitor) {
       if (currentHeartbeatFuture == null) {
@@ -86,7 +86,7 @@ public class HeartbeatService {
     }
   }
 
-  /** Stop the heartbeat service */
+  /** Stop the heartbeat service. */
   public void stopHeartbeatService() {
     synchronized (heartbeatScheduleMonitor) {
       if (currentHeartbeatFuture != null) {
@@ -97,7 +97,7 @@ public class HeartbeatService {
     }
   }
 
-  /** loop body of the heartbeat thread */
+  /** loop body of the heartbeat thread. */
   private void heartbeatLoopBody() {
     // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
@@ -135,7 +135,7 @@ public class HeartbeatService {
   }
 
   /**
-   * Send heartbeat requests to all the Registered ConfigNodes
+   * Send heartbeat requests to all the Registered ConfigNodes.
    *
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
@@ -159,7 +159,7 @@ public class HeartbeatService {
   }
 
   /**
-   * Send heartbeat requests to all the Registered DataNodes
+   * Send heartbeat requests to all the Registered DataNodes.
    *
    * @param registeredDataNodes DataNodes that registered in cluster
    */

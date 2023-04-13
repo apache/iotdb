@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.manager.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 
 import org.junit.Assert;
 import org.junit.Test;

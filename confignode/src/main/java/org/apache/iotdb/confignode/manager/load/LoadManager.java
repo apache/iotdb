@@ -36,17 +36,16 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatService;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.statistics.StatisticsService;
+import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
+import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -59,17 +58,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class LoadManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
-
   private final IManager configManager;
 
-  /** Balancers */
+  /** Balancers. */
   private final RegionBalancer regionBalancer;
 
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
 
-  /** Cluster load services */
+  /** Cluster load services. */
   private final LoadCache loadCache;
 
   private final HeartbeatService heartbeatService;
@@ -94,7 +91,7 @@ public class LoadManager {
   }
 
   /**
-   * Generate an optimal CreateRegionGroupsPlan
+   * Generate an optimal CreateRegionGroupsPlan.
    *
    * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
@@ -109,7 +106,7 @@ public class LoadManager {
   }
 
   /**
-   * Allocate SchemaPartitions
+   * Allocate SchemaPartitions.
    *
    * @param unassignedSchemaPartitionSlotsMap SchemaPartitionSlots that should be assigned
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
@@ -121,7 +118,7 @@ public class LoadManager {
   }
 
   /**
-   * Allocate DataPartitions
+   * Allocate DataPartitions.
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
@@ -190,7 +187,7 @@ public class LoadManager {
   }
 
   /**
-   * Safely get NodeStatus by NodeId
+   * Safely get NodeStatus by NodeId.
    *
    * @param nodeId The specified NodeId
    * @return NodeStatus of the specified Node. Unknown if cache doesn't exist.
@@ -200,7 +197,7 @@ public class LoadManager {
   }
 
   /**
-   * Safely get the specified Node's current status with reason
+   * Safely get the specified Node's current status with reason.
    *
    * @param nodeId The specified NodeId
    * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
@@ -210,7 +207,7 @@ public class LoadManager {
   }
 
   /**
-   * Get all Node's current status with reason
+   * Get all Node's current status with reason.
    *
    * @return Map<NodeId, NodeStatus with reason>
    */
@@ -219,7 +216,7 @@ public class LoadManager {
   }
 
   /**
-   * Filter ConfigNodes through the specified NodeStatus
+   * Filter ConfigNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered ConfigNodes with the specified NodeStatus
@@ -229,7 +226,7 @@ public class LoadManager {
   }
 
   /**
-   * Filter DataNodes through the specified NodeStatus
+   * Filter DataNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered DataNodes with the specified NodeStatus
@@ -239,7 +236,7 @@ public class LoadManager {
   }
 
   /**
-   * Get the free disk space of the specified DataNode
+   * Get the free disk space of the specified DataNode.
    *
    * @param dataNodeId The index of the specified DataNode
    * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
@@ -249,7 +246,7 @@ public class LoadManager {
   }
 
   /**
-   * Get the loadScore of each DataNode
+   * Get the loadScore of each DataNode.
    *
    * @return Map<DataNodeId, loadScore>
    */
@@ -258,7 +255,7 @@ public class LoadManager {
   }
 
   /**
-   * Get the lowest loadScore DataNode
+   * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
    */
@@ -267,7 +264,7 @@ public class LoadManager {
   }
 
   /**
-   * Get the lowest loadScore DataNode from the specified DataNodes
+   * Get the lowest loadScore DataNode from the specified DataNodes.
    *
    * @param dataNodeIds The specified DataNodes
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
@@ -277,7 +274,7 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified Node's cache
+   * Force update the specified Node's cache.
    *
    * @param nodeType Specified NodeType
    * @param nodeId Specified NodeId
@@ -288,7 +285,7 @@ public class LoadManager {
     loadCache.forceUpdateNodeCache(nodeType, nodeId, heartbeatSample);
   }
 
-  /** Remove the specified Node's cache */
+  /** Remove the specified Node's cache. */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
   }
@@ -326,7 +323,7 @@ public class LoadManager {
   }
 
   /**
-   * Filter the RegionGroups through the RegionGroupStatus
+   * Filter the RegionGroups through the RegionGroupStatus.
    *
    * @param status The specified RegionGroupStatus
    * @return Filtered RegionGroups with the specified RegionGroupStatus
@@ -336,7 +333,7 @@ public class LoadManager {
   }
 
   /**
-   * Count the number of cluster Regions with specified RegionStatus
+   * Count the number of cluster Regions with specified RegionStatus.
    *
    * @param type The specified RegionGroupType
    * @param status The specified statues
@@ -347,7 +344,7 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified RegionGroup's cache
+   * Force update the specified RegionGroup's cache.
    *
    * @param regionGroupId Specified RegionGroupId
    * @param heartbeatSampleMap Specified RegionHeartbeatSampleMap
@@ -357,7 +354,7 @@ public class LoadManager {
     loadCache.forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
   }
 
-  /** Remove the specified RegionGroup's cache */
+  /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);
   }

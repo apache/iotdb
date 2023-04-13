@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat.node;
+
+package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
 
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicReference;
 
-/** All the statistic interfaces that provided by HeartbeatCache */
+/** All the statistic interfaces that provided by HeartbeatCache. */
 public abstract class BaseNodeCache {
 
   // When the response time of heartbeat is more than 20s, the Node is considered as down
@@ -39,19 +40,19 @@ public abstract class BaseNodeCache {
 
   // The previous NodeStatistics, used for comparing with
   // the current NodeStatistics to initiate notification when they are different
-  protected volatile NodeStatistics previousStatistics;
+  protected AtomicReference<NodeStatistics> previousStatistics;
   // The current NodeStatistics, used for providing statistics to other services
-  protected volatile NodeStatistics currentStatistics;
+  protected AtomicReference<NodeStatistics> currentStatistics;
 
-  /** Constructor for NodeCache with default NodeStatistics */
+  /** Constructor for NodeCache with default NodeStatistics. */
   protected BaseNodeCache(int nodeId) {
     this.nodeId = nodeId;
-    this.previousStatistics = NodeStatistics.generateDefaultNodeStatistics();
-    this.currentStatistics = NodeStatistics.generateDefaultNodeStatistics();
+    this.previousStatistics = new AtomicReference<>(NodeStatistics.generateDefaultNodeStatistics());
+    this.currentStatistics = new AtomicReference<>(NodeStatistics.generateDefaultNodeStatistics());
   }
 
   /**
-   * Cache the newest NodeHeartbeatSample
+   * Cache the newest NodeHeartbeatSample.
    *
    * @param newHeartbeatSample The newest NodeHeartbeatSample
    */
@@ -73,15 +74,15 @@ public abstract class BaseNodeCache {
   /**
    * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics and
    * compare with the previousStatistics, in order to detect whether the Node's statistics has
-   * changed
+   * changed.
    *
    * @return True if the currentStatistics has changed recently(compare with the
    *     previousStatistics), false otherwise
    */
   public boolean periodicUpdate() {
     updateCurrentStatistics();
-    if (!currentStatistics.equals(previousStatistics)) {
-      previousStatistics = currentStatistics.deepCopy();
+    if (!currentStatistics.get().equals(previousStatistics.get())) {
+      previousStatistics.set(currentStatistics.get());
       return true;
     } else {
       return false;
@@ -107,7 +108,7 @@ public abstract class BaseNodeCache {
   }
 
   /**
-   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow
+   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow.
    */
   protected abstract void updateCurrentStatistics();
 
@@ -121,32 +122,31 @@ public abstract class BaseNodeCache {
    * @return The latest load score of a node, the higher the score the higher the load
    */
   public long getLoadScore() {
-    return currentStatistics.getLoadScore();
+    return currentStatistics.get().getLoadScore();
   }
 
-  /** @return The current status of the Node */
+  /** @return The current status of the Node. */
   public NodeStatus getNodeStatus() {
     // Return a copy of status
-    return NodeStatus.parse(currentStatistics.getStatus().getStatus());
+    return NodeStatus.parse(currentStatistics.get().getStatus().getStatus());
   }
 
-  /** @return The reason why lead to current NodeStatus */
+  /** @return The reason why lead to current NodeStatus. */
   public String getNodeStatusWithReason() {
-    if (currentStatistics.getStatusReason() == null) {
-      return currentStatistics.getStatus().getStatus();
-    } else {
-      return currentStatistics.getStatus().getStatus()
-          + "("
-          + currentStatistics.getStatusReason()
-          + ")";
-    }
+    NodeStatistics currentStatistics = this.currentStatistics.get();
+    return currentStatistics.getStatusReason() == null
+        ? currentStatistics.getStatus().getStatus()
+        : currentStatistics.getStatus().getStatus()
+            + "("
+            + currentStatistics.getStatusReason()
+            + ")";
   }
 
   public NodeStatistics getStatistics() {
-    return currentStatistics;
+    return currentStatistics.get();
   }
 
   public NodeStatistics getPreviousStatistics() {
-    return previousStatistics;
+    return previousStatistics.get();
   }
 }

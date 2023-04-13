@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.statistics;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+package org.apache.iotdb.confignode.manager.load.cache.region;
+
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,13 +32,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupStatistics {
-
-  // The DataNodeId where the leader of current RegionGroup resides
-  private volatile int leaderId = -1;
-  // Indicate the routing priority of read/write requests for current RegionGroup.
-  // The replica with higher sorting order have higher priority.
-  // TODO: Might be split into readRouteMap and writeRouteMap in the future
-  private TRegionReplicaSet regionPriority;
 
   private volatile RegionGroupStatus regionGroupStatus;
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
@@ -58,7 +51,7 @@ public class RegionGroupStatistics {
   }
 
   /**
-   * Get the specified Region's status
+   * Get the specified Region's status.
    *
    * @param dataNodeId Where the Region resides
    * @return Region's latest status if received heartbeat recently, Unknown otherwise
@@ -123,8 +116,12 @@ public class RegionGroupStatistics {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RegionGroupStatistics that = (RegionGroupStatistics) o;
     return regionGroupStatus == that.regionGroupStatus
         && regionStatisticsMap.equals(that.regionStatisticsMap);

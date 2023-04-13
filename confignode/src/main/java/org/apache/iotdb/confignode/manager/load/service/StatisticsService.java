@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.statistics;
+package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -31,9 +31,12 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.LoadCache;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
+import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -68,14 +71,14 @@ public class StatisticsService {
     this.eventBus = eventBus;
   }
 
-  /** Load statistics executor service */
+  /** Load statistics executor service. */
   private final Object statisticsScheduleMonitor = new Object();
 
   private Future<?> currentLoadStatisticsFuture;
   private final ScheduledExecutorService loadStatisticsExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
 
-  /** Start the load statistics service */
+  /** Start the load statistics service. */
   public void startLoadStatisticsService() {
     synchronized (statisticsScheduleMonitor) {
       if (currentLoadStatisticsFuture == null) {
@@ -91,7 +94,7 @@ public class StatisticsService {
     }
   }
 
-  /** Stop the load statistics service */
+  /** Stop the load statistics service. */
   public void stopLoadStatisticsService() {
     synchronized (statisticsScheduleMonitor) {
       if (currentLoadStatisticsFuture != null) {

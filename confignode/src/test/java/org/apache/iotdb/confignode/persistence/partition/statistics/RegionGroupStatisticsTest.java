@@ -19,8 +19,8 @@
 package org.apache.iotdb.confignode.persistence.partition.statistics;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.manager.load.statistics.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.load.statistics.RegionStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 

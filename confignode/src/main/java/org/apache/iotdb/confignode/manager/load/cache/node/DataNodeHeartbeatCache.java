@@ -16,21 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat.node;
+
+package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
-/** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
+import java.util.concurrent.atomic.AtomicReference;
+
+/** DataNodeHeartbeatCache caches and maintains all the heartbeat data. */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
-  private volatile TLoadSample latestLoadSample;
+  private final AtomicReference<TLoadSample> latestLoadSample;
 
-  /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
+  /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics. */
   public DataNodeHeartbeatCache(int dataNodeId) {
     super(dataNodeId);
-    this.latestLoadSample = new TLoadSample();
+    this.latestLoadSample = new AtomicReference<>(new TLoadSample());
   }
 
   @Override
@@ -45,7 +47,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
     /* Update load sample */
     if (lastSample != null && lastSample.isSetLoadSample()) {
-      latestLoadSample = lastSample.getLoadSample();
+      latestLoadSample.set(lastSample.getLoadSample());
     }
 
     /* Update Node status */
@@ -65,13 +67,13 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
-    if (!currentStatistics.equals(newStatistics)) {
+    if (!currentStatistics.get().equals(newStatistics)) {
       // Update the current NodeStatistics if necessary
-      currentStatistics = newStatistics;
+      currentStatistics.set(newStatistics);
     }
   }
 
   public double getFreeDiskSpace() {
-    return latestLoadSample.getFreeDiskSpace();
+    return latestLoadSample.get().getFreeDiskSpace();
   }
 }

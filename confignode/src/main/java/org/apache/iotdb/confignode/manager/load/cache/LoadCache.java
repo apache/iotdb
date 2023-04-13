@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load;
+package org.apache.iotdb.confignode.manager.load.cache;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -28,14 +28,14 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.statistics.NodeStatistics;
-import org.apache.iotdb.confignode.manager.load.statistics.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-/** Maintain all kinds of heartbeat samples */
+/** Maintain all kinds of heartbeat samples. */
 public class LoadCache {
 
   // Map<NodeId, INodeCache>
@@ -68,7 +68,7 @@ public class LoadCache {
     initRegionGroupHeartbeatCache(configManager.getPartitionManager().getAllReplicaSets());
   }
 
-  /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched */
+  /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched. */
   private void initNodeHeartbeatCache(
       List<TConfigNodeLocation> registeredConfigNodes,
       List<TDataNodeConfiguration> registeredDataNodes) {
@@ -190,7 +190,7 @@ public class LoadCache {
   }
 
   /**
-   * Safely get NodeStatus by NodeId
+   * Safely get NodeStatus by NodeId.
    *
    * @param nodeId The specified NodeId
    * @return NodeStatus of the specified Node. Unknown if cache doesn't exist.
@@ -201,7 +201,7 @@ public class LoadCache {
   }
 
   /**
-   * Safely get the specified Node's current status with reason
+   * Safely get the specified Node's current status with reason.
    *
    * @param nodeId The specified NodeId
    * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
@@ -214,7 +214,7 @@ public class LoadCache {
   }
 
   /**
-   * Get all Node's current status with reason
+   * Get all Node's current status with reason.
    *
    * @return Map<NodeId, NodeStatus with reason>
    */
@@ -224,7 +224,7 @@ public class LoadCache {
   }
 
   /**
-   * Filter ConfigNodes through the specified NodeStatus
+   * Filter ConfigNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered ConfigNodes with the specified NodeStatus
@@ -241,7 +241,7 @@ public class LoadCache {
   }
 
   /**
-   * Filter DataNodes through the specified NodeStatus
+   * Filter DataNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered DataNodes with the specified NodeStatus
@@ -258,7 +258,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the free disk space of the specified DataNode
+   * Get the free disk space of the specified DataNode.
    *
    * @param dataNodeId The index of the specified DataNode
    * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
@@ -270,7 +270,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the loadScore of each DataNode
+   * Get the loadScore of each DataNode.
    *
    * @return Map<DataNodeId, loadScore>
    */
@@ -286,7 +286,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the lowest loadScore DataNode
+   * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
    */
@@ -299,7 +299,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the lowest loadScore DataNode from the specified DataNodes
+   * Get the lowest loadScore DataNode from the specified DataNodes.
    *
    * @param dataNodeIds The specified DataNodes
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
@@ -314,7 +314,7 @@ public class LoadCache {
   }
 
   /**
-   * Force update the specified Node's cache
+   * Force update the specified Node's cache.
    *
    * @param nodeType Specified NodeType
    * @param nodeId Specified NodeId
@@ -329,6 +329,7 @@ public class LoadCache {
             .forceUpdate(heartbeatSample);
         break;
       case DataNode:
+      default:
         nodeCacheMap
             .computeIfAbsent(nodeId, empty -> new DataNodeHeartbeatCache(nodeId))
             .forceUpdate(heartbeatSample);
@@ -336,7 +337,7 @@ public class LoadCache {
     }
   }
 
-  /** Remove the specified Node's cache */
+  /** Remove the specified Node's cache. */
   public void removeNodeCache(int nodeId) {
     nodeCacheMap.remove(nodeId);
   }
@@ -382,7 +383,7 @@ public class LoadCache {
   }
 
   /**
-   * Filter the RegionGroups through the RegionGroupStatus
+   * Filter the RegionGroups through the RegionGroupStatus.
    *
    * @param status The specified RegionGroupStatus
    * @return Filtered RegionGroups with the specified RegionGroupStatus
@@ -404,7 +405,7 @@ public class LoadCache {
   }
 
   /**
-   * Count the number of cluster Regions with specified RegionStatus
+   * Count the number of cluster Regions with specified RegionStatus.
    *
    * @param type The specified RegionGroupType
    * @param status The specified statues
@@ -432,7 +433,7 @@ public class LoadCache {
   }
 
   /**
-   * Force update the specified RegionGroup's cache
+   * Force update the specified RegionGroup's cache.
    *
    * @param regionGroupId Specified RegionGroupId
    * @param heartbeatSampleMap Specified RegionHeartbeatSampleMap
@@ -444,7 +445,7 @@ public class LoadCache {
         .forceUpdate(heartbeatSampleMap);
   }
 
-  /** Remove the specified RegionGroup's cache */
+  /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     regionGroupCacheMap.remove(consensusGroupId);
   }
