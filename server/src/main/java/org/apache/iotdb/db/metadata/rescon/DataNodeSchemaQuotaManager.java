@@ -32,7 +32,7 @@ public class DataNodeSchemaQuotaManager {
   private long limit =
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .getClusterMaxSchemaCount(); // -1 means no limitation
+          .getClusterSchemaLimitThreshold(); // -1 means no limitation
   private final AtomicLong remain = new AtomicLong(0);
 
   public void updateRemain(long totalCount) {
@@ -64,7 +64,7 @@ public class DataNodeSchemaQuotaManager {
         ClusterSchemaQuotaLevel.valueOf(
             IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel().toUpperCase());
     long oldLimit = limit;
-    this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterMaxSchemaCount();
+    this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitThreshold();
     this.remain.addAndGet(limit - oldLimit);
   }
 

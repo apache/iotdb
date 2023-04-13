@@ -62,7 +62,6 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.MeasurementPathUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.PathTagConverterUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUtils;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -98,20 +97,14 @@ public class TagSchemaRegion implements ISchemaRegion {
   // manager timeSeries, and use a deviceID list manager device id -> INT32 id
   private final IDTableWithDeviceIDListImpl idTableWithDeviceIDList;
 
-  private final ISeriesNumerMonitor seriesNumerMonitor;
-
   public TagSchemaRegion(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
-      ISeriesNumerMonitor seriesNumerMonitor)
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
     String storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
     this.storageGroupMNode = storageGroupMNode;
-    this.seriesNumerMonitor = seriesNumerMonitor;
     File schemaRegionDir = new File(schemaRegionDirPath);
     idTableWithDeviceIDList = new IDTableWithDeviceIDListImpl(schemaRegionDir);
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);

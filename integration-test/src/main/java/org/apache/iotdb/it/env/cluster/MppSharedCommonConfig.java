@@ -359,9 +359,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
-    dnConfig.setClusterMaxSchemaCount(clusterMaxSchemaCount);
-    cnConfig.setClusterMaxSchemaCount(clusterMaxSchemaCount);
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    dnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
+    cnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
     return this;
   }
 }

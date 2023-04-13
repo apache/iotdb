@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -78,7 +77,6 @@ import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -155,9 +153,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private MTreeBelowSGCachedImpl mtree;
   private TagManager tagManager;
 
-  // seriesNumberMonitor may be null
-  private final ISeriesNumerMonitor seriesNumerMonitor;
-
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionSchemaFileImpl(ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
@@ -167,8 +162,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
-
-    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
@@ -449,12 +442,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
-    // collect all the LeafMNode in this schema region
-    long seriesCount = regionStatistics.getSeriesNumber();
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
-    }
-
     // clear all the components and release all the file handlers
     clear();
 
@@ -602,37 +589,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
     }
 
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
-      throw new SeriesNumberOverflowException();
-    }
     schemaQuotaManager.checkMeasurementLevel(1);
 
     try {
       PartialPath path = plan.getPath();
       IMeasurementMNode leafMNode;
-      // using try-catch to restore seriesNumberMonitor's state while create failed
-      try {
-        SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
+      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-        TSDataType type = plan.getDataType();
-        // create time series in MTree
-        leafMNode =
-            mtree.createTimeseriesWithPinnedReturn(
-                path,
-                type,
-                plan.getEncoding(),
-                plan.getCompressor(),
-                plan.getProps(),
-                plan.getAlias());
-      } catch (Throwable t) {
-        if (seriesNumerMonitor != null) {
-          seriesNumerMonitor.deleteTimeSeries(1);
-        }
-        throw t;
-      }
+      TSDataType type = plan.getDataType();
+      // create time series in MTree
+      leafMNode =
+          mtree.createTimeseriesWithPinnedReturn(
+              path,
+              type,
+              plan.getEncoding(),
+              plan.getCompressor(),
+              plan.getProps(),
+              plan.getAlias());
 
       try {
-
         // update statistics and schemaDataTypeNumMap
         regionStatistics.addTimeseries(1L);
 
@@ -724,10 +699,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         throw new SeriesOverflowException();
       }
     }
-
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
-      throw new SeriesNumberOverflowException();
-    }
     schemaQuotaManager.checkMeasurementLevel(seriesCount);
 
     try {
@@ -738,27 +709,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       List<Map<String, String>> tagsList = plan.getTagsList();
       List<Map<String, String>> attributesList = plan.getAttributesList();
       List<IMeasurementMNode> measurementMNodeList;
-      // using try-catch to restore seriesNumberMonitor's state while create failed
-      try {
-        for (int i = 0; i < measurements.size(); i++) {
-          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
-        }
-
-        // create time series in MTree
-        measurementMNodeList =
-            mtree.createAlignedTimeseries(
-                prefixPath,
-                measurements,
-                plan.getDataTypes(),
-                plan.getEncodings(),
-                plan.getCompressors(),
-                plan.getAliasList());
-      } catch (Throwable t) {
-        if (seriesNumerMonitor != null) {
-          seriesNumerMonitor.deleteTimeSeries(seriesCount);
-        }
-        throw t;
+      for (int i = 0; i < measurements.size(); i++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
+
+      // create time series in MTree
+      measurementMNodeList =
+          mtree.createAlignedTimeseries(
+              prefixPath,
+              measurements,
+              plan.getDataTypes(),
+              plan.getEncodings(),
+              plan.getCompressors(),
+              plan.getAliasList());
 
       try {
 
@@ -906,9 +869,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(1);
-    }
   }
 
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
@@ -922,9 +882,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
-    if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(1);
-    }
   }
   // endregion
 

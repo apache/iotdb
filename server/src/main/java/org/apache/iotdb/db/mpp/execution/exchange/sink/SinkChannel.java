@@ -138,7 +138,7 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.queryId,
             localFragmentInstanceId.fragmentId,
             localFragmentInstanceId.instanceId);
-    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.bufferRetainedSizeInBytes = 0;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
@@ -207,11 +207,13 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void abort() {
     LOGGER.debug("[StartAbortSinkChannel]");
-    if (aborted) {
+    if (aborted || closed) {
       return;
     }
     sequenceIdToTsBlock.clear();
-    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
+    if (blocked != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
+    }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
@@ -234,11 +236,13 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void close() {
     LOGGER.debug("[StartCloseSinkChannel]");
-    if (closed) {
+    if (closed || aborted) {
       return;
     }
     sequenceIdToTsBlock.clear();
-    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    if (blocked != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
           .getQueryPool()
@@ -367,7 +371,11 @@ public class SinkChannel implements ISinkChannel {
 
   // region ============ ISinkChannel related ============
 
-  public void open() {
+  @Override
+  public synchronized void open() {
+    if (aborted || closed) {
+      return;
+    }
     // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
     this.blocked =
         localMemoryManager
@@ -381,6 +389,7 @@ public class SinkChannel implements ISinkChannel {
             // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
             // at first this SinkChannel has not reserved memory.
             .left;
+    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override

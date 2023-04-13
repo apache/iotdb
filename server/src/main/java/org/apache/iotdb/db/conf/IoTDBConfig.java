@@ -1040,7 +1040,7 @@ public class IoTDBConfig {
   private String clusterSchemaLimitLevel = "timeseries";
 
   /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
-  private long clusterMaxSchemaCount = -1;
+  private long clusterSchemaLimitThreshold = -1;
 
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
@@ -3652,11 +3652,11 @@ public class IoTDBConfig {
     this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
   }
 
-  public long getClusterMaxSchemaCount() {
-    return clusterMaxSchemaCount;
+  public long getClusterSchemaLimitThreshold() {
+    return clusterSchemaLimitThreshold;
   }
 
-  public void setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
-    this.clusterMaxSchemaCount = clusterMaxSchemaCount;
+  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
   }
 }

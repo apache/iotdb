@@ -147,7 +147,7 @@ public class SharedTsBlockQueue {
     this.sourceHandle = sourceHandle;
   }
 
-  /** Notify no more tsblocks will be added to the queue. */
+  /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
@@ -164,7 +164,7 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Remove a tsblock from the head of the queue and return. Should be invoked only when the future
+   * Remove a TsBlock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
    */
   public TsBlock remove() {
@@ -172,11 +172,6 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
-    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
-    // corresponding LocalSinkChannel.
-    if (sinkChannel != null) {
-      sinkChannel.checkAndInvokeOnFinished();
-    }
     localMemoryManager
         .getQueryPool()
         .free(
@@ -185,6 +180,11 @@ public class SharedTsBlockQueue {
             localPlanNodeId,
             tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // corresponding LocalSinkChannel.
+    if (sinkChannel != null) {
+      sinkChannel.checkAndInvokeOnFinished();
+    }
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
@@ -192,17 +192,19 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Add tsblocks to the queue. Except the first invocation, this method should be invoked only when
+   * Add TsBlocks to the queue. Except the first invocation, this method should be invoked only when
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      LOGGER.warn("queue has been destroyed");
+      // queue may have been closed
       return immediateVoidFuture();
     }
 
     Validate.notNull(tsBlock, "TsBlock cannot be null");
-    Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
+
+    Validate.isTrue(
+        blockedOnMemory == null || blockedOnMemory.isDone(), "SharedTsBlockQueue is full");
     Pair<ListenableFuture<Void>, Boolean> pair =
         localMemoryManager
             .getQueryPool()
@@ -264,6 +266,7 @@ public class SharedTsBlockQueue {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
+    sinkChannel.close();
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */

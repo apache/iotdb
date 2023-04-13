@@ -16,31 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.external.api;
+package org.apache.iotdb.db.mpp.execution.exchange.source;
 
-import java.util.Properties;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 
-/** An interface for series number monitoring, users can implement their own limitation strategy */
-public interface ISeriesNumerMonitor {
+public class PipelineSourceHandle extends LocalSourceHandle {
 
-  /**
-   * do the necessary initialization
-   *
-   * @param properties Properties containing all the parameters needed to init
-   */
-  void init(Properties properties);
-  /**
-   * add time series
-   *
-   * @param number time series number for current createTimeSeries operation
-   * @return true if we want to allow the operation, otherwise false
-   */
-  boolean addTimeSeries(int number);
+  public PipelineSourceHandle(
+      SharedTsBlockQueue queue,
+      MPPDataExchangeManager.SourceHandleListener sourceHandleListener,
+      String threadName) {
+    super(queue, sourceHandleListener, threadName);
+  }
 
-  /**
-   * delete time series
-   *
-   * @param number time series number for current deleteTimeSeries operation
-   */
-  void deleteTimeSeries(int number);
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
+      queue.setMaxBytesCanReserve(maxBytesCanReserve);
+    }
+  }
 }

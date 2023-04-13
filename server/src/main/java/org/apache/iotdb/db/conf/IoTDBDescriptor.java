@@ -204,11 +204,12 @@ public class IoTDBDescriptor {
         properties
             .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
             .trim());
-    conf.setClusterMaxSchemaCount(
+    conf.setClusterSchemaLimitThreshold(
         Long.parseLong(
             properties
                 .getProperty(
-                    "cluster_max_schema_count", Long.toString(conf.getClusterMaxSchemaCount()))
+                    "cluster_schema_limit_threshold",
+                    Long.toString(conf.getClusterSchemaLimitThreshold()))
                 .trim()));
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
@@ -1489,11 +1490,12 @@ public class IoTDBDescriptor {
           properties
               .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
               .trim());
-      conf.setClusterMaxSchemaCount(
+      conf.setClusterSchemaLimitThreshold(
           Long.parseLong(
               properties
                   .getProperty(
-                      "cluster_max_schema_count", Long.toString(conf.getClusterMaxSchemaCount()))
+                      "cluster_schema_limit_threshold",
+                      Long.toString(conf.getClusterSchemaLimitThreshold()))
                   .trim()));
       DataNodeSchemaQuotaManager.getInstance().updateConfiguration();
     } catch (Exception e) {
