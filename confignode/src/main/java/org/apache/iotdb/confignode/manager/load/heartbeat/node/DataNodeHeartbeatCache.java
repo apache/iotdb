@@ -28,8 +28,8 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   private volatile TLoadSample latestLoadSample;
 
   /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
-  public DataNodeHeartbeatCache() {
-    super();
+  public DataNodeHeartbeatCache(int dataNodeId) {
+    super(dataNodeId);
     this.latestLoadSample = new TLoadSample();
   }
 

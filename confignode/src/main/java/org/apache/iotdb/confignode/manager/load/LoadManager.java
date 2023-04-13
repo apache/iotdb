@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -34,7 +37,10 @@ import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatService;
+import org.apache.iotdb.confignode.manager.load.heartbeat.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.heartbeat.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.statistics.StatisticsService;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import com.google.common.eventbus.AsyncEventBus;
@@ -162,6 +168,10 @@ public class LoadManager {
     return routeBalancer.getLatestRegionPriorityMap();
   }
 
+  public void broadcastLatestRegionRouteMap() {
+    statisticsService.broadcastLatestRegionRouteMap();
+  }
+
   public void startLoadServices() {
     loadCache.initHeartbeatCache(configManager);
     routeBalancer.initRegionRouteMap();
@@ -177,5 +187,178 @@ public class LoadManager {
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
+  }
+
+  /**
+   * Safely get NodeStatus by NodeId
+   *
+   * @param nodeId The specified NodeId
+   * @return NodeStatus of the specified Node. Unknown if cache doesn't exist.
+   */
+  public NodeStatus getNodeStatus(int nodeId) {
+    return loadCache.getNodeStatus(nodeId);
+  }
+
+  /**
+   * Safely get the specified Node's current status with reason
+   *
+   * @param nodeId The specified NodeId
+   * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
+   */
+  public String getNodeStatusWithReason(int nodeId) {
+    return loadCache.getNodeStatusWithReason(nodeId);
+  }
+
+  /**
+   * Get all Node's current status with reason
+   *
+   * @return Map<NodeId, NodeStatus with reason>
+   */
+  public Map<Integer, String> getNodeStatusWithReason() {
+    return loadCache.getNodeStatusWithReason();
+  }
+
+  /**
+   * Filter ConfigNodes through the specified NodeStatus
+   *
+   * @param status The specified NodeStatus
+   * @return Filtered ConfigNodes with the specified NodeStatus
+   */
+  public List<Integer> filterConfigNodeThroughStatus(NodeStatus... status) {
+    return loadCache.filterConfigNodeThroughStatus(status);
+  }
+
+  /**
+   * Filter DataNodes through the specified NodeStatus
+   *
+   * @param status The specified NodeStatus
+   * @return Filtered DataNodes with the specified NodeStatus
+   */
+  public List<Integer> filterDataNodeThroughStatus(NodeStatus... status) {
+    return loadCache.filterDataNodeThroughStatus(status);
+  }
+
+  /**
+   * Get the free disk space of the specified DataNode
+   *
+   * @param dataNodeId The index of the specified DataNode
+   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
+   */
+  public double getFreeDiskSpace(int dataNodeId) {
+    return loadCache.getFreeDiskSpace(dataNodeId);
+  }
+
+  /**
+   * Get the loadScore of each DataNode
+   *
+   * @return Map<DataNodeId, loadScore>
+   */
+  public Map<Integer, Long> getAllDataNodeLoadScores() {
+    return loadCache.getAllDataNodeLoadScores();
+  }
+
+  /**
+   * Get the lowest loadScore DataNode
+   *
+   * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
+   */
+  public int getLowestLoadDataNode() {
+    return loadCache.getLowestLoadDataNode();
+  }
+
+  /**
+   * Get the lowest loadScore DataNode from the specified DataNodes
+   *
+   * @param dataNodeIds The specified DataNodes
+   * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
+   */
+  public int getLowestLoadDataNode(List<Integer> dataNodeIds) {
+    return loadCache.getLowestLoadDataNode(dataNodeIds);
+  }
+
+  /**
+   * Force update the specified Node's cache
+   *
+   * @param nodeType Specified NodeType
+   * @param nodeId Specified NodeId
+   * @param heartbeatSample Specified NodeHeartbeatSample
+   */
+  public void forceUpdateNodeCache(
+      NodeType nodeType, int nodeId, NodeHeartbeatSample heartbeatSample) {
+    loadCache.forceUpdateNodeCache(nodeType, nodeId, heartbeatSample);
+  }
+
+  /** Remove the specified Node's cache */
+  public void removeNodeCache(int nodeId) {
+    loadCache.removeNodeCache(nodeId);
+  }
+
+  /**
+   * Safely get RegionStatus.
+   *
+   * @param consensusGroupId Specified RegionGroupId
+   * @param dataNodeId Specified RegionReplicaId
+   * @return Corresponding RegionStatus if cache exists, Unknown otherwise
+   */
+  public RegionStatus getRegionStatus(TConsensusGroupId consensusGroupId, int dataNodeId) {
+    return loadCache.getRegionStatus(consensusGroupId, dataNodeId);
+  }
+
+  /**
+   * Safely get RegionGroupStatus.
+   *
+   * @param consensusGroupId Specified RegionGroupId
+   * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
+   */
+  public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
+    return loadCache.getRegionGroupStatus(consensusGroupId);
+  }
+
+  /**
+   * Safely get RegionGroupStatus.
+   *
+   * @param consensusGroupIds Specified RegionGroupIds
+   * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
+   */
+  public Map<TConsensusGroupId, RegionGroupStatus> getRegionGroupStatus(
+      List<TConsensusGroupId> consensusGroupIds) {
+    return loadCache.getRegionGroupStatus(consensusGroupIds);
+  }
+
+  /**
+   * Filter the RegionGroups through the RegionGroupStatus
+   *
+   * @param status The specified RegionGroupStatus
+   * @return Filtered RegionGroups with the specified RegionGroupStatus
+   */
+  public List<TConsensusGroupId> filterRegionGroupThroughStatus(RegionGroupStatus... status) {
+    return loadCache.filterRegionGroupThroughStatus(status);
+  }
+
+  /**
+   * Count the number of cluster Regions with specified RegionStatus
+   *
+   * @param type The specified RegionGroupType
+   * @param status The specified statues
+   * @return The number of cluster Regions with specified RegionStatus
+   */
+  public int countRegionWithSpecifiedStatus(TConsensusGroupType type, RegionStatus... status) {
+    return loadCache.countRegionWithSpecifiedStatus(type, status);
+  }
+
+  /**
+   * Force update the specified RegionGroup's cache
+   *
+   * @param regionGroupId Specified RegionGroupId
+   * @param heartbeatSampleMap Specified RegionHeartbeatSampleMap
+   */
+  public void forceUpdateRegionGroupCache(
+      TConsensusGroupId regionGroupId, Map<Integer, RegionHeartbeatSample> heartbeatSampleMap) {
+    loadCache.forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+  }
+
+  /** Remove the specified RegionGroup's cache */
+  public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
+    loadCache.removeRegionGroupCache(consensusGroupId);
   }
 }

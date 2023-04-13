@@ -64,7 +64,7 @@ public class GreedyPriorityTest {
           NodeStatus.Running, NodeStatus.Unknown, NodeStatus.Running, NodeStatus.ReadOnly
         };
     for (int i = 0; i < 4; i++) {
-      nodeCacheMap.put(i, new DataNodeHeartbeatCache());
+      nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
       nodeCacheMap
           .get(i)
           .cacheHeartbeatSample(

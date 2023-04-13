@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,6 +63,7 @@ public class RetryFailedTasksThread {
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private final IManager configManager;
   private final NodeManager nodeManager;
+  private final LoadManager loadManager;
   private final ScheduledExecutorService retryFailTasksExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailedTasks-Service");
   private final Object scheduleMonitor = new Object();
@@ -78,6 +79,7 @@ public class RetryFailedTasksThread {
   public RetryFailedTasksThread(IManager configManager) {
     this.configManager = configManager;
     this.nodeManager = configManager.getNodeManager();
+    this.loadManager = configManager.getLoadManager();
     this.oldUnknownNodes = new HashSet<>();
   }
 
@@ -131,15 +133,12 @@ public class RetryFailedTasksThread {
         .forEach(
             DataNodeConfiguration -> {
               TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
-              BaseNodeCache newestNodeInformation =
-                  nodeManager.getNodeCacheMap().get(dataNodeLocation.dataNodeId);
-              if (newestNodeInformation != null) {
-                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
-                  oldUnknownNodes.remove(dataNodeLocation);
-                } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
-                  newUnknownNodes.add(dataNodeLocation);
-                }
+              NodeStatus nodeStatus = loadManager.getNodeStatus(dataNodeLocation.getDataNodeId());
+              if (nodeStatus == NodeStatus.Running) {
+                oldUnknownNodes.remove(dataNodeLocation);
+              } else if (!oldUnknownNodes.contains(dataNodeLocation)
+                  && nodeStatus == NodeStatus.Unknown) {
+                newUnknownNodes.add(dataNodeLocation);
               }
             });
 
@@ -163,7 +162,7 @@ public class RetryFailedTasksThread {
   private void syncDetectTask() {
     for (Map.Entry<Integer, Queue<TOperatePipeOnDataNodeReq>> entry : messageMap.entrySet()) {
       int dataNodeId = entry.getKey();
-      if (NodeStatus.Running.equals(nodeManager.getNodeStatusByNodeId(dataNodeId))) {
+      if (NodeStatus.Running.equals(loadManager.getNodeStatus(dataNodeId))) {
         final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
         dataNodeLocationMap.put(
             dataNodeId, nodeManager.getRegisteredDataNodeLocations().get(dataNodeId));

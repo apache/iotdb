@@ -119,8 +119,9 @@ public class DatabasePartitionTable {
 
     return result;
   }
+
   /**
-   * Get all RegionGroups currently owned by this StorageGroup
+   * Get all RegionGroups currently owned by this Database
    *
    * @param type The specified TConsensusGroupType
    * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
@@ -131,6 +132,37 @@ public class DatabasePartitionTable {
     for (RegionGroup regionGroup : regionGroupMap.values()) {
       if (type.equals(regionGroup.getId().getType())) {
         result.add(regionGroup.getReplicaSet());
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get all RegionGroups currently owned by the specified Database
+   *
+   * @param dataNodeId The specified dataNodeId
+   * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(int dataNodeId) {
+    return regionGroupMap.values().stream()
+        .filter(regionGroup -> regionGroup.belongsToDataNode(dataNodeId))
+        .map(RegionGroup::getReplicaSet)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Get the RegionGroups with the specified RegionGroupIds
+   *
+   * @param regionGroupIds The specified RegionGroupIds
+   * @return Deep copy of the RegionGroups with the specified RegionGroupIds
+   */
+  public List<TRegionReplicaSet> getReplicaSets(List<TConsensusGroupId> regionGroupIds) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+
+    for (TConsensusGroupId regionGroupId : regionGroupIds) {
+      if (regionGroupMap.containsKey(regionGroupId)) {
+        result.add(regionGroupMap.get(regionGroupId).getReplicaSet());
       }
     }
 
@@ -496,7 +528,7 @@ public class DatabasePartitionTable {
    * @param regionId TConsensusGroupId
    * @return True if contains.
    */
-  public boolean containRegion(TConsensusGroupId regionId) {
+  public boolean containRegionGroup(TConsensusGroupId regionId) {
     return regionGroupMap.containsKey(regionId);
   }
 

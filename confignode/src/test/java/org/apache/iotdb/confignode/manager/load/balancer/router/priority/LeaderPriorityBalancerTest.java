@@ -61,7 +61,7 @@ public class LeaderPriorityBalancerTest {
     long currentTimeMillis = System.currentTimeMillis();
     Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
     for (int i = 0; i < 6; i++) {
-      nodeCacheMap.put(i, new DataNodeHeartbeatCache());
+      nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
       if (i != 2 && i != 5) {
         nodeCacheMap
             .get(i)

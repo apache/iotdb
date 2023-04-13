@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -87,7 +86,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -100,7 +98,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -588,10 +585,32 @@ public class PartitionManager {
    * Only leader use this interface.
    *
    * @param database The specified Database
-   * @return All Regions' RegionReplicaSet of the specified StorageGroup
+   * @return All Regions' RegionReplicaSet of the specified Database
    */
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     return partitionInfo.getAllReplicaSets(database);
+  }
+
+  /**
+   * Get all RegionGroups currently owned by the specified Database
+   *
+   * @param dataNodeId The specified dataNodeId
+   * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(int dataNodeId) {
+    return partitionInfo.getAllReplicaSets(dataNodeId);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param regionGroupIds The specified RegionGroupIds
+   * @return All Regions' RegionReplicaSet of the specified Database
+   */
+  public List<TRegionReplicaSet> getReplicaSets(
+      String database, List<TConsensusGroupId> regionGroupIds) {
+    return partitionInfo.getReplicaSets(database, regionGroupIds);
   }
 
   /**
@@ -666,22 +685,22 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
    * @throws NoAvailableRegionGroupException When all RegionGroups within the specified StorageGroup
    *     are unavailable currently
    */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) throws NoAvailableRegionGroupException {
+      String database, TConsensusGroupType type) throws NoAvailableRegionGroupException {
     // Collect static data
     List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
-        partitionInfo.getRegionGroupSlotsCounter(storageGroup, type);
+        partitionInfo.getRegionGroupSlotsCounter(database, type);
 
     // Filter RegionGroups that have Disabled status
     List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
     for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
-      RegionGroupStatus status = getRegionGroupStatus(slotsCounter.getRight());
+      RegionGroupStatus status = getLoadManager().getRegionGroupStatus(slotsCounter.getRight());
       if (!RegionGroupStatus.Disabled.equals(status)) {
         result.add(slotsCounter);
       }
@@ -691,6 +710,9 @@ public class PartitionManager {
       throw new NoAvailableRegionGroupException(type);
     }
 
+    Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =
+        getLoadManager()
+            .getRegionGroupStatus(result.stream().map(Pair::getRight).collect(Collectors.toList()));
     result.sort(
         (o1, o2) -> {
           // Use the number of partitions as the first priority
@@ -700,8 +722,9 @@ public class PartitionManager {
             return 1;
           } else {
             // Use RegionGroup status as second priority, Running > Available > Discouraged
-            return getRegionGroupStatus(o1.getRight())
-                .compareTo(getRegionGroupStatus(o2.getRight()));
+            return regionGroupStatusMap
+                .get(o1.getRight())
+                .compare(regionGroupStatusMap.get(o2.getRight()));
           }
         });
     return result;
@@ -759,7 +782,8 @@ public class PartitionManager {
         .forEach(
             regionInfo -> {
               regionInfo.setStatus(
-                  getRegionStatus(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
+                  getLoadManager()
+                      .getRegionStatus(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
                       .getStatus());
 
               String regionType =
@@ -774,19 +798,21 @@ public class PartitionManager {
   }
 
   /**
+   * Check if the specified RegionGroup exists.
+   *
+   * @param regionGroupId The specified RegionGroup
+   */
+  public boolean isRegionGroupExists(TConsensusGroupId regionGroupId) {
+    return partitionInfo.isRegionGroupExisted(regionGroupId);
+  }
+
+  /**
    * update region location
    *
    * @param req UpdateRegionLocationReq
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    // Remove heartbeat cache if exists
-    if (regionGroupCacheMap.containsKey(req.getRegionId())) {
-      regionGroupCacheMap
-          .get(req.getRegionId())
-          .removeCacheIfExists(req.getOldNode().getDataNodeId());
-    }
-
     return getConsensusManager().write(req).getStatus();
   }
 
@@ -1059,93 +1085,23 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionMaintainerFuture.cancel(false);
         currentRegionMaintainerFuture = null;
-        regionGroupCacheMap.clear();
         LOGGER.info("RegionCleaner is stopped successfully.");
       }
     }
   }
 
-  public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
-    regionGroupCacheMap.remove(consensusGroupId);
-  }
-
   /**
-   * Filter the RegionGroups in the specified StorageGroup through the RegionGroupStatus
+   * Filter the RegionGroups in the specified Database through the RegionGroupStatus
    *
-   * @param storageGroup The specified StorageGroup
+   * @param database The specified Database
    * @param status The specified RegionGroupStatus
-   * @return Filtered RegionGroups with the specific RegionGroupStatus
+   * @return Filtered RegionGroups with the specified RegionGroupStatus
    */
   public List<TRegionReplicaSet> filterRegionGroupThroughStatus(
-      String storageGroup, RegionGroupStatus... status) {
-    return getAllReplicaSets(storageGroup).stream()
-        .filter(
-            regionReplicaSet -> {
-              TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-              return regionGroupCacheMap.containsKey(regionGroupId)
-                  && Arrays.stream(status)
-                      .anyMatch(
-                          s ->
-                              s.equals(
-                                  regionGroupCacheMap
-                                      .get(regionGroupId)
-                                      .getStatistics()
-                                      .getRegionGroupStatus()));
-            })
-        .collect(Collectors.toList());
-  }
-
-  /**
-   * Count the number of cluster Regions with specified RegionStatus
-   *
-   * @param type The specified RegionGroupType
-   * @param status The specified statues
-   * @return The number of cluster Regions with specified RegionStatus
-   */
-  public int countRegionWithSpecifiedStatus(TConsensusGroupType type, RegionStatus... status) {
-    AtomicInteger result = new AtomicInteger(0);
-    regionGroupCacheMap.forEach(
-        (regionGroupId, regionGroupCache) -> {
-          if (type.equals(regionGroupId.getType())) {
-            regionGroupCache
-                .getStatistics()
-                .getRegionStatisticsMap()
-                .values()
-                .forEach(
-                    regionStatistics -> {
-                      if (Arrays.stream(status)
-                          .anyMatch(s -> s.equals(regionStatistics.getRegionStatus()))) {
-                        result.getAndIncrement();
-                      }
-                    });
-          }
-        });
-    return result.get();
-  }
-
-  /**
-   * Safely get RegionStatus.
-   *
-   * @param consensusGroupId Specified RegionGroupId
-   * @param dataNodeId Specified RegionReplicaId
-   * @return Corresponding RegionStatus if cache exists, Unknown otherwise
-   */
-  public RegionStatus getRegionStatus(TConsensusGroupId consensusGroupId, int dataNodeId) {
-    return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionStatus(dataNodeId)
-        : RegionStatus.Unknown;
-  }
-
-  /**
-   * Safely get RegionGroupStatus.
-   *
-   * @param consensusGroupId Specified RegionGroupId
-   * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
-   */
-  public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
-    return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionGroupStatus()
-        : RegionGroupStatus.Disabled;
+      String database, RegionGroupStatus... status) {
+    List<TConsensusGroupId> matchedRegionGroups =
+        getLoadManager().filterRegionGroupThroughStatus(status);
+    return getReplicaSets(database, matchedRegionGroups);
   }
 
   public void getSchemaRegionIds(

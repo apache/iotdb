@@ -31,18 +31,14 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   public static final NodeStatistics CURRENT_NODE_STATISTICS =
       new NodeStatistics(0, NodeStatus.Running, null);
 
-  private final int configNodeId;
-
   /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics */
   public ConfigNodeHeartbeatCache(int configNodeId) {
-    super();
-    this.configNodeId = configNodeId;
+    super(configNodeId);
   }
 
   /** Constructor only for ConfigNode-leader */
   public ConfigNodeHeartbeatCache(int configNodeId, NodeStatistics statistics) {
-    super();
-    this.configNodeId = configNodeId;
+    super(configNodeId);
     this.previousStatistics = statistics;
     this.currentStatistics = statistics;
   }
@@ -50,7 +46,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   @Override
   protected void updateCurrentStatistics() {
     // Skip itself
-    if (configNodeId == CURRENT_NODE_ID) {
+    if (nodeId == CURRENT_NODE_ID) {
       return;
     }
 

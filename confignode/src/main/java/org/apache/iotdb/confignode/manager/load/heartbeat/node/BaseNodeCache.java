@@ -32,6 +32,8 @@ public abstract class BaseNodeCache {
   // Max heartbeat cache samples store size
   public static final int MAXIMUM_WINDOW_SIZE = 100;
 
+  protected final int nodeId;
+
   // SlidingWindow stores the heartbeat sample data
   protected final LinkedList<NodeHeartbeatSample> slidingWindow = new LinkedList<>();
 
@@ -42,7 +44,8 @@ public abstract class BaseNodeCache {
   protected volatile NodeStatistics currentStatistics;
 
   /** Constructor for NodeCache with default NodeStatistics */
-  protected BaseNodeCache() {
+  protected BaseNodeCache(int nodeId) {
+    this.nodeId = nodeId;
     this.previousStatistics = NodeStatistics.generateDefaultNodeStatistics();
     this.currentStatistics = NodeStatistics.generateDefaultNodeStatistics();
   }
@@ -107,6 +110,10 @@ public abstract class BaseNodeCache {
    * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow
    */
   protected abstract void updateCurrentStatistics();
+
+  public int getNodeId() {
+    return nodeId;
+  }
 
   /**
    * TODO: The loadScore of each Node will be changed to Double

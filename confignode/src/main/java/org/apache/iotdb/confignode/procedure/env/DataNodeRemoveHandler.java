@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.heartbeat.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -328,7 +327,7 @@ public class DataNodeRemoveHandler {
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
 
     status =
-        configManager.getNodeManager().getNodeStatusByNodeId(originalDataNode.getDataNodeId())
+        configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
                 == NodeStatus.Unknown
             ? SyncDataNodeClientPool.getInstance()
                 .sendSyncRequestToDataNodeWithGivenRetry(
@@ -374,6 +373,9 @@ public class DataNodeRemoveHandler {
         status,
         getIdWithRpcEndpoint(originalDataNode),
         getIdWithRpcEndpoint(destDataNode));
+
+    // Remove the RegionGroupCache of the regionId
+    configManager.getLoadManager().removeRegionGroupCache(regionId);
 
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
@@ -427,7 +429,7 @@ public class DataNodeRemoveHandler {
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithGivenRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
-    configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
+    configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",
         REMOVE_DATANODE_PROCESS,
@@ -509,9 +511,8 @@ public class DataNodeRemoveHandler {
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
         // check whether removed data node is in running state
-        BaseNodeCache nodeCache =
-            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
-        if (!NodeStatus.Running.equals(nodeCache.getNodeStatus())) {
+        if (!NodeStatus.Running.equals(
+            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
           removedDataNodes.remove(dataNodeLocation);
           LOGGER.error(
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
@@ -530,7 +531,7 @@ public class DataNodeRemoveHandler {
             removeDataNodePlan.getDataNodeLocations().stream()
                 .filter(
                     x ->
-                        configManager.getNodeManager().getNodeStatusByNodeId(x.getDataNodeId())
+                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
                             != NodeStatus.Unknown)
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {

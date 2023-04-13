@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.GreedyLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
@@ -193,7 +194,7 @@ public class RouteBalancer {
 
   private boolean updateRegionPriorityMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = regionRouteMap.getRegionLeaderMap();
-    Map<Integer, Long> dataNodeLoadScoreMap = getNodeManager().getAllLoadScores();
+    Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
     // Balancing region priority in each SchemaRegionGroup
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionPriorityMap =
@@ -411,5 +412,9 @@ public class RouteBalancer {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }
