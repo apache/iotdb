@@ -475,4 +475,8 @@ public class TSFileConfig implements Serializable {
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
   }
+
+  public String getSprintzPredictScheme() {
+    return "fire";
+  }
 }
