@@ -69,7 +69,7 @@ class _BasicTask(object):
         model_configs: Dict,
         model: nn.Module,
         dataset: Dataset,
-        pid_info: multiprocessing.managers.SyncManager
+        pid_info: Dict
     ):
         """
         Args:
@@ -91,7 +91,8 @@ class _BasicTask(object):
 
 
 class ForecastingTrainingTask(_BasicTask):
-    def __init__(self, task_configs: Dict, model_configs: Dict, model: nn.Module, dataset: Dataset, pid_info: Dict):
+    def __init__(self, task_configs: Dict, model_configs: Dict, model: nn.Module, dataset: Dataset,
+                 pid_info: Dict):
         """
         Args:
             task_configs: dict of task configurations
