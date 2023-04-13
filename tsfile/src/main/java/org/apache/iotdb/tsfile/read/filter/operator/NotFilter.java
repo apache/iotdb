@@ -50,6 +50,11 @@ public class NotFilter implements Filter, Serializable {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return !that.allSatisfy(statistics);
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     return !that.satisfy(time, value);
   }

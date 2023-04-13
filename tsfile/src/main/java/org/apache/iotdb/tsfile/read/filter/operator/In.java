@@ -62,6 +62,11 @@ public class In<T extends Comparable<T>> implements Filter {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return false;
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
     return this.values.contains(v) != not;

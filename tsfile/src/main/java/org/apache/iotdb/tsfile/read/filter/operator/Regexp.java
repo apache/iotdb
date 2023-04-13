@@ -63,6 +63,11 @@ public class Regexp<T extends Comparable<T>> implements Filter {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return false;
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     if (filterType != FilterType.VALUE_FILTER) {
       return false;

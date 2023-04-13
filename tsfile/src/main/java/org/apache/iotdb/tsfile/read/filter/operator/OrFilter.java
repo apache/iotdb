@@ -56,6 +56,11 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return left.allSatisfy(statistics) || right.allSatisfy(statistics);
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     return left.satisfy(time, value) || right.satisfy(time, value);
   }

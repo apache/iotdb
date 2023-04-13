@@ -54,6 +54,11 @@ public class GroupByFilter implements Filter, Serializable {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     if (time < startTime || time >= endTime) {
       return false;

@@ -53,6 +53,18 @@ public class GtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return ((Long) value) <= statistics.getEndTime();
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return value.compareTo((T) statistics.getMaxValue()) <= 0;
+    }
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
     return this.value.compareTo((T) v) <= 0;
