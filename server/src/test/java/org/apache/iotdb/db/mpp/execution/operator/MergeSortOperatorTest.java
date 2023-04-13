@@ -1662,6 +1662,9 @@ public class MergeSortOperatorTest {
     public void stopAndCleanup() {}
 
     @Override
+    public void stopAndCleanup(Throwable t) {}
+
+    @Override
     public void cancel() {}
 
     @Override

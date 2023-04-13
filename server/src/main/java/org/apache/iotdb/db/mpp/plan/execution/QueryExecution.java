@@ -390,7 +390,7 @@ public class QueryExecution implements IQueryExecution {
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
     if (resultHandle != null) {
-      resultHandle.abort();
+      resultHandle.close();
     }
   }
 
@@ -410,7 +410,11 @@ public class QueryExecution implements IQueryExecution {
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
     if (resultHandle != null) {
-      resultHandle.abort(t);
+      if (t != null) {
+        resultHandle.abort(t);
+      } else {
+        resultHandle.close();
+      }
     }
   }
 

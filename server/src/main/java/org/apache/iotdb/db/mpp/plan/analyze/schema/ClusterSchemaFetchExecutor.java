@@ -152,6 +152,7 @@ class ClusterSchemaFetchExecutor {
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
     long queryId = queryIdProvider.get();
+    Throwable t = null;
     try {
       ExecutionResult executionResult = statementExecutor.apply(queryId, schemaFetchStatement);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -170,6 +171,7 @@ class ClusterSchemaFetchExecutor {
           try {
             tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
           } catch (IoTDBException e) {
+            t = e;
             throw new RuntimeException("Fetch Schema failed. ", e);
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
@@ -184,7 +186,7 @@ class ClusterSchemaFetchExecutor {
         return result;
       }
     } finally {
-      coordinator.cleanupQueryExecution(queryId);
+      coordinator.cleanupQueryExecution(queryId, t);
     }
   }
 

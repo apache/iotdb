@@ -35,6 +35,8 @@ public interface IQueryExecution {
 
   void stopAndCleanup();
 
+  void stopAndCleanup(Throwable t);
+
   void cancel();
 
   ExecutionResult getStatus();
