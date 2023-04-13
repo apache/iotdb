@@ -19,25 +19,22 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.DispatcherGroup;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class FlowBalancer {
 
@@ -88,11 +85,11 @@ public class FlowBalancer {
     double thisNodeFlow = flowMonitorManager.averageFlow(member.getThisNode(), windowsToUse);
     double assumedFlow = thisNodeFlow * overestimateFactor;
     logger.info("Flow of this node: {}", thisNodeFlow);
-    Map<Peer, BlockingQueue<VotingEntry>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
+    Map<Peer, DispatcherGroup> dispatcherGroupMap = logDispatcher.getDispatcherGroupMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
-    followers.sort(Comparator.comparing(node -> nodesLogQueuesMap.get(node).size()));
+    followers.sort(Comparator.comparing(node -> dispatcherGroupMap.get(node).getQueueSize()));
     if (assumedFlow * followerNum > maxFlow) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);
     } else {
