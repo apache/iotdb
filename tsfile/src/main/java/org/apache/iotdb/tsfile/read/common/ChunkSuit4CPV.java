@@ -503,14 +503,17 @@ public class ChunkSuit4CPV {
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp
       int estimatedPos = -1;
+      boolean flag = false;
       pageReader.timeBuffer.position(0);
       pageReader.valueBuffer.position(pageReader.timeBufferLength);
       while (pageReader.timeBuffer.remaining() > 0) {
-        estimatedPos++;
-        IOMonitor.incPointsTravered();
+        if (!flag) {
+          estimatedPos++;
+          IOMonitor.incPointsTravered();
+        }
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
-          break;
+          flag = true;
         }
       }
 
