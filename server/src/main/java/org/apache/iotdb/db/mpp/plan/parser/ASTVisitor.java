@@ -3450,6 +3450,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseAttributeValue(attributePair.attributeValue()));
     }
 
+    quotas
+        .keySet()
+        .forEach(
+            quotaType -> {
+              switch (quotaType) {
+                case IoTDBConstant.COLUMN_DEVICES:
+                  break;
+                case IoTDBConstant.COLUMN_TIMESERIES:
+                  break;
+                case IoTDBConstant.SPACE_QUOTA_DISK:
+                  break;
+                default:
+                  throw new SemanticException("Wrong space quota type: " + quotaType);
+              }
+            });
+
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
       if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
         setSpaceQuotaStatement.setDeviceNum(-1);

@@ -116,12 +116,12 @@ public class ClusterQuotaManager {
           return false;
         }
         if (req.getSpaceLimit().getTimeserieNum() != UNLIMITED_VALUE
-            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
+            && req.getSpaceLimit().getTimeserieNum() != DEFAULT_VALUE
             && spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()) {
           return false;
         }
         if (req.getSpaceLimit().getDiskSize() != UNLIMITED_VALUE
-            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
+            && req.getSpaceLimit().getDiskSize() != DEFAULT_VALUE
             && spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
           return false;
         }

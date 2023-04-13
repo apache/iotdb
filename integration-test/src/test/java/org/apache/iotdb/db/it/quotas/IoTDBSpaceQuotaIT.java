@@ -401,6 +401,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf05.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute("set space quota devices=5 on root.sg0;");
       adminStmt.execute("set space quota disk='5g' on root.sg0;");
+      adminStmt.execute("set space quota devices=10 on root.sg0;");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
