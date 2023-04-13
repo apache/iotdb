@@ -266,7 +266,6 @@ public class CacheMemoryManager {
         .join();
     if (engineMetric != null) {
       engineMetric.recordFlush(System.currentTimeMillis() - startTime);
-      logger.info("Schema flush takes {}ms", System.currentTimeMillis() - startTime);
     }
     synchronized (blockObject) {
       hasFlushTask = false;
