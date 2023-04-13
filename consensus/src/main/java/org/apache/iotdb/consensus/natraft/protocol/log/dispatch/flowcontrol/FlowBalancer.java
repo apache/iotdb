@@ -109,7 +109,7 @@ public class FlowBalancer {
     int i = 0;
     for (; i < quorumFollowerNum; i++) {
       Peer node = followers.get(i);
-      nodesRate.put(node, maxFlow);
+      nodesRate.put(node, Double.MAX_VALUE);
       remainingFlow -= flowToQuorum;
     }
     double flowToRemaining = remainingFlow / (followerNum - quorumFollowerNum);
@@ -126,7 +126,7 @@ public class FlowBalancer {
     // lift flow limits
     for (int i = 0; i < followerNum; i++) {
       Peer node = followers.get(i);
-      nodesRate.put(node, maxFlow);
+      nodesRate.put(node, Double.MAX_VALUE);
     }
   }
 }

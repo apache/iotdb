@@ -75,7 +75,9 @@ public class LogDispatcher {
   public void updateRateLimiter() {
     logger.info("TEndPoint rates: {}", nodesRate);
     for (Entry<Peer, Double> nodeDoubleEntry : nodesRate.entrySet()) {
-      dispatcherGroupMap.get(nodeDoubleEntry.getKey()).updateRate(nodeDoubleEntry.getValue());
+      Peer peer = nodeDoubleEntry.getKey();
+      Double rate = nodeDoubleEntry.getValue();
+      dispatcherGroupMap.get(peer).updateRate(rate);
     }
   }
 

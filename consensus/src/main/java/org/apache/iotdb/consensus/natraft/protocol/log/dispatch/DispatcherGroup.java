@@ -41,6 +41,7 @@ public class DispatcherGroup {
   private final LogDispatcher logDispatcher;
   private final AtomicInteger groupThreadNum = new AtomicInteger();
   private int maxBindingThreadNum;
+  private boolean delayed;
 
   public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     this.logDispatcher = logDispatcher;
@@ -85,6 +86,7 @@ public class DispatcherGroup {
 
   public void updateRate(double rate) {
     rateLimiter.setRate(rate);
+    delayed = rate != Double.MAX_VALUE;
   }
 
   ExecutorService createPool(Peer node, String name) {
@@ -117,5 +119,13 @@ public class DispatcherGroup {
 
   public int getMaxBindingThreadNum() {
     return maxBindingThreadNum;
+  }
+
+  public boolean isDelayed() {
+    return delayed;
+  }
+
+  public void setDelayed(boolean delayed) {
+    this.delayed = delayed;
   }
 }

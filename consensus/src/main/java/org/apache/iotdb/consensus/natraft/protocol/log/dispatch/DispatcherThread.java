@@ -52,6 +52,7 @@ class DispatcherThread implements Runnable {
   private final DispatcherGroup group;
   private long idleTimeSum;
   private long runningTimeSum;
+  private long lastDispatchTime;
 
   protected DispatcherThread(LogDispatcher logDispatcher, Peer receiver,
       BlockingQueue<VotingEntry> logBlockingDeque, RateLimiter rateLimiter,
@@ -73,6 +74,16 @@ class DispatcherThread implements Runnable {
       long idleStart = System.nanoTime();
       long runningStart = 0;
       while (!Thread.interrupted()) {
+        if (group.isDelayed()) {
+          if (logBlockingDeque.size() < logDispatcher.maxBatchSize &&
+          System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
+            // the follower is being delayed, if there is not enough requests, and it has
+            // dispatched recently, wait for a while to get a larger batch
+            Thread.sleep(100);
+            continue;
+          }
+        }
+
         synchronized (logBlockingDeque) {
           VotingEntry poll = logBlockingDeque.poll();
           if (poll != null) {
@@ -98,6 +109,7 @@ class DispatcherThread implements Runnable {
         currBatch.clear();
 
         currTime = System.nanoTime();
+        lastDispatchTime = currTime;
         runningTimeSum = currTime - runningStart;
         idleStart = currTime;
 
