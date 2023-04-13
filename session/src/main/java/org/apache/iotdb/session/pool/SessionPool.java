@@ -2401,6 +2401,26 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        session.createTimeseriesUsingSchemaTemplate(devicePathList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("createTimeseriesOfSchemaTemplate [%s] failed", devicePathList), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   /**
    * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
    * SessionDataSet any more. users do not need to call sessionDataSet.closeOpeationHandler() any
