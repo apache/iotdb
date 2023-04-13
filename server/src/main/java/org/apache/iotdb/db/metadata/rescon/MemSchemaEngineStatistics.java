@@ -72,9 +72,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     memoryUsage.addAndGet(size);
     if (memoryUsage.get() >= memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
-        if (allowToCreateNewSeries && memoryUsage.get() >= memoryCapacity) {
+        if (memoryUsage.get() >= memoryCapacity) {
           logger.warn("Current series memory {} is too large...", memoryUsage);
-          allowToCreateNewSeries = false;
+          if (allowToCreateNewSeries) {
+            allowToCreateNewSeries = false;
+          }
         }
       }
     }

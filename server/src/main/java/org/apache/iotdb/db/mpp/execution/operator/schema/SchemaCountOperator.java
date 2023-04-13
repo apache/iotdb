@@ -76,15 +76,19 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     long count = 0;
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
-    }
-    while (schemaReader.hasNext()) {
-      schemaReader.next();
-      count++;
-    }
-    if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
+    if (schemaSource.hasSchemaStatistic()) {
+      count = schemaSource.getSchemaStatistic(getSchemaRegion());
+    } else {
+      if (schemaReader == null) {
+        schemaReader = createSchemaReader();
+      }
+      while (schemaReader.hasNext()) {
+        schemaReader.next();
+        count++;
+      }
+      if (!schemaReader.isSuccess()) {
+        throw new RuntimeException(schemaReader.getFailure());
+      }
     }
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);

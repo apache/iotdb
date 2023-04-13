@@ -61,6 +61,16 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     builder.declarePosition();
   }
 
+  @Override
+  public boolean hasSchemaStatistic() {
+    return false;
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getTemplateActivatedNumber();
+  }
+
   private class DevicesUsingTemplateReader implements ISchemaReader<IDeviceSchemaInfo> {
 
     final Iterator<PartialPath> pathPatternIterator;

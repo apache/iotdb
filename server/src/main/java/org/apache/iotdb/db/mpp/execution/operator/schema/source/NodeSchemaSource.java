@@ -78,4 +78,14 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
         .writeBinary(new Binary(String.valueOf(nodeSchemaInfo.getNodeType().getNodeType())));
     tsBlockBuilder.declarePosition();
   }
+
+  @Override
+  public boolean hasSchemaStatistic() {
+    return false;
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return 0;
+  }
 }

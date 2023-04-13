@@ -70,7 +70,7 @@ public class CacheMemoryManager {
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
-  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
+  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 1_000;
   private final Object blockObject = new Object();
 
   /**
@@ -266,6 +266,7 @@ public class CacheMemoryManager {
         .join();
     if (engineMetric != null) {
       engineMetric.recordFlush(System.currentTimeMillis() - startTime);
+      logger.info("Schema flush takes {}ms", System.currentTimeMillis() - startTime);
     }
     synchronized (blockObject) {
       hasFlushTask = false;
