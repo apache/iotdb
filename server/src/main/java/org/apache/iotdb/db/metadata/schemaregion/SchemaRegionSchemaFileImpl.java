@@ -582,13 +582,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
-      while (!regionStatistics.isAllowToCreateNewSeries()) {
-        CacheMemoryManager.getInstance().waitIfReleasing();
+      CacheMemoryManager.getInstance().waitIfReleasing();
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
+        logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
+        throw new SeriesOverflowException();
       }
-      //      if (!regionStatistics.isAllowToCreateNewSeries()) {
-      //        logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
-      //        throw new SeriesOverflowException();
-      //      }
     }
 
     schemaQuotaManager.checkMeasurementLevel(1);
