@@ -36,7 +36,7 @@ public class PipeConnectorPluginRuntimeWrapper {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConnectorPluginRuntimeWrapper.class);
 
-  private ArrayBlockingQueue<Event> inputEventQueue;
+  private ArrayBlockingQueue<Event> pendingQueue;
   private final PipeConnector pipeConnector;
 
   public PipeConnectorPluginRuntimeWrapper(PipeConnector pipeConnector) {
@@ -44,16 +44,16 @@ public class PipeConnectorPluginRuntimeWrapper {
   }
 
   public void setPendingQueue(ArrayBlockingQueue<Event> queue) {
-    this.inputEventQueue = queue;
+    this.pendingQueue = queue;
   }
 
   // TODO: for a while
   public void executeForAWhile() {
-    if (inputEventQueue.isEmpty()) {
+    if (pendingQueue.isEmpty()) {
       return;
     }
 
-    final Event event = inputEventQueue.poll();
+    final Event event = pendingQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {
