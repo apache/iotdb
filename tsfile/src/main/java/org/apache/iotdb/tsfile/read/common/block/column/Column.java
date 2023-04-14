@@ -151,4 +151,11 @@ public interface Column {
   void reverse();
 
   int getInstanceSize();
+
+  /**
+   * This method will merge current column and the column in parameter, it will reuse the reference.
+   * It will return a new column with the values from two columns which won't modify the original
+   * column.
+   */
+  Column mergeColumn(Column column);
 }

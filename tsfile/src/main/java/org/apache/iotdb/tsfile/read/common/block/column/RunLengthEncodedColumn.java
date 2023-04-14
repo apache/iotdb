@@ -213,4 +213,18 @@ public class RunLengthEncodedColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof RunLengthEncodedColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:RunLengthEncodedColumn and "
+              + column.getClass().getName());
+    }
+    if (value != ((RunLengthEncodedColumn) column).value) {
+      throw new IllegalArgumentException(
+          "The value in runLengthEncoded to merge should be the same");
+    }
+    return new RunLengthEncodedColumn(value, positionCount + column.getPositionCount());
+  }
 }

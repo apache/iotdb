@@ -147,4 +147,22 @@ public class TimeColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof TimeColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:TimeColumn and "
+              + column.getClass().getName());
+    }
+    int anotherPositionCount = column.getPositionCount();
+    int newSize = positionCount + anotherPositionCount;
+    long[] newValues = new long[newSize];
+
+    System.arraycopy(values, 0, newValues, 0, positionCount);
+    System.arraycopy(
+        ((TimeColumn) column).getTimes(), 0, newValues, positionCount, anotherPositionCount);
+
+    return new TimeColumn(0, newSize, newValues);
+  }
 }

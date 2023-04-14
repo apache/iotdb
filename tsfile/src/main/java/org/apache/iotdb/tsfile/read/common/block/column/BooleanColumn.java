@@ -165,4 +165,27 @@ public class BooleanColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof BooleanColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:BooleanColumn and "
+              + column.getClass().getName());
+    }
+    int anotherPositionCount = column.getPositionCount();
+    int newSize = positionCount + anotherPositionCount;
+    boolean[] newValues = new boolean[newSize];
+
+    System.arraycopy(values, 0, newValues, 0, positionCount);
+    System.arraycopy(column.getBooleans(), 0, newValues, positionCount, anotherPositionCount);
+
+    if (!mayHaveNull() && !column.mayHaveNull())
+      return new BooleanColumn(newSize, Optional.empty(), newValues);
+
+    boolean[] newIsNull = new boolean[newSize];
+    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
+    return new BooleanColumn(0, newSize, newIsNull, newValues);
+  }
 }

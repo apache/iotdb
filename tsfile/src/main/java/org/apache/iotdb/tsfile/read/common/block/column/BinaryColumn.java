@@ -167,4 +167,27 @@ public class BinaryColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof BinaryColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:BinaryColumn and "
+              + column.getClass().getName());
+    }
+    int anotherPositionCount = column.getPositionCount();
+    int newSize = positionCount + anotherPositionCount;
+    Binary[] newValues = new Binary[newSize];
+
+    System.arraycopy(values, 0, newValues, 0, positionCount);
+    System.arraycopy(column.getBinaries(), 0, newValues, positionCount, anotherPositionCount);
+
+    if (!mayHaveNull() && !column.mayHaveNull())
+      return new BinaryColumn(newSize, Optional.empty(), newValues);
+
+    boolean[] newIsNull = new boolean[newSize];
+    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
+    return new BinaryColumn(0, newSize, newIsNull, newValues);
+  }
 }

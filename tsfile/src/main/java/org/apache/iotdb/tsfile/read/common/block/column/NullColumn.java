@@ -122,4 +122,14 @@ public class NullColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof FloatColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:NullColumn and "
+              + column.getClass().getName());
+    }
+    return new NullColumn(positionCount + column.getPositionCount());
+  }
 }

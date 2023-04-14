@@ -166,4 +166,27 @@ public class DoubleColumn implements Column {
   public int getInstanceSize() {
     return INSTANCE_SIZE;
   }
+
+  @Override
+  public Column mergeColumn(Column column) {
+    if (!(column instanceof DoubleColumn)) {
+      throw new IllegalArgumentException(
+          "The columns in mergeColumns should be the same type. Got:DoubleColumn and "
+              + column.getClass().getName());
+    }
+    int anotherPositionCount = column.getPositionCount();
+    int newSize = positionCount + anotherPositionCount;
+    double[] newValues = new double[newSize];
+
+    System.arraycopy(values, 0, newValues, 0, positionCount);
+    System.arraycopy(column.getDoubles(), 0, newValues, positionCount, anotherPositionCount);
+
+    if (!mayHaveNull() && !column.mayHaveNull())
+      return new DoubleColumn(newSize, Optional.empty(), newValues);
+
+    boolean[] newIsNull = new boolean[newSize];
+    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
+    return new DoubleColumn(0, newSize, newIsNull, newValues);
+  }
 }
