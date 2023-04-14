@@ -927,37 +927,31 @@ public class SeriesScanUtil {
   }
 
   private void initFirstPageReader() throws IOException {
-    long startTime = System.nanoTime();
-    try {
-      while (this.firstPageReader == null) {
-        VersionPageReader firstPageReader = getFirstPageReaderFromCachedReaders();
+    while (this.firstPageReader == null) {
+      VersionPageReader firstPageReader = getFirstPageReaderFromCachedReaders();
 
-        // unpack overlapped page using current page reader
-        if (firstPageReader != null) {
-          long overlapCheckTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
-          unpackAllOverlappedTsFilesToTimeSeriesMetadata(overlapCheckTime);
-          unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(overlapCheckTime, false);
-          unpackAllOverlappedChunkMetadataToPageReaders(overlapCheckTime, false);
+      // unpack overlapped page using current page reader
+      if (firstPageReader != null) {
+        long overlapCheckTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(overlapCheckTime);
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(overlapCheckTime, false);
+        unpackAllOverlappedChunkMetadataToPageReaders(overlapCheckTime, false);
 
-          // this page after unpacking must be the first page
-          if (firstPageReader.equals(getFirstPageReaderFromCachedReaders())) {
-            this.firstPageReader = firstPageReader;
-            if (!seqPageReaders.isEmpty() && firstPageReader.equals(seqPageReaders.get(0))) {
-              seqPageReaders.remove(0);
-              break;
-            } else if (!unSeqPageReaders.isEmpty()
-                && firstPageReader.equals(unSeqPageReaders.peek())) {
-              unSeqPageReaders.poll();
-              break;
-            }
+        // this page after unpacking must be the first page
+        if (firstPageReader.equals(getFirstPageReaderFromCachedReaders())) {
+          this.firstPageReader = firstPageReader;
+          if (!seqPageReaders.isEmpty() && firstPageReader.equals(seqPageReaders.get(0))) {
+            seqPageReaders.remove(0);
+            break;
+          } else if (!unSeqPageReaders.isEmpty()
+              && firstPageReader.equals(unSeqPageReaders.peek())) {
+            unSeqPageReaders.poll();
+            break;
           }
-        } else {
-          return;
         }
+      } else {
+        return;
       }
-    } finally {
-      QueryStatistics.getInstance()
-          .addCost(QueryStatistics.INIT_FIRST_PAGE, System.nanoTime() - startTime);
     }
   }
 

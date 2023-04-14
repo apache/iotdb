@@ -59,10 +59,6 @@ public class QueryStatistics {
 
   public static final String CHECK_MEMORY = "CheckMem";
 
-  public static final String ALLOC_EX_MEMORY = "AllocExchangeMem";
-
-  public static final String QUERY_EXECUTION = "QueryExecution";
-
   public static final String QUERY_RESOURCE_INIT = "QueryResourceInit";
 
   public static final String INIT_SOURCE_OP = "InitSourceOp";
@@ -74,16 +70,7 @@ public class QueryStatistics {
 
   public static final String LOCAL_SOURCE_HANDLE_SER_TSBLOCK = "LocalSourceHandleSerializeTsBlock";
 
-  public static final String REMOTE_SOURCE_HANDLE_GET_TSBLOCK = "RemoteSourceHandleGetTsBlock";
-
-  public static final String REMOTE_SOURCE_HANDLE_DESER_TSBLOCK =
-      "RemoteSourceHandleDeserializeTsBlock";
-
   public static final String WAIT_FOR_RESULT = "WaitForResult";
-
-  public static final String SERIES_SCAN_OPERATOR = "SeriesScanOperator";
-
-  public static final String ALIGNED_SERIES_SCAN_OPERATOR = "AlignedSeriesScanOperator";
 
   public static final String AGG_SCAN_OPERATOR = "AbstractSeriesAggregationScanOperator";
 
@@ -107,11 +94,6 @@ public class QueryStatistics {
 
   public static final String BUILD_AGG_RES = "BuildAggRes";
 
-  public static final String FILTER_AND_PROJECT_OPERATOR = "FilterAndProjectOperator";
-
-  public static final String SINGLE_INPUT_AGG_OPERATOR = "SingleInputAggregationOperator";
-
-  public static final String PAGE_READER = "IPageReader";
   public static final String PARSER = "Parser";
 
   public static final String CREATE_QUERY_EXEC = "CreateQueryExec";
@@ -124,8 +106,6 @@ public class QueryStatistics {
   public static final String LOGICAL_PLANNER = "LogicalPlanner";
   public static final String DISTRIBUTION_PLANNER = "DistributionPlanner";
   public static final String DISPATCHER = "Dispatcher";
-
-  public static final String WAIT_FOR_DISPATCH = "WaitForDispatch";
 
   public static final String DISPATCH_READ = "DispatchRead";
 
@@ -153,27 +133,23 @@ public class QueryStatistics {
 
   public static final String SERVER_RPC_RT = "ServerRpcRT";
 
-  public static final String LOAD_TIME_SERIES_METADATA_ALIGNED = "loadTimeSeriesMetadata-aligned";
   public static final String LOAD_TIME_SERIES_METADATA = "loadTimeSeriesMetadata";
   public static final String LOAD_CHUNK_METADATA_LIST = "loadChunkMetadataList";
   public static final String LOAD_PAGE_READER_LIST = "loadPageReaderList";
-  public static final String TIME_SERIES_METADATA_CACHE_MISS = "TimeSeriesMetadataCacheMiss";
-  public static final String CHUNK_CACHE_MISS = "ChunkCacheMiss";
-  public static final String LOAD_CHUNK = "ChunkCacheMiss";
+  public static final String LOAD_CHUNK = "loadChunk";
   public static final String INIT_PAGE_READERS = "initAllPageReaders";
+  public static final String PAGE_READER = "IPageReader";
 
   public static final String HAS_NEXT_FILE = "hasNextFile";
-  public static final String HAS_NEXT_CHUNK = "hasNextChunk";
-  public static final String HAS_NEXT_PAGE = "hasNextPage";
-  public static final String HAS_NEXT_OVERLAPPED_PAGE = "hasNextOverlappedPage";
-
   public static final String FILTER_FIRST_TIMESERIES_METADATA = "filterFirstTimeSeriesMetadata";
-  public static final String FILTER_FIRST_CHUNK_METADATA = "filterFirstChunkMetadata";
-
   public static final String FIND_END_TIME = "findEndTime";
   public static final String PICK_FIRST_TIMESERIES_METADATA = "pickFirstTimeSeriesMetadata";
-  public static final String INIT_FIRST_PAGE = "initFirstPage";
 
+  public static final String HAS_NEXT_CHUNK = "hasNextChunk";
+  public static final String FILTER_FIRST_CHUNK_METADATA = "filterFirstChunkMetadata";
+
+  public static final String HAS_NEXT_PAGE = "hasNextPage";
+  public static final String HAS_NEXT_OVERLAPPED_PAGE = "hasNextOverlappedPage";
   public static final String MERGE_READER_ADD_READER = "mergeReader#addReader";
   public static final String MERGE_READER_NEXT = "mergeReader#nextTimeValuePair";
   public static final String MERGE_READER_UPDATE_HEAP = "mergeReader#updateHeap";
@@ -310,7 +286,7 @@ public class QueryStatistics {
       builder.append("|   |    |[FileLoaderInterface]").append(System.lineSeparator());
       builder
           .append("|   |       |___loadTSMetadata ")
-          .append(operationStatistics.get(LOAD_TIME_SERIES_METADATA_ALIGNED))
+          .append(operationStatistics.get(LOAD_TIME_SERIES_METADATA))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___loadChunkMetaList ")

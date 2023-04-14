@@ -294,8 +294,7 @@ public class FileLoaderUtils {
               ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
           costTime);
-      QueryStatistics.getInstance()
-          .addCost(QueryStatistics.LOAD_TIME_SERIES_METADATA_ALIGNED, costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.LOAD_TIME_SERIES_METADATA, costTime);
     }
   }
 
