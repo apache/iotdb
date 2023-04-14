@@ -44,8 +44,8 @@ public class PipeConnectorContainer {
   }
 
   public boolean addEvent(Event event) {
-    if (pendingQueue.size() == pendingQueueSize) {
-      LOGGER.warn("Pending queue is full.");
+    if (pendingQueue.size() >= pendingQueueSize) {
+      LOGGER.warn("Pending queue is full now and do not submit events for a while.");
       return false;
     }
 
