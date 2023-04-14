@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @ThreadSafe
 public class QueryStatistics {
 
-  private static final long QUERY_STATISTICS_PRINT_INTERVAL_IN_MS = 1_000_000;
+  private static final long QUERY_STATISTICS_PRINT_INTERVAL_IN_MS = 100_000;
 
   private static final Logger QUERY_STATISTICS_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.QUERY_STATISTICS_LOGGER_NAME);
@@ -159,6 +159,8 @@ public class QueryStatistics {
   public static final String LOAD_PAGE_READER_LIST = "loadPageReaderList";
   public static final String TIME_SERIES_METADATA_CACHE_MISS = "TimeSeriesMetadataCacheMiss";
   public static final String CHUNK_CACHE_MISS = "ChunkCacheMiss";
+  public static final String LOAD_CHUNK = "ChunkCacheMiss";
+  public static final String INIT_PAGE_READERS = "initAllPageReaders";
 
   public static final String HAS_NEXT_FILE = "hasNextFile";
   public static final String HAS_NEXT_CHUNK = "hasNextChunk";
@@ -317,6 +319,14 @@ public class QueryStatistics {
       builder
           .append("|   |       |___loadPageReaderList ")
           .append(operationStatistics.get(LOAD_PAGE_READER_LIST))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___loadChunk ")
+          .append(operationStatistics.get(LOAD_CHUNK))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___initPageReaders ")
+          .append(operationStatistics.get(INIT_PAGE_READERS))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___pageReader ")
