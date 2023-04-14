@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -26,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -66,7 +70,6 @@ public class SetTemplateProcedure
               templateSetPath,
               templateName);
           validateTemplateExistence(env);
-          setNextState(SetTemplateState.PRE_SET);
           break;
         case PRE_SET:
           LOGGER.info("Pre set schema template {} on path {}", templateName, templateSetPath);
@@ -110,7 +113,24 @@ public class SetTemplateProcedure
     }
   }
 
-  private void validateTemplateExistence(ConfigNodeProcedureEnv env) {}
+  private void validateTemplateExistence(ConfigNodeProcedureEnv env) {
+    // check whether the template can be set on given path
+    CheckTemplateSettablePlan checkTemplateSettablePlan =
+        new CheckTemplateSettablePlan(templateName, templateSetPath);
+    TemplateInfoResp resp =
+        (TemplateInfoResp)
+            env.getConfigManager()
+                .getConsensusManager()
+                .read(checkTemplateSettablePlan)
+                .getDataset();
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(SetTemplateState.PRE_SET);
+    } else {
+      setFailure(
+          new ProcedureException(
+              new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode())));
+    }
+  }
 
   private void preSetTemplate(ConfigNodeProcedureEnv env) {}
 
