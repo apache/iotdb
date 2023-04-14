@@ -20,14 +20,20 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.DispatcherGroup;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,11 +127,11 @@ public class FlowBalancer {
           entry.getValue().averageFlow(windowsToUse),
           inBurst);
     }
-    Map<Peer, BlockingQueue<VotingEntry>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
+    Map<Peer, DispatcherGroup> dispatcherGroupMap = logDispatcher.getDispatcherGroupMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
-    followers.sort(Comparator.comparing(node -> nodesLogQueuesMap.get(node).size()));
+    followers.sort(Comparator.comparing(node -> dispatcherGroupMap.get(node).getQueueSize()));
     if (burstWindowNum > latestWindows.size() / 2 && !inBurst) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);
       logDispatcher.updateRateLimiter();
@@ -147,7 +153,7 @@ public class FlowBalancer {
     int i = 0;
     for (; i < quorumFollowerNum; i++) {
       Peer node = followers.get(i);
-      nodesRate.put(node, maxFlow);
+      nodesRate.put(node, Double.MAX_VALUE);
       remainingFlow -= flowToQuorum;
     }
     double flowToRemaining = remainingFlow / (followerNum - quorumFollowerNum);
@@ -166,7 +172,7 @@ public class FlowBalancer {
     // lift flow limits
     for (int i = 0; i < followerNum; i++) {
       Peer node = followers.get(i);
-      nodesRate.put(node, maxFlow);
+      nodesRate.put(node, Double.MAX_VALUE);
     }
     inBurst = false;
   }
