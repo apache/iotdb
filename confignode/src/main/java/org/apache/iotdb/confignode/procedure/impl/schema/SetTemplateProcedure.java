@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -210,7 +211,17 @@ public class SetTemplateProcedure
 
   private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {}
 
-  private void commitSetTemplate(ConfigNodeProcedureEnv env) {}
+  private void commitSetTemplate(ConfigNodeProcedureEnv env) {
+    CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+        new CommitSetSchemaTemplatePlan(templateName, templateSetPath);
+    TSStatus status =
+        env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan).getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(SetTemplateState.PRE_RELEASE);
+    } else {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   private void commitReleaseTemplate(ConfigNodeProcedureEnv env) {}
 

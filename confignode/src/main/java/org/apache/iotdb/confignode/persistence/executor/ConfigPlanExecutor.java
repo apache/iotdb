@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
@@ -388,6 +389,9 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
       case PreSetSchemaTemplate:
         return clusterSchemaInfo.preSetSchemaTemplate((PreSetSchemaTemplatePlan) physicalPlan);
+      case CommitSetSchemaTemplate:
+        return clusterSchemaInfo.commitSetSchemaTemplate(
+            (CommitSetSchemaTemplatePlan) physicalPlan);
       case PreUnsetTemplate:
         return clusterSchemaInfo.preUnsetSchemaTemplate((PreUnsetSchemaTemplatePlan) physicalPlan);
       case RollbackUnsetTemplate:

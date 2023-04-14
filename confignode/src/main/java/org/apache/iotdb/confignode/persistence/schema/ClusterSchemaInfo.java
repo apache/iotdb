@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
@@ -747,6 +748,25 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
       templatePreSetTable.preSetTemplate(templateId, path);
       mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus commitSetSchemaTemplate(
+      CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(commitSetSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(commitSetSchemaTemplatePlan.getName()).getId();
+      templatePreSetTable.commitSetTemplate(templateId, path);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
