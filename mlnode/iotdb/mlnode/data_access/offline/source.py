@@ -18,6 +18,8 @@
 import numpy as np
 import pandas as pd
 
+from typing import List
+
 from iotdb.mlnode.client import client_manager
 
 
@@ -61,7 +63,7 @@ class FileDataSource(DataSource):
 
 
 class ThriftDataSource(DataSource):
-    def __init__(self, query_expressions: list = None, query_filter: str = None):
+    def __init__(self, query_expressions: List = None, query_filter: str = None):
         self.query_expressions = query_expressions
         self.query_filter = query_filter
         super(ThriftDataSource, self).__init__()
@@ -72,8 +74,7 @@ class ThriftDataSource(DataSource):
         except Exception:
             raise RuntimeError('Fail to establish connection with DataNode')
 
-        query_id, has_more_data, raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
-        # TODO: consider has_more_data
+        raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
 
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values

@@ -56,16 +56,13 @@ def create_forecast_dataset(
 
     Args:
         dataset_type: see data_access/enums for available choices
-        source_type:  see data_access/enums for available choices
+        source_type:  see data_access/enums for available cho ices
         kwargs: for specific dataset configs, see returned `dataset_config` with kwargs=None
 
     Returns:
         dataset: torch.nn.Module
         dataset_config: dict of dataset configurations
     """
-    if dataset_type not in list(DatasetType):
-        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
-
     if source_type == DataSourceType.FILE:
         if 'filename' not in kwargs.keys():
             raise MissingConfigError('filename')
@@ -79,7 +76,10 @@ def create_forecast_dataset(
     else:
         raise BadConfigValueError('source_type', source_type, f"It should be one of {list(DataSourceType)}")
 
+    if dataset_type not in list(DatasetType):
+        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
     dataset_config = _dataset_default_config_dict[dataset_type]
+
     for k, v in kwargs.items():
         if k in dataset_config.keys():
             dataset_config[k] = v

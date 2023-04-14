@@ -16,7 +16,7 @@
 # under the License.
 #
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pandas as pd
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
@@ -34,7 +34,8 @@ from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
 from iotdb.thrift.datanode import IMLNodeInternalRPCService
 from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
-                                          TRecordModelMetricsReq)
+                                          TRecordModelMetricsReq,
+                                          TFetchMoreDataReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
@@ -128,7 +129,7 @@ class DataNodeClient(object):
                          query_expressions: List[str],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
-                         timeout: int = DEFAULT_TIMEOUT) -> [int, bool, pd.DataFrame]:
+                         timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
             queryExpressions=query_expressions,
             queryFilter=query_filter,
@@ -149,17 +150,35 @@ class DataNodeClient(object):
             if data.empty:
                 raise RuntimeError(
                     f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
-            return resp.queryId, resp.hasMoreData, data
         except Exception as e:
             logger.warn(
                 f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
+        query_id = resp.queryId
+        column_name_list = resp.columnNameList
+        column_type_list = resp.columnTypeList
+        column_name_index_map = resp.columnNameIndexMap
+        has_more_data = resp.hasMoreData
+        while has_more_data:
+            req = TFetchMoreDataReq(queryId=query_id, fetchSize=fetch_size)
+            try:
+                resp = self.__client.fetchMoreData(req)
+                verify_success(resp.status, "An error occurs when calling fetch_more_data()")
+                data = data.append(serde.convert_to_df(column_name_list,
+                                                       column_type_list,
+                                                       column_name_index_map,
+                                                       resp.tsDataset))
+            except Exception as e:
+                logger.warn(
+                    f'Fail to fetch more data with query id: {query_id}')
+                raise e
+        return data
 
     def fetch_window_batch(self,
                            query_expressions: list,
                            query_filter: str = None,
                            fetch_size: int = DEFAULT_FETCH_SIZE,
-                           timeout: int = DEFAULT_TIMEOUT) -> [int, bool, List[pd.DataFrame]]:
+                           timeout: int = DEFAULT_TIMEOUT) -> Tuple[int, bool, List[pd.DataFrame]]:
         pass
 
     def record_model_metrics(self,

@@ -20,6 +20,7 @@ import math
 
 import torch
 import torch.nn as nn
+from typing import Dict, Tuple
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.exception import BadConfigValueError
@@ -142,7 +143,7 @@ def _model_config(**kwargs):
     }
 
 
-def dlinear(common_config: dict, kernel_size=25, **kwargs) -> [DLinear, dict]:
+def dlinear(common_config: Dict, kernel_size=25, **kwargs) -> Tuple[DLinear, Dict]:
     config = _model_config()
     config.update(**common_config)
     if not kernel_size > 0:
@@ -152,7 +153,7 @@ def dlinear(common_config: dict, kernel_size=25, **kwargs) -> [DLinear, dict]:
     return DLinear(**config), config
 
 
-def dlinear_individual(common_config: dict, kernel_size=25, **kwargs) -> [DLinearIndividual, dict]:
+def dlinear_individual(common_config: Dict, kernel_size=25, **kwargs) -> Tuple[DLinearIndividual, Dict]:
     config = _model_config()
     config.update(**common_config)
     if not kernel_size > 0:

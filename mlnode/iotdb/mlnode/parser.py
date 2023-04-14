@@ -45,7 +45,7 @@ class _ConfigParser(argparse.ArgumentParser):
         return vars(self.parse_known_args(args)[0])
 
     @staticmethod
-    def parse_dict(config_dict) -> List:
+    def parse_dict(config_dict: Dict) -> List:
         """
         Parse a dict of configs to a list of arguments
         Args:config_dict: a dict of configs
@@ -60,6 +60,8 @@ class _ConfigParser(argparse.ArgumentParser):
                 args.extend(v)
             elif isinstance(v, list):
                 args.extend([str(i) for i in v])
+            elif isinstance(v, bool):
+                args.append(str(v).lower())
             else:
                 args.append(v)
         return args
@@ -77,6 +79,15 @@ class _ConfigParser(argparse.ArgumentParser):
             raise WrongTypeConfigError(argument, expected_type)
         else:
             raise Exception(message)
+
+
+def str2bool(value):
+    if value.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif value.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 """ Argument description:
@@ -106,8 +117,6 @@ _data_config_parser.add_argument('--query_filter', type=str, default='')
 _data_config_parser.add_argument('--time_embed', type=str, default='h')
 _data_config_parser.add_argument('--input_len', type=int, default=96)
 _data_config_parser.add_argument('--pred_len', type=int, default=96)
-_data_config_parser.add_argument('--input_vars', type=int, default=1)
-_data_config_parser.add_argument('--output_vars', type=int, default=1)
 
 """ Argument description:
  - model_name: model name
@@ -129,8 +138,6 @@ _model_config_parser = _ConfigParser()
 _model_config_parser.add_argument('--model_name', type=str, required=True)
 _model_config_parser.add_argument('--input_len', type=int, default=96)
 _model_config_parser.add_argument('--pred_len', type=int, default=96)
-_model_config_parser.add_argument('--input_vars', type=int, default=1)
-_model_config_parser.add_argument('--output_vars', type=int, default=1)
 _model_config_parser.add_argument('--forecast_task_type',
                                   type=ForecastTaskType,
                                   default=ForecastTaskType.ENDOGENOUS,
@@ -163,22 +170,20 @@ _model_config_parser.add_argument('--outer_layers', type=int, default=4)
 _task_config_parser = _ConfigParser()
 _task_config_parser.add_argument('--task_class', type=str, required=True)
 _task_config_parser.add_argument('--model_id', type=str, required=True)
-_task_config_parser.add_argument('--tuning', type=bool, default=False)
+_task_config_parser.add_argument('--tuning', type=str2bool, default=False)
 _task_config_parser.add_argument('--forecast_task_type',
                                  type=ForecastTaskType,
                                  default=ForecastTaskType.ENDOGENOUS,
                                  choices=list(ForecastTaskType))
 _task_config_parser.add_argument('--input_len', type=int, default=96)
 _task_config_parser.add_argument('--pred_len', type=int, default=96)
-_task_config_parser.add_argument('--input_vars', type=int, default=1)
-_task_config_parser.add_argument('--output_vars', type=int, default=1)
 _task_config_parser.add_argument('--learning_rate', type=float, default=0.0001)
 _task_config_parser.add_argument('--batch_size', type=int, default=32)
 _task_config_parser.add_argument('--num_workers', type=int, default=0)
 _task_config_parser.add_argument('--epochs', type=int, default=10)
-_task_config_parser.add_argument('--use_gpu', type=bool, default=False)
+_task_config_parser.add_argument('--use_gpu', type=str2bool, default=False)
 _task_config_parser.add_argument('--gpu', type=int, default=0)
-_task_config_parser.add_argument('--use_multi_gpu', type=bool, default=False)
+_task_config_parser.add_argument('--use_multi_gpu', type=str2bool, default=False)
 _task_config_parser.add_argument('--devices', type=int, nargs='+', default=[0])
 _task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE', 'MAE'])
 
