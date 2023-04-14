@@ -219,7 +219,6 @@ public class QuotaInfo implements SnapshotProcessor {
       spaceQuota.setTimeserieNum(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuota.setDiskSize(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuotaLimit.put(path, spaceQuota);
-      spaceQuotaUsage.put(path, new TSpaceQuota());
       size--;
     }
   }
