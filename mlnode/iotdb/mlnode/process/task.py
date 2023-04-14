@@ -30,6 +30,7 @@ from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.client import client_manager
 from iotdb.thrift.common.ttypes import TrainingState
 
+
 class TrainingTrialObjective:
     """
     A class which serve as a function, should accept trial as args
@@ -64,12 +65,12 @@ class _BasicTask(object):
     """
 
     def __init__(
-        self,
-        task_configs: Dict,
-        model_configs: Dict,
-        model: nn.Module,
-        dataset: Dataset,
-        pid_info: multiprocessing.managers.SyncManager
+            self,
+            task_configs: Dict,
+            model_configs: Dict,
+            model: nn.Module,
+            dataset: Dataset,
+            pid_info: Dict
     ):
         """
         Args:

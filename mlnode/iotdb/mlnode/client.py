@@ -154,18 +154,23 @@ class DataNodeClient(object):
             logger.warn(
                 f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
-        while resp.has_more_data:
-            req = TFetchMoreDataReq(queryId=resp.queryId)
+        query_id = resp.queryId
+        column_name_list = resp.columnNameList
+        column_type_list = resp.columnTypeList
+        column_name_index_map = resp.columnNameIndexMap
+        has_more_data = resp.hasMoreData
+        while has_more_data:
+            req = TFetchMoreDataReq(queryId=query_id, fetchSize=fetch_size)
             try:
                 resp = self.__client.fetchMoreData(req)
                 verify_success(resp.status, "An error occurs when calling fetch_more_data()")
-                data = data.append(serde.convert_to_df(resp.column_name_list,
-                                                       resp.column_type_list,
-                                                       resp.column_name_index_map,
+                data = data.append(serde.convert_to_df(column_name_list,
+                                                       column_type_list,
+                                                       column_name_index_map,
                                                        resp.tsDataset))
             except Exception as e:
                 logger.warn(
-                    f'Fail to fetch more data with query id: {resp.query_id}')
+                    f'Fail to fetch more data with query id: {query_id}')
                 raise e
         return data
 
