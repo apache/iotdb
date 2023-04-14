@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
 
+import java.util.function.Consumer;
+
 public class PipeTaskProcessorStage extends PipeTaskStage {
+  private final Consumer<Event> consumer;
 
   protected PipeTaskProcessorStage(
-      PipeProcessorSubtaskExecutor executor, PipeProcessorSubtask subtask) {
+      PipeProcessorSubtaskExecutor executor,
+      PipeProcessorSubtask subtask,
+      Consumer<Event> consumer) {
     super(executor, subtask);
+    this.consumer = consumer;
   }
 }

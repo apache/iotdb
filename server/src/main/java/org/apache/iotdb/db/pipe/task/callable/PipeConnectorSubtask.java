@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.task.callable;
 
 import org.apache.iotdb.db.pipe.core.connector.PipeConnectorPluginRuntimeWrapper;
+import org.apache.iotdb.pipe.api.event.Event;
+
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
@@ -28,6 +31,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public PipeConnectorSubtask(String taskID, PipeConnectorPluginRuntimeWrapper pipeConnector) {
     super(taskID);
     this.pipeConnector = pipeConnector;
+  }
+
+  public void setPendingQueue(ArrayBlockingQueue<Event> pendingQueue) {
+    pipeConnector.setPendingQueue(pendingQueue);
   }
 
   @Override

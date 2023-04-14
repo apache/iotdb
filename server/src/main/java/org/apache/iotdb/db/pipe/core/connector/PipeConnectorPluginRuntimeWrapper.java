@@ -29,20 +29,22 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeConnectorPluginRuntimeWrapper {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConnectorPluginRuntimeWrapper.class);
 
-  private final Queue<Event> inputEventQueue;
+  private ArrayBlockingQueue<Event> inputEventQueue;
   private final PipeConnector pipeConnector;
 
-  public PipeConnectorPluginRuntimeWrapper(
-      Queue<Event> inputEventQueue, PipeConnector pipeConnector) {
-    this.inputEventQueue = inputEventQueue;
+  public PipeConnectorPluginRuntimeWrapper(PipeConnector pipeConnector) {
     this.pipeConnector = pipeConnector;
+  }
+
+  public void setPendingQueue(ArrayBlockingQueue<Event> queue) {
+    this.inputEventQueue = queue;
   }
 
   // TODO: for a while

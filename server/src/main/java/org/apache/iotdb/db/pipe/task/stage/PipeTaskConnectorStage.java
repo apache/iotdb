@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.db.pipe.core.connector.PipeConnectorContainer;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeTaskConnectorStage extends PipeTaskStage {
+
+  private final PipeConnectorContainer pipeConnectorContainer;
 
   protected PipeTaskConnectorStage(
       PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask) {
     super(executor, subtask);
+    this.pipeConnectorContainer = new PipeConnectorContainer(subtask);
+  }
+
+  boolean consumeEvent(Event event) {
+    return pipeConnectorContainer.addEvent(event);
   }
 }

@@ -19,4 +19,37 @@
 
 package org.apache.iotdb.db.pipe.core.connector;
 
-public class PipeConnectorContainer {}
+import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ArrayBlockingQueue;
+
+public class PipeConnectorContainer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorContainer.class);
+
+  private final ArrayBlockingQueue<Event> pendingQueue;
+  private final PipeConnectorSubtask subtask;
+  private final int pendingQueueSize = 1000;
+
+  public PipeConnectorContainer(PipeSubtask subtask) {
+    this.subtask = (PipeConnectorSubtask) subtask;
+    this.pendingQueue = new ArrayBlockingQueue<>(pendingQueueSize);
+
+    this.subtask.setPendingQueue(pendingQueue);
+  }
+
+  public boolean addEvent(Event event) {
+    if (pendingQueue.size() == pendingQueueSize) {
+      LOGGER.warn("Pending queue is full.");
+      return false;
+    }
+
+    pendingQueue.add(event);
+    return true;
+  }
+}
