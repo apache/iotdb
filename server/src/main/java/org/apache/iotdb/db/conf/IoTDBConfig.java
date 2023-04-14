@@ -1068,8 +1068,8 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
-  /** multi-tenancy */
-  private boolean quotaEnable = true;
+  /** Resource control */
+  private boolean quotaEnable = false;
 
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
