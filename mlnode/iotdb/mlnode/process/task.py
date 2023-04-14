@@ -38,7 +38,7 @@ class TrainingTrialObjective:
     Optuna will try to minimize the objective.
     """
 
-    def __init__(self, trial_configs: Dict, model_configs: Dict, dataset: Dataset, pid_info):
+    def __init__(self, trial_configs: Dict, model_configs: Dict, dataset: Dataset, pid_info: Dict):
         self.trial_configs = trial_configs
         self.model_configs = model_configs
         self.dataset = dataset
@@ -65,12 +65,12 @@ class _BasicTask(object):
     """
 
     def __init__(
-            self,
-            task_configs: Dict,
-            model_configs: Dict,
-            model: nn.Module,
-            dataset: Dataset,
-            pid_info: Dict
+        self,
+        task_configs: Dict,
+        model_configs: Dict,
+        model: nn.Module,
+        dataset: Dataset,
+        pid_info: Dict
     ):
         """
         Args:
@@ -92,7 +92,8 @@ class _BasicTask(object):
 
 
 class ForecastingTrainingTask(_BasicTask):
-    def __init__(self, task_configs: Dict, model_configs: Dict, model: nn.Module, dataset: Dataset, pid_info: Dict):
+    def __init__(self, task_configs: Dict, model_configs: Dict, model: nn.Module, dataset: Dataset,
+                 pid_info: Dict):
         """
         Args:
             task_configs: dict of task configurations
