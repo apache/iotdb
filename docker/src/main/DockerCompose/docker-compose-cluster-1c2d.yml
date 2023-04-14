@@ -19,7 +19,7 @@
 version: "3"
 services:
   iodb-confignode:
-    image: apache/iotdb:1.0.1-confignode
+    image: apache/iotdb:1.1.0-confignode
     hostname: iotdb-confignode
     container_name: iotdb-confignode
     environment:
@@ -35,7 +35,7 @@ services:
         ipv4_address: 172.18.0.2
 
   iotdb-datanode1:
-    image: apache/iotdb:1.0.1-datanode
+    image: apache/iotdb:1.1.0-datanode
     hostname: iotdb-datanode-1
     container_name: iotdb-datanode-1
     ports:
@@ -56,7 +56,7 @@ services:
         ipv4_address: 172.18.0.3
 
   iotdb-datanode2:
-    image: apache/iotdb:1.0.1-datanode
+    image: apache/iotdb:1.1.0-datanode
     hostname: iotdb-datanode-2
     container_name: iotdb-datanode-2
     environment:

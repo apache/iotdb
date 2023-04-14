@@ -53,7 +53,7 @@ public class LocalSourceHandle implements ISourceHandle {
   private TFragmentInstanceId localFragmentInstanceId;
   private String localPlanNodeId;
   private final SourceHandleListener sourceHandleListener;
-  private final SharedTsBlockQueue queue;
+  protected final SharedTsBlockQueue queue;
   private boolean aborted = false;
 
   private boolean closed = false;

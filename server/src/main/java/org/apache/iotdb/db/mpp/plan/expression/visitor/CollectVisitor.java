@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
@@ -47,6 +48,12 @@ public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expre
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
     return mergeList(getResultsFromChild(binaryExpression, null));
+  }
+
+  @Override
+  public List<Expression> visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, Void context) {
+    return mergeList(getResultsFromChild(caseWhenThenExpression, null));
   }
 
   @Override

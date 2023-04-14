@@ -27,6 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
@@ -100,6 +102,7 @@ import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -158,9 +161,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -236,6 +242,9 @@ public class ConfigManager implements IManager {
   /** Pipe */
   private final PipeManager pipeManager;
 
+  /** Manage quotas */
+  private final ClusterQuotaManager clusterQuotaManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -255,6 +264,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     ModelInfo modelInfo = new ModelInfo();
     PipeInfo pipeInfo = new PipeInfo();
+    QuotaInfo quotaInfo = new QuotaInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -269,7 +279,8 @@ public class ConfigManager implements IManager {
             syncInfo,
             cqInfo,
             modelInfo,
-            pipeInfo);
+            pipeInfo,
+            quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -287,6 +298,7 @@ public class ConfigManager implements IManager {
     this.pipeManager = new PipeManager(this, pipeInfo);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
+    this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -1400,6 +1412,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public ClusterQuotaManager getClusterQuotaManager() {
+    return clusterQuotaManager;
+  }
+
+  @Override
   public RetryFailedTasksThread getRetryFailedTasksThread() {
     return retryFailedTasksThread;
   }
@@ -1867,5 +1884,48 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.updateModelState(req)
         : status;
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.setSpaceQuota(req)
+        : status;
+  }
+
+  public TSpaceQuotaResp showSpaceQuota(List<String> databases) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.showSpaceQuota(databases)
+        : new TSpaceQuotaResp(status);
+  }
+
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.getSpaceQuota()
+        : new TSpaceQuotaResp(status);
+  }
+
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.setThrottleQuota(req)
+        : status;
+  }
+
+  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.showThrottleQuota(req)
+        : new TThrottleQuotaResp(status);
+  }
+
+  public TThrottleQuotaResp getThrottleQuota() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.getThrottleQuota()
+        : new TThrottleQuotaResp(status);
   }
 }

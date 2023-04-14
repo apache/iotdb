@@ -63,7 +63,8 @@ session = Session(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 
@@ -75,7 +76,8 @@ session = Session.init_from_node_urls(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 
@@ -529,7 +531,7 @@ The mapping relationship between them is：
 
 The following figure shows the relationship between the two more intuitively:
 
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
 #### Data type mapping
 | data type in IoTDB | data type in SQLAlchemy |

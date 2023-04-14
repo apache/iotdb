@@ -19,7 +19,7 @@
 -r requirements.txt
 # Pytest to run tests
 
-pandas>=1.3.5
+pandas>=1.3.5,<2
 numpy>=1.21.4
 torch
 pylru

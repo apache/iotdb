@@ -279,6 +279,18 @@ public class IoTDBConstant {
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
+  // quota
+  public static final String SPACE_QUOTA_DISK = "disk";
+  public static final String QUOTA_UNLIMITED = "unlimited";
+  public static final String REQUEST_NUM_PER_UNIT_TIME = "request";
+  public static final String REQUEST_SIZE_PER_UNIT_TIME = "size";
+  public static final String MEMORY_SIZE_PER_READ = "mem";
+  public static final String CPU_NUMBER_PER_READ = "cpu";
+  public static final String REQUEST_TYPE = "type";
+  public static final String REQUEST_TYPE_READ = "read";
+  public static final String REQUEST_TYPE_WRITE = "write";
+  public static final String REQ_UNIT = "req";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

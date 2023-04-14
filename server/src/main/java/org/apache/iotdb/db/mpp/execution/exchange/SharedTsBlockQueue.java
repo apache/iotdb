@@ -42,6 +42,7 @@ import java.util.Queue;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.RESERVE_MEMORY;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.FREE_MEM;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_END;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_NEW_TSBLOCK;
@@ -80,6 +81,7 @@ public class SharedTsBlockQueue {
   private ListenableFuture<Void> blockedOnMemory;
 
   private boolean closed = false;
+  private boolean alreadyRegistered = false;
 
   private LocalSourceHandle sourceHandle;
   private LocalSinkChannel sinkChannel;
@@ -154,7 +156,7 @@ public class SharedTsBlockQueue {
     this.sourceHandle = sourceHandle;
   }
 
-  /** Notify no more tsblocks will be added to the queue. */
+  /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
@@ -173,7 +175,7 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Remove a tsblock from the head of the queue and return. Should be invoked only when the future
+   * Remove a TsBlock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
    */
   public TsBlock remove() {
@@ -181,11 +183,6 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
-    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
-    // corresponding LocalSinkChannel.
-    if (sinkChannel != null) {
-      sinkChannel.checkAndInvokeOnFinished();
-    }
     long startTime = System.nanoTime();
     localMemoryManager
         .getQueryPool()
@@ -196,6 +193,11 @@ public class SharedTsBlockQueue {
             tsBlock.getRetainedSizeInBytes());
     QUERY_STATISTICS.addCost(FREE_MEM, System.nanoTime() - startTime);
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // corresponding LocalSinkChannel.
+    if (sinkChannel != null) {
+      sinkChannel.checkAndInvokeOnFinished();
+    }
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
     }
@@ -203,32 +205,40 @@ public class SharedTsBlockQueue {
   }
 
   /**
-   * Add tsblocks to the queue. Except the first invocation, this method should be invoked only when
+   * Add TsBlocks to the queue. Except the first invocation, this method should be invoked only when
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      LOGGER.warn("queue has been destroyed");
+      // queue may have been closed
       return immediateVoidFuture();
     }
 
     Validate.notNull(tsBlock, "TsBlock cannot be null");
-    Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
+    Validate.isTrue(
+        blockedOnMemory == null || blockedOnMemory.isDone(), "SharedTsBlockQueue is full");
+    if (!alreadyRegistered) {
+      localMemoryManager
+          .getQueryPool()
+          .registerPlanNodeIdToQueryMemoryMap(
+              localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
+      alreadyRegistered = true;
+    }
 
     long startTime = System.nanoTime();
     Pair<ListenableFuture<Void>, Boolean> pair;
     try {
       pair =
-          localMemoryManager
-              .getQueryPool()
-              .reserve(
-                  localFragmentInstanceId.getQueryId(),
-                  fullFragmentInstanceId,
-                  localPlanNodeId,
-                  tsBlock.getRetainedSizeInBytes(),
-                  maxBytesCanReserve);
-      blockedOnMemory = pair.left;
-      bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+        localMemoryManager
+            .getQueryPool()
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                tsBlock.getRetainedSizeInBytes(),
+                maxBytesCanReserve);
+    blockedOnMemory = pair.left;
+    bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
     } finally {
       QUERY_STATISTICS.addCost(RESERVE_MEMORY, System.nanoTime() - startTime);
     }
@@ -280,10 +290,7 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    localMemoryManager
-        .getQueryPool()
-        .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
+    sinkChannel.close();
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
@@ -309,10 +316,6 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    localMemoryManager
-        .getQueryPool()
-        .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
@@ -338,9 +341,5 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    localMemoryManager
-        .getQueryPool()
-        .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 }

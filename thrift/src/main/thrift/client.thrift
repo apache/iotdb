@@ -430,7 +430,7 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
-struct TCreateTimeseriesOfSchemaTemplateReq{
+struct TCreateTimeseriesUsingSchemaTemplateReq{
   1: required i64 sessionId
   2: required list<string> devicePathList
 }
@@ -584,7 +584,7 @@ service IClientRPCService {
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
-  common.TSStatus createTimeseriesOfSchemaTemplate(1:TCreateTimeseriesOfSchemaTemplateReq req);
+  common.TSStatus createTimeseriesUsingSchemaTemplate(1:TCreateTimeseriesUsingSchemaTemplateReq req);
 
   common.TSStatus handshake(TSyncIdentityInfo info);
 

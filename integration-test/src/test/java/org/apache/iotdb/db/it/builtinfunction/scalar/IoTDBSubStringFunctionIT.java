@@ -98,20 +98,6 @@ public class IoTDBSubStringFunctionIT {
         expectedHeader,
         retArray);
 
-    // negative start position
-    expectedHeader =
-        new String[] {
-          "Time,root.sg.s1,SUBSTRING(root.sg.s1,-1),SUBSTRING(root.sg.s1,-1,3),SUBSTRING(root.sg.s1 FROM -1),SUBSTRING(root.sg.s1 FROM -1 FOR 3)"
-        };
-    retArray =
-        new String[] {
-          "1,abcd,abcd,a,abcd,a,", "2,test,test,t,test,t,", "3,abcdefg,abcdefg,a,abcdefg,a,",
-        };
-    resultSetEqualTest(
-        "select s1,SUBSTRING(s1,-1),SUBSTRING(s1,-1,3),SUBSTRING(s1 from -1),SUBSTRING(s1 from -1 for 3) from root.sg",
-        expectedHeader,
-        retArray);
-
     // param 1 greater than input series length
     expectedHeader =
         new String[] {
@@ -123,22 +109,6 @@ public class IoTDBSubStringFunctionIT {
         };
     resultSetEqualTest(
         "select s1,SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.sg",
-        expectedHeader,
-        retArray);
-
-    // param 2 greater than input series length
-    expectedHeader =
-        new String[] {
-          "Time,root.sg.s1,SUBSTRING(root.sg.s1,-1),SUBSTRING(root.sg.s1,-1,13),SUBSTRING(root.sg.s1 FROM -1),SUBSTRING(root.sg.s1 FROM -1 FOR 13)"
-        };
-    retArray =
-        new String[] {
-          "1,abcd,abcd,abcd,abcd,abcd,",
-          "2,test,test,test,test,test,",
-          "3,abcdefg,abcdefg,abcdefg,abcdefg,abcdefg,",
-        };
-    resultSetEqualTest(
-        "select s1,SUBSTRING(s1,-1),SUBSTRING(s1,-1,13),SUBSTRING(s1 from -1),SUBSTRING(s1 from -1 for 13) from root.sg",
         expectedHeader,
         retArray);
   }
@@ -161,22 +131,6 @@ public class IoTDBSubStringFunctionIT {
         expectedHeader,
         retArray);
 
-    // negative start position
-    expectedHeader =
-        new String[] {
-          "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,-1),SUBSTRING(root.sg.s1,-1,3),SUBSTRING(root.sg.s1 FROM -1),SUBSTRING(root.sg.s1 FROM -1 FOR 3)"
-        };
-    retArray =
-        new String[] {
-          "1,abcd,abcd,abcd,a,abcd,a,",
-          "2,test,test,test,t,test,t,",
-          "3,abcdefg,abcdefg,abcdefg,a,abcdefg,a,",
-        };
-    resultSetEqualTest(
-        "select s1,change_points(s1),SUBSTRING(s1,-1),SUBSTRING(s1,-1,3),SUBSTRING(s1 from -1),SUBSTRING(s1 from -1 for 3) from root.sg",
-        expectedHeader,
-        retArray);
-
     // param 1 greater than input series length
     expectedHeader =
         new String[] {
@@ -188,22 +142,6 @@ public class IoTDBSubStringFunctionIT {
         };
     resultSetEqualTest(
         "select s1,change_points(s1),SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.sg",
-        expectedHeader,
-        retArray);
-
-    // param 2 greater than input series length
-    expectedHeader =
-        new String[] {
-          "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,-1),SUBSTRING(root.sg.s1,-1,13),SUBSTRING(root.sg.s1 FROM -1),SUBSTRING(root.sg.s1 FROM -1 FOR 13)"
-        };
-    retArray =
-        new String[] {
-          "1,abcd,abcd,abcd,abcd,abcd,abcd,",
-          "2,test,test,test,test,test,test,",
-          "3,abcdefg,abcdefg,abcdefg,abcdefg,abcdefg,abcdefg,",
-        };
-    resultSetEqualTest(
-        "select s1,change_points(s1),SUBSTRING(s1,-1),SUBSTRING(s1,-1,13),SUBSTRING(s1 from -1),SUBSTRING(s1 from -1 for 13) from root.sg",
         expectedHeader,
         retArray);
   }
@@ -262,6 +200,24 @@ public class IoTDBSubStringFunctionIT {
     assertTestFail(
         "select SUBSTRING(s1,1,-10) from root.**",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+            + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+
+    // negative characters begin
+    assertTestFail(
+        "select SUBSTRING(s1,-1,10) from root.**",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+
+    // negative characters begin
+    assertTestFail(
+        "select SUBSTRING(s1 from -1 for 10) from root.**",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
+
+    // negative characters begin
+    assertTestFail(
+        "select SUBSTRING(s1,'start'='1','to'='2') from root.**",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Syntax error,please check that the parameters of the function are correct");
   }
 }

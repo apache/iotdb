@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -57,12 +60,13 @@ public class FragmentInstanceExecution {
       ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances,
-      long timeOut) {
+      long timeOut)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(instanceId, context, drivers, sinkHandle, stateMachine);
     execution.initialize(failedInstances, scheduler);
     LOGGER.debug("timeout is {}ms.", timeOut);
-    scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut);
+    scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
 
@@ -117,6 +121,10 @@ public class FragmentInstanceExecution {
               return;
             }
 
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug("Enter the stateChangeListener");
+            }
+
             // Update failed tasks counter
             if (newState == FAILED) {
               failedInstances.update(1);
@@ -137,8 +145,17 @@ public class FragmentInstanceExecution {
             context.releaseResource();
             // help for gc
             drivers = null;
+            MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .deRegisterFragmentInstanceFromMemoryPool(
+                    instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
+            }
+          } catch (Throwable t) {
+            try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
+              LOGGER.error(
+                  "Errors happened while trying to finish FI, resource may already leak!", t);
             }
           }
         });

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -627,8 +628,12 @@ public class QueryExecution implements IQueryExecution {
     }
 
     // collect redirect info to client for writing
+    // if 0.13_data_insert_adapt is true and ClientVersion is NOT V_1_0, stop returning redirect
+    // info to client
     if (analysis.getStatement() instanceof InsertBaseStatement
-        && !analysis.isFinishQueryAfterAnalyze()) {
+        && !analysis.isFinishQueryAfterAnalyze()
+        && (!config.isEnable13DataInsertAdapt()
+            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
       List<TEndPoint> redirectNodeList =
           insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());

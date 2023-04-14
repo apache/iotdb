@@ -19,7 +19,9 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.storage.FileInfo;
@@ -166,11 +168,14 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
       throws IOException {
-    Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
-    if (sortedSnapshotDirs == null || sortedSnapshotDirs.length == 0) {
+    final Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
+    if (ArrayUtils.isEmpty(sortedSnapshotDirs)) {
       return;
     }
-    for (int i = 0; i < sortedSnapshotDirs.length - 1; i++) {
+
+    final int cleanIndex =
+        Math.max(0, sortedSnapshotDirs.length - snapshotRetentionPolicy.getNumSnapshotsRetained());
+    for (int i = 0; i < cleanIndex; i++) {
       FileUtils.deleteFully(sortedSnapshotDirs[i]);
     }
   }

@@ -823,6 +823,23 @@ public class PartitionInfo implements SnapshotProcessor {
         sgPartitionTable.getSeriesSlotList(plan.getPartitionType()));
   }
 
+  public void getSchemaRegionIds(
+      List<String> databases, Map<String, List<Integer>> schemaRegionIds) {
+    for (String database : databases) {
+      if (databasePartitionTables.containsKey(database)) {
+        schemaRegionIds.put(database, databasePartitionTables.get(database).getSchemaRegionIds());
+      }
+    }
+  }
+
+  public void getDataRegionIds(List<String> databases, Map<String, List<Integer>> dataRegionIds) {
+    for (String database : databases) {
+      if (databasePartitionTables.containsKey(database)) {
+        dataRegionIds.put(database, databasePartitionTables.get(database).getDataRegionIds());
+      }
+    }
+  }
+
   public void clear() {
     nextRegionGroupId.set(-1);
     databasePartitionTables.clear();

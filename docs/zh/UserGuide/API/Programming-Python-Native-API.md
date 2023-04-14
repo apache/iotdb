@@ -64,7 +64,8 @@ session = Session(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 
@@ -76,7 +77,8 @@ session = Session.init_from_node_urls(
     user="root",
     password="root",
     fetch_size=1024,
-    zone_id="UTC+8"
+    zone_id="UTC+8",
+    enable_redirection=True
 )
 ```
 
@@ -522,7 +524,7 @@ SQLAlchemy 中的元数据有：
 
 下图更加清晰的展示了二者的映射关系：
 
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
 ##### 数据类型映射
 | IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |

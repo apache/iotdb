@@ -75,7 +75,7 @@ void showDevices() {
     }
     cout << endl;
 
-    dataSet->setBatchSize(1024);
+    dataSet->setFetchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -91,7 +91,7 @@ void showTimeseries() {
     }
     cout << endl;
 
-    dataSet->setBatchSize(1024);
+    dataSet->setFetchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -298,7 +298,7 @@ void query() {
     }
     cout << endl;
 
-    dataSet->setBatchSize(1024);
+    dataSet->setFetchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -352,7 +352,7 @@ int main() {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
-            throw e;
+            //throw e;
         }
     }
 

@@ -57,14 +57,14 @@ public class Analyzer {
   }
 
   public static void validate(Statement statement) {
-    MPPQueryContext context = new MPPQueryContext(mockQueryId);
-
-    IPartitionFetcher partitionFetcher;
-    ISchemaFetcher schemaFetcher;
-    partitionFetcher = ClusterPartitionFetcher.getInstance();
-    schemaFetcher = ClusterSchemaFetcher.getInstance();
-
-    Analyzer analyzer = new Analyzer(context, partitionFetcher, schemaFetcher);
+    Analyzer analyzer = getAnalyzer();
     analyzer.analyze(statement);
+  }
+
+  public static Analyzer getAnalyzer() {
+    return new Analyzer(
+        new MPPQueryContext(mockQueryId),
+        ClusterPartitionFetcher.getInstance(),
+        ClusterSchemaFetcher.getInstance());
   }
 }

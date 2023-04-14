@@ -29,7 +29,7 @@
 
 下图展示了一个燃油车场景的数据模型，各地区的多台燃油车的速度、油量、加速度、角速度四个物理量将会被采集，显然这些燃油车实体具备相同的物理量。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Data-Concept/Measurement-Template/example_without_template.png?raw=true" alt="example without template">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Data-Concept/Measurement-Template/example_without_template.png?raw=true" alt="example without template">
 
 ### 概念定义
 
@@ -45,7 +45,7 @@
 
 使用元数据模板后，问题背景中示例的燃油车数据模型将会转变至下图所示的形式。所有的物理量元数据仅在模板中保存一份，所有的实体共享模板中的元数据。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Data-Concept/Measurement-Template/example_with_template.png?raw=true" alt="example with template">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Data-Concept/Measurement-Template/example_with_template.png?raw=true" alt="example with template">
 
 #### 生命周期
 
@@ -60,7 +60,7 @@
 
 最后需要补充的是，**对挂载模板与激活模板进行区分，是为了服务一种常见的场景**：在 Apache IoTDB 元数据模型 MTree 中，经常需要在数量众多的节点上“应用”元数据模板，而这些节点一般拥有共同的祖先节点。因此，可以在其共同祖先节点**挂载**模板，而不必对其大量的孩子节点进行挂载操作。对于需要“应用”模板的节点，则应该使用**激活模板**的操作。
 
-<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Data-Concept/Measurement-Template/example_template_lifetime_zh.png?raw=true" alt="example with template">
+<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Data-Concept/Measurement-Template/example_template_lifetime_zh.png?raw=true" alt="example with template">
 
 ### 使用
 

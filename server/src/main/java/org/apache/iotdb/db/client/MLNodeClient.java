@@ -29,16 +29,18 @@ import org.apache.iotdb.mlnode.rpc.thrift.TCreateTrainingTaskReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TDeleteModelReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.transport.layered.TFramedTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,9 +65,13 @@ public class MLNodeClient implements AutoCloseable {
     try {
       long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
       transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // As there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
+          new TFramedTransport.Factory()
+              .getTransport(
+                  new TSocket(
+                      TConfigurationConst.defaultTConfiguration,
+                      endpoint.getIp(),
+                      endpoint.getPort(),
+                      (int) connectionTimeout));
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -73,7 +79,7 @@ public class MLNodeClient implements AutoCloseable {
       throw new TException(MSG_CONNECTION_FAIL);
     }
 
-    TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
+    TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     client = new IMLNodeRPCService.Client(protocolFactory.getProtocol(transport));
   }
 

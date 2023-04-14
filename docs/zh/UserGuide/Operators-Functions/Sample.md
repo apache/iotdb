@@ -267,7 +267,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 -   最小值点是拥有这个窗口内最小值的点（如果有多个这样的点，M4只返回其中一个）；
 -   最大值点是拥有这个窗口内最大值的点（如果有多个这样的点，M4只返回其中一个）。
 
-<img src="/img/github/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
+<img src="https://alioss.timecho.com/docs/img/github/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
 
 | 函数名 | 可接收的输入序列类型           | 属性参数                                                     | 输出序列类型                   | 功能类型                                                     |
 | ------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
@@ -280,7 +280,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 + `windowSize`: 一个窗口内的点数。Int数据类型。必需的属性参数。
 + `slidingStep`: 按照设定的点数来滑动窗口。Int数据类型。可选的属性参数；如果没有设置，默认取值和`windowSize`一样。
 
-<img src="/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+<img src="https://alioss.timecho.com/docs/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
 
 *(图片来源: https://iotdb.apache.org/UserGuide/Master/Process-Data/UDF-User-Defined-Function.html#udtf-user-defined-timeseries-generating-function)*
 
@@ -291,7 +291,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 + `displayWindowBegin`: 窗口滑动的起始时间戳位置（包含在内）。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MIN_VALUE，意为使用输入的时间序列的第一个点的时间戳作为窗口滑动的起始时间戳位置。
 + `displayWindowEnd`: 结束时间限制（不包含在内；本质上和`WHERE time < displayWindowEnd`起的效果是一样的)。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MAX_VALUE，意为除了输入的时间序列自身数据读取完毕之外没有增加额外的结束时间过滤条件限制。
 
-<img src="/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+<img src="https://alioss.timecho.com/docs/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
 
 *(图片来源: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
 

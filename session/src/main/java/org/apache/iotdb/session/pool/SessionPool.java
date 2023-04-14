@@ -2401,12 +2401,12 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  public void createTimeseriesOfSchemaTemplate(List<String> devicePathList)
+  public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        session.createTimeseriesOfSchemaTemplate(devicePathList);
+        session.createTimeseriesUsingSchemaTemplate(devicePathList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

@@ -42,6 +42,11 @@
 #include <thrift/transport/TBufferTransports.h>
 #include "IClientRPCService.h"
 
+//== For compatible with Windows OS ==
+#ifndef LONG_LONG_MIN
+#define LONG_LONG_MIN 0x8000000000000000
+#endif
+
 using namespace std;
 
 using ::apache::thrift::protocol::TBinaryProtocol;
@@ -99,6 +104,10 @@ public:
     explicit ExecutionException(const char *m) : IoTDBException(m) {}
 
     explicit ExecutionException(const std::string &m) : IoTDBException(m) {}
+
+    explicit ExecutionException(const std::string &m, const TSStatus &tsStatus) : IoTDBException(m), status(tsStatus) {}
+
+    TSStatus status;
 };
 
 class BatchExecutionException : public IoTDBException {
@@ -141,7 +150,8 @@ namespace CompressionType {
         PAA = (char) 5,
         PLA = (char) 6,
         LZ4 = (char) 7,
-        ZSTD = (char) 8
+        ZSTD = (char) 8,
+        LZMA2 = (char) 9,
     };
 }
 
@@ -171,7 +181,9 @@ namespace TSEncoding {
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
         FREQ = (char) 10,
-	CHIMP = (char) 11
+	    CHIMP = (char) 11,
+	    SPRINTZ = (char) 12,
+	    RLBE = (char) 13
     };
 }
 
@@ -691,21 +703,23 @@ public:
 
 class SessionDataSet {
 private:
+    const string TIMESTAMP_STR = "Time";
     bool hasCachedRecord = false;
     std::string sql;
     int64_t queryId;
     int64_t statementId;
     int64_t sessionId;
     std::shared_ptr<IClientRPCServiceIf> client;
-    int batchSize = 1024;
+    int fetchSize = 1024;
     std::vector<std::string> columnNameList;
-    std::vector<std::string> columnTypeDeduplicatedList;
+    std::vector<std::string> columnTypeList;
     // duplicated column index -> origin index
     std::unordered_map<int, int> duplicateLocation;
     // column name -> column location
     std::unordered_map<std::string, int> columnMap;
     // column size
     int columnSize = 0;
+    int columnFieldStartIndex = 0;   //Except Timestamp column, 1st field's pos in columnNameList
     bool isIgnoreTimeStamp = false;
 
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
@@ -733,32 +747,37 @@ public:
         this->queryId = queryId;
         this->statementId = statementId;
         this->client = client;
-        this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
-        this->columnSize = (int)columnNameList.size();
         this->isIgnoreTimeStamp = isIgnoreTimeStamp;
+        if (!isIgnoreTimeStamp) {
+            columnFieldStartIndex = 1;
+            this->columnNameList.push_back(TIMESTAMP_STR);
+            this->columnTypeList.push_back("INT64");
+        }
+        this->columnNameList.insert(this->columnNameList.end(), columnNameList.begin(), columnNameList.end());
+        this->columnTypeList.insert(this->columnTypeList.end(), columnTypeList.begin(), columnTypeList.end());
 
-        // column name -> column location
-        for (int i = 0; i < (int) columnNameList.size(); i++) {
-            std::string name = columnNameList[i];
+        valueBuffers.reserve(queryDataSet->valueList.size());
+        bitmapBuffers.reserve(queryDataSet->bitmapList.size());
+        int deduplicateIdx = 0;
+        std::unordered_map<std::string, int> columnToFirstIndexMap;
+        for (size_t i = columnFieldStartIndex; i < this->columnNameList.size(); i++) {
+            std::string name = this->columnNameList[i];
             if (this->columnMap.find(name) != this->columnMap.end()) {
-                duplicateLocation[i] = columnMap[name];
+                duplicateLocation[i] = columnToFirstIndexMap[name];
             } else {
-                this->columnMap[name] = i;
-                this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
-            }
-            if (!columnNameIndexMap.empty()) {
-                this->valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(
-                                new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
-                this->bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(
-                                new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
-            } else {
-                this->valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
-                this->bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+                columnToFirstIndexMap[name] = i;
+                if (!columnNameIndexMap.empty()) {
+                    int valueIndex = columnNameIndexMap[name];
+                    this->columnMap[name] = valueIndex;
+                    this->valueBuffers.emplace_back(new MyStringBuffer(queryDataSet->valueList[valueIndex]));
+                    this->bitmapBuffers.emplace_back(new MyStringBuffer(queryDataSet->bitmapList[valueIndex]));
+                } else {
+                    this->columnMap[name] = deduplicateIdx;
+                    this->valueBuffers.emplace_back(new MyStringBuffer(queryDataSet->valueList[deduplicateIdx]));
+                    this->bitmapBuffers.emplace_back(new MyStringBuffer(queryDataSet->bitmapList[deduplicateIdx]));
+                }
+                deduplicateIdx++;
             }
         }
         this->tsQueryDataSet = queryDataSet;
@@ -779,11 +798,13 @@ public:
         }
     }
 
-    int getBatchSize();
+    int getFetchSize();
 
-    void setBatchSize(int batchSize);
+    void setFetchSize(int fetchSize);
 
     std::vector<std::string> getColumnNames();
+
+    std::vector<std::string> getColumnTypeList();
 
     bool hasNext();
 
@@ -955,6 +976,7 @@ private:
     const static int DEFAULT_TIMEOUT_MS = 0;
     Version::Version version;
 
+private:
     static bool checkSorted(const Tablet &tablet);
 
     static bool checkSorted(const std::vector<int64_t> &times);
@@ -962,10 +984,6 @@ private:
     static void sortTablet(Tablet &tablet);
 
     static void sortIndexByTimestamp(int *index, std::vector<int64_t> &timestamps, int length);
-
-    std::string getTimeZone();
-
-    void setTimeZone(const std::string &zoneId);
 
     void appendValues(std::string &buffer, const char *value, int size);
 
@@ -985,42 +1003,47 @@ private:
 
     std::string getVersionString(Version::Version version);
 
+    void initZoneId();
+
 public:
     Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_1_0) {
         this->host = host;
         this->rpcPort = rpcPort;
+        initZoneId();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password)
-            : fetchSize(10000) {
+            : fetchSize(DEFAULT_FETCH_SIZE) {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
         this->password = password;
-        this->zoneId = "UTC+08:00";
         this->version = Version::V_1_0;
+        initZoneId();
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
-            int fetchSize) {
+            const std::string &zoneId, int fetchSize = DEFAULT_FETCH_SIZE) {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
         this->password = password;
+        this->zoneId = zoneId;
         this->fetchSize = fetchSize;
-        this->zoneId = "UTC+08:00";
         this->version = Version::V_1_0;
+        initZoneId();
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
-            const std::string &password = "password", int fetchSize = 10000) {
+            const std::string &password = "password", const std::string &zoneId="", int fetchSize = DEFAULT_FETCH_SIZE) {
         this->host = host;
         this->rpcPort = stoi(rpcPort);
         this->username = username;
         this->password = password;
+        this->zoneId = zoneId;
         this->fetchSize = fetchSize;
-        this->zoneId = "UTC+08:00";
         this->version = Version::V_1_0;
+        initZoneId();
     }
 
     ~Session();
@@ -1034,6 +1057,10 @@ public:
     void open(bool enableRPCCompression, int connectionTimeoutInMs);
 
     void close();
+
+    void setTimeZone(const std::string &zoneId);
+
+    std::string getTimeZone();
 
     void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                       const std::vector<std::string> &values);
@@ -1128,9 +1155,11 @@ public:
 
     void deleteTimeseries(const std::vector<std::string> &paths);
 
-    void deleteData(const std::string &path, int64_t time);
+    void deleteData(const std::string &path, int64_t endTime);
 
-    void deleteData(const std::vector<std::string> &deviceId, int64_t time);
+    void deleteData(const std::vector<std::string> &paths, int64_t endTime);
+
+    void deleteData(const std::vector<std::string> &paths, int64_t startTime, int64_t endTime);
 
     void setStorageGroup(const std::string &storageGroupId);
 
@@ -1164,9 +1193,17 @@ public:
 
     bool checkTimeseriesExists(const std::string &path);
 
-    std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql);
+    std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql) ;
+
+    std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql, int64_t timeoutInMs) ;
 
     void executeNonQueryStatement(const std::string &sql);
+
+    std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string> &paths, int64_t startTime, int64_t endTime);
+
+    std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string> &paths);
+
+    std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string> &paths, int64_t lastTime);
 
     void createSchemaTemplate(const Template &templ);
 

@@ -829,6 +829,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5000                            |
 | 改后生效方式 | 重启服务生效                          |
 
+* 0.13\_data\_insert\_adapt
+
+|     名字     | 0.13\_data\_insert\_adapt         |
+| :----------: |:----------------------------------|
+|     描述     | 如果 0.13 版本客户端进行写入，需要将此配置项设置为 true |
+|     类型     | Boolean                           |
+|    默认值    | false                             |
+| 改后生效方式 | 重启服务生效                            |
+
 * upgrade\_thread\_count
 
 |     名字     | upgrade\_thread\_count          |
@@ -1251,12 +1260,12 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * compressor
 
-|   名字   | compressor                                          |
-|:------:|:----------------------------------------------------|
-|   描述   | 数据压缩方法                                              |
-|   类型   | 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4”, “ZSTD” |
-|  默认值   | SNAPPY                                              |
-| 改后生效方式 | 热加载                                                 |
+|   名字   | compressor                                                   |
+|:------:|:-------------------------------------------------------------|
+|   描述   | 数据压缩方法                                                       |
+|   类型   | 枚举 String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|  默认值   | SNAPPY                                                       |
+| 改后生效方式 | 热加载                                                          |
 
 * max\_degree\_of\_index\_node
 
@@ -1429,6 +1438,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 
 #### SELECT-INTO配置
+
+* into\_operation\_buffer\_size\_in\_byte
+
+|     名字     | into\_operation\_buffer\_size\_in\_byte                              |
+| :----------: | :-------------------------------------------------------------------- |
+|     描述     | 执行 select-into 语句时，待写入数据占用的最大内存（单位：Byte） |
+|     类型     | int64                                                        |
+|    默认值    | 100MB                                                        |
+| 改后生效方式 | 热加载                                                     |
 
 * select\_into\_insert\_tablet\_plan\_row\_limit
 

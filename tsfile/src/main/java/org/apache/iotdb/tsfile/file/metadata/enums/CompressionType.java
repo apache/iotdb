@@ -32,7 +32,9 @@ public enum CompressionType {
   // NOTICE: To ensure the compatibility of existing files, do not change the byte LZ4 binds to.
   LZ4(".lz4", (byte) 7),
   /** ZSTD */
-  ZSTD(".zstd", (byte) 8);
+  ZSTD(".zstd", (byte) 8),
+  /** LZMA2 */
+  LZMA2(".lzma2", (byte) 9);
 
   private final String extensionName;
   private final byte index;
@@ -60,6 +62,8 @@ public enum CompressionType {
         return CompressionType.LZ4;
       case 8:
         return CompressionType.ZSTD;
+      case 9:
+        return CompressionType.LZMA2;
       default:
         throw new IllegalArgumentException("Invalid input: " + compressor);
     }

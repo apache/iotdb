@@ -287,6 +287,19 @@ public class IoTDBDescriptor {
                 .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
                 .trim()));
 
+    conf.setEnableMLNodeService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_mlnode_rpc_service", Boolean.toString(conf.isEnableMLNodeService()))
+                .trim()));
+
+    conf.setMLNodePort(
+        Integer.parseInt(
+            properties
+                .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
+                .trim()));
+
     conf.setTimestampPrecision(
         properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
 
@@ -680,6 +693,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
+    conf.setEnable13DataInsertAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "0.13_data_insert_adapt", String.valueOf(conf.isEnable13DataInsertAdapt()))));
+
     int rpcSelectorThreadNum =
         Integer.parseInt(
             properties.getProperty(
@@ -894,6 +912,11 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
+    conf.setIntoOperationBufferSizeInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "into_operation_buffer_size_in_byte",
+                String.valueOf(conf.getIntoOperationBufferSizeInByte()))));
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
             properties.getProperty(
@@ -1017,6 +1040,12 @@ public class IoTDBDescriptor {
     conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
+
+    conf.setQuotaEnable(
+        Boolean.parseBoolean(
+            properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+
+    conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1450,6 +1479,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
                   Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+
+      // update select into operation max buffer size
+      conf.setIntoOperationBufferSizeInByte(
+          Long.parseLong(
+              properties.getProperty(
+                  "into_operation_buffer_size_in_byte",
+                  String.valueOf(conf.getIntoOperationBufferSizeInByte()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -1788,6 +1824,15 @@ public class IoTDBDescriptor {
 
   private void loadPipeProps(Properties properties) {
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+
+    conf.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_thread_num",
+                Integer.toString(conf.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (conf.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      conf.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
   }
 
   private void loadCQProps(Properties properties) {

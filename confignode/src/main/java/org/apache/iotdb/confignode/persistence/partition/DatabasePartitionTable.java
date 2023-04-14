@@ -504,6 +504,26 @@ public class DatabasePartitionTable {
     return databaseName;
   }
 
+  public List<Integer> getSchemaRegionIds() {
+    List<Integer> schemaRegionIds = new ArrayList<>();
+    for (TConsensusGroupId consensusGroupId : regionGroupMap.keySet()) {
+      if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+        schemaRegionIds.add(consensusGroupId.getId());
+      }
+    }
+    return schemaRegionIds;
+  }
+
+  public List<Integer> getDataRegionIds() {
+    List<Integer> dataRegionIds = new ArrayList<>();
+    for (TConsensusGroupId consensusGroupId : regionGroupMap.keySet()) {
+      if (consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+        dataRegionIds.add(consensusGroupId.getId());
+      }
+    }
+    return dataRegionIds;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

@@ -185,22 +185,24 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     List<TSStatus> dataNodeFailureList = new ArrayList<>();
 
-    // sync dispatch to local
-    long localScheduleStartTime = System.nanoTime();
-    for (FragmentInstance localInstance : localInstances) {
-      try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-        dispatchOneInstance(localInstance);
-      } catch (FragmentInstanceDispatchException e) {
-        dataNodeFailureList.add(e.getFailureStatus());
-      } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
-        dataNodeFailureList.add(
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+    if (!localInstances.isEmpty()) {
+      // sync dispatch to local
+      long localScheduleStartTime = System.nanoTime();
+      for (FragmentInstance localInstance : localInstances) {
+        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
+          dispatchOneInstance(localInstance);
+        } catch (FragmentInstanceDispatchException e) {
+          dataNodeFailureList.add(e.getFailureStatus());
+        } catch (Throwable t) {
+          logger.warn("[DispatchFailed]", t);
+          dataNodeFailureList.add(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+        }
       }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+          System.nanoTime() - localScheduleStartTime);
     }
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
-        System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
