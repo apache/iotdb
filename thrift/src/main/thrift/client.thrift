@@ -429,6 +429,11 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
+struct TCreateTimeseriesUsingSchemaTemplateReq{
+  1: required i64 sessionId
+  2: required list<string> devicePathList
+}
+
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
   // Sender needs to tell receiver its identity.
@@ -577,6 +582,8 @@ service IClientRPCService {
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  common.TSStatus createTimeseriesUsingSchemaTemplate(1:TCreateTimeseriesUsingSchemaTemplateReq req);
 
   common.TSStatus handshake(TSyncIdentityInfo info);
 

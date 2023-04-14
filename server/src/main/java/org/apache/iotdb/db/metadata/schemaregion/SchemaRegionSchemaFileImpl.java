@@ -581,12 +581,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!regionStatistics.isAllowToCreateNewSeries()) {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!regionStatistics.isAllowToCreateNewSeries()) {
-        logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
-        throw new SeriesOverflowException();
-      }
     }
 
     schemaQuotaManager.checkMeasurementLevel(1);
@@ -693,11 +689,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!regionStatistics.isAllowToCreateNewSeries()) {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!regionStatistics.isAllowToCreateNewSeries()) {
-        throw new SeriesOverflowException();
-      }
     }
     schemaQuotaManager.checkMeasurementLevel(seriesCount);
 
@@ -1181,7 +1174,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
-
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      CacheMemoryManager.getInstance().waitIfReleasing();
+    }
     try {
       IMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());
       try {

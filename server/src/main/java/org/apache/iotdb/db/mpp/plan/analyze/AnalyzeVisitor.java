@@ -120,6 +120,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
@@ -429,26 +430,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
+
     boolean isGroupByLevel = queryStatement.isGroupByLevel();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
             queryStatement.isLastQuery() || isGroupByLevel);
+
+    Set<String> aliasSet = new HashSet<>();
+
     int columnIndex = 0;
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-      if (hasAlias
-          && !queryStatement.isGroupByLevel()
-          && !queryStatement.isGroupByTag()
-          && resultExpressions.size() > 1) {
-        throw new SemanticException(
-            String.format(
-                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-      }
       for (Expression expression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
@@ -469,6 +467,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     ? expression.getExpressionString()
                     : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
+            if (hasAlias) {
+              if (aliasSet.contains(alias)) {
+                throw new SemanticException(
+                    String.format("alias '%s' can only be matched with one time series", alias));
+              }
+              aliasSet.add(alias);
+            }
             analyzeExpression(analysis, expressionWithoutAlias);
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
           }
@@ -2733,6 +2738,38 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitBatchActivateTemplate(
+      BatchActivateTemplateStatement batchActivateTemplateStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(batchActivateTemplateStatement);
+
+    Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap =
+        new HashMap<>(batchActivateTemplateStatement.getPaths().size());
+    for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
+      Pair<Template, PartialPath> templateSetInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
+      if (templateSetInfo == null) {
+        throw new StatementAnalyzeException(
+            new MetadataException(
+                String.format(
+                    "Path [%s] has not been set any template.", devicePath.getFullPath())));
+      }
+      deviceTemplateSetInfoMap.put(devicePath, templateSetInfo);
+    }
+    analysis.setDeviceTemplateSetInfoMap(deviceTemplateSetInfoMap);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
+      patternTree.appendPathPattern(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(partition);

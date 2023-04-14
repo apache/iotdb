@@ -2937,8 +2937,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitCreateTimeseriesOfSchemaTemplate(
-      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+  public Statement visitCreateTimeseriesUsingSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesUsingSchemaTemplateContext ctx) {
     ActivateTemplateStatement statement = new ActivateTemplateStatement();
     statement.setPath(parsePrefixPath(ctx.prefixPath()));
     return statement;
