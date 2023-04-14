@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPla
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -314,6 +315,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetSchemaTemplate:
           plan = new SetSchemaTemplatePlan();
+          break;
+        case PreSetSchemaTemplate:
+          plan = new PreSetSchemaTemplatePlan();
           break;
         case GetTemplateSetInfo:
           plan = new GetTemplateSetInfoPlan();

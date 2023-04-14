@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -101,12 +102,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private final TemplateTable templateTable;
 
+  private final TemplatePreSetTable templatePreSetTable;
+
   public ClusterSchemaInfo() throws IOException {
     databaseReadWriteLock = new ReentrantReadWriteLock();
 
     try {
       mTree = new ConfigMTree();
       templateTable = new TemplateTable();
+      templatePreSetTable = new TemplatePreSetTable();
     } catch (MetadataException e) {
       LOGGER.error("Can't construct ClusterSchemaInfo", e);
       throw new IOException(e);
@@ -551,7 +555,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return processMTreeTakeSnapshot(snapshotDir) && templateTable.processTakeSnapshot(snapshotDir);
+    return processMTreeTakeSnapshot(snapshotDir)
+        && templateTable.processTakeSnapshot(snapshotDir)
+        && templatePreSetTable.processTakeSnapshot(snapshotDir);
   }
 
   public boolean processMTreeTakeSnapshot(File snapshotDir) throws IOException {
@@ -592,6 +598,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void processLoadSnapshot(File snapshotDir) throws IOException {
     processMTreeLoadSnapshot(snapshotDir);
     templateTable.processLoadSnapshot(snapshotDir);
+    templatePreSetTable.processLoadSnapshot(snapshotDir);
   }
 
   public void processMTreeLoadSnapshot(File snapshotDir) throws IOException {
@@ -719,6 +726,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
+      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus preSetSchemaTemplate(
+      PreSetSchemaTemplatePlan preSetSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(preSetSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
+      templatePreSetTable.preSetTemplate(templateId, path);
       mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {

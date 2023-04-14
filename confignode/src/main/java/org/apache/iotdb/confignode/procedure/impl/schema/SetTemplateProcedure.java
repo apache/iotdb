@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -74,7 +76,6 @@ public class SetTemplateProcedure
         case PRE_SET:
           LOGGER.info("Pre set schema template {} on path {}", templateName, templateSetPath);
           preSetTemplate(env);
-          setNextState(SetTemplateState.PRE_RELEASE);
           break;
         case PRE_RELEASE:
           LOGGER.info(
@@ -132,7 +133,17 @@ public class SetTemplateProcedure
     }
   }
 
-  private void preSetTemplate(ConfigNodeProcedureEnv env) {}
+  private void preSetTemplate(ConfigNodeProcedureEnv env) {
+    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
+        new PreSetSchemaTemplatePlan(templateName, templateSetPath);
+    TSStatus status =
+        env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan).getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(SetTemplateState.PRE_RELEASE);
+    } else {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   private void preReleaseTemplate(ConfigNodeProcedureEnv env) {}
 
