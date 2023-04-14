@@ -1198,6 +1198,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case ADD_TEMPLATE_PRE_SET_INFO:
         ClusterTemplateManager.getInstance().addTemplatePreSetInfo(req.getTemplateInfo());
         break;
+      case COMMIT_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().commitTemplatePreSetInfo(req.getTemplateInfo());
+        break;
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

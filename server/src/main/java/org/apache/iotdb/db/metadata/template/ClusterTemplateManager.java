@@ -450,6 +450,45 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  public void commitTemplatePreSetInfo(byte[] templateSetInfo) {
+    if (templateSetInfo == null) {
+      return;
+    }
+    readWriteLock.writeLock().lock();
+    try {
+      ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
+
+      Map<Template, List<String>> parsedTemplateSetInfo =
+          TemplateInternalRPCUtil.parseAddTemplateSetInfoBytes(buffer);
+      for (Map.Entry<Template, List<String>> entry : parsedTemplateSetInfo.entrySet()) {
+        Template template = entry.getKey();
+        int templateId = template.getId();
+        templateIdMap.put(templateId, template);
+        templateNameMap.put(template.getName(), templateId);
+
+        for (String pathSetTemplate : entry.getValue()) {
+          try {
+            PartialPath path = new PartialPath(pathSetTemplate);
+            pathSetTemplateMap.put(path, templateId);
+            templateSetOnPathsMap
+                .computeIfAbsent(templateId, integer -> new ArrayList<>())
+                .add(path);
+
+            pathPreSetTemplateMap.remove(path);
+            templatePreSetOnPathsMap.get(templateId).remove(path);
+            if (templatePreSetOnPathsMap.get(templateId).isEmpty()) {
+              templatePreSetOnPathsMap.remove(templateId);
+            }
+          } catch (IllegalPathException ignored) {
+            // won't happen
+          }
+        }
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   @TestOnly
   public void putTemplate(Template template) {
     templateIdMap.put(template.getId(), template);

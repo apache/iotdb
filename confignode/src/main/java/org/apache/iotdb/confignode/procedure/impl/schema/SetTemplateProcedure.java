@@ -154,6 +154,11 @@ public class SetTemplateProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_RELEASE);
     } else {
+      LOGGER.warn(
+          "Failed to pre set template {} on path {} due to {}",
+          templateName,
+          templateSetPath,
+          status.getMessage());
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
@@ -179,11 +184,11 @@ public class SetTemplateProcedure
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Failed to sync template {} preset info on path {} to DataNode {}",
+            "Failed to sync template {} pre-set info on path {} to DataNode {}",
             templateName,
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Preset template failed")));
+        setFailure(new ProcedureException(new MetadataException("Pre set template failed")));
         return;
       }
     }
@@ -217,13 +222,47 @@ public class SetTemplateProcedure
     TSStatus status =
         env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan).getStatus();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(SetTemplateState.PRE_RELEASE);
+      setNextState(SetTemplateState.COMMIT_RELEASE);
     } else {
+      LOGGER.warn(
+          "Failed to commit set template {} on path {} due to {}",
+          templateName,
+          templateSetPath,
+          status.getMessage());
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
-  private void commitReleaseTemplate(ConfigNodeProcedureEnv env) {}
+  private void commitReleaseTemplate(ConfigNodeProcedureEnv env) {
+    Template template = getTemplate(env);
+    if (template == null) {
+      // already setFailure
+      return;
+    }
+
+    TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setType(TemplateInternalRPCUpdateType.COMMIT_TEMPLATE_SET_INFO.toByte());
+    req.setTemplateInfo(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to sync template {} commit-set info on path {} to DataNode {}",
+            templateName,
+            templateSetPath,
+            dataNodeLocationMap.get(entry.getKey()));
+        setFailure(new ProcedureException(new MetadataException("Commit set template failed")));
+        return;
+      }
+    }
+  }
 
   @Override
   protected boolean isRollbackSupported(SetTemplateState setTemplateState) {
