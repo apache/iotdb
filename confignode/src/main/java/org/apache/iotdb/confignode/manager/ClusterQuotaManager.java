@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -59,8 +60,6 @@ public class ClusterQuotaManager {
   private final Map<String, List<Integer>> schemaRegionIdMap;
   private final Map<String, List<Integer>> dataRegionIdMap;
   private final Map<Integer, Long> regionDisk;
-  private static final int UNLIMITED_VALUE = -1;
-  private static final int DEFAULT_VALUE = 0;
 
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
@@ -110,18 +109,18 @@ public class ClusterQuotaManager {
     for (String database : req.getDatabase()) {
       if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
         TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
-        if (req.getSpaceLimit().getDeviceNum() != UNLIMITED_VALUE
-            && req.getSpaceLimit().getDeviceNum() != DEFAULT_VALUE
+        if (req.getSpaceLimit().getDeviceNum() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getDeviceNum() != IoTDBConstant.DEFAULT_VALUE
             && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
           return false;
         }
-        if (req.getSpaceLimit().getTimeserieNum() != UNLIMITED_VALUE
-            && req.getSpaceLimit().getTimeserieNum() != DEFAULT_VALUE
+        if (req.getSpaceLimit().getTimeserieNum() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getTimeserieNum() != IoTDBConstant.DEFAULT_VALUE
             && spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()) {
           return false;
         }
-        if (req.getSpaceLimit().getDiskSize() != UNLIMITED_VALUE
-            && req.getSpaceLimit().getDiskSize() != DEFAULT_VALUE
+        if (req.getSpaceLimit().getDiskSize() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getDiskSize() != IoTDBConstant.DEFAULT_VALUE
             && spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
           return false;
         }

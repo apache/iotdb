@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.quotas;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -70,7 +71,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
@@ -91,7 +92,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute(
           "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
@@ -112,7 +113,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute("set space quota timeseries=4 on root.sg0");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
@@ -129,7 +130,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute("set space quota devices=4 on root.sg1");
       adminStmt.execute(
           "create timeseries root.sg1.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
@@ -157,7 +158,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute("set space quota timeseries=2 on root.sg0");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
@@ -174,7 +175,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(1000);
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       adminStmt.execute("set space quota devices=2 on root.sg1");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
@@ -404,6 +405,50 @@ public class IoTDBSpaceQuotaIT {
       adminStmt.execute("set space quota devices=10 on root.sg0;");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void setSpaceQuotaTest8() {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("set space quota timeseries=-5 on root.sg0");
+    } catch (SQLException throwables) {
+      Assert.assertEquals(
+          "701: Please set the number of timeseries greater than 0", throwables.getMessage());
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("set space quota devices=-6 on root.sg1");
+    } catch (SQLException throwables) {
+      Assert.assertEquals(
+          "701: Please set the number of devices greater than 0", throwables.getMessage());
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("set space quota disk='-7M' on root.sg2");
+    } catch (SQLException throwables) {
+      Assert.assertEquals("701: Please set the disk size greater than 0", throwables.getMessage());
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("set space quota timeseries=-5,devices=6,disk=0M on root.sg3");
+    } catch (SQLException throwables) {
+      Assert.assertEquals(
+          "701: Please set the number of timeseries greater than 0", throwables.getMessage());
+    }
+  }
+
+  @Test
+  public void setSpaceQuotaTest9() {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("set space quota timeserie=5 on root.sg0");
+    } catch (SQLException throwables) {
+      Assert.assertEquals("Wrong space quota type: timeserie", throwables.getMessage());
     }
   }
 

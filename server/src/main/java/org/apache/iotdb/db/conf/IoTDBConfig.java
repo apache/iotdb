@@ -1069,7 +1069,7 @@ public class IoTDBConfig {
   private int pipeMaxThreadNum = 5;
 
   /** multi-tenancy */
-  private boolean quotaEnable = false;
+  private boolean quotaEnable = true;
 
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
