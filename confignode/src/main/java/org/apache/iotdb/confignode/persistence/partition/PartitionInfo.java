@@ -632,7 +632,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get all RegionGroups currently owned by the specified Database
+   * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
    * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId

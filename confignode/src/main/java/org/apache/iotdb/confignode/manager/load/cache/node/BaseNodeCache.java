@@ -133,13 +133,10 @@ public abstract class BaseNodeCache {
 
   /** @return The reason why lead to current NodeStatus. */
   public String getNodeStatusWithReason() {
-    NodeStatistics currentStatistics = this.currentStatistics.get();
-    return currentStatistics.getStatusReason() == null
-        ? currentStatistics.getStatus().getStatus()
-        : currentStatistics.getStatus().getStatus()
-            + "("
-            + currentStatistics.getStatusReason()
-            + ")";
+    NodeStatistics statistics = this.currentStatistics.get();
+    return statistics.getStatusReason() == null
+        ? statistics.getStatus().getStatus()
+        : statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
   }
 
   public NodeStatistics getStatistics() {

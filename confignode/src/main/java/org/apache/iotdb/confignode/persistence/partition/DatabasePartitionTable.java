@@ -89,7 +89,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Cache allocation result of new RegionGroups
+   * Cache allocation result of new RegionGroups.
    *
    * @param replicaSets List<TRegionReplicaSet>
    */
@@ -101,7 +101,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Delete RegionGroups' cache
+   * Delete RegionGroups' cache.
    *
    * @param replicaSets List<TRegionReplicaSet>
    */
@@ -109,7 +109,7 @@ public class DatabasePartitionTable {
     replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
   }
 
-  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
+  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup. */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 
@@ -121,7 +121,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get all RegionGroups currently owned by this Database
+   * Get all RegionGroups currently owned by this Database.
    *
    * @param type The specified TConsensusGroupType
    * @return Deep copy of all Regions' RegionReplicaSet with the specified TConsensusGroupType
@@ -139,7 +139,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get all RegionGroups currently owned by the specified Database
+   * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
    * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
@@ -152,7 +152,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get the RegionGroups with the specified RegionGroupIds
+   * Get the RegionGroups with the specified RegionGroupIds.
    *
    * @param regionGroupIds The specified RegionGroupIds
    * @return Deep copy of the RegionGroups with the specified RegionGroupIds
@@ -200,7 +200,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get the number of RegionGroups currently owned by this StorageGroup
+   * Get the number of RegionGroups currently owned by this StorageGroup.
    *
    * @param type SchemaRegion or DataRegion
    * @return The number of Regions currently owned by this StorageGroup
@@ -225,7 +225,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Thread-safely get SchemaPartition within the specific StorageGroup
+   * Thread-safely get SchemaPartition within the specific StorageGroup.
    *
    * @param partitionSlots SeriesPartitionSlots
    * @param schemaPartition Where the results are stored
@@ -237,7 +237,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup
+   * Thread-safely get DataPartition within the specific StorageGroup.
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartition Where the results are stored
@@ -249,7 +249,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
@@ -265,7 +265,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Create SchemaPartition within the specific StorageGroup
+   * Create SchemaPartition within the specific StorageGroup.
    *
    * @param assignedSchemaPartition Assigned result
    */
@@ -282,7 +282,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific StorageGroup
+   * Create DataPartition within the specific StorageGroup.
    *
    * @param assignedDataPartition Assigned result
    */
@@ -300,7 +300,7 @@ public class DatabasePartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned SchemaPartitionSlots within the specific
-   * StorageGroup
+   * StorageGroup.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
@@ -311,7 +311,7 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get the DataNodes who contain the specific StorageGroup's Schema or Data
+   * Get the DataNodes who contain the specific StorageGroup's Schema or Data.
    *
    * @param type SchemaRegion or DataRegion
    * @return Set<TDataNodeLocation>, the related DataNodes
@@ -329,7 +329,7 @@ public class DatabasePartitionTable {
 
   /**
    * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
-   * StorageGroup
+   * StorageGroup.
    *
    * @param partitionSlots List<TSeriesPartitionSlot>
    * @return Unassigned PartitionSlots
@@ -468,7 +468,7 @@ public class DatabasePartitionTable {
     }
   }
   /**
-   * update region location
+   * update region location.
    *
    * @param regionId regionId
    * @param oldNode old location, will remove it

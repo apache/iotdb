@@ -125,7 +125,7 @@ public class HeartbeatService {
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
 
     /* Update heartbeat counter */
-    heartbeatCounter.getAndUpdate((x) -> (x + 1) % 10);
+    heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());

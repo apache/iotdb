@@ -57,10 +57,6 @@ public enum RegionGroupStatus {
     return status;
   }
 
-  public int getWeight() {
-    return weight;
-  }
-
   public static RegionGroupStatus parse(String status) {
     for (RegionGroupStatus regionGroupStatus : RegionGroupStatus.values()) {
       if (regionGroupStatus.status.equals(status)) {
@@ -71,7 +67,7 @@ public enum RegionGroupStatus {
   }
 
   /**
-   * Compare the weight of two RegionGroupStatus
+   * Compare the weight of two RegionGroupStatus.
    *
    * <p>Running > Available > Discouraged > Disabled
    */

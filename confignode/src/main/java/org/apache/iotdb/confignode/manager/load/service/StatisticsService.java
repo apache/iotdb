@@ -64,9 +64,10 @@ public class StatisticsService {
   private final LoadCache loadCache;
   private final EventBus eventBus;
 
-  public StatisticsService(IManager configManager, LoadCache loadCache, EventBus eventBus) {
+  public StatisticsService(
+      IManager configManager, RouteBalancer routeBalancer, LoadCache loadCache, EventBus eventBus) {
     this.configManager = configManager;
-    this.routeBalancer = configManager.getLoadManager().getRouteBalancer();
+    this.routeBalancer = routeBalancer;
     this.loadCache = loadCache;
     this.eventBus = eventBus;
   }

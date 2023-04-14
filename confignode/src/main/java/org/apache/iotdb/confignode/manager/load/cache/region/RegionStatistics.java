@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
@@ -47,11 +48,6 @@ public class RegionStatistics {
     return new RegionStatistics(regionStatus);
   }
 
-  public RegionHeartbeatSample convertToRegionHeartbeatSample() {
-    long currentTime = System.currentTimeMillis();
-    return new RegionHeartbeatSample(currentTime, currentTime, regionStatus);
-  }
-
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
   }
@@ -68,8 +64,12 @@ public class RegionStatistics {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RegionStatistics that = (RegionStatistics) o;
     return regionStatus == that.regionStatus;
   }
