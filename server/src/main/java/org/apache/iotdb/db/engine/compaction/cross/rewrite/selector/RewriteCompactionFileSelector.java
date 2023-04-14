@@ -56,6 +56,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   CrossSpaceCompactionResource resource;
 
   long totalCost;
+
+  private long totalUnseqFileSize;
+  private long totalSeqFileSize;
   private long memoryBudget;
   private long maxSeqFileCost;
   private int maxCrossCompactionFileNum;
@@ -145,11 +148,14 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     }
     if (logger.isInfoEnabled()) {
       logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, total file size is {}, total seq file size is {}, total unseq file size is {}, "
               + "time consumption {}ms",
           selectedSeqFiles.size(),
           selectedUnseqFiles.size(),
           totalCost,
+          totalUnseqFileSize + totalSeqFileSize,
+          totalSeqFileSize,
+          totalUnseqFileSize,
           System.currentTimeMillis() - startTime);
     }
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
@@ -230,6 +236,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     for (int i = 0; i < seqSelected.length; i++) {
       if (seqSelected[i]) {
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
+        totalSeqFileSize += resource.getSeqFiles().get(i).getTsFileSize();
       }
     }
   }
@@ -260,6 +267,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
             && totalSize <= maxCrossCompactionFileSize
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
+      totalUnseqFileSize += unseqFile.getTsFileSize();
       maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
