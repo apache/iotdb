@@ -19,9 +19,19 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeChangeDataCaptureListener;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class PipeRealtimeCollectorManager {
-    public PipeRealtimeCollectorManager() {
-    }
+  private ConcurrentHashMap<String, DataRegionChangeDataCache> id2Cache;
+
+
+  public PipeRealtimeCollectorManager() {}
+
+  private void activateChangeDataCapture() {
+    id2Cache = new ConcurrentHashMap<>();
+    PipeChangeDataCaptureListener.getInstance().setDataRegionChangeDataCaches(id2Cache);
+  }
 }

@@ -17,35 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime;
+package org.apache.iotdb.db.pipe.core.event;
 
-import org.apache.iotdb.db.pipe.core.collector.PipeCollector;
-import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeRealtimeCollector implements PipeCollector {
-  private final String pattern;
+import java.util.Map;
 
-  public PipeRealtimeCollector(String pattern) {
-    this.pattern = pattern;
+public class PipeCollectEvent implements Event {
+  private final Event event;
+  private final long timePartitionId;
+  private final boolean isSeq;
+  private final long collectIndex;
+  private final Map<String, String[]> device2Measurements;
+
+  public PipeCollectEvent(
+      Event event,
+      long timePartitionId,
+      boolean isSeq,
+      long collectIndex,
+      Map<String, String[]> device2Measurements) {
+    this.event = event;
+    this.timePartitionId = timePartitionId;
+    this.isSeq = isSeq;
+    this.collectIndex = collectIndex;
+    this.device2Measurements = device2Measurements;
   }
 
-  public String getPattern() {
-    return pattern;
+  public Map<String, String[]> getSchemaInfo() {
+    return device2Measurements;
   }
 
-  public void collectEvent(PipeCollectEvent event) {}
-
-  @Override
-  public void start() {}
-
-  @Override
-  public boolean isStarted() {
-    return false;
-  }
-
-  @Override
-  public Event supply() {
-    return null;
+  public void clearSchemaInfo() {
+    device2Measurements.clear();
   }
 }

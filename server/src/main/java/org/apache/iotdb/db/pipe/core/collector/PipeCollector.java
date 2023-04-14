@@ -17,19 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
+package org.apache.iotdb.db.pipe.core.collector;
 
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
+import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.Map;
-import java.util.Set;
+public interface PipeCollector {
+    void start();
 
-public interface PipePatternMatcher {
-  void register(PipeRealtimeCollector collector);
+    boolean isStarted();
 
-  void deregister(PipeRealtimeCollector collector);
-
-  Set<PipeRealtimeCollector> match(Map<String, String[]> device2Measurements);
-
-  void clear();
+    Event supply();
 }

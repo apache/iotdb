@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe;
 
-import com.lmax.disruptor.WaitStrategy;
-
 public class PipeConfig {
   private PipeConfig() {}
 

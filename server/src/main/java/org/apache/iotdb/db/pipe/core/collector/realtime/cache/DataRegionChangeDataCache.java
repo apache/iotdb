@@ -19,37 +19,47 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.cache;
 
-import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.MapMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipePatternMatcher;
-import org.apache.iotdb.db.pipe.core.event.PipeCollectorEvent;
+import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
 import org.apache.iotdb.db.pipe.core.queue.DisruptorQueue;
+
+import com.lmax.disruptor.dsl.ProducerType;
 
 public class DataRegionChangeDataCache {
   private final PipePatternMatcher matcher;
-  private final DisruptorQueue<PipeCollectorEvent> disruptor;
+  private final DisruptorQueue<PipeCollectEvent> disruptor;
 
   public DataRegionChangeDataCache() {
     this.matcher = new MapMatcher();
 
     this.disruptor =
-        new DisruptorQueue.Builder<PipeCollectorEvent>()
+        new DisruptorQueue.Builder<PipeCollectEvent>()
             .setProducerType(ProducerType.SINGLE)
+            .addEventHandler(this::dispatchToCollectors)
             .build();
   }
 
-  public void publishCollectorEvent(PipeCollectorEvent event) {
+  private void dispatchToCollectors(PipeCollectEvent event, long sequence, boolean endOfBatch) {
+    matcher.match(event.getSchemaInfo()).forEach(collector -> collector.collectEvent(event));
+    event.clearSchemaInfo();
+  }
+
+  public void publishCollectorEvent(PipeCollectEvent event) {
     disruptor.publish(event);
   }
 
-  public void register(PipeRealtimeCollector collector, String[] nodes) {
-    matcher.register(collector, nodes);
+  public void register(PipeRealtimeCollector collector) {
+    matcher.register(collector);
   }
 
-  public void deregister(PipeRealtimeCollector collector, String[] nodes) {
-    matcher.deregister(collector, nodes);
+  public void deregister(PipeRealtimeCollector collector) {
+    matcher.deregister(collector);
   }
 
-  public void clear() {}
+  public void clear() {
+    matcher.clear();
+    disruptor.clear();
+  }
 }

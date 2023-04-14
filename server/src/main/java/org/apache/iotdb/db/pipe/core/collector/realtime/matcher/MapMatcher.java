@@ -1,20 +1,20 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.iotdb.db.pipe.PipeConfig;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MapMatcher implements PipePatternMatcher {
+  private static final Logger logger = LoggerFactory.getLogger(MapMatcher.class);
   private final ReentrantReadWriteLock lock;
   private final Set<PipeRealtimeCollector> collectors;
   private final Cache<String, Set<PipeRealtimeCollector>> deviceCache;
@@ -27,7 +27,7 @@ public class MapMatcher implements PipePatternMatcher {
   }
 
   @Override
-  public void register(PipeRealtimeCollector collector, String[] nodes) {
+  public void register(PipeRealtimeCollector collector) {
     lock.writeLock().lock();
     try {
       collectors.add(collector);
@@ -37,7 +37,7 @@ public class MapMatcher implements PipePatternMatcher {
   }
 
   @Override
-  public void deregister(PipeRealtimeCollector collector, String[] nodes) {
+  public void deregister(PipeRealtimeCollector collector) {
     lock.writeLock().lock();
     try {
       collectors.remove(collector);
@@ -47,23 +47,41 @@ public class MapMatcher implements PipePatternMatcher {
   }
 
   @Override
-  public Set<PipeRealtimeCollector> matchSeries(String device, String[] measurements) {
+  public Set<PipeRealtimeCollector> match(Map<String, String[]> device2Measurements) {
     lock.readLock().lock();
     try {
       Set<PipeRealtimeCollector> matchCollectors = new HashSet<>();
+      for (Map.Entry<String, String[]> entry : device2Measurements.entrySet()) {
+        final String device = entry.getKey();
+        final String[] measurements = entry.getValue();
+        final Set<PipeRealtimeCollector> deviceMatchCollectors =
+            deviceCache.get(device, this::matchDevice);
+        if (deviceMatchCollectors == null) {
+          logger.warn(String.format("Match result NPE when handle device %s", device));
+          continue;
+        }
 
-      for (PipeRealtimeCollector collector : deviceCache.get(device, this::matchDevice)) {
-        String pattern = collector.getPattern();
-        if (pattern.length() <= device.length()) {
-          matchCollectors.add(collector);
+        if (measurements.length == 0) { // match all measurements
+          matchCollectors.addAll(deviceMatchCollectors);
         } else {
-          for (String measurement : measurements) {
-            if (pattern.endsWith(measurement)
-                && pattern.length() == device.length() + measurement.length() + 1) {
-              matchCollectors.add(collector);
-              break;
-            }
-          }
+          deviceMatchCollectors.forEach(
+              collector -> {
+                String pattern = collector.getPattern();
+                if (pattern.length() <= device.length()) {
+                  matchCollectors.add(collector);
+                } else {
+                  for (String measurement : measurements) {
+                    if (pattern.endsWith(measurement)
+                        && pattern.length() == device.length() + measurement.length() + 1) {
+                      matchCollectors.add(collector);
+                      break;
+                    }
+                  }
+                }
+              });
+        }
+        if (matchCollectors.size() == collectors.size()) {
+          break;
         }
       }
       return matchCollectors;
@@ -85,17 +103,14 @@ public class MapMatcher implements PipePatternMatcher {
   }
 
   @Override
-  public Set<PipeRealtimeCollector> matchDevices(Set<String> devices) {
-    lock.readLock().lock();
+  public void clear() {
+    lock.writeLock().lock();
     try {
-      Set<PipeRealtimeCollector> matchCollectors = new HashSet<>();
-      return matchCollectors;
+      collectors.clear();
+      deviceCache.invalidateAll();
+      deviceCache.cleanUp();
     } finally {
-      lock.readLock().unlock();
+      lock.writeLock().unlock();
     }
-  }
-
-  private boolean checkIfDevicesMatch(String pattern, Set<String> devices) {
-    return true;
   }
 }

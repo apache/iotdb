@@ -17,27 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event;
+package org.apache.iotdb.db.pipe.resource;
 
-import org.apache.iotdb.pipe.api.event.Event;
-
-public class PipeCollectorEvent {
-  private final Event event;
-  private final long timePartitionId;
-  private final boolean isSeq;
-  private final long collectIndex;
-
-  public PipeCollectorEvent() {
-    this.event = null;
-    this.timePartitionId = 0;
-    this.isSeq = true;
-    this.collectIndex = -1;
-  }
-
-  public PipeCollectorEvent(Event event, long timePartitionId, boolean isSeq, long collectIndex) {
-    this.event = event;
-    this.timePartitionId = timePartitionId;
-    this.isSeq = isSeq;
-    this.collectIndex = collectIndex;
-  }
-}
+public class PipeResourceManager {}

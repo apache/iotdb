@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.pipe.core.queue;
 
+import org.apache.iotdb.db.pipe.PipeConfig;
+
 import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.DaemonThreadFactory;
-import org.apache.iotdb.db.pipe.PipeConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +41,10 @@ public class DisruptorQueue<E> {
 
   public void publish(E obj) {
     ringBuffer.publishEvent((container, sequence, o) -> container.setObj(o), obj);
+  }
+
+  public void clear() {
+    disruptor.halt();
   }
 
   public static class Builder<E> {

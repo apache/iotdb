@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.pipe.core.event.factory;
 
-import org.apache.iotdb.db.pipe.core.event.PipeCollectorEvent;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class PipeCollectorEventFactory {
   private long collectIndex;
@@ -29,7 +34,23 @@ public class PipeCollectorEventFactory {
     this.collectIndex = 0;
   }
 
-  public PipeCollectorEvent createCollectorEvent(Event event, long timePartitionId, boolean isSeq) {
-    return new PipeCollectorEvent(event, timePartitionId, isSeq, ++collectIndex);
+  public PipeCollectEvent createCollectorEvent(
+      Event event, long timePartitionId, boolean isSeq, TsFileResource resource) {
+    return new PipeCollectEvent(
+        event,
+        timePartitionId,
+        isSeq,
+        ++collectIndex,
+        resource.getDevices().stream().collect(Collectors.toMap(s -> s, s -> new String[0])));
+  }
+
+  public PipeCollectEvent createCollectorEvent(
+      Event event, long timePartitionId, boolean isSeq, InsertNode node) {
+    return new PipeCollectEvent(
+        event,
+        timePartitionId,
+        isSeq,
+        ++collectIndex,
+        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()));
   }
 }

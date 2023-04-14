@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
 import org.apache.iotdb.db.pipe.core.event.factory.PipeEventFactory;
 
-import java.io.File;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeChangeDataCaptureListener {
@@ -38,7 +37,8 @@ public class PipeChangeDataCaptureListener {
     this.id2Caches = id2Caches;
   }
 
-  public void collectTsFile(File tsFile, String dataRegionId, long timePartitionId, boolean isSeq) {
+  public void collectTsFile(
+      String dataRegionId, long timePartitionId, boolean isSeq, TsFileResource resource) {
     if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
       return;
     }
@@ -47,11 +47,14 @@ public class PipeChangeDataCaptureListener {
         .get(dataRegionId)
         .publishCollectorEvent(
             PipeEventFactory.createCollectorEvent(
-                PipeEventFactory.createTsFileInsertionEvent(tsFile), timePartitionId, isSeq));
+                PipeEventFactory.createTsFileInsertionEvent(resource.getTsFile()),
+                timePartitionId,
+                isSeq,
+                resource));
   }
 
   public void collectPlanNode(
-      PlanNode planNode, String dataRegionId, long timePartitionId, boolean isSeq) {
+      String dataRegionId, long timePartitionId, boolean isSeq, InsertNode node) {
     if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
       return;
     }
@@ -60,7 +63,7 @@ public class PipeChangeDataCaptureListener {
         .get(dataRegionId)
         .publishCollectorEvent(
             PipeEventFactory.createCollectorEvent(
-                PipeEventFactory.createTabletInsertEvent(planNode), timePartitionId, isSeq));
+                PipeEventFactory.createTabletInsertEvent(node), timePartitionId, isSeq, node));
   }
 
   public static PipeChangeDataCaptureListener getInstance() {
