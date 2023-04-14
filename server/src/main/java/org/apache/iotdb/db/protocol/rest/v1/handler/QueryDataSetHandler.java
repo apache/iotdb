@@ -142,6 +142,9 @@ public class QueryDataSetHandler {
     DatasetHeader header = queryExecution.getDatasetHeader();
     List<String> resultColumns = header.getRespColumns();
     Map<String, Integer> headerMap = header.getColumnNameIndexMap();
+    if (headerMap == null) {
+        return Response.ok().entity(targetDataSet).build();
+    }
     for (String resultColumn : resultColumns) {
       targetDataSet.addExpressionsItem(resultColumn);
       targetDataSet.addValuesItem(new ArrayList<>());
