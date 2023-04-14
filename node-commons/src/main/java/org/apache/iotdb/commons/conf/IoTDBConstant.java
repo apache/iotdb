@@ -103,11 +103,11 @@ public class IoTDBConstant {
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
-  public static final long PB = 2L << 49;
-  public static final long TB = 2L << 39;
-  public static final long GB = 2L << 29;
-  public static final long MB = 2L << 19;
-  public static final long KB = 2L << 9;
+  public static final long PB = 1L << 50;
+  public static final long TB = 1L << 40;
+  public static final long GB = 1L << 30;
+  public static final long MB = 1L << 20;
+  public static final long KB = 1L << 10;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
