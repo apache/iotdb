@@ -74,8 +74,7 @@ class ThriftDataSource(DataSource):
         except Exception:
             raise RuntimeError('Fail to establish connection with DataNode')
 
-        query_id, has_more_data, raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
-        # TODO: consider has_more_data
+        raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
 
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
