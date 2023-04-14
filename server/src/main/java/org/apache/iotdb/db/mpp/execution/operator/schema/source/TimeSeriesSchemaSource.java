@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
+
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -104,6 +106,18 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
+  }
+
+  @Override
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && key == null
+        && schemaRegion.getSchemaRegionStatistics().getTemplateActivatedNumber() == 0;
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
   }
 
   private String mapToString(Map<String, String> map) {
