@@ -28,6 +28,7 @@ from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.client import client_manager
+from iotdb.mlnode.config import descriptor
 from iotdb.thrift.common.ttypes import TrainingState
 
 
@@ -122,8 +123,9 @@ class ForecastingTrainingTask(_BasicTask):
                     self.task_configs,
                     self.model_configs,
                     self.dataset,
-                    self.pid_info
-                ), n_trials=20)
+                    self.pid_info),
+                    n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
+                    n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
                 best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
                 self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
             else:

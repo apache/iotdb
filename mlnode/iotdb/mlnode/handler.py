@@ -22,6 +22,7 @@ from iotdb.mlnode.parser import parse_training_request
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.util import get_status
+from iotdb.mlnode.config import descriptor
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
@@ -30,7 +31,7 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
-        self.__task_manager = TaskManager(pool_size=10)
+        self.__task_manager = TaskManager(pool_size=descriptor.get_config().get_mn_mn_task_pool_size())
 
     def deleteModel(self, req: TDeleteModelReq):
         try:

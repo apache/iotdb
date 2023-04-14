@@ -182,10 +182,10 @@ _task_config_parser.add_argument('--batch_size', type=int, default=32)
 _task_config_parser.add_argument('--num_workers', type=int, default=0)
 _task_config_parser.add_argument('--epochs', type=int, default=10)
 _task_config_parser.add_argument('--use_gpu', type=str2bool, default=False)
-_task_config_parser.add_argument('--gpu', type=int, default=0)
-_task_config_parser.add_argument('--use_multi_gpu', type=str2bool, default=False)
-_task_config_parser.add_argument('--devices', type=int, nargs='+', default=[0])
-_task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE', 'MAE'])
+# _task_config_parser.add_argument('--gpu', type=int, default=0)
+# _task_config_parser.add_argument('--use_multi_gpu', type=str2bool, default=False)
+# _task_config_parser.add_argument('--devices', type=int, nargs='+', default=[0])
+_task_config_parser.add_argument('--metric_names', type=str, nargs='+', default=['MSE'])
 
 
 def parse_training_request(req: TCreateTrainingTaskReq) -> Tuple[Dict, Dict, Dict]:

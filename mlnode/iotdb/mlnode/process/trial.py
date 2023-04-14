@@ -40,9 +40,9 @@ def _parse_trial_config(**kwargs):
         "pred_len": 96,
         "num_workers": 0,
         "use_gpu": False,
-        "gpu": 0,
-        "use_multi_gpu": False,
-        "devices": [0],
+        # "gpu": 0,
+        # "use_multi_gpu": False,
+        # "devices": [0],
         "metric_names": ["MSE"],
         "model_id": 'default',
         "trial_id": 'default_trial'
@@ -90,7 +90,6 @@ class BasicTrial(object):
         self.pred_len = trial_configs['pred_len']
         self.metric_names = trial_configs['metric_names']
         self.use_gpu = trial_configs['use_gpu']
-
         self.model = model
         self.model_configs = model_configs
 
