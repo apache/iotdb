@@ -104,6 +104,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -1149,19 +1150,23 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
+    List<String> measurements = new ArrayList<>();
+    List<TimeValuePair> timeValuePairList = new ArrayList<>();
     for (int i = 0; i < node.getColumns().length; i++) {
       if (node.getColumns()[i] == null) {
         continue;
       }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath(),
-              node.getMeasurements()[i],
-              node.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
+      measurements.add(node.getMeasurements()[i]);
+      timeValuePairList.add(node.composeLastTimeValuePair(i));
     }
+    // Update cached last value with high priority
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            node.getDevicePath(),
+            measurements.toArray(new String[0]),
+            timeValuePairList,
+            true,
+            latestFlushedTime);
   }
 
   private void insertToTsFileProcessor(
@@ -1191,19 +1196,23 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
+    List<String> measurements = new ArrayList<>();
+    List<TimeValuePair> timeValuePairList = new ArrayList<>();
     for (int i = 0; i < node.getValues().length; i++) {
       if (node.getValues()[i] == null) {
         continue;
       }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath(),
-              node.getMeasurements()[i],
-              node.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
+      measurements.add(node.getMeasurements()[i]);
+      timeValuePairList.add(node.composeTimeValuePair(i));
     }
+    // Update cached last value with high priority
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            node.getDevicePath(),
+            measurements.toArray(new String[0]),
+            timeValuePairList,
+            true,
+            latestFlushedTime);
   }
 
   /**

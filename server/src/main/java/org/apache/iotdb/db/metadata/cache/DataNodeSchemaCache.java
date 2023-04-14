@@ -219,17 +219,28 @@ public class DataNodeSchemaCache {
   /** get SchemaCacheEntry and update last cache */
   public void updateLastCache(
       PartialPath devicePath,
-      String measurement,
-      TimeValuePair timeValuePair,
+      String[] measurements,
+      List<TimeValuePair> timeValuePairList,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    SchemaCacheEntry entry = dualKeyCache.get(devicePath, measurement);
-    if (null == entry) {
-      return;
-    }
+    dualKeyCache.compute(
+        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return devicePath;
+          }
 
-    DataNodeLastCacheManager.updateLastCache(
-        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+          @Override
+          public String[] getSecondKeyList() {
+            return measurements;
+          }
+
+          @Override
+          public void computeValue(int index, SchemaCacheEntry value) {
+            DataNodeLastCacheManager.updateLastCache(
+                value, timeValuePairList.get(index), highPriorityUpdate, latestFlushedTime);
+          }
+        });
   }
 
   /**
