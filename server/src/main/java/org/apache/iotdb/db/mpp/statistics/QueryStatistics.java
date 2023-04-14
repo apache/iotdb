@@ -304,73 +304,97 @@ public class QueryStatistics {
           .append("|   |___AggScanOperator ")
           .append(operationStatistics.get(AGG_SCAN_OPERATOR))
           .append(System.lineSeparator());
+
+      builder.append("|   |    |[FileLoaderInterface]").append(System.lineSeparator());
       builder
-          .append("|   |   |___CalcNextAggRes ")
-          .append(operationStatistics.get(CAL_NEXT_AGG_RES))
+          .append("|   |       |___loadTSMetadata ")
+          .append(operationStatistics.get(LOAD_TIME_SERIES_METADATA_ALIGNED))
           .append(System.lineSeparator());
       builder
-          .append("|   |   |___AggFromStat ")
+          .append("|   |       |___loadChunkMetaList ")
+          .append(operationStatistics.get(LOAD_CHUNK_METADATA_LIST))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___loadPageReaderList ")
+          .append(operationStatistics.get(LOAD_PAGE_READER_LIST))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |___pageReader ")
+          .append(operationStatistics.get(PAGE_READER))
+          .append(System.lineSeparator());
+
+      builder.append("|   |    |[AggregatorInterface]").append(System.lineSeparator());
+      builder
+          .append("|   |       |___AggFromStat ")
           .append(operationStatistics.get(CAL_AGG_FROM_STAT))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |___loadTSMeta ")
-          .append(operationStatistics.get(LOAD_TIME_SERIES_METADATA_ALIGNED))
+          .append("|   |       |___AggFromRawData ")
+          .append(operationStatistics.get(CAL_AGG_FROM_RAW_DATA))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___AggProcTsBlock ")
+          .append(operationStatistics.get(AGGREGATOR_PROCESS_TSBLOCK))
+          .append(System.lineSeparator());
+
+      builder.append("|   |    |[OperatorMethods]").append(System.lineSeparator());
+      builder
+          .append("|   |       |___CalcNextAggRes ")
+          .append(operationStatistics.get(CAL_NEXT_AGG_RES))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___AggFromFile ")
           .append(operationStatistics.get(CAL_AGG_FROM_FILE))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |   |___AggFromFileStat ")
+          .append("|   |       |   |___TryAggFromFileStat ")
           .append(operationStatistics.get(CAL_AGG_FROM_FILE_STAT))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |   |___loadChunkMeta ")
-          .append(operationStatistics.get(LOAD_CHUNK_METADATA_LIST))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |   |___AggFromChunk ")
+          .append("|   |       |___AggFromChunk ")
           .append(operationStatistics.get(CAL_AGG_FROM_CHUNK))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |       |___AggFromChunkStat ")
+          .append("|   |       |   |___TryAggFromChunkStat ")
           .append(operationStatistics.get(CAL_AGG_FROM_CHUNK_STAT))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |       |___loadChunk ")
-          .append(operationStatistics.get(LOAD_PAGE_READER_LIST))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |       |___AggFromPage ")
+          .append("|   |       |___AggFromPage ")
           .append(operationStatistics.get(CAL_AGG_FROM_PAGE))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |           |___AggFromPageStat ")
+          .append("|   |       |   |___TryAggFromPageStat ")
           .append(operationStatistics.get(CAL_AGG_FROM_PAGE_STAT))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |           |___loadPage ")
-          .append(operationStatistics.get(PAGE_READER))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |           |___AggFromRawData ")
-          .append(operationStatistics.get(CAL_AGG_FROM_RAW_DATA))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |               |___AggProcTsBlock ")
-          .append(operationStatistics.get(AGGREGATOR_PROCESS_TSBLOCK))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___BuildAggRes ")
           .append(operationStatistics.get(BUILD_AGG_RES))
           .append(System.lineSeparator());
+
+      builder.append("|   |    |[SeriesScanUtilCost]").append(System.lineSeparator());
       builder
           .append("|   |       |___hasNextFile ")
           .append(operationStatistics.get(HAS_NEXT_FILE))
           .append(System.lineSeparator());
       builder
+          .append("|   |       |   |___findEndTime ")
+          .append(operationStatistics.get(FIND_END_TIME))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___pickFirstTimeSeriesMetadata ")
+          .append(operationStatistics.get(PICK_FIRST_TIMESERIES_METADATA))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___filterFirstTimeSeriesMetadata ")
+          .append(operationStatistics.get(FILTER_FIRST_TIMESERIES_METADATA))
+          .append(System.lineSeparator());
+      builder
           .append("|   |       |___hasNextChunk ")
           .append(operationStatistics.get(HAS_NEXT_CHUNK))
+          .append(System.lineSeparator());
+      builder
+          .append("|   |       |   |___filterFirstChunkMetadata ")
+          .append(operationStatistics.get(FILTER_FIRST_CHUNK_METADATA))
           .append(System.lineSeparator());
       builder
           .append("|   |       |___hasNextPage ")
@@ -381,45 +405,22 @@ public class QueryStatistics {
           .append(operationStatistics.get(HAS_NEXT_OVERLAPPED_PAGE))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |___filterFirstTimeSeriesMetadata ")
-          .append(operationStatistics.get(FILTER_FIRST_TIMESERIES_METADATA))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___filterFirstChunkMetadata ")
-          .append(operationStatistics.get(FILTER_FIRST_CHUNK_METADATA))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___findEndTime ")
-          .append(operationStatistics.get(FIND_END_TIME))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___pickFirstTimeSeriesMetadata ")
-          .append(operationStatistics.get(PICK_FIRST_TIMESERIES_METADATA))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___initFirstPage ")
-          .append(operationStatistics.get(INIT_FIRST_PAGE))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___mergeReader#addReader ")
-          .append(operationStatistics.get(MERGE_READER_ADD_READER))
-          .append(System.lineSeparator());
-      builder
-          .append("|   |       |___mergeReader#nextTimeValuePair ")
+          .append("|   |       |   |___mergeReader#nextTimeValuePair ")
           .append(operationStatistics.get(MERGE_READER_NEXT))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |___mergeReader#updateHeap ")
+          .append("|   |       |   |___mergeReader#updateHeap ")
           .append(operationStatistics.get(MERGE_READER_UPDATE_HEAP))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |___mergeReader#fillNullValue ")
+          .append("|   |       |   |___mergeReader#fillNullValue ")
           .append(operationStatistics.get(MERGE_READER_FILL_NULL_VALUE))
           .append(System.lineSeparator());
       builder
-          .append("|   |       |___mergeReader#buildRes ")
+          .append("|   |       |   |___buildTsblock ")
           .append(operationStatistics.get(MERGE_READER_BUILD_RES))
           .append(System.lineSeparator());
+
       builder
           .append("|   |___SendTsBlock ")
           .append(operationStatistics.get(SEND_TSBLOCK))
