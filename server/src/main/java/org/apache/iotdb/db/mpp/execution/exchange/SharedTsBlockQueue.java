@@ -42,7 +42,6 @@ import java.util.Queue;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.RESERVE_MEMORY;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.FREE_MEM;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_END;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_NEW_TSBLOCK;
@@ -229,16 +228,16 @@ public class SharedTsBlockQueue {
     Pair<ListenableFuture<Void>, Boolean> pair;
     try {
       pair =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                tsBlock.getRetainedSizeInBytes(),
-                maxBytesCanReserve);
-    blockedOnMemory = pair.left;
-    bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+          localMemoryManager
+              .getQueryPool()
+              .reserve(
+                  localFragmentInstanceId.getQueryId(),
+                  fullFragmentInstanceId,
+                  localPlanNodeId,
+                  tsBlock.getRetainedSizeInBytes(),
+                  maxBytesCanReserve);
+      blockedOnMemory = pair.left;
+      bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
     } finally {
       QUERY_STATISTICS.addCost(RESERVE_MEMORY, System.nanoTime() - startTime);
     }
