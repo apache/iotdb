@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.aggregation;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -40,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -579,5 +581,13 @@ public class IoTDBTagAggregationIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testWithRawInSelect() {
+    assertTestFail(
+        "SELECT s1 FROM root.case2.** GROUP BY TAGS(k1)",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Common queries and aggregated queries are not allowed to appear at the same time");
   }
 }
