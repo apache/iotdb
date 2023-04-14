@@ -1723,52 +1723,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkIsTemplateCompatible(PartialPath timeseriesPath, String alias) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(timeseriesPath);
+    Pair<Template, PartialPath> templateInfo =
+        schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath);
     if (templateInfo != null) {
-      if (templateInfo.left.hasSchema(timeseriesPath.getMeasurement())) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getFullPath(),
-                templateInfo.left.getName(),
-                timeseriesPath.getMeasurement()));
-      }
-
-      if (alias != null && templateInfo.left.hasSchema(alias)) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getDevicePath().concatNode(alias).getFullPath(),
-                templateInfo.left.getName(),
-                alias));
-      }
+      throw new RuntimeException(
+          new TemplateImcompatibeException(
+              timeseriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
     }
   }
 
   private void checkIsTemplateCompatible(
       PartialPath devicePath, List<String> measurements, List<String> aliasList) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
+    Pair<Template, PartialPath> templateInfo =
+        schemaFetcher.checkTemplateSetAndPreSetInfo(devicePath);
     if (templateInfo != null) {
-      Template template = templateInfo.left;
-      for (String measurement : measurements) {
-        if (template.hasSchema(measurement)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(measurement).getFullPath(),
-                  templateInfo.left.getName(),
-                  measurement));
-        }
-      }
-
-      if (aliasList == null) {
-        return;
-      }
-
-      for (String alias : aliasList) {
-        if (template.hasSchema(alias)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(alias).getFullPath(), templateInfo.left.getName(), alias));
-        }
-      }
+      throw new RuntimeException(
+          new TemplateImcompatibeException(
+              devicePath.getFullPath() + measurements,
+              templateInfo.left.getName(),
+              templateInfo.right));
     }
   }
 

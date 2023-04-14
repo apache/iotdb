@@ -423,6 +423,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path) {
+    return templateManager.checkTemplateSetAndPreSetInfo(path);
+  }
+
+  @Override
   public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
     return templateManager.checkAllRelatedTemplate(pathPattern);
   }

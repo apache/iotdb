@@ -86,6 +86,8 @@ public interface ISchemaFetcher {
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
 
+  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path);
+
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);

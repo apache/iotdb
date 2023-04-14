@@ -133,6 +133,11 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path) {
+    return null;
+  }
+
+  @Override
   public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
     return Collections.emptyMap();
   }

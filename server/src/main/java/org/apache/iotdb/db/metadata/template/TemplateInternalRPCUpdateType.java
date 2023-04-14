@@ -27,7 +27,8 @@ import java.nio.ByteBuffer;
 
 public enum TemplateInternalRPCUpdateType {
   ADD_TEMPLATE_SET_INFO((byte) 0),
-  INVALIDATE_TEMPLATE_SET_INFO((byte) 1);
+  INVALIDATE_TEMPLATE_SET_INFO((byte) 1),
+  ADD_TEMPLATE_PRE_SET_INFO((byte) 2);
 
   private final byte operationType;
 
@@ -45,14 +46,7 @@ public enum TemplateInternalRPCUpdateType {
 
   public static TemplateInternalRPCUpdateType deserialize(ByteBuffer buffer) {
     byte type = ReadWriteIOUtils.readByte(buffer);
-    switch (type) {
-      case 0:
-        return ADD_TEMPLATE_SET_INFO;
-      case 1:
-        return INVALIDATE_TEMPLATE_SET_INFO;
-      default:
-        throw new IllegalArgumentException("Unknown template update operation type" + type);
-    }
+    return getType(type);
   }
 
   public static TemplateInternalRPCUpdateType getType(byte type) {
@@ -61,6 +55,8 @@ public enum TemplateInternalRPCUpdateType {
         return ADD_TEMPLATE_SET_INFO;
       case 1:
         return INVALIDATE_TEMPLATE_SET_INFO;
+      case 2:
+        return ADD_TEMPLATE_PRE_SET_INFO;
       default:
         throw new IllegalArgumentException("Unknown template update operation type" + type);
     }

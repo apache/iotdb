@@ -50,8 +50,10 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -66,10 +68,16 @@ public class ClusterTemplateManager implements ITemplateManager {
   private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
   // <TemplateName, TemplateId>
   private final Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
+
   // <FullPath, TemplateId>
   private final Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
   // <TemplateId, List<FullPath>>
   private final Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
+
+  // <FullPath, TemplateId>
+  private final Map<PartialPath, Integer> pathPreSetTemplateMap = new ConcurrentHashMap<>();
+  // <TemplateId, List<FullPath>>
+  private final Map<Integer, Set<PartialPath>> templatePreSetOnPathsMap = new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -262,6 +270,28 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path) {
+    readWriteLock.readLock().lock();
+    try {
+      for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
+        if (path.startsWith(templateSetPath.getNodes())) {
+          return new Pair<>(
+              templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
+        }
+      }
+      for (PartialPath templatePreSetPath : pathPreSetTemplateMap.keySet()) {
+        if (path.startsWith(templatePreSetPath.getNodes())) {
+          return new Pair<>(
+              templateIdMap.get(pathPreSetTemplateMap.get(templatePreSetPath)), templatePreSetPath);
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     readWriteLock.readLock().lock();
     try {
@@ -372,12 +402,48 @@ public class ClusterTemplateManager implements ITemplateManager {
           templateSetOnPathsMap.get(templateId).remove(path);
           if (templateSetOnPathsMap.get(templateId).isEmpty()) {
             templateSetOnPathsMap.remove(templateId);
-            Template template = templateIdMap.remove(templateId);
-            templateNameMap.remove(template.getName());
+            if (!templatePreSetOnPathsMap.containsKey(templateId)) {
+              // such template is useless on DataNode since no related set/preset path
+              Template template = templateIdMap.remove(templateId);
+              templateNameMap.remove(template.getName());
+            }
           }
         }
       } catch (IllegalPathException ignored) {
 
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void addTemplatePreSetInfo(byte[] templateSetInfo) {
+    if (templateSetInfo == null) {
+      return;
+    }
+    readWriteLock.writeLock().lock();
+    try {
+      ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
+
+      Map<Template, List<String>> parsedTemplateSetInfo =
+          TemplateInternalRPCUtil.parseAddTemplateSetInfoBytes(buffer);
+      for (Map.Entry<Template, List<String>> entry : parsedTemplateSetInfo.entrySet()) {
+        Template template = entry.getKey();
+        templateIdMap.put(template.getId(), template);
+        templateNameMap.put(template.getName(), template.getId());
+
+        for (String pathSetTemplate : entry.getValue()) {
+          try {
+            PartialPath path = new PartialPath(pathSetTemplate);
+            pathPreSetTemplateMap.put(path, template.getId());
+            Set<PartialPath> pathList =
+                templatePreSetOnPathsMap.computeIfAbsent(
+                    template.getId(), integer -> new HashSet<>());
+            pathList.add(path);
+          } catch (IllegalPathException ignored) {
+            // won't happen
+          }
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();

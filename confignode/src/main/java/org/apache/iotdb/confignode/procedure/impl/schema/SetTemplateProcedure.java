@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -31,6 +37,11 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -40,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public class SetTemplateProcedure
@@ -145,7 +157,56 @@ public class SetTemplateProcedure
     }
   }
 
-  private void preReleaseTemplate(ConfigNodeProcedureEnv env) {}
+  private void preReleaseTemplate(ConfigNodeProcedureEnv env) {
+    Template template = getTemplate(env);
+    if (template == null) {
+      // already setFailure
+      return;
+    }
+
+    TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
+    req.setTemplateInfo(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to sync template {} preset info on path {} to DataNode {}",
+            templateName,
+            templateSetPath,
+            dataNodeLocationMap.get(entry.getKey()));
+        setFailure(new ProcedureException(new MetadataException("Preset template failed")));
+        return;
+      }
+    }
+    setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
+  }
+
+  private Template getTemplate(ConfigNodeProcedureEnv env) {
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp)
+            env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    if (templateResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(
+          new ProcedureException(
+              new IoTDBException(
+                  templateResp.getStatus().getMessage(), templateResp.getStatus().getCode())));
+      return null;
+    }
+    if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
+      setFailure(new ProcedureException(new UndefinedTemplateException(templateName)));
+      return null;
+    }
+    return templateResp.getTemplateList().get(0);
+  }
 
   private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {}
 
