@@ -632,6 +632,9 @@ public abstract class RaftLogManager {
       if (entry.createTime != 0) {
         entry.committedTime = System.nanoTime();
         Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.add(entry.committedTime - entry.createTime);
+        synchronized (entry) {
+          entry.notify();
+        }
       }
       entry.setSerializationCache(null);
     }

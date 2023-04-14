@@ -22,6 +22,8 @@ package org.apache.iotdb.consensus.natraft;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -48,6 +50,8 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
+import org.apache.iotdb.consensus.natraft.utils.NodeReport;
+import org.apache.iotdb.consensus.natraft.utils.NodeReport.RaftMemberReport;
 import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
 import org.apache.iotdb.consensus.natraft.utils.Timer;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -65,6 +69,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RaftConsensus implements IConsensus {
@@ -79,6 +85,7 @@ public class RaftConsensus implements IConsensus {
   private final RegisterManager registerManager = new RegisterManager();
   private final RaftConfig config;
   private final IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager;
+  private ScheduledExecutorService reportThread;
 
   public RaftConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -109,6 +116,9 @@ public class RaftConsensus implements IConsensus {
                 () -> {
                   logger.info(Timer.Statistic.getReport());
                 }));
+    reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        reportThread, this::generateNodeReport, 5, 5, TimeUnit.SECONDS);
   }
 
   private void initAndRecover() throws IOException {
@@ -371,5 +381,26 @@ public class RaftConsensus implements IConsensus {
 
   public TEndPoint getThisNode() {
     return thisNode;
+  }
+
+  private void generateNodeReport() {
+    if (logger.isInfoEnabled()) {
+      try {
+        NodeReport report = new NodeReport(thisNode);
+        List<RaftMemberReport> reports = new ArrayList<>();
+        for (RaftMember value : stateMachineMap.values()) {
+          RaftMemberReport raftMemberReport = value.genMemberReport();
+          if (raftMemberReport.getPrevLastLogIndex() != raftMemberReport.getLastLogIndex()) {
+            reports.add(raftMemberReport);
+          }
+        }
+        if (!reports.isEmpty()) {
+          report.setMemberReports(reports);
+          logger.info(report.toString());
+        }
+      } catch (Exception e) {
+        logger.error("exception occurred when generating node report", e);
+      }
+    }
   }
 }

@@ -73,6 +73,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.SynchronousSeq
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
 import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 import org.apache.iotdb.consensus.natraft.utils.LogUtils;
+import org.apache.iotdb.consensus.natraft.utils.NodeReport.RaftMemberReport;
 import org.apache.iotdb.consensus.natraft.utils.NodeUtils;
 import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
@@ -176,6 +177,7 @@ public class RaftMember {
   private ExecutorService commitLogPool;
 
   private long lastCommitTaskTime;
+  private long lastReportIndex;
 
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
@@ -512,7 +514,9 @@ public class RaftMember {
     }
 
     AppendEntryResult response;
+    long startTime = Statistic.RAFT_RECEIVER_PARSE_ENTRY.getOperationStartTime();
     List<Entry> entries = LogUtils.parseEntries(request.entries, stateMachine);
+    Statistic.RAFT_RECEIVER_PARSE_ENTRY.calOperationCostTimeFromStart(startTime);
 
     response = logAppender.appendEntries(request.leaderCommit, request.term, entries);
 
@@ -644,7 +648,7 @@ public class RaftMember {
     Statistic.LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE.add(entry.createTime - entry.receiveTime);
 
     if (config.isUseFollowerLoadBalance()) {
-      FlowMonitorManager.INSTANCE.report(thisNode, entry.estimateSize());
+      FlowMonitorManager.INSTANCE.report(thisNode.getEndpoint(), entry.estimateSize());
     }
 
     if (votingEntry == null) {
@@ -677,15 +681,15 @@ public class RaftMember {
     }
   }
 
-  private TSStatus includeLogNumbersInStatus(TSStatus status, Entry entry) {
+  private TSStatus includeLogNumbersInStatus(TSStatus status, long index, long term) {
     return status.setMessage(
         getRaftGroupId().getType().ordinal()
             + "-"
             + getRaftGroupId().getId()
             + "-"
-            + entry.getCurrLogIndex()
+            + index
             + "-"
-            + entry.getCurrLogTerm());
+            + term);
   }
 
   protected AppendLogResult waitAppendResult(VotingEntry votingEntry) {
@@ -748,28 +752,32 @@ public class RaftMember {
     }
     long waitTime = 1;
     AcceptedType acceptedType = votingLogList.computeAcceptedType(log);
-    synchronized (log.getEntry()) {
-      while (acceptedType == AcceptedType.NOT_ACCEPTED
-          && alreadyWait < config.getWriteOperationTimeoutMS()) {
+
+    while (acceptedType == AcceptedType.NOT_ACCEPTED
+        && alreadyWait < config.getWriteOperationTimeoutMS()) {
+      long startTime = Statistic.RAFT_SENDER_LOG_APPEND_WAIT.getOperationStartTime();
+      synchronized (log.getEntry()) {
         try {
           log.getEntry().wait(waitTime);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
-        acceptedType = votingLogList.computeAcceptedType(log);
+      }
+      Statistic.RAFT_SENDER_LOG_APPEND_WAIT.calOperationCostTimeFromStart(startTime);
 
-        alreadyWait = (System.nanoTime() - waitStart) / 1000000;
-        if (alreadyWait > nextTimeToPrint) {
-          logger.info(
-              "Still not receive enough votes for {}, weakly " + "accepted {}, wait {}ms ",
-              log,
-              log.getWeaklyAcceptedNodes(),
-              alreadyWait);
-          nextTimeToPrint *= 2;
-        }
+      acceptedType = votingLogList.computeAcceptedType(log);
+      alreadyWait = (System.nanoTime() - waitStart) / 1000000;
+      if (alreadyWait > nextTimeToPrint) {
+        logger.info(
+            "Still not receive enough votes for {}, weakly " + "accepted {}, wait {}ms ",
+            log,
+            log.getWeaklyAcceptedNodes(),
+            alreadyWait);
+        nextTimeToPrint *= 2;
       }
     }
+
     if (logger.isDebugEnabled()) {
       Thread.currentThread().setName(threadBaseName);
     }
@@ -973,7 +981,7 @@ public class RaftMember {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER.deepCopy().setMessage("No leader to forward in: " + groupId);
     }
-    logger.debug("{}: Forward {} to node {}", name, plan, node);
+    logger.info("{}: Forward {} to node {}", name, plan, node);
 
     TSStatus status;
     status = forwardPlanAsync(plan, node, groupId);
@@ -1244,11 +1252,25 @@ public class RaftMember {
           System.nanoTime() - votingEntry.getEntry().createTime);
       switch (appendLogResult) {
         case WEAK_ACCEPT:
+          Statistic.RAFT_LEADER_WEAK_ACCEPT.add(1);
           return includeLogNumbersInStatus(
-              StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED), votingEntry.getEntry());
+              StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+              votingEntry.getEntry().getCurrLogIndex(),
+              votingEntry.getEntry().getCurrLogTerm());
         case OK:
-          waitApply(votingEntry.getEntry());
-          return includeLogNumbersInStatus(StatusUtils.OK.deepCopy(), votingEntry.getEntry());
+          if (config.isWaitApply()) {
+            waitApply(votingEntry.getEntry());
+            return includeLogNumbersInStatus(
+                StatusUtils.OK.deepCopy(),
+                votingEntry.getEntry().getCurrLogIndex(),
+                votingEntry.getEntry().getCurrLogTerm());
+          } else {
+            return includeLogNumbersInStatus(
+                StatusUtils.OK.deepCopy(),
+                logManager.getAppliedIndex(),
+                logManager.getAppliedTerm());
+          }
+
         case TIME_OUT:
           logger.debug("{}: log {} timed out...", name, votingEntry.getEntry());
           break;
@@ -1344,5 +1366,22 @@ public class RaftMember {
     } else {
       return StatusUtils.TIME_OUT;
     }
+  }
+
+  public RaftMemberReport genMemberReport() {
+    long prevLastLogIndex = lastReportIndex;
+    lastReportIndex = logManager.getLastLogIndex();
+    return new RaftMemberReport(
+        status.role,
+        status.getLeader().get(),
+        status.getTerm().get(),
+        logManager.getLastLogTerm(),
+        lastReportIndex,
+        logManager.getCommitLogIndex(),
+        logManager.getCommitLogTerm(),
+        readOnly,
+        heartbeatThread.getLastHeartbeatReceivedTime(),
+        prevLastLogIndex,
+        logManager.getAppliedIndex());
   }
 }

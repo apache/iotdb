@@ -368,4 +368,8 @@ public class HeartbeatThread implements Runnable {
   public Object getElectionWaitObject() {
     return electionWaitObject;
   }
+
+  public long getLastHeartbeatReceivedTime() {
+    return lastHeartbeatReceivedTime;
+  }
 }

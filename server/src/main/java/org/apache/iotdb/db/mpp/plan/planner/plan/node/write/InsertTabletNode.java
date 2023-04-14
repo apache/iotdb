@@ -1159,4 +1159,47 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
       throw new SemanticException(e);
     }
   }
+
+  @Override
+  public long estimateSize() {
+    long size = super.estimateSize();
+
+    size += times.length * 8L;
+
+    for (int measurementIndex = 0; measurementIndex < columns.length; measurementIndex++) {
+      switch (dataTypes[measurementIndex]) {
+        case INT32:
+          int[] intValues = (int[]) columns[measurementIndex];
+          size += intValues.length * 4L;
+          break;
+        case INT64:
+          long[] longValues = (long[]) columns[measurementIndex];
+          size += longValues.length * 8L;
+          break;
+        case FLOAT:
+          float[] floatValues = (float[]) columns[measurementIndex];
+          size += floatValues.length * 4L;
+          break;
+        case DOUBLE:
+          double[] doubleValues = (double[]) columns[measurementIndex];
+          size += doubleValues.length * 8L;
+          break;
+        case BOOLEAN:
+          boolean[] boolValues = (boolean[]) columns[measurementIndex];
+          size += boolValues.length;
+          break;
+        case TEXT:
+          Binary[] binaryValues = (Binary[]) columns[measurementIndex];
+          for (Binary binaryValue : binaryValues) {
+            size += binaryValue.getLength();
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
+      }
+    }
+
+    return size;
+  }
 }

@@ -76,6 +76,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
       member.getVotingLogList().onStronglyAccept(votingEntry, trueReceiver);
       member.getStatus().getPeerMap().get(trueReceiver).setMatchIndex(response.lastLogIndex);
+      synchronized (votingEntry.getEntry()) {
+        votingEntry.getEntry().notifyAll();
+      }
     } else if (resp > 0) {
       // a response > 0 is the follower's term
       // the leadership is stale, wait for the new leader's heartbeat

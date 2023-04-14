@@ -63,6 +63,7 @@ public class RaftConfig {
   private int raftLogBufferSize = 64 * 1024 * 1024;
   private int maxNumberOfLogsPerFetchOnDisk = 1000;
   private int maxRaftLogIndexSizeInMemory = 64 * 1024;
+  private int maxRaftLogPersistDataSizePerFile = 1024 * 1024 * 1024;
   private int maxNumberOfPersistRaftLogFiles = 128;
   private int maxPersistRaftLogNumberOnDisk = 10_000_000;
   private int flushRaftLogThreshold = 100_000;
@@ -71,6 +72,9 @@ public class RaftConfig {
   private boolean enableCompressedDispatching = true;
   private boolean ignoreStateMachine = false;
   private boolean onlyTestNetwork = false;
+  private boolean waitApply = true;
+  private double flowControlMinFlow = 10_000_000;
+  private double flowControlMaxFlow = 100_000_000;
   private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
@@ -400,6 +404,38 @@ public class RaftConfig {
     this.ignoreStateMachine = ignoreStateMachine;
   }
 
+  public double getFlowControlMinFlow() {
+    return flowControlMinFlow;
+  }
+
+  public void setFlowControlMinFlow(double flowControlMinFlow) {
+    this.flowControlMinFlow = flowControlMinFlow;
+  }
+
+  public double getFlowControlMaxFlow() {
+    return flowControlMaxFlow;
+  }
+
+  public void setFlowControlMaxFlow(double flowControlMaxFlow) {
+    this.flowControlMaxFlow = flowControlMaxFlow;
+  }
+
+  public boolean isWaitApply() {
+    return waitApply;
+  }
+
+  public void setWaitApply(boolean waitApply) {
+    this.waitApply = waitApply;
+  }
+
+  public int getMaxRaftLogPersistDataSizePerFile() {
+    return maxRaftLogPersistDataSizePerFile;
+  }
+
+  public void setMaxRaftLogPersistDataSizePerFile(int maxRaftLogPersistDataSizePerFile) {
+    this.maxRaftLogPersistDataSizePerFile = maxRaftLogPersistDataSizePerFile;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -475,6 +511,11 @@ public class RaftConfig {
         Integer.parseInt(
             properties.getProperty(
                 "raft_log_buffer_size", String.valueOf(this.getRaftLogBufferSize()))));
+
+    this.setMaxRaftLogPersistDataSizePerFile(
+        Integer.parseInt(
+            properties.getProperty(
+                "raft_log_file_size", String.valueOf(this.getMaxRaftLogPersistDataSizePerFile()))));
 
     this.setLogNumInBatch(
         Integer.parseInt(
@@ -591,6 +632,20 @@ public class RaftConfig {
     this.setOnlyTestNetwork(
         Boolean.parseBoolean(
             properties.getProperty("only_test_network", String.valueOf(this.isOnlyTestNetwork()))));
+
+    this.setWaitApply(
+        Boolean.parseBoolean(
+            properties.getProperty("wait_apply", String.valueOf(this.isWaitApply()))));
+
+    this.setFlowControlMinFlow(
+        Double.parseDouble(
+            properties.getProperty(
+                "flow_control_min_flow", String.valueOf(this.getFlowControlMinFlow()))));
+
+    this.setFlowControlMaxFlow(
+        Double.parseDouble(
+            properties.getProperty(
+                "flow_control_max_flow", String.valueOf(this.getFlowControlMaxFlow()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

@@ -96,9 +96,10 @@ public class LogDispatcher {
   }
 
   public void updateRateLimiter() {
-    logger.info("TEndPoint rates: {}", nodesRate);
+    logger.info("{}: TEndPoint rates: {}", member.getName(), nodesRate);
     for (Entry<Peer, Double> nodeDoubleEntry : nodesRate.entrySet()) {
-      nodesRateLimiter.get(nodeDoubleEntry.getKey()).setRate(nodeDoubleEntry.getValue());
+      nodesRateLimiter.put(
+          nodeDoubleEntry.getKey(), RateLimiter.create(nodeDoubleEntry.getValue()));
     }
   }
 
@@ -106,6 +107,7 @@ public class LogDispatcher {
     BlockingQueue<VotingEntry> logBlockingQueue;
     logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
     nodesLogQueuesMap.put(node, logBlockingQueue);
+    nodesRate.put(node, Double.MAX_VALUE);
     nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
 
     for (int i = 0; i < bindingThreadNum; i++) {
@@ -261,6 +263,13 @@ public class LogDispatcher {
 
         request.getAppendEntryRequest().entry = request.getEntry().serialize();
         request.getEntry().setByteSize(request.getAppendEntryRequest().entry.limit());
+        logger.debug(
+            "{}/{}={}",
+            request.getEntry().estimateSize(),
+            request.getAppendEntryRequest().entry.remaining(),
+            request.getEntry().estimateSize()
+                * 1.0
+                / request.getAppendEntryRequest().entry.remaining());
       }
     }
 
@@ -346,12 +355,12 @@ public class LogDispatcher {
 
         for (; logIndex < currBatch.size(); logIndex++) {
           VotingEntry entry = currBatch.get(logIndex);
-          long curSize = entry.getAppendEntryRequest().entry.array().length;
+          long curSize = entry.getAppendEntryRequest().entry.remaining();
           if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
             break;
           }
           logSize += curSize;
-          logList.add(entry.getAppendEntryRequest().entry);
+          logList.add(entry.getAppendEntryRequest().entry.slice());
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
               entry.getEntry().createTime);
         }
@@ -365,7 +374,7 @@ public class LogDispatcher {
         }
 
         if (config.isUseFollowerLoadBalance()) {
-          FlowMonitorManager.INSTANCE.report(receiver, logSize);
+          FlowMonitorManager.INSTANCE.report(receiver.getEndpoint(), logSize);
         }
         nodesRateLimiter.get(receiver).acquire((int) logSize);
       }

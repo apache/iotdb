@@ -16,32 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
-package org.apache.iotdb.consensus.common.request;
+public class FlowWindow {
+  public long start;
+  public long sum;
 
-import java.nio.ByteBuffer;
-
-/*
-In general, for the requests from the leader, we can directly strong-cast the class to reduce
-the cost of deserialization during the execution of the leader state machine. For the requests
-received by the followers, the responsibility of deserialization can generally be transferred
-to the state machine layer
-*/
-public class ByteBufferConsensusRequest implements IConsensusRequest {
-
-  private final ByteBuffer byteBuffer;
-
-  public ByteBufferConsensusRequest(ByteBuffer byteBuffer) {
-    this.byteBuffer = byteBuffer;
+  public FlowWindow(long start, long sum) {
+    this.start = start;
+    this.sum = sum;
   }
 
   @Override
-  public ByteBuffer serializeToByteBuffer() {
-    return byteBuffer;
-  }
-
-  @Override
-  public long estimateSize() {
-    return byteBuffer.remaining();
+  public String toString() {
+    return "[" + +start + "," + sum + ']';
   }
 }

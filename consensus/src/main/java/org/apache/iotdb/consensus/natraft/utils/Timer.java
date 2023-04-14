@@ -196,6 +196,12 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_PARSE_ENTRY(
+        RAFT_MEMBER_RECEIVER,
+        "receiver parse entries",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_RECEIVER_WAIT_FOR_PREV_LOG(
         RAFT_MEMBER_RECEIVER,
         "receiver wait for prev log",
@@ -217,6 +223,12 @@ public class Timer {
     RAFT_RECEIVER_APPEND_INTERNAL(
         RAFT_MEMBER_RECEIVER,
         "append entry (internal)",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_APPEND_ONE_ENTRY(
+        RAFT_MEMBER_RECEIVER,
+        "receiver append one entries",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
@@ -344,6 +356,12 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_SENDER_LOG_APPEND_WAIT(
+        LOG_DISPATCHER,
+        "wait for being appended",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPEND_END(
         LOG_DISPATCHER,
         "from create to wait append end",
@@ -382,7 +400,10 @@ public class Timer {
     RAFT_RELAYED_LEVEL1_NUM(RAFT_MEMBER_SENDER, "level 1 relay node number", 1, true, ROOT),
     RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
     RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
-    RAFT_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "weak accept", 1, true, ROOT),
+    RAFT_LEADER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "leader weak accept", 1, true, ROOT),
+    RAFT_FOLLOWER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "follower weak accept", TIME_SCALE, true, ROOT),
+    RAFT_FOLLOWER_STRONG_ACCEPT(
+        RAFT_MEMBER_SENDER, "follower strong accept", TIME_SCALE, true, ROOT),
     RAFT_CONCURRENT_SENDER(RAFT_MEMBER_SENDER, "concurrent sender", 1, true, ROOT),
     RAFT_INDEX_BLOCKER(RAFT_MEMBER_SENDER, "index blocker", 1, true, ROOT),
     RAFT_APPEND_BLOCKER(RAFT_MEMBER_SENDER, "append blocker", 1, true, ROOT),

@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
-import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,7 +36,7 @@ public class FlowMonitorManager {
   private static final Logger logger = LoggerFactory.getLogger(FlowMonitorManager.class);
   public static final FlowMonitorManager INSTANCE = new FlowMonitorManager();
 
-  private Map<Peer, FlowMonitor> monitorMap = new ConcurrentHashMap<>();
+  private Map<TEndPoint, FlowMonitor> monitorMap = new ConcurrentHashMap<>();
   private RaftConfig config;
 
   private FlowMonitorManager() {}
@@ -50,26 +52,36 @@ public class FlowMonitorManager {
     monitorMap.clear();
   }
 
-  public void report(Peer peer, long val) {
+  public void report(TEndPoint endPoint, long val) {
     FlowMonitor flowMonitor =
         monitorMap.computeIfAbsent(
-            peer,
+            endPoint,
             p -> {
               try {
                 return new FlowMonitor(p, config);
               } catch (IOException e) {
-                logger.warn("Cannot register flow monitor for {}", peer, e);
+                logger.warn("Cannot register flow monitor for {}", endPoint, e);
                 return null;
               }
             });
     if (flowMonitor != null) {
       flowMonitor.report(val);
     } else {
-      logger.warn("Flow monitor {} is not registered", peer);
+      logger.warn("Flow monitor {} is not registered", endPoint);
     }
   }
 
-  public double averageFlow(Peer peer, int windowsToUse) {
-    return monitorMap.get(peer).averageFlow(windowsToUse);
+  public double averageFlow(TEndPoint endPoint, int windowsToUse) {
+    FlowMonitor flowMonitor = monitorMap.get(endPoint);
+    return flowMonitor != null ? flowMonitor.averageFlow(windowsToUse) : 0.0;
+  }
+
+  public List<FlowWindow> getLatestWindows(TEndPoint endPoint, int windowNum) {
+    FlowMonitor flowMonitor = monitorMap.get(endPoint);
+    return flowMonitor != null ? flowMonitor.getLatestWindows(windowNum) : Collections.emptyList();
+  }
+
+  public Map<TEndPoint, FlowMonitor> getMonitorMap() {
+    return monitorMap;
   }
 }

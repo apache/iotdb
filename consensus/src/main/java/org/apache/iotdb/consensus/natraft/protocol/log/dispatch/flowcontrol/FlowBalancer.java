@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,22 +44,26 @@ import java.util.concurrent.TimeUnit;
 public class FlowBalancer {
 
   private static final Logger logger = LoggerFactory.getLogger(FlowBalancer.class);
-  private double maxFlow = 900_000_000;
-  private double minFlow = 10_000_000;
+  private double maxFlow;
+  private double minFlow;
   private int windowsToUse;
   private double overestimateFactor;
   private int flowBalanceIntervalMS = 1000;
   private FlowMonitorManager flowMonitorManager = FlowMonitorManager.INSTANCE;
   private LogDispatcher logDispatcher;
   private RaftMember member;
-
   private ScheduledExecutorService scheduledExecutorService;
+  private volatile boolean inBurst = false;
+  private RaftConfig config;
 
   public FlowBalancer(LogDispatcher logDispatcher, RaftMember member, RaftConfig config) {
     this.logDispatcher = logDispatcher;
     this.member = member;
-    windowsToUse = config.getFollowerLoadBalanceWindowsToUse();
-    overestimateFactor = config.getFollowerLoadBalanceOverestimateFactor();
+    this.windowsToUse = config.getFollowerLoadBalanceWindowsToUse();
+    this.overestimateFactor = config.getFollowerLoadBalanceOverestimateFactor();
+    this.minFlow = config.getFlowControlMinFlow();
+    this.maxFlow = config.getFlowControlMaxFlow();
+    this.config = config;
   }
 
   public void start() {
@@ -84,25 +90,54 @@ public class FlowBalancer {
 
     int nodeNum = member.getAllNodes().size();
     int followerNum = nodeNum - 1;
+    long flowMonitorWindowInterval = config.getFlowMonitorWindowInterval();
 
-    double thisNodeFlow = flowMonitorManager.averageFlow(member.getThisNode(), windowsToUse);
-    double assumedFlow = thisNodeFlow * overestimateFactor;
-    logger.info("Flow of this node: {}", thisNodeFlow);
+    List<FlowWindow> latestWindows =
+        flowMonitorManager.getLatestWindows(member.getThisNode().getEndpoint(), windowsToUse);
+    if (latestWindows.size() < windowsToUse) {
+      return;
+    }
+    int burstWindowNum = 0;
+    for (FlowWindow latestWindow : latestWindows) {
+      double assumedFlow =
+          latestWindow.sum * 1.0 * flowMonitorWindowInterval / 1000 * overestimateFactor;
+      if (assumedFlow * followerNum > maxFlow) {
+        burstWindowNum++;
+      }
+    }
+    double assumedFlow =
+        latestWindows.stream().mapToLong(w -> w.sum).sum()
+            * 1.0
+            / latestWindows.size()
+            * flowMonitorWindowInterval
+            * overestimateFactor;
+
+    for (Entry<TEndPoint, FlowMonitor> entry : flowMonitorManager.getMonitorMap().entrySet()) {
+      logger.info(
+          "{}: Flow of {}: {}, {}, {}",
+          member.getName(),
+          entry.getKey(),
+          entry.getValue().getLatestWindows(windowsToUse),
+          entry.getValue().averageFlow(windowsToUse),
+          inBurst);
+    }
     Map<Peer, BlockingQueue<VotingEntry>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
     followers.sort(Comparator.comparing(node -> nodesLogQueuesMap.get(node).size()));
-    if (assumedFlow * followerNum > maxFlow) {
+    if (burstWindowNum > latestWindows.size() / 2 && !inBurst) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);
-    } else {
+      logDispatcher.updateRateLimiter();
+    } else if (burstWindowNum < latestWindows.size() / 2 && inBurst) {
       exitBurst(followerNum, nodesRate, followers);
+      logDispatcher.updateRateLimiter();
     }
-    logDispatcher.updateRateLimiter();
   }
 
   private void enterBurst(
       Map<Peer, Double> nodesRate, int nodeNum, double assumedFlow, List<Peer> followers) {
+    logger.info("{}: entering burst", member.getName());
     int followerNum = nodeNum - 1;
     int quorumFollowerNum = nodeNum / 2;
     double remainingFlow = maxFlow;
@@ -123,13 +158,16 @@ public class FlowBalancer {
       Peer node = followers.get(i);
       nodesRate.put(node, flowToRemaining);
     }
+    inBurst = true;
   }
 
   private void exitBurst(int followerNum, Map<Peer, Double> nodesRate, List<Peer> followers) {
+    logger.info("{}: exiting burst", member.getName());
     // lift flow limits
     for (int i = 0; i < followerNum; i++) {
       Peer node = followers.get(i);
       nodesRate.put(node, maxFlow);
     }
+    inBurst = false;
   }
 }

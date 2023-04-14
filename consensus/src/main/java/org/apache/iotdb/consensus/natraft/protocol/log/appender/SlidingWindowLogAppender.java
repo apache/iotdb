@@ -82,7 +82,7 @@ public class SlidingWindowLogAppender implements LogAppender {
     // check the next entry
     Entry entry = logWindow[pos];
     boolean nextMismatch = false;
-    if (logWindow[pos + 1] != null && pos < windowCapacity - 1) {
+    if (pos < windowCapacity - 1 && logWindow[pos + 1] != null) {
       long nextPrevTerm = logWindow[pos + 1].getPrevTerm();
       if (nextPrevTerm != entry.getCurrLogTerm()) {
         nextMismatch = true;
@@ -180,7 +180,9 @@ public class SlidingWindowLogAppender implements LogAppender {
 
     AppendEntryResult result = null;
     for (Entry entry : entries) {
+      long startTime = Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY.getOperationStartTime();
       result = appendEntry(leaderCommit, entry);
+      Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY.calOperationCostTimeFromStart(startTime);
 
       if (result.status != Response.RESPONSE_AGREE
           && result.status != Response.RESPONSE_STRONG_ACCEPT
@@ -215,8 +217,10 @@ public class SlidingWindowLogAppender implements LogAppender {
         checkLog(windowPos);
         if (windowPos == 0) {
           appended = flushWindow(result);
+          Statistic.RAFT_FOLLOWER_STRONG_ACCEPT.calOperationCostTimeFromStart(startTime);
         } else {
           result.status = Response.RESPONSE_WEAK_ACCEPT;
+          Statistic.RAFT_FOLLOWER_WEAK_ACCEPT.calOperationCostTimeFromStart(startTime);
         }
       } else {
         result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);

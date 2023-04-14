@@ -746,7 +746,7 @@ public class Session implements ISession {
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug(
+        logger.info(
             "{} redirect query {} to {}",
             defaultSessionConnection.getEndPoint(),
             sql,
@@ -795,7 +795,7 @@ public class Session implements ISession {
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug("redirect query {} to {}", paths, e.getEndPoint());
+        logger.info("redirect query {} to {}", paths, e.getEndPoint());
         // retry
         try {
           return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
@@ -1089,6 +1089,7 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      logger.info("Redirect to {}", endpoint);
       // no need to redirection
       if (endpoint.ip.equals("0.0.0.0")) {
         return;
