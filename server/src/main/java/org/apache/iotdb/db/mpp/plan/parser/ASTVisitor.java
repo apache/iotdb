@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -103,46 +101,7 @@ import org.apache.iotdb.db.mpp.plan.statement.literal.DoubleLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.StringLiteral;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropPipePluginStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.*;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
@@ -3377,18 +3336,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(ctx.path.getText(), type);
-    if (ctx.seriesSlot != null) {
-      getRegionIdStatement.setSeriesSlotId(
-          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(type);
+    if (ctx.database != null) {
+      getRegionIdStatement.setStorageGroup(ctx.database.getText());
     } else {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
-    if (ctx.timeSlot != null) {
-      getRegionIdStatement.setTimeSlotId(
-          new TTimePartitionSlot(
-              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
-    } else if (ctx.time != null) {
+    if (ctx.time != null) {
       getRegionIdStatement.setTimeStamp(parseTimeValue(ctx.time, DateTimeUtils.currentTime()));
     }
     return getRegionIdStatement;
@@ -3396,22 +3350,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
-    return new GetSeriesSlotListStatement(ctx.path.getText());
+    TConsensusGroupType type =
+            ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
+    return new GetSeriesSlotListStatement(ctx.database.getText(),type);
   }
 
   @Override
   public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
     GetTimeSlotListStatement getTimeSlotListStatement =
-        new GetTimeSlotListStatement(ctx.path.getText());
-    if (ctx.seriesSlot != null) {
-      getTimeSlotListStatement.setSeriesSlotId(
-          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+        new GetTimeSlotListStatement();
+    if (ctx.database != null) {
+      getTimeSlotListStatement.setStorageGroup(ctx.database.getText());
     } else if (ctx.device != null) {
       getTimeSlotListStatement.setDevice(ctx.device.getText());
     } else if (ctx.regionId != null) {
       getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
     }
-
     if (ctx.startTime != null) {
       getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
     }
@@ -3421,6 +3375,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return getTimeSlotListStatement;
   }
 
+  @Override
+  public Statement visitCountTimeSlotList(IoTDBSqlParser.CountTimeSlotListContext ctx) {
+    CountTimeSlotListStatement countTimeSlotListStatement = new CountTimeSlotListStatement();
+    if (ctx.database != null) {
+      countTimeSlotListStatement.setStorageGroup(ctx.database.getText());
+    } else if (ctx.device != null) {
+      countTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      countTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
+    if (ctx.startTime != null) {
+      countTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+    }
+    if (ctx.endTime != null) {
+      countTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+    }
+    return countTimeSlotListStatement;
+  }
   @Override
   public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
     return new MigrateRegionStatement(

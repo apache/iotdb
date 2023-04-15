@@ -44,21 +44,14 @@ import java.util.List;
  */
 public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
-  private final String storageGroup;
+  private String storageGroup;
 
   private String device;
-
-  private TSeriesPartitionSlot seriesSlotId;
-
   private final TConsensusGroupType partitionType;
-
-  private TTimePartitionSlot timeSlotId;
-
   private long timeStamp = -1;
 
-  public GetRegionIdStatement(String storageGroup, TConsensusGroupType partitionType) {
+  public GetRegionIdStatement(TConsensusGroupType partitionType) {
     super();
-    this.storageGroup = storageGroup;
     this.partitionType = partitionType;
   }
 
@@ -69,34 +62,21 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
   public TConsensusGroupType getPartitionType() {
     return partitionType;
   }
-
-  public TSeriesPartitionSlot getSeriesSlotId() {
-    return seriesSlotId;
-  }
-
   public String getDevice() {
     return device;
-  }
-
-  public TTimePartitionSlot getTimeSlotId() {
-    return timeSlotId;
   }
 
   public long getTimeStamp() {
     return timeStamp;
   }
 
-  public void setTimeSlotId(TTimePartitionSlot timeSlotId) {
-    this.timeSlotId = timeSlotId;
+  public void setStorageGroup(String storageGroup) {
+    this.storageGroup = storageGroup;
   }
-
-  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
-    this.seriesSlotId = seriesSlotId;
-  }
-
   public void setDevice(String device) {
     this.device = device;
   }
+
 
   public void setTimeStamp(long timeStamp) {
     this.timeStamp = timeStamp;

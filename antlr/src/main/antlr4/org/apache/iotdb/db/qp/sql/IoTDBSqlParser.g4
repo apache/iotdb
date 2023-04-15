@@ -55,7 +55,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
-    | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
     | createModel | dropModel | showModels | showTrails
     // Quota
@@ -447,23 +447,35 @@ showConfigNodes
 
 // ---- Get Region Id
 getRegionId
-    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
-        |(DEVICE|DEVICEID) operator_eq device=prefixPath) (OPERATOR_AND ((TIMESLOTID|TIMEPARTITION) operator_eq timeSlot=INTEGER_LITERAL
-        |(TIMESTAMP|TIME) operator_eq time = timeValue))?
+    : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
+        |(DEVICE|DEVICEID) operator_eq device=prefixPath)
+        (OPERATOR_AND (TIMESTAMP|TIME) operator_eq time = timeValue)?
     ;
 
 // ---- Get Time Slot List
 getTimeSlotList
-    : SHOW (TIMESLOTID|TIMEPARTITION) OF path=prefixPath  (WHERE (SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
-        |(DEVICE|DEVICEID) operator_eq device=prefixPath | REGIONID operator_eq regionId=INTEGER_LITERAL))?
+    : SHOW (TIMESLOTID|TIMEPARTITION) WHERE ((DEVICE|DEVICEID) operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
+        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+    ;
+
+// ---- Count Time Slot List
+countTimeSlotList
+    : COUNT (TIMESLOTID|TIMEPARTITION) WHERE ((DEVICE|DEVICEID) operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
         (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // ---- Get Series Slot List
 getSeriesSlotList
-    : SHOW SERIESSLOTID OF path=prefixPath
+    : SHOW (DATA|SCHEMA) SERIESSLOTID WHERE DATABASE operator_eq database=prefixPath
     ;
+
+
 
 // ---- Migrate Region
 migrateRegion

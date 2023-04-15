@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -40,16 +41,22 @@ import java.util.List;
 public class GetSeriesSlotListStatement extends Statement implements IConfigStatement {
 
   private final String storageGroup;
+  private final TConsensusGroupType partitionType;
 
-  public GetSeriesSlotListStatement(String storageGroup) {
+
+  public GetSeriesSlotListStatement(String storageGroup, TConsensusGroupType partitionType) {
     super();
     this.storageGroup = storageGroup;
+    this.partitionType = partitionType;
   }
 
   public String getStorageGroup() {
     return storageGroup;
   }
 
+  public TConsensusGroupType getPartitionType() {
+    return partitionType;
+  }
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitGetSeriesSlotList(this, context);

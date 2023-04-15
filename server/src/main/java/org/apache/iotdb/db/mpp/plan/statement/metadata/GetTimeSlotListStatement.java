@@ -42,9 +42,7 @@ import java.util.List;
  */
 public class GetTimeSlotListStatement extends Statement implements IConfigStatement {
 
-  private final String storageGroup;
-
-  private TSeriesPartitionSlot seriesSlotId;
+  private String storageGroup;
 
   private String device;
 
@@ -54,8 +52,11 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   private long endTime = -1;
 
-  public GetTimeSlotListStatement(String storageGroup) {
+  public GetTimeSlotListStatement() {
     super();
+  }
+
+  public void setStorageGroup(String storageGroup) {
     this.storageGroup = storageGroup;
   }
 
@@ -63,9 +64,6 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
     return storageGroup;
   }
 
-  public TSeriesPartitionSlot getSeriesSlotId() {
-    return seriesSlotId;
-  }
 
   public long getStartTime() {
     return startTime;
@@ -81,10 +79,6 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   public void setEndTime(long endTime) {
     this.endTime = endTime;
-  }
-
-  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
-    this.seriesSlotId = seriesSlotId;
   }
 
   public void setDevice(String device) {
