@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -42,7 +41,7 @@ import java.util.List;
  */
 public class GetTimeSlotListStatement extends Statement implements IConfigStatement {
 
-  private String storageGroup;
+  private String database;
 
   private String device;
 
@@ -56,14 +55,13 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
     super();
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
-
 
   public long getStartTime() {
     return startTime;
@@ -110,7 +108,7 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
   @Override
   public List<PartialPath> getPaths() {
     try {
-      return Collections.singletonList(new PartialPath(storageGroup));
+      return Collections.singletonList(new PartialPath(database));
     } catch (IllegalPathException e) {
       return new ArrayList<>();
     }

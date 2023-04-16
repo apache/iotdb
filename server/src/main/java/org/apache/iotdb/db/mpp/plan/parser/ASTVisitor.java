@@ -3338,7 +3338,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
     GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(type);
     if (ctx.database != null) {
-      getRegionIdStatement.setStorageGroup(ctx.database.getText());
+      getRegionIdStatement.setDatabase(ctx.database.getText());
     } else {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
@@ -3351,16 +3351,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
     TConsensusGroupType type =
-            ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    return new GetSeriesSlotListStatement(ctx.database.getText(),type);
+        ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
+    return new GetSeriesSlotListStatement(ctx.database.getText(), type);
   }
 
   @Override
   public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
-    GetTimeSlotListStatement getTimeSlotListStatement =
-        new GetTimeSlotListStatement();
+    GetTimeSlotListStatement getTimeSlotListStatement = new GetTimeSlotListStatement();
     if (ctx.database != null) {
-      getTimeSlotListStatement.setStorageGroup(ctx.database.getText());
+      getTimeSlotListStatement.setDatabase(ctx.database.getText());
     } else if (ctx.device != null) {
       getTimeSlotListStatement.setDevice(ctx.device.getText());
     } else if (ctx.regionId != null) {
@@ -3379,7 +3378,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCountTimeSlotList(IoTDBSqlParser.CountTimeSlotListContext ctx) {
     CountTimeSlotListStatement countTimeSlotListStatement = new CountTimeSlotListStatement();
     if (ctx.database != null) {
-      countTimeSlotListStatement.setStorageGroup(ctx.database.getText());
+      countTimeSlotListStatement.setDatabase(ctx.database.getText());
     } else if (ctx.device != null) {
       countTimeSlotListStatement.setDevice(ctx.device.getText());
     } else if (ctx.regionId != null) {
@@ -3393,6 +3392,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     return countTimeSlotListStatement;
   }
+
   @Override
   public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
     return new MigrateRegionStatement(

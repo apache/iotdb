@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -31,59 +30,65 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * GET REGIONID statement
- *
- * <p>Here is the syntax definition:
- *
- * <p>SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
- * seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID
- * operator_eq timeSlot=INTEGER_LITERAL| TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
- */
-public class GetRegionIdStatement extends Statement implements IConfigStatement {
+public class CountTimeSlotListStatement extends Statement implements IConfigStatement {
 
   private String database;
 
   private String device;
-  private final TConsensusGroupType partitionType;
-  private long timeStamp = -1;
 
-  public GetRegionIdStatement(TConsensusGroupType partitionType) {
+  private long regionId = -1;
+
+  private long startTime = -1;
+
+  private long endTime = -1;
+
+  public CountTimeSlotListStatement() {
     super();
-    this.partitionType = partitionType;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public TConsensusGroupType getPartitionType() {
-    return partitionType;
-  }
-
-  public String getDevice() {
-    return device;
-  }
-
-  public long getTimeStamp() {
-    return timeStamp;
   }
 
   public void setDatabase(String database) {
     this.database = database;
   }
 
+  public String getDatabase() {
+    return database;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
   public void setDevice(String device) {
     this.device = device;
   }
 
-  public void setTimeStamp(long timeStamp) {
-    this.timeStamp = timeStamp;
+  public String getDevice() {
+    return this.device;
+  }
+
+  public void setRegionId(long regionId) {
+    this.regionId = regionId;
+  }
+
+  public long getRegionId() {
+    return this.regionId;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitGetRegionId(this, context);
+    return visitor.visitCountTimeSlotList(this, context);
   }
 
   @Override

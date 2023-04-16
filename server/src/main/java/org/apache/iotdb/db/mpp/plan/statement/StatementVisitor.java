@@ -32,47 +32,7 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemp
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropPipePluginStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.*;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
@@ -481,6 +441,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitGetTimeSlotList(GetTimeSlotListStatement getTimeSlotListStatement, C context) {
     return visitStatement(getTimeSlotListStatement, context);
+  }
+
+  public R visitCountTimeSlotList(
+      CountTimeSlotListStatement countTimeSlotListStatement, C context) {
+    return visitStatement(countTimeSlotListStatement, context);
   }
 
   public R visitMigrateRegion(MigrateRegionStatement migrateRegionStatement, C context) {
