@@ -103,6 +103,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
@@ -199,6 +200,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -855,7 +857,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
-    return RpcUtils.SUCCESS_STATUS;
+    IClientSession session = new InternalClientSession(req.getModelId());
+    SESSION_MANAGER.registerSession(session);
+    SESSION_MANAGER.supplySession(
+        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
+
+    try {
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
+
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.execute(
+              deleteTimeSeriesStatement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+      return result.status;
+    } catch (Exception e) {
+      return onQueryException(e, OperationType.DELETE_TIMESERIES);
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   @Override

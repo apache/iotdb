@@ -181,6 +181,7 @@ export const zhSidebar = sidebar({
         { text: '采样函数', link: 'Sample' },
         { text: '时间序列处理', link: 'Time-Series' },
         { text: 'Lambda 表达式', link: 'Lambda' },
+        { text: '条件表达式', link: 'Conditional' },
 
         // IoTDB-Quality
         { text: '数据画像', link: 'Data-Profiling' },
@@ -282,7 +283,6 @@ export const zhSidebar = sidebar({
         { text: '分布式部署', link: 'Cluster-Setup' },
         { text: '分布式运维命令', link: 'Cluster-Maintenance' },
         { text: '部署推荐', link: 'Deployment-Recommendation' },
-        { text: '集群部署工具', link: 'IoTDB-Deploy' },
       ],
     },
     {

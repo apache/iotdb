@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.SinkChannel;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.source.PipelineSourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -62,6 +63,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -390,17 +392,86 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  class ISinkChannelListenerImpl implements SinkListener {
+
+    private final TFragmentInstanceId shuffleSinkHandleId;
+
+    private final FragmentInstanceContext context;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    private final AtomicInteger cnt;
+
+    private volatile boolean hasDecremented = false;
+
+    public ISinkChannelListenerImpl(
+        TFragmentInstanceId localFragmentInstanceId,
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+        AtomicInteger cnt) {
+      this.shuffleSinkHandleId = localFragmentInstanceId;
+      this.context = context;
+      this.onFailureCallback = onFailureCallback;
+      this.cnt = cnt;
+    }
+
+    @Override
+    public void onFinish(ISink sink) {
+      LOGGER.debug("[SkHListenerOnFinish]");
+      decrementCnt();
+    }
+
+    @Override
+    public void onEndOfBlocks(ISink sink) {
+      LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+    }
+
+    @Override
+    public Optional<Throwable> onAborted(ISink sink) {
+      LOGGER.debug("[SkHListenerOnAbort]");
+      decrementCnt();
+      return context.getFailureCause();
+    }
+
+    @Override
+    public void onFailure(ISink sink, Throwable t) {
+      LOGGER.warn("ISinkChannel failed due to", t);
+      decrementCnt();
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+
+    private synchronized void decrementCnt() {
+      if (!hasDecremented) {
+        hasDecremented = true;
+        if (cnt.decrementAndGet() == 0) {
+          closeShuffleSinkHandle();
+        }
+      }
+    }
+
+    private void closeShuffleSinkHandle() {
+      ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
+      if (sinkHandle != null) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Close ShuffleSinkHandle: {}", shuffleSinkHandleId);
+        }
+        sinkHandle.close();
+      }
+    }
+  }
+
   /**
    * Listen to the state changes of a sink handle of pipeline. And since the finish of pipeline sink
    * handle doesn't equal the finish of the whole fragment, therefore we don't need to notify
    * fragment context. But if it's aborted or failed, it can lead to the total fail.
    */
-  static class SinkListenerImpl implements SinkListener {
+  static class PipelineSinkListenerImpl implements SinkListener {
 
     private final FragmentInstanceContext context;
     private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
 
-    public SinkListenerImpl(
+    public PipelineSinkListenerImpl(
         FragmentInstanceContext context,
         IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
       this.context = context;
@@ -483,7 +554,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
-      FragmentInstanceContext instanceContext) {
+      FragmentInstanceContext instanceContext,
+      AtomicInteger cnt) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -508,7 +580,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return new LocalSinkChannel(
         localFragmentInstanceId,
         queue,
-        new SinkListenerImpl(instanceContext, instanceContext::failed));
+        new ISinkChannelListenerImpl(
+            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
   }
 
   /**
@@ -528,7 +601,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     queue.allowAddingTsBlock();
     return new LocalSinkChannel(
         queue,
-        new SinkListenerImpl(driverContext.getFragmentInstanceContext(), driverContext::failed));
+        new PipelineSinkListenerImpl(
+            driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
   private ISinkChannel createSinkChannel(
@@ -539,7 +613,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
-      FragmentInstanceContext instanceContext) {
+      FragmentInstanceContext instanceContext,
+      AtomicInteger cnt) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -558,7 +633,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localMemoryManager,
         executorService,
         tsBlockSerdeFactory.get(),
-        new SinkListenerImpl(instanceContext, instanceContext::failed),
+        new ISinkChannelListenerImpl(
+            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
         mppDataExchangeServiceClientManager);
   }
 
@@ -577,6 +653,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           "ShuffleSinkHandle for " + localFragmentInstanceId + " exists.");
     }
 
+    int channelNum = downStreamChannelLocationList.size();
+    AtomicInteger cnt = new AtomicInteger(channelNum);
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -585,7 +663,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localFragmentInstanceId,
                         localPlanNodeId,
                         downStreamChannelLocation,
-                        instanceContext))
+                        instanceContext,
+                        cnt))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -604,14 +683,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
-      FragmentInstanceContext instanceContext) {
+      FragmentInstanceContext instanceContext,
+      AtomicInteger cnt) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
           downStreamChannelLocation.getRemoteFragmentInstanceId(),
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
-          instanceContext);
+          instanceContext,
+          cnt);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -619,7 +700,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemoteFragmentInstanceId(),
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
-          instanceContext);
+          instanceContext,
+          cnt);
     }
   }
 
@@ -632,7 +714,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Create local source handle for {}", context.getDriverTaskID());
     }
-    return new LocalSourceHandle(
+    return new PipelineSourceHandle(
         queue,
         new PipelineSourceHandleListenerImpl(context::failed),
         context.getDriverTaskID().toString());

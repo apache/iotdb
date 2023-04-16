@@ -683,6 +683,9 @@ public class IoTDBConfig {
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
+  /** How much memory may be used in ONE SELECT INTO operation (in Byte). */
+  private long intoOperationBufferSizeInByte = 100 * 1024 * 1024L;
+
   /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
    * statements.
@@ -1174,7 +1177,7 @@ public class IoTDBConfig {
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
-    pipeTemporaryLibDir = addDataHomeDir(pipeDir);
+    pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     mqttDir = addDataHomeDir(mqttDir);
 
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -1919,12 +1922,20 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
-  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
-    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  public long getIntoOperationBufferSizeInByte() {
+    return intoOperationBufferSizeInByte;
+  }
+
+  public void setIntoOperationBufferSizeInByte(long intoOperationBufferSizeInByte) {
+    this.intoOperationBufferSizeInByte = intoOperationBufferSizeInByte;
   }
 
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
 
   public int getIntoOperationExecutionThreadCount() {

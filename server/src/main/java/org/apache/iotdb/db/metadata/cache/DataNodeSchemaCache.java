@@ -218,12 +218,12 @@ public class DataNodeSchemaCache {
 
   /** get SchemaCacheEntry and update last cache */
   public void updateLastCache(
-      PartialPath seriesPath,
+      PartialPath devicePath,
+      String measurement,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    SchemaCacheEntry entry =
-        dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
+    SchemaCacheEntry entry = dualKeyCache.get(devicePath, measurement);
     if (null == entry) {
       return;
     }
