@@ -727,24 +727,25 @@ public class LogicalPlanBuilder {
           tagValuesToGroupedTimeseriesOperands.get(tagValues);
       List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
 
-      Iterator<Expression> iter = groupedTimeseriesOperands.keySet().iterator();
+      // Bind an AggregationDescriptor for each GroupByTagOutputExpression
       for (Expression groupByTagOutputExpression : groupByTagOutputExpressions) {
-        if (!iter.hasNext()) {
-          aggregationDescriptors.add(null);
-          continue;
+        boolean added = false;
+        for (Expression expression : groupedTimeseriesOperands.keySet()) {
+          if (expression.equals(groupByTagOutputExpression)) {
+            String functionName = ((FunctionExpression) expression).getFunctionName();
+            CrossSeriesAggregationDescriptor aggregationDescriptor =
+                new CrossSeriesAggregationDescriptor(
+                    functionName,
+                    curStep,
+                    groupedTimeseriesOperands.get(expression),
+                    ((FunctionExpression) expression).getFunctionAttributes(),
+                    expression.getExpressions().get(0));
+            aggregationDescriptors.add(aggregationDescriptor);
+            added = true;
+            break;
+          }
         }
-        Expression next = iter.next();
-        if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName();
-          CrossSeriesAggregationDescriptor aggregationDescriptor =
-              new CrossSeriesAggregationDescriptor(
-                  functionName,
-                  curStep,
-                  groupedTimeseriesOperands.get(next),
-                  ((FunctionExpression) next).getFunctionAttributes(),
-                  next.getExpressions().get(0));
-          aggregationDescriptors.add(aggregationDescriptor);
-        } else {
+        if (!added) {
           aggregationDescriptors.add(null);
         }
       }

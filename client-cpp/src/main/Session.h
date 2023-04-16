@@ -150,7 +150,8 @@ namespace CompressionType {
         PAA = (char) 5,
         PLA = (char) 6,
         LZ4 = (char) 7,
-        ZSTD = (char) 8
+        ZSTD = (char) 8,
+        LZMA2 = (char) 9,
     };
 }
 
@@ -180,7 +181,9 @@ namespace TSEncoding {
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
         FREQ = (char) 10,
-	CHIMP = (char) 11
+	    CHIMP = (char) 11,
+	    SPRINTZ = (char) 12,
+	    RLBE = (char) 13
     };
 }
 

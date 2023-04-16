@@ -489,7 +489,7 @@ public class QueryStatement extends Statement {
         }
       }
     } else {
-      if (isGroupBy() || isGroupByLevel()) {
+      if (isGroupBy() || isGroupByLevel() || isGroupByTag()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
