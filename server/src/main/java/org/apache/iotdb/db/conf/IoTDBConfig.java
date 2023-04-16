@@ -282,7 +282,7 @@ public class IoTDBConfig {
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
-  private int concurrentSubRawQueryThread = 8;
+  private int concurrentSubRawQueryThread = 0;
 
   /** Blocking queue size for read task in raw data query. */
   private int rawQueryBlockingQueueCapacity = 5;
