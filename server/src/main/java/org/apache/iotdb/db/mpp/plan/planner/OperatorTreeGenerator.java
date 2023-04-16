@@ -222,6 +222,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1607,10 +1608,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sortItemList,
         sortItemIndexList,
         sortItemDataTypeList);
+
+    String filePrefix =
+        operatorContext
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getId()
+                .getFragmentInstanceId()
+            + File.separator
+            + operatorContext.getDriverContext().getPipelineId()
+            + File.separator
+            + node.getPlanNodeId();
+
     return new SortOperator(
         operatorContext,
         child,
         dataTypes,
+        filePrefix,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 

@@ -37,7 +37,7 @@ public class TsBlockSerde {
    * @param byteBuffer serialized tsblock.
    * @return Deserialized tsblock.
    */
-  public TsBlock deserialize(ByteBuffer byteBuffer) {
+  public static TsBlock deserialize(ByteBuffer byteBuffer) {
 
     // Serialized tsblock:
     //    +-------------+---------------+---------+------------+-----------+----------+
@@ -86,7 +86,7 @@ public class TsBlockSerde {
    * @param tsBlock The tsblock to serialize.
    * @return Serialized tsblock.
    */
-  public ByteBuffer serialize(TsBlock tsBlock) throws IOException {
+  public static ByteBuffer serialize(TsBlock tsBlock) throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
