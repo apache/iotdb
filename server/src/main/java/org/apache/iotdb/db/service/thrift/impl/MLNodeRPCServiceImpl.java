@@ -134,6 +134,9 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
       t = e;
       resp.setStatus(onQueryException(e, OperationType.EXECUTE_STATEMENT));
       return resp;
+    } catch (Error error) {
+      t = error;
+      throw error;
     } finally {
       if (finished) {
         COORDINATOR.cleanupQueryExecution(resp.queryId, t);
@@ -169,6 +172,9 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
       t = e;
       resp.setStatus(onQueryException(e, OperationType.FETCH_RESULTS));
       return resp;
+    } catch (Error error) {
+      t = error;
+      throw error;
     } finally {
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId, t);

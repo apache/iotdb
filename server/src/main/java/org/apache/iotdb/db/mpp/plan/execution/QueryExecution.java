@@ -129,7 +129,7 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
-  private AtomicBoolean stopped;
+  private final AtomicBoolean stopped;
 
   private long totalExecutionTime;
 
@@ -179,7 +179,7 @@ public class QueryExecution implements IQueryExecution {
               Throwable cause = stateMachine.getFailureException();
               releaseResource(cause);
             }
-            this.stop();
+            this.stop(null);
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -254,6 +254,8 @@ public class QueryExecution implements IQueryExecution {
     partitionFetcher.invalidAllCache();
     // clear runtime variables in MPPQueryContext
     context.prepareForRetry();
+    // re-stop
+    this.stopped.compareAndSet(true, false);
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
@@ -357,16 +359,16 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the workers for this query
-  public void stop() {
+  public void stop(Throwable t) {
     // only stop once
     if (stopped.compareAndSet(false, true) && this.scheduler != null) {
-      this.scheduler.stop();
+      this.scheduler.stop(t);
     }
   }
 
   // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup() {
-    stop();
+    stop(null);
     releaseResource();
   }
 
@@ -394,7 +396,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup(Throwable t) {
-    stop();
+    stop(t);
     releaseResource(t);
   }
 

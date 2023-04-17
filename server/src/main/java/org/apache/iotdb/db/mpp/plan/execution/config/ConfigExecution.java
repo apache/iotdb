@@ -145,7 +145,7 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public void stop() {}
+  public void stop(Throwable t) {}
 
   @Override
   public void stopAndCleanup() {}

@@ -185,6 +185,9 @@ class ClusterSchemaFetchExecutor {
         result.setDatabases(databaseSet);
         return result;
       }
+    } catch (Throwable throwable) {
+      t = throwable;
+      throw throwable;
     } finally {
       coordinator.cleanupQueryExecution(queryId, t);
     }
