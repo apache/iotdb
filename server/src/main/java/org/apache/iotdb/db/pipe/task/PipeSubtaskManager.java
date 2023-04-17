@@ -63,6 +63,7 @@ public class PipeSubtaskManager {
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
+
   private static class PipeSubtaskManagerHolder {
     private static PipeSubtaskManager instance = null;
   }
