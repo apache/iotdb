@@ -16,42 +16,53 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
-public class DropPipeSinkPlan extends ConfigPhysicalPlan {
+@Deprecated
+public class SetPipeStatusPlanV1 extends ConfigPhysicalPlan {
+  private String pipeName;
 
-  private String pipeSinkName;
+  private PipeStatus pipeStatus;
 
-  public DropPipeSinkPlan() {
-    super(ConfigPhysicalPlanType.DropPipeSink);
+  public SetPipeStatusPlanV1() {
+    super(ConfigPhysicalPlanType.SetPipeStatusV1);
   }
 
-  public DropPipeSinkPlan(String pipeSinkName) {
-    this();
-    this.pipeSinkName = pipeSinkName;
+  public SetPipeStatusPlanV1(String pipeName, PipeStatus status) {
+    super(ConfigPhysicalPlanType.SetPipeStatusV1);
+    this.pipeName = pipeName;
+    this.pipeStatus = status;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public PipeStatus getPipeStatus() {
+    return pipeStatus;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeSinkName, stream);
+    ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write((byte) pipeStatus.ordinal(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
+    pipeName = ReadWriteIOUtils.readString(buffer);
+    pipeStatus = PipeStatus.values()[ReadWriteIOUtils.readByte(buffer)];
   }
 }

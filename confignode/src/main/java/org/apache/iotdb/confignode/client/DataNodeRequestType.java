@@ -69,8 +69,8 @@ public enum DataNodeRequestType {
   /** Pipe Task */
   CREATE_PIPE,
   /**
-   * DROP_PIPE, START_PIPE, STOP_PIPE
-   * Merge them into OPERATE_PIPE since these requests only require pipe name
+   * DROP_PIPE, START_PIPE, STOP_PIPE Merge them into OPERATE_PIPE since these requests only require
+   * pipe name
    */
   OPERATE_PIPE,
 
@@ -94,9 +94,7 @@ public enum DataNodeRequestType {
   DEACTIVATE_TEMPLATE,
   COUNT_PATHS_USING_TEMPLATE,
 
-  /**
-   * @TODO Need to migrate to 'Node Maintenance'
-   */
+  /** @TODO Need to migrate to 'Node Maintenance' */
   KILL_QUERY_INSTANCE,
 
   /** ML Model */

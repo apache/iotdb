@@ -16,52 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
-public class SetPipeStatusPlan extends ConfigPhysicalPlan {
+@Deprecated
+public class DropPipePlanV1 extends ConfigPhysicalPlan {
+
   private String pipeName;
 
-  private PipeStatus pipeStatus;
-
-  public SetPipeStatusPlan() {
-    super(ConfigPhysicalPlanType.SetPipeStatus);
+  public DropPipePlanV1() {
+    super(ConfigPhysicalPlanType.DropPipeV1);
   }
 
-  public SetPipeStatusPlan(String pipeName, PipeStatus status) {
-    super(ConfigPhysicalPlanType.SetPipeStatus);
+  public DropPipePlanV1(String pipeName) {
+    this();
     this.pipeName = pipeName;
-    this.pipeStatus = status;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public PipeStatus getPipeStatus() {
-    return pipeStatus;
-  }
-
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(pipeName, stream);
-    ReadWriteIOUtils.write((byte) pipeStatus.ordinal(), stream);
+    BasicStructureSerDeUtil.write(pipeName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = ReadWriteIOUtils.readString(buffer);
-    pipeStatus = PipeStatus.values()[ReadWriteIOUtils.readByte(buffer)];
+    pipeName = BasicStructureSerDeUtil.readString(buffer);
   }
 }

@@ -28,13 +28,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
+@Deprecated
 public class RecordPipeMessagePlan extends ConfigPhysicalPlan {
 
   private String pipeName;
   private PipeMessage pipeMessage;
 
   public RecordPipeMessagePlan() {
-    super(ConfigPhysicalPlanType.RecordPipeMessage);
+    super(ConfigPhysicalPlanType.RecordPipeMessageV1);
   }
 
   public RecordPipeMessagePlan(String pipeName, PipeMessage pipeMessage) {

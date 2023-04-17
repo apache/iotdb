@@ -27,15 +27,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
-public class DropPipePlan extends ConfigPhysicalPlan {
-
+@Deprecated
+public class ShowPipePlanV1 extends ConfigPhysicalPlan {
+  /** empty pipeName means show all PIPE */
   private String pipeName;
 
-  public DropPipePlan() {
-    super(ConfigPhysicalPlanType.DropPipe);
+  public ShowPipePlanV1() {
+    super(ConfigPhysicalPlanType.ShowPipeV1);
   }
 
-  public DropPipePlan(String pipeName) {
+  public ShowPipePlanV1(String pipeName) {
     this();
     this.pipeName = pipeName;
   }

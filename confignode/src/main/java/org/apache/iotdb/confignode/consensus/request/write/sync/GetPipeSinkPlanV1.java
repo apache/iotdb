@@ -18,41 +18,41 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
-public class CreatePipeSinkPlan extends ConfigPhysicalPlan {
+@Deprecated
+public class GetPipeSinkPlanV1 extends ConfigPhysicalPlan {
+  /** empty pipeSinkName means get all PIPESINK */
+  private String pipeSinkName;
 
-  private TPipeSinkInfo pipeSinkInfo;
-
-  public CreatePipeSinkPlan() {
-    super(ConfigPhysicalPlanType.CreatePipeSink);
+  public GetPipeSinkPlanV1() {
+    super(ConfigPhysicalPlanType.GetPipeSinkV1);
   }
 
-  public CreatePipeSinkPlan(TPipeSinkInfo pipeSinkInfo) {
+  public GetPipeSinkPlanV1(String pipeSinkName) {
     this();
-    this.pipeSinkInfo = pipeSinkInfo;
+    this.pipeSinkName = pipeSinkName;
   }
 
-  public TPipeSinkInfo getPipeSinkInfo() {
-    return pipeSinkInfo;
+  public String getPipeSinkName() {
+    return pipeSinkName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftConfigNodeSerDeUtils.serializeTPipeSinkInfo(pipeSinkInfo, stream);
+    BasicStructureSerDeUtil.write(pipeSinkName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeSinkInfo = ThriftConfigNodeSerDeUtils.deserializeTPipeSinkInfo(buffer);
+    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
   }
 }

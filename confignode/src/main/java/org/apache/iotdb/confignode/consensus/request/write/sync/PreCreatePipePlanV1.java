@@ -27,15 +27,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
-public class PreCreatePipePlan extends ConfigPhysicalPlan {
+@Deprecated
+public class PreCreatePipePlanV1 extends ConfigPhysicalPlan {
 
   private PipeInfo pipeInfo;
 
-  public PreCreatePipePlan() {
-    super(ConfigPhysicalPlanType.PreCreatePipe);
+  public PreCreatePipePlanV1() {
+    super(ConfigPhysicalPlanType.PreCreatePipeV1);
   }
 
-  public PreCreatePipePlan(PipeInfo pipeInfo) {
+  public PreCreatePipePlanV1(PipeInfo pipeInfo) {
     this();
     this.pipeInfo = pipeInfo;
   }

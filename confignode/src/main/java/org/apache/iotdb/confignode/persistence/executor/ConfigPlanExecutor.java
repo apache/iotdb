@@ -405,14 +405,14 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:
         return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
-      case CreatePipeSink:
-      case DropPipe:
-      case DropPipeSink:
-      case GetPipeSink:
-      case PreCreatePipe:
-      case RecordPipeMessage:
-      case SetPipeStatus:
-      case ShowPipe:
+      case CreatePipeSinkV1:
+      case DropPipeV1:
+      case DropPipeSinkV1:
+      case GetPipeSinkV1:
+      case PreCreatePipeV1:
+      case RecordPipeMessageV1:
+      case SetPipeStatusV1:
+      case ShowPipeV1:
         return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
       case setSpaceQuota:
         return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);

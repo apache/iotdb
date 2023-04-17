@@ -114,15 +114,23 @@ public enum ConfigPhysicalPlanType {
   UnsetTemplate((short) 810),
   DropSchemaTemplate((short) 811),
 
-  /** Old Sync, restored for upgrade */
-  CreatePipeSink((short) 900),
-  DropPipeSink((short) 901),
-  GetPipeSink((short) 902),
-  PreCreatePipe((short) 903),
-  SetPipeStatus((short) 904),
-  DropPipe((short) 905),
-  ShowPipe((short) 906),
-  RecordPipeMessage((short) 907),
+  /** Deprecated types for sync, restored them for upgrade */
+  @Deprecated
+  CreatePipeSinkV1((short) 900),
+  @Deprecated
+  DropPipeSinkV1((short) 901),
+  @Deprecated
+  GetPipeSinkV1((short) 902),
+  @Deprecated
+  PreCreatePipeV1((short) 903),
+  @Deprecated
+  SetPipeStatusV1((short) 904),
+  @Deprecated
+  DropPipeV1((short) 905),
+  @Deprecated
+  ShowPipeV1((short) 906),
+  @Deprecated
+  RecordPipeMessageV1((short) 907),
 
   /** Trigger */
   AddTriggerInTable((short) 1000),
@@ -156,7 +164,7 @@ public enum ConfigPhysicalPlanType {
   GetPipePluginTable((short) 1302),
   GetPipePluginJar((short) 1303),
 
-  /** New Pipe */
+  /** Pipe Task */
   CreatePipeV2((short) 1400),
   SetPipeStatusV2((short) 1401),
   DropPipeV2((short) 1402),

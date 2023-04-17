@@ -102,13 +102,13 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
@@ -964,9 +964,9 @@ public class ConfigPhysicalPlanSerDeTest {
             .setPipeSinkName("demo")
             .setPipeSinkType("IoTDB")
             .setAttributes(attributes);
-    CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan(pipeSinkInfo);
-    CreatePipeSinkPlan createPipeSinkPlan1 =
-        (CreatePipeSinkPlan)
+    CreatePipeSinkPlanV1 createPipeSinkPlan = new CreatePipeSinkPlanV1(pipeSinkInfo);
+    CreatePipeSinkPlanV1 createPipeSinkPlan1 =
+        (CreatePipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(createPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(
         createPipeSinkPlan.getPipeSinkInfo(), createPipeSinkPlan1.getPipeSinkInfo());
@@ -974,23 +974,23 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropPipeSinkPlanTest() throws IOException {
-    DropPipeSinkPlan dropPipeSinkPlan = new DropPipeSinkPlan("demo");
-    DropPipeSinkPlan dropPipeSinkPlan1 =
-        (DropPipeSinkPlan)
+    DropPipeSinkPlanV1 dropPipeSinkPlan = new DropPipeSinkPlanV1("demo");
+    DropPipeSinkPlanV1 dropPipeSinkPlan1 =
+        (DropPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(dropPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(dropPipeSinkPlan.getPipeSinkName(), dropPipeSinkPlan1.getPipeSinkName());
   }
 
   @Test
   public void GetPipeSinkPlanTest() throws IOException {
-    GetPipeSinkPlan getPipeSinkPlan = new GetPipeSinkPlan("demo");
-    GetPipeSinkPlan getPipeSinkPlan1 =
-        (GetPipeSinkPlan)
+    GetPipeSinkPlanV1 getPipeSinkPlan = new GetPipeSinkPlanV1("demo");
+    GetPipeSinkPlanV1 getPipeSinkPlan1 =
+        (GetPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(getPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(getPipeSinkPlan.getPipeSinkName(), getPipeSinkPlan1.getPipeSinkName());
-    GetPipeSinkPlan getPipeSinkPlanWithNullName = new GetPipeSinkPlan();
-    GetPipeSinkPlan getPipeSinkPlanWithNullName1 =
-        (GetPipeSinkPlan)
+    GetPipeSinkPlanV1 getPipeSinkPlanWithNullName = new GetPipeSinkPlanV1();
+    GetPipeSinkPlanV1 getPipeSinkPlanWithNullName1 =
+        (GetPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(getPipeSinkPlanWithNullName.serializeToByteBuffer());
     Assert.assertEquals(
         getPipeSinkPlanWithNullName.getPipeSinkName(),
@@ -1002,9 +1002,9 @@ public class ConfigPhysicalPlanSerDeTest {
     PipeInfo pipeInfo =
         new TsFilePipeInfo(
             "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
-    PreCreatePipePlan PreCreatePipePlan = new PreCreatePipePlan(pipeInfo);
-    PreCreatePipePlan PreCreatePipePlan1 =
-        (PreCreatePipePlan)
+    PreCreatePipePlanV1 PreCreatePipePlan = new PreCreatePipePlanV1(pipeInfo);
+    PreCreatePipePlanV1 PreCreatePipePlan1 =
+        (PreCreatePipePlanV1)
             ConfigPhysicalPlan.Factory.create(PreCreatePipePlan.serializeToByteBuffer());
     Assert.assertEquals(PreCreatePipePlan.getPipeInfo(), PreCreatePipePlan1.getPipeInfo());
   }
@@ -1028,9 +1028,10 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlanTest() throws IOException {
-    SetPipeStatusPlan setPipeStatusPlan = new SetPipeStatusPlan("pipe", PipeStatus.PARTIAL_CREATE);
-    SetPipeStatusPlan setPipeStatusPlan1 =
-        (SetPipeStatusPlan)
+    SetPipeStatusPlanV1 setPipeStatusPlan =
+        new SetPipeStatusPlanV1("pipe", PipeStatus.PARTIAL_CREATE);
+    SetPipeStatusPlanV1 setPipeStatusPlan1 =
+        (SetPipeStatusPlanV1)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlan.getPipeName(), setPipeStatusPlan1.getPipeName());
     Assert.assertEquals(setPipeStatusPlan.getPipeStatus(), setPipeStatusPlan1.getPipeStatus());
@@ -1083,13 +1084,13 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ShowPipePlanTest() throws IOException {
-    ShowPipePlan showPipePlan = new ShowPipePlan("demo");
-    ShowPipePlan showPipePlan1 =
-        (ShowPipePlan) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
+    ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
+    ShowPipePlanV1 showPipePlan1 =
+        (ShowPipePlanV1) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
     Assert.assertEquals(showPipePlan.getPipeName(), showPipePlan1.getPipeName());
-    ShowPipePlan showPipePlanWithNullName = new ShowPipePlan();
-    ShowPipePlan showPipePlanWithNullName1 =
-        (ShowPipePlan)
+    ShowPipePlanV1 showPipePlanWithNullName = new ShowPipePlanV1();
+    ShowPipePlanV1 showPipePlanWithNullName1 =
+        (ShowPipePlanV1)
             ConfigPhysicalPlan.Factory.create(showPipePlanWithNullName.serializeToByteBuffer());
     Assert.assertEquals(
         showPipePlanWithNullName.getPipeName(), showPipePlanWithNullName1.getPipeName());
