@@ -49,4 +49,13 @@ public class TemplateImcompatibeException extends MetadataException {
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
+
+  public TemplateImcompatibeException(String templateName, PartialPath templateSetPath) {
+    super(
+        String.format(
+            "Cannot set schema template [%s] to path [%s] since there's timeseries under path [%s], ",
+            templateName, templateSetPath, templateSetPath),
+        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
+  }
 }

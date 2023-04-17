@@ -354,6 +354,16 @@ struct TCountPathsUsingTemplateResp{
   2: optional i64 count
 }
 
+struct TCheckTimeSeriesExistenceReq{
+  1: required binary patternTree
+  2: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCheckTimeSeriesExistenceResp{
+  1: required common.TSStatus status
+  2: optional i64 count
+}
+
 struct TCreatePipeOnDataNodeReq{
   1: required binary pipeInfo
 }
@@ -739,6 +749,8 @@ service IDataNodeRPCService {
   common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
 
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
+
+  TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 
  /**
   * Create PIPE on DataNode

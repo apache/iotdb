@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -38,10 +43,13 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,11 +57,17 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SetTemplateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTemplateState> {
@@ -94,7 +108,6 @@ public class SetTemplateProcedure
           LOGGER.info(
               "Pre release schema template {} set on path {}", templateName, templateSetPath);
           preReleaseTemplate(env);
-          setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
           break;
         case VALIDATE_TIMESERIES_EXISTENCE:
           LOGGER.info(
@@ -102,7 +115,6 @@ public class SetTemplateProcedure
               templateSetPath,
               templateName);
           validateTimeSeriesExistence(env);
-          setNextState(SetTemplateState.COMMIT_SET);
           break;
         case COMMIT_SET:
           LOGGER.info("Commit set schema template {} on path {}", templateName, templateSetPath);
@@ -214,7 +226,90 @@ public class SetTemplateProcedure
     return templateResp.getTemplateList().get(0);
   }
 
-  private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {}
+  private void validateTimeSeriesExistence(ConfigNodeProcedureEnv env) {
+    PathPatternTree patternTree = new PathPatternTree();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    PartialPath path = null;
+    try {
+      path = new PartialPath(templateSetPath);
+      patternTree.appendPathPattern(path);
+      patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.serialize(dataOutputStream);
+    } catch (IllegalPathException | IOException ignored) {
+    }
+    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+
+    List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
+    DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>(
+                env,
+                relatedSchemaRegionGroup,
+                false,
+                DataNodeRequestType.CHECK_TIMESERIES_EXISTENCE,
+                ((dataNodeLocation, consensusGroupIdList) ->
+                    new TCheckTimeSeriesExistenceReq(patternTreeBytes, consensusGroupIdList))) {
+
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCheckTimeSeriesExistenceResp response) {
+                respList.add(response);
+                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  return failedRegionList;
+                }
+
+                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  for (int i = 0; i < subStatus.size(); i++) {
+                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+                return failedRegionList;
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                setFailure(
+                    new ProcedureException(
+                        new MetadataException(
+                            String.format(
+                                "Set template %s to %s failed when [check timeseries existence on DataNode] because all replicaset of schemaRegion %s failed. %s",
+                                templateName,
+                                templateSetPath,
+                                consensusGroupId.id,
+                                dataNodeLocationSet))));
+                interruptTask();
+              }
+            };
+    regionTask.execute();
+    if (isFailed()) {
+      return;
+    }
+
+    long result = 0;
+    for (TCheckTimeSeriesExistenceResp resp : respList) {
+      result += resp.getCount();
+    }
+
+    if (result == 0) {
+      setNextState(SetTemplateState.COMMIT_SET);
+    } else {
+      setFailure(new ProcedureException(new TemplateImcompatibeException(templateName, path)));
+    }
+  }
 
   private void commitSetTemplate(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =

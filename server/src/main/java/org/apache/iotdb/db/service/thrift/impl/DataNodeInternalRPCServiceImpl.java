@@ -63,6 +63,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -75,6 +77,8 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceFailureInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -126,6 +130,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
@@ -419,7 +425,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     AtomicInteger preDeletedNum = new AtomicInteger(0);
     TSStatus executionResult =
-        executeSchemaDeletionTask(
+        executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
               String storageGroup =
@@ -451,7 +457,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    return executeSchemaDeletionTask(
+    return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
           String storageGroup =
@@ -528,7 +534,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<PartialPath> pathList = patternTree.getAllPathPatterns();
-    return executeSchemaDeletionTask(
+    return executeInternalSchemaTask(
         req.getDataRegionIdList(),
         consensusGroupId -> {
           RegionWriteExecutor executor = new RegionWriteExecutor();
@@ -544,7 +550,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    return executeSchemaDeletionTask(
+    return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
           String storageGroup =
@@ -571,7 +577,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
     TSStatus executionResult =
-        executeSchemaDeletionTask(
+        executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
               Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
@@ -645,7 +651,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
-    return executeSchemaDeletionTask(
+    return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
           Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
@@ -668,7 +674,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus deactivateTemplate(TDeactivateTemplateReq req) throws TException {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
-    return executeSchemaDeletionTask(
+    return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
           Map<PartialPath, List<Integer>> filteredTemplateSetInfo =
@@ -693,7 +699,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
     AtomicLong result = new AtomicLong(0);
     resp.setStatus(
-        executeSchemaDeletionTask(
+        executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
               ReadWriteLock readWriteLock =
@@ -722,7 +728,51 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
-  private TSStatus executeSchemaDeletionTask(
+  @Override
+  public TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
+      throws TException {
+    PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
+    TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
+    AtomicLong result = new AtomicLong(0);
+    resp.setStatus(
+        executeInternalSchemaTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              ReadWriteLock readWriteLock =
+                  regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
+              // check timeseries existence for set template shall block all timeseries creation
+              readWriteLock.writeLock().lock();
+              try {
+                ISchemaRegion schemaRegion =
+                    schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+                PathPatternTree filteredPatternTree =
+                    filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+                if (filteredPatternTree.isEmpty()) {
+                  return RpcUtils.SUCCESS_STATUS;
+                }
+                for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
+                  ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
+                      SchemaSourceFactory.getTimeSeriesSchemaSource(pattern);
+                  try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+                      schemaSource.getSchemaReader(schemaRegion)) {
+                    if (schemaReader.hasNext()) {
+                      result.getAndAdd(1);
+                    }
+                  } catch (Exception e) {
+                    LOGGER.warn(e.getMessage(), e);
+                    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+                  }
+                }
+                return RpcUtils.SUCCESS_STATUS;
+              } finally {
+                readWriteLock.writeLock().unlock();
+              }
+            }));
+    resp.setCount(result.get());
+    return resp;
+  }
+
+  private TSStatus executeInternalSchemaTask(
       List<TConsensusGroupId> consensusGroupIdList,
       Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
     List<TSStatus> statusList = new ArrayList<>();
