@@ -47,8 +47,9 @@ public class DataRegionChangeDataCache {
     event.clearSchemaInfo();
   }
 
-  public void publishCollectorEvent(PipeRealtimeCollectEvent event) {
+  public DataRegionChangeDataCache publishCollectorEvent(PipeRealtimeCollectEvent event) {
     disruptor.publish(event);
+    return this;
   }
 
   public void register(PipeRealtimeCollector collector) {

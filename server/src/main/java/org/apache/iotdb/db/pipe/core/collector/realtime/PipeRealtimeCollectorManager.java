@@ -64,9 +64,6 @@ public class PipeRealtimeCollectorManager {
   private void stopListeningDataRegion(String dataRegionId) {
     if (id2Cache != null) {
       id2Cache.remove(dataRegionId).clear();
-      if (id2Cache.isEmpty()) {
-        setId2Cache(null);
-      }
     }
   }
 }

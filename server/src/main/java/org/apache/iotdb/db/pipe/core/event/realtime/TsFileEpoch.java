@@ -19,28 +19,40 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileEpoch {
   private final String filePath;
-  private final AtomicReference<State> state;
+  private final ConcurrentMap<PipeRealtimeCollector, AtomicReference<State>> collector2State;
 
   public TsFileEpoch(String filePath) {
     this.filePath = filePath;
-    this.state = new AtomicReference<>(State.EMPTY);
+    this.collector2State = new ConcurrentHashMap<>();
   }
 
-  public TsFileEpoch.State getState() {
-    return state.get();
+  public TsFileEpoch.State getState(PipeRealtimeCollector collector) {
+    return collector2State.get(collector).get();
   }
 
-  public void visit(TsFileEpochVisitor visitor) {
-    state.getAndUpdate(visitor::executeFromState);
+  public void visit(PipeRealtimeCollector collector, TsFileEpochVisitor visitor) {
+    collector2State
+        .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
+        .getAndUpdate(visitor::executeFromState);
   }
 
   @Override
   public String toString() {
-    return "TsFileEpoch{" + "filePath='" + filePath + '\'' + ", state=" + state + '}';
+    return "TsFileEpoch{"
+        + "filePath='"
+        + filePath
+        + '\''
+        + ", collector2State="
+        + collector2State
+        + '}';
   }
 
   public enum State {

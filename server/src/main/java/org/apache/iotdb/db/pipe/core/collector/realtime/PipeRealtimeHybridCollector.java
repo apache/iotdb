@@ -46,16 +46,25 @@ public class PipeRealtimeHybridCollector extends PipeRealtimeCollector {
   public void collectEvent(PipeRealtimeCollectEvent event) {
     if (event.getEvent().getType().equals(EventType.TABLET_INSERTION)) { // offer tablet event
       if (approachingCapacity()) {
-        event.getTsFileEpoch().visit(state -> TsFileEpoch.State.USING_TSFILE);
+        event.getTsFileEpoch().visit(this, state -> TsFileEpoch.State.USING_TSFILE);
       }
-      if (!event.getTsFileEpoch().getState().equals(TsFileEpoch.State.USING_TSFILE)) {
+      if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
         pendingQueue.offer(event);
       }
-    } else if (!pendingQueue.offer(event)) { // offer tsfile event
-      logger.warn(
-          String.format(
-              "Pending Queue of Hybrid Realtime Collector %s has reached capacity, discard TsFile Event %s",
-              this, event));
+    } else { // offer tsfile event
+      event
+          .getTsFileEpoch()
+          .visit(
+              this,
+              state ->
+                  (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TSFILE : state);
+      if (!pendingQueue.offer(event)) {
+        logger.warn(
+            String.format(
+                "Pending Queue of Hybrid Realtime Collector %s has reached capacity, discard TsFile Event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this)));
+        // TODO: Exception collect
+      }
     }
   }
 
@@ -74,15 +83,17 @@ public class PipeRealtimeHybridCollector extends PipeRealtimeCollector {
         collectEvent
             .getTsFileEpoch()
             .visit(
+                this,
                 state ->
                     (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_WAL : state);
-        if (collectEvent.getTsFileEpoch().getState().equals(TsFileEpoch.State.USING_WAL)) {
+        if (collectEvent.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_WAL)) {
           return event;
         }
       } else {
         collectEvent
             .getTsFileEpoch()
             .visit(
+                this,
                 state -> {
                   if (state.equals(TsFileEpoch.State.EMPTY)) {
                     logger.warn(
@@ -91,7 +102,7 @@ public class PipeRealtimeHybridCollector extends PipeRealtimeCollector {
                   }
                   return state;
                 });
-        if (collectEvent.getTsFileEpoch().getState().equals(TsFileEpoch.State.USING_TSFILE)) {
+        if (collectEvent.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
           return event;
         }
       }

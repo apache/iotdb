@@ -26,7 +26,7 @@ public class PipeConfig {
   private final int matcherCacheSize = 1024;
   private final int realtimeCollectorPendingQueueCapacity = 65536;
   private final int realtimeCollectorPendingQueueTabletLimit =
-      realtimeCollectorPendingQueueCapacity / 4 * 3;
+      realtimeCollectorPendingQueueCapacity / 2;
 
   public int getDefaultRingBufferSize() {
     return defaultRingBufferSize;

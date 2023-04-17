@@ -23,8 +23,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
 import org.apache.iotdb.db.pipe.core.event.factory.PipeEventFactory;
-import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -43,15 +41,12 @@ public class PipeChangeDataCaptureListener {
       return;
     }
 
-    PipeRealtimeCollectEvent event =
-        PipeEventFactory.createCollectEvent(
-            PipeEventFactory.createTsFileInsertionEvent(resource.getTsFile()), resource);
-    event
-        .getTsFileEpoch()
-        .visit(
-            state ->
-                (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TSFILE : state);
-    id2Caches.get(dataRegionId).publishCollectorEvent(event);
+    id2Caches.computeIfPresent(
+        dataRegionId,
+        (k, v) ->
+            v.publishCollectorEvent(
+                PipeEventFactory.createCollectEvent(
+                    PipeEventFactory.createTsFileInsertionEvent(resource.getTsFile()), resource)));
   }
 
   public void collectPlanNode(String dataRegionId, InsertNode node, TsFileResource resource) {
@@ -59,11 +54,12 @@ public class PipeChangeDataCaptureListener {
       return;
     }
 
-    id2Caches
-        .get(dataRegionId)
-        .publishCollectorEvent(
-            PipeEventFactory.createCollectEvent(
-                PipeEventFactory.createTabletInsertEvent(node), node, resource));
+    id2Caches.computeIfPresent(
+        dataRegionId,
+        (k, v) ->
+            v.publishCollectorEvent(
+                PipeEventFactory.createCollectEvent(
+                    PipeEventFactory.createTabletInsertEvent(node), node, resource)));
   }
 
   public static PipeChangeDataCaptureListener getInstance() {

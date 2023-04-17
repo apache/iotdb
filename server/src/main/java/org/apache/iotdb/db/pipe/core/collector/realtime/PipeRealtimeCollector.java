@@ -25,10 +25,10 @@ import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class PipeRealtimeCollector implements PipeCollector {
-  private final String pattern;
-  private final String dataRegionId;
-  private final PipeRealtimeCollectorManager manager;
-  private final AtomicBoolean hasBeenStarted;
+  protected final String pattern;
+  protected final String dataRegionId;
+  protected final PipeRealtimeCollectorManager manager;
+  protected final AtomicBoolean hasBeenStarted;
 
   public PipeRealtimeCollector(
       String pattern, String dataRegionId, PipeRealtimeCollectorManager manager) {
