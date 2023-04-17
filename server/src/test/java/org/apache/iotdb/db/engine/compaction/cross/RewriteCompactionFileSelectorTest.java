@@ -67,6 +67,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
   }
 
   @After
