@@ -406,7 +406,8 @@ public class IoTDBConfig {
 
   /**
    * Enable compaction memory control or not. If true and estimated memory size of one compaction
-   * task exceeds the threshold, system will block the compaction.
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
    */
   private boolean enableCompactionMemControl = true;
 

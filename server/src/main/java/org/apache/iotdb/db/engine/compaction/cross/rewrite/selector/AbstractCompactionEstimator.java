@@ -38,6 +38,8 @@ public abstract class AbstractCompactionEstimator implements AutoCloseable {
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  protected int compressionRatio = 5;
+
   /**
    * Estimate the memory cost of compacting the unseq file and its corresponding overlapped seq
    * files in cross space compaction task.

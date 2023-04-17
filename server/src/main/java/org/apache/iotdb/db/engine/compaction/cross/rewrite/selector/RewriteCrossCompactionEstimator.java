@@ -39,7 +39,7 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
   // task
   private long maxCostOfReadingSeqFile;
 
-  private int maxConcurrentSeriesNum = 0;
+  private int maxConcurrentSeriesNum = 1;
 
   // the number of timeseries being compacted at the same time
   private final int subCompactionTaskNum =
@@ -73,22 +73,20 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
             ? subCompactionTaskNum
             : fileInfo.maxAlignedSeriesNumInDevice;
     maxConcurrentSeriesNum = Math.max(maxConcurrentSeriesNum, concurrentSeriesNum);
-    // it means the max size of a timeseries in this file when reading all of its chunk into memory.
-    // Not only reading chunk into chunk cache, but also need to deserialize data point into merge
-    // reader, so we have to double the cost here.
     if (fileInfo.totalChunkNum == 0) { // If totalChunkNum ==0, i.e. this unSeq tsFile has no chunk.
       logger.warn(
           "calculateReadingUnseqFile(), find 1 empty unSeq tsFile: {}.",
           unseqResource.getTsFilePath());
       return 0;
     }
-    return 2
+    // it means the max size of a timeseries in this file when reading all of its chunk into memory.
+    return compressionRatio
         * concurrentSeriesNum
-        * (unseqResource.getTsFileSize() * fileInfo.maxChunkNum / fileInfo.totalChunkNum);
+        * (unseqResource.getTsFileSize() * fileInfo.maxSeriesChunkNum / fileInfo.totalChunkNum);
   }
 
   /**
-   * Calculate memory cost of reading source seq files in the cross space compaction. Double the
+   * Calculate memory cost of reading source seq files in the cross space compaction. Select the
    * maximun size of the timeseries to be compacted at the same time in one seq file, because only
    * one seq file will be queried at the same time.
    */
@@ -104,15 +102,15 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
               ? subCompactionTaskNum
               : fileInfo.maxAlignedSeriesNumInDevice;
       maxConcurrentSeriesNum = Math.max(maxConcurrentSeriesNum, concurrentSeriesNum);
-      long seqFileCost = 0;
+      long seqFileCost;
       if (fileInfo.totalChunkNum == 0) { // If totalChunkNum ==0, i.e. this seq tsFile has no chunk.
         logger.warn(
             "calculateReadingSeqFiles(), find 1 empty seq tsFile: {}.",
             seqResource.getTsFilePath());
         seqFileCost = 0;
       } else {
-        // We need to multiply the compression ratio as 10.
-        seqFileCost = 10 * concurrentSeriesNum * config.getTargetChunkSize();
+        // We need to multiply the compression ratio here.
+        seqFileCost = compressionRatio * concurrentSeriesNum * config.getTargetChunkSize();
       }
 
       if (seqFileCost > maxCostOfReadingSeqFile) {
@@ -130,8 +128,7 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
 
   /**
    * Calculate memory cost of writing target files in the cross space compaction. Including metadata
-   * size of all seq files, max chunk group size of each seq file and max chunk group size of
-   * corresponding overlapped unseq file.
+   * size of all source files and size of concurrent target chunks.
    */
   private long calculatingWritingTargetFiles(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
@@ -185,18 +182,23 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
   }
 
   private class FileInfo {
+    // total chunk num in this tsfile
     public int totalChunkNum = 0;
-    public int maxChunkNum = 0;
+    // max chunk num of one timeseries in this tsfile
+    public int maxSeriesChunkNum = 0;
+    // max aligned series num in one device. If there is no aligned series in this file, then it
+    // turns to be -1.
     public int maxAlignedSeriesNumInDevice = -1;
+    // max chunk num of one device in this tsfile
     public int maxDeviceChunkNum = 0;
 
     public FileInfo(
         int totalChunkNum,
-        int maxChunkNum,
+        int maxSeriesChunkNum,
         int maxAlignedSeriesNumInDevice,
         int maxDeviceChunkNum) {
       this.totalChunkNum = totalChunkNum;
-      this.maxChunkNum = maxChunkNum;
+      this.maxSeriesChunkNum = maxSeriesChunkNum;
       this.maxAlignedSeriesNumInDevice = maxAlignedSeriesNumInDevice;
       this.maxDeviceChunkNum = maxDeviceChunkNum;
     }
