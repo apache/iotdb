@@ -46,12 +46,12 @@ public class NotFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(Statistics statistics) {
-    return !that.allSatisfy(statistics);
+    return !that.satisfy(statistics);
   }
 
   @Override
   public boolean allSatisfy(Statistics statistics) {
-    return !that.satisfy(statistics);
+    return !that.allSatisfy(statistics);
   }
 
   @Override
