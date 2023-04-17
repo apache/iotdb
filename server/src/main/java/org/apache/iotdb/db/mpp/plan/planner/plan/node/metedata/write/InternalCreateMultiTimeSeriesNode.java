@@ -41,6 +41,7 @@ import java.util.Map;
 
 public class InternalCreateMultiTimeSeriesNode extends WritePlanNode {
 
+  // <DevicePath, <IsAligned, MeasurementGroup>>
   private Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap;
 
   private TRegionReplicaSet regionReplicaSet;

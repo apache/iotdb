@@ -22,9 +22,13 @@ import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DataNodeSchemaQuotaManager {
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaQuotaManager.class);
 
   private ClusterSchemaQuotaLevel level =
       ClusterSchemaQuotaLevel.valueOf(
@@ -40,6 +44,7 @@ public class DataNodeSchemaQuotaManager {
   }
 
   public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
+    logger.info("checkMeasurementLevel {},{},{}", level.name(), limit, remain.get());
     if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
       if (remain.get() <= 0) {
         throw new SchemaQuotaExceededException(level, limit);

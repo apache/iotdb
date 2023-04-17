@@ -310,6 +310,11 @@ public class RegionWriteExecutor {
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      RegionExecutionResult result =
+          checkQuotaBeforeCreatingTimeSeries(schemaRegion, node.getPath().getDevicePath(), 1);
+      if (result != null) {
+        return result;
+      }
       if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
@@ -319,21 +324,11 @@ public class RegionWriteExecutor {
                   Collections.singletonList(node.getPath().getMeasurement()),
                   Collections.singletonList(node.getAlias()));
           if (failingMeasurementMap.isEmpty()) {
-            try {
-              schemaRegion.checkSchemaQuota(node.getPath().getDevicePath(), 1);
-            } catch (SchemaQuotaExceededException e) {
-              LOGGER.error("Metadata error: ", e);
-              RegionExecutionResult result = new RegionExecutionResult();
-              result.setAccepted(false);
-              result.setMessage(e.getMessage());
-              result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-              return result;
-            }
             return super.visitCreateTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
             LOGGER.error("Metadata error: ", metadataException);
-            RegionExecutionResult result = new RegionExecutionResult();
+            result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
             result.setStatus(
@@ -354,6 +349,12 @@ public class RegionWriteExecutor {
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      RegionExecutionResult result =
+          checkQuotaBeforeCreatingTimeSeries(
+              schemaRegion, node.getDevicePath(), node.getMeasurements().size());
+      if (result != null) {
+        return result;
+      }
       if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
@@ -361,21 +362,11 @@ public class RegionWriteExecutor {
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(), node.getMeasurements(), node.getAliasList());
           if (failingMeasurementMap.isEmpty()) {
-            try {
-              schemaRegion.checkSchemaQuota(node.getDevicePath(), node.getMeasurements().size());
-            } catch (SchemaQuotaExceededException e) {
-              LOGGER.error("Metadata error: ", e);
-              RegionExecutionResult result = new RegionExecutionResult();
-              result.setAccepted(false);
-              result.setMessage(e.getMessage());
-              result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-              return result;
-            }
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.error("Metadata error: ", metadataException);
-            RegionExecutionResult result = new RegionExecutionResult();
+            result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
             result.setStatus(
@@ -396,6 +387,16 @@ public class RegionWriteExecutor {
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      RegionExecutionResult result;
+      for (Map.Entry<PartialPath, MeasurementGroup> entry :
+          node.getMeasurementGroupMap().entrySet()) {
+        result =
+            checkQuotaBeforeCreatingTimeSeries(
+                schemaRegion, entry.getKey(), entry.getValue().getMeasurements().size());
+        if (result != null) {
+          return result;
+        }
+      }
       if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
@@ -465,6 +466,12 @@ public class RegionWriteExecutor {
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      RegionExecutionResult result =
+          checkQuotaBeforeCreatingTimeSeries(
+              schemaRegion, node.getDevicePath(), node.getMeasurementGroup().size());
+      if (result != null) {
+        return result;
+      }
       if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
@@ -516,6 +523,16 @@ public class RegionWriteExecutor {
         InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      RegionExecutionResult result;
+      for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+          node.getDeviceMap().entrySet()) {
+        result =
+            checkQuotaBeforeCreatingTimeSeries(
+                schemaRegion, deviceEntry.getKey(), deviceEntry.getValue().getRight().size());
+        if (result != null) {
+          return result;
+        }
+      }
       if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
@@ -566,6 +583,25 @@ public class RegionWriteExecutor {
       } else {
         return super.visitInternalCreateMultiTimeSeries(node, context);
       }
+    }
+
+    /**
+     * Check the quota before creating time series.
+     *
+     * @return null if the quota is not exceeded, otherwise return the execution result.
+     */
+    private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
+        ISchemaRegion schemaRegion, PartialPath path, int size) {
+      try {
+        schemaRegion.checkSchemaQuota(path, size);
+      } catch (SchemaQuotaExceededException e) {
+        RegionExecutionResult result = new RegionExecutionResult();
+        result.setAccepted(false);
+        result.setMessage(e.getMessage());
+        result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        return result;
+      }
+      return null;
     }
 
     private RegionExecutionResult processExecutionResultOfInternalCreateSchema(
@@ -640,18 +676,10 @@ public class RegionWriteExecutor {
         }
         ISchemaRegion schemaRegion =
             SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-        try {
-          schemaRegion.checkSchemaQuota(
-              node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
-        } catch (SchemaQuotaExceededException e) {
-          LOGGER.error("Metadata error: ", e);
-          RegionExecutionResult result = new RegionExecutionResult();
-          result.setAccepted(false);
-          result.setMessage(e.getMessage());
-          result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-          return result;
-        }
-        return super.visitActivateTemplate(node, context);
+        RegionExecutionResult result =
+            checkQuotaBeforeCreatingTimeSeries(
+                schemaRegion, node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
+        return result == null ? super.visitActivateTemplate(node, context) : result;
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
