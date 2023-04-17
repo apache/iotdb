@@ -148,14 +148,14 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     }
     if (logger.isInfoEnabled()) {
       logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, total file size is {}, total seq file size is {}, total unseq file size is {}, "
+          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {} MB, total file size is {} MB, total seq file size is {} MB, total unseq file size is {} MB, "
               + "time consumption {}ms",
           selectedSeqFiles.size(),
           selectedUnseqFiles.size(),
-          totalCost,
-          totalUnseqFileSize + totalSeqFileSize,
-          totalSeqFileSize,
-          totalUnseqFileSize,
+          (float) totalCost / 1024 / 1024,
+          (float) (totalUnseqFileSize + totalSeqFileSize) / 1024 / 1024,
+          (float) totalSeqFileSize / 1024 / 1024,
+          (float) totalUnseqFileSize / 1024 / 1024,
           System.currentTimeMillis() - startTime);
     }
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
