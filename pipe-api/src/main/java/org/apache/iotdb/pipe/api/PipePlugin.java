@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.pipe.api;
 
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
 public interface PipePlugin extends AutoCloseable {
+
+  /**
+   * Get the plugin name.
+   *
+   */
   String getPluginName();
 }

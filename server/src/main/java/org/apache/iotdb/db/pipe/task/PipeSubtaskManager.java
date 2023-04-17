@@ -24,42 +24,42 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeSubtaskManager {
 
-  private final ConcurrentHashMap<String, AtomicInteger> alivePipePluginMap;
-  private final ConcurrentHashMap<String, AtomicInteger> runtimePipePluginMap;
+  private final ConcurrentHashMap<String, AtomicInteger> alivePipePluginReferenceCountMap;
+  private final ConcurrentHashMap<String, AtomicInteger> runtimePipePluginReferenceCountMap;
 
   public PipeSubtaskManager() {
-    runtimePipePluginMap = new ConcurrentHashMap<>();
-    alivePipePluginMap = new ConcurrentHashMap<>();
+    runtimePipePluginReferenceCountMap = new ConcurrentHashMap<>();
+    alivePipePluginReferenceCountMap = new ConcurrentHashMap<>();
   }
 
   public int increaseAlivePipePluginRef(String pipePluginName) {
-    return alivePipePluginMap
+    return alivePipePluginReferenceCountMap
         .computeIfAbsent(pipePluginName, k -> new AtomicInteger(0))
         .incrementAndGet();
   }
 
   public boolean decreaseAlivePipePluginRef(String pipePluginName) {
-    if (alivePipePluginMap.computeIfPresent(
+    if (alivePipePluginReferenceCountMap.computeIfPresent(
             pipePluginName, (k, v) -> v.decrementAndGet() == 0 ? null : v)
         == null) {
-      alivePipePluginMap.remove(pipePluginName);
+      alivePipePluginReferenceCountMap.remove(pipePluginName);
     }
-    return alivePipePluginMap.containsKey(pipePluginName);
+    return alivePipePluginReferenceCountMap.containsKey(pipePluginName);
   }
 
   public int increaseRuntimePipePluginRef(String pipePluginName) {
-    return runtimePipePluginMap
+    return runtimePipePluginReferenceCountMap
         .computeIfAbsent(pipePluginName, k -> new AtomicInteger(0))
         .incrementAndGet();
   }
 
   public boolean decreaseRuntimePipePluginRef(String pipePluginName) {
-    if (runtimePipePluginMap.computeIfPresent(
+    if (runtimePipePluginReferenceCountMap.computeIfPresent(
             pipePluginName, (k, v) -> v.decrementAndGet() == 0 ? null : v)
         == null) {
-      runtimePipePluginMap.remove(pipePluginName);
+      runtimePipePluginReferenceCountMap.remove(pipePluginName);
     }
-    return runtimePipePluginMap.containsKey(pipePluginName);
+    return runtimePipePluginReferenceCountMap.containsKey(pipePluginName);
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
