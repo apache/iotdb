@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
 
-public class PipeTaskProcessorStage extends PipeTaskStage {
+public class PipeTaskProcessorStage extends PipeTaskAbstractStage {
 
   protected PipeTaskProcessorStage(
       PipeProcessorSubtaskExecutor executor, PipeProcessorSubtask subtask) {

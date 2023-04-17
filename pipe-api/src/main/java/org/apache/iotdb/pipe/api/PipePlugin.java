@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.pipe.api;
 
-public interface PipePlugin extends AutoCloseable {}
+public interface PipePlugin extends AutoCloseable {
+  String getPluginName();
+}

@@ -19,46 +19,42 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.PipeSubtaskManager;
-import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskConnectorStage extends PipeTaskAbstractStage {
+public abstract class PipeTaskAbstractStage implements PipeTaskStage {
 
-  private final PipeSubtaskManager subtaskManager;
+  protected final PipeSubtaskExecutor executor;
+  protected final PipeSubtask subtask;
 
-  protected PipeTaskConnectorStage(
-      PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask) {
-    super(executor, subtask);
-    subtaskManager = PipeSubtaskManager.setupAndGetInstance();
+  protected PipeTaskAbstractStage(PipeSubtaskExecutor executor, PipeSubtask subtask) {
+    this.executor = executor;
+    this.subtask = subtask;
   }
 
   @Override
   public void create() throws PipeException {
-    if (subtaskManager.increaseAlivePipePluginRef(subtask.getPipePluginName()) == 1) {
-      super.create();
-    }
+    executor.register(subtask);
   }
 
   @Override
   public void start() throws PipeException {
-    if (subtaskManager.increaseRuntimePipePluginRef(subtask.getPipePluginName()) == 1) {
-      super.start();
-    }
+    executor.start(subtask.getTaskID());
   }
 
   @Override
   public void stop() throws PipeException {
-    if (!subtaskManager.decreaseRuntimePipePluginRef(subtask.getPipePluginName())) {
-      super.stop();
-    }
+    executor.stop(subtask.getTaskID());
   }
 
   @Override
   public void drop() throws PipeException {
-    if (!subtaskManager.decreaseAlivePipePluginRef(subtask.getPipePluginName())) {
-      super.drop();
-    }
+    executor.deregister(subtask.getTaskID());
+  }
+
+  @Override
+  public PipeSubtask getSubtask() {
+    return subtask;
   }
 }

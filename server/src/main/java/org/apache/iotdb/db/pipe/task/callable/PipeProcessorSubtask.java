@@ -19,19 +19,61 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeProcessorSubtask extends PipeSubtask {
 
-  private final PipeProcessorPluginRuntimeWrapper pipeProcessor;
+  private final ArrayBlockingQueue<Event> pendingEventQueue;
+  private final PipeProcessor pipeProcessor;
+  private final EventCollector outputEventCollector;
 
-  public PipeProcessorSubtask(String taskID, PipeProcessorPluginRuntimeWrapper pipeProcessor) {
+  public PipeProcessorSubtask(
+      String taskID,
+      ArrayBlockingQueue<Event> pendingEventQueue,
+      PipeProcessor pipeProcessor,
+      EventCollector outputEventCollector) {
     super(taskID);
     this.pipeProcessor = pipeProcessor;
+    this.pendingEventQueue = pendingEventQueue;
+    this.outputEventCollector = outputEventCollector;
   }
 
   @Override
   protected void executeForAWhile() {
-    pipeProcessor.executeForAWhile();
+    if (pendingEventQueue.isEmpty()) {
+      return;
+    }
+
+    final Event event = pendingEventQueue.poll();
+
+    try {
+      if (event instanceof TabletInsertionEvent) {
+        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+      } else if (event instanceof DeletionEvent) {
+        pipeProcessor.process((DeletionEvent) event, outputEventCollector);
+      } else {
+        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new PipeException(
+          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          e);
+    }
+  }
+
+  @Override
+  public String getPipePluginName() {
+    return pipeProcessor.getPluginName();
   }
 }

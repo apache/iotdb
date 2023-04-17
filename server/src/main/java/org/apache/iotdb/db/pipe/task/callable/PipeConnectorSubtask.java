@@ -19,19 +19,56 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.core.connector.PipeConnectorPluginRuntimeWrapper;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
-  private final PipeConnectorPluginRuntimeWrapper pipeConnector;
+  private final ArrayBlockingQueue<Event> pendingQueue;
+  private final PipeConnector pipeConnector;
 
-  public PipeConnectorSubtask(String taskID, PipeConnectorPluginRuntimeWrapper pipeConnector) {
+  public PipeConnectorSubtask(
+      String taskID, PipeConnector pipeConnector, ArrayBlockingQueue<Event> pendingQueue) {
     super(taskID);
     this.pipeConnector = pipeConnector;
+    this.pendingQueue = pendingQueue;
+  }
+
+  // TODO: for a while
+  @Override
+  protected void executeForAWhile() {
+    if (pendingQueue.isEmpty()) {
+      return;
+    }
+
+    final Event event = pendingQueue.poll();
+
+    try {
+      if (event instanceof TabletInsertionEvent) {
+        pipeConnector.transfer((TabletInsertionEvent) event);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeConnector.transfer((TsFileInsertionEvent) event);
+      } else if (event instanceof DeletionEvent) {
+        pipeConnector.transfer((DeletionEvent) event);
+      } else {
+        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new PipeException(
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          e);
+    }
   }
 
   @Override
-  protected void executeForAWhile() {
-    pipeConnector.executeForAWhile();
+  public String getPipePluginName() {
+    return pipeConnector.getPluginName();
   }
 }

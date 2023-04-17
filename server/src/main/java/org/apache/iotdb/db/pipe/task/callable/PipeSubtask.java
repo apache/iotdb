@@ -129,6 +129,8 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     return taskID;
   }
 
+  public abstract String getPipePluginName();
+
   public Throwable getLastFailedCause() {
     return lastFailedCause;
   }
