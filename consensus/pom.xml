@@ -32,11 +32,18 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <ratis.version>2.5.0</ratis.version>
+        <ratis.version>2.5.1</ratis.version>
         <consensus.test.skip>false</consensus.test.skip>
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
     </properties>
+    <repositories>
+        <repository>
+            <id>ratis-250-rc1</id>
+            <name>Apache Ratis 2.5.0 rc1</name>
+            <url>https://repository.apache.org/content/repositories/orgapacheratis-1139</url>
+        </repository>
+    </repositories>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.apache.ratis/ratis-server -->
         <dependency>
