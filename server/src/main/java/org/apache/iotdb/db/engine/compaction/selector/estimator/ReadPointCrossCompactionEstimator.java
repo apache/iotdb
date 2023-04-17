@@ -39,6 +39,9 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
   // task
   private long maxCostOfReadingSeqFile;
 
+  // the max cost of writing target file
+  private long maxCostOfWritingTargetFile;
+
   private int maxConcurrentSeriesNum = 1;
 
   // the number of timeseries being compacted at the same time
@@ -47,6 +50,7 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
 
   public ReadPointCrossCompactionEstimator() {
     this.maxCostOfReadingSeqFile = 0;
+    this.maxCostOfWritingTargetFile = 0;
   }
 
   @Override
@@ -140,8 +144,15 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     }
     // add unseq file metadata size
     cost += getFileReader(unseqResource).getFileMetadataSize();
-    // add concurrent series chunk size
-    cost += maxConcurrentSeriesNum * config.getTargetChunkSize();
+
+    // concurrent series chunk size
+    long writingTargetCost = maxConcurrentSeriesNum * config.getTargetChunkSize();
+    if (writingTargetCost > maxCostOfWritingTargetFile) {
+      cost -= maxCostOfWritingTargetFile;
+      cost += writingTargetCost;
+      maxCostOfWritingTargetFile = writingTargetCost;
+    }
+
     return cost;
   }
 
