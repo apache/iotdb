@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.PipeSubtaskManager;
 import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskConnectorStage extends PipeTaskAbstractStage {
@@ -43,7 +44,8 @@ public class PipeTaskConnectorStage extends PipeTaskAbstractStage {
 
   @Override
   public void start() throws PipeException {
-    if (subtaskManager.increaseRuntimePipePluginRef(subtask.getPipePluginName()) == 1) {
+    if (!((PipeConnectorSubtask) subtask).isPendingQueueEmpty()
+        && subtaskManager.increaseRuntimePipePluginRef(subtask.getPipePluginName()) == 1) {
       super.start();
     }
   }
@@ -60,5 +62,9 @@ public class PipeTaskConnectorStage extends PipeTaskAbstractStage {
     if (!subtaskManager.decreaseAlivePipePluginRef(subtask.getPipePluginName())) {
       super.drop();
     }
+  }
+
+  public boolean consumeEvent(Event event) {
+    return ((PipeConnectorSubtask) subtask).offerEvent(event);
   }
 }

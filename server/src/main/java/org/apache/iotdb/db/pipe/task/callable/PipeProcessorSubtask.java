@@ -28,22 +28,26 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.function.Consumer;
 
 public class PipeProcessorSubtask extends PipeSubtask {
 
   private final ArrayBlockingQueue<Event> pendingEventQueue;
   private final PipeProcessor pipeProcessor;
   private final EventCollector outputEventCollector;
+  private final Consumer<Event> consumer;
 
   public PipeProcessorSubtask(
       String taskID,
       ArrayBlockingQueue<Event> pendingEventQueue,
       PipeProcessor pipeProcessor,
-      EventCollector outputEventCollector) {
+      EventCollector outputEventCollector,
+      Consumer<Event> consumer) {
     super(taskID);
     this.pipeProcessor = pipeProcessor;
     this.pendingEventQueue = pendingEventQueue;
     this.outputEventCollector = outputEventCollector;
+    this.consumer = consumer;
   }
 
   @Override
@@ -70,6 +74,8 @@ public class PipeProcessorSubtask extends PipeSubtask {
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
+
+    consumer.accept(event);
   }
 
   @Override

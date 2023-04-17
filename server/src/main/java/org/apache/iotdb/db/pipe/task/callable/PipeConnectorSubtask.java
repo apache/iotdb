@@ -67,6 +67,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
   }
 
+  public boolean offerEvent(Event event) {
+    return pendingQueue.offer(event);
+  }
+
+  public boolean isPendingQueueEmpty() {
+    return pendingQueue.isEmpty();
+  }
+
   @Override
   public String getPipePluginName() {
     return pipeConnector.getPluginName();
