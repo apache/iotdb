@@ -289,11 +289,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             node.getOutputColumnNames());
 
     for (PlanNode child : children) {
-      SortNode sortNode = (SortNode) node.clone();
+      SortNode sortNode = cloneSortNodeWithOutChild(node, context);
       sortNode.setChild(child);
       mergeSortNode.addChild(sortNode);
     }
     return Collections.singletonList(mergeSortNode);
+  }
+
+  private SortNode cloneSortNodeWithOutChild(SortNode node, DistributionPlanContext context) {
+    return new SortNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getOrderByParameter(),
+        node.getOutputColumnNames());
   }
 
   @Override
