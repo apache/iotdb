@@ -25,20 +25,20 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeTaskMeta {
+public class PipeConsensusGroupTaskMeta {
 
   // TODO: replace it with consensus index
   private final AtomicLong index = new AtomicLong(0L);
+  private final AtomicInteger regionLeader = new AtomicInteger(0);
 
-  private volatile int regionLeader;
+  private PipeConsensusGroupTaskMeta() {}
 
-  private PipeTaskMeta() {}
-
-  public PipeTaskMeta(long index, int regionLeader) {
+  public PipeConsensusGroupTaskMeta(long index, int regionLeader) {
     this.index.set(index);
-    this.regionLeader = regionLeader;
+    this.regionLeader.set(regionLeader);
   }
 
   public long getIndex() {
@@ -46,34 +46,30 @@ public class PipeTaskMeta {
   }
 
   public int getRegionLeader() {
-    return regionLeader;
+    return regionLeader.get();
   }
 
   public void setIndex(long index) {
     this.index.set(index);
   }
 
-  public void addIndex(long delta) {
-    index.addAndGet(delta);
-  }
-
   public void setRegionLeader(int regionLeader) {
-    this.regionLeader = regionLeader;
+    this.regionLeader.set(regionLeader);
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(index.get(), outputStream);
-    ReadWriteIOUtils.write(regionLeader, outputStream);
+    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
   }
 
-  public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
-    PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
-    PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
-    PipeTaskMeta.regionLeader = ReadWriteIOUtils.readInt(byteBuffer);
-    return PipeTaskMeta;
+  public static PipeConsensusGroupTaskMeta deserialize(ByteBuffer byteBuffer) {
+    final PipeConsensusGroupTaskMeta PipeConsensusGroupTaskMeta = new PipeConsensusGroupTaskMeta();
+    PipeConsensusGroupTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
+    PipeConsensusGroupTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
+    return PipeConsensusGroupTaskMeta;
   }
 
-  public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeConsensusGroupTaskMeta deserialize(InputStream inputStream) throws IOException {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
@@ -86,13 +82,13 @@ public class PipeTaskMeta {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index.get() == that.index.get() && regionLeader == that.regionLeader;
+    PipeConsensusGroupTaskMeta that = (PipeConsensusGroupTaskMeta) obj;
+    return index.get() == that.index.get() && regionLeader.get() == that.regionLeader.get();
   }
 
   @Override
   public int hashCode() {
-    return (int) (index.get() * 31 + regionLeader);
+    return (int) (index.get() * 31 + regionLeader.get());
   }
 
   @Override

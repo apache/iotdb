@@ -20,10 +20,9 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
@@ -31,9 +30,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -49,17 +48,16 @@ public class PipeInfoTest {
   private static PipeInfo pipeInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
-  @BeforeClass
-  public static void setup() throws IOException {
+  @Before
+  public void setup() throws IOException {
     pipeInfo = new PipeInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
   }
 
-  @AfterClass
-  public static void cleanup() throws IOException {
-    pipeInfo.clear();
+  @After
+  public void cleanup() throws IOException {
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -73,19 +71,13 @@ public class PipeInfoTest {
     collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(0, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
-    PipeMeta pipeMeta =
-        new PipeMeta(
-            "testPipe",
-            121,
-            PipeStatus.STOPPED,
-            collectorAttributes,
-            processorAttributes,
-            connectorAttributes,
-            pipeTasks);
-    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeMeta);
+    PipeConsensusGroupTaskMeta pipeConsensusGroupTaskMeta = new PipeConsensusGroupTaskMeta(0, 1);
+    Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeConsensusGroupTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe", 121, collectorAttributes, processorAttributes, connectorAttributes);
+    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
 
     CreatePipePluginPlan createPipePluginPlan =

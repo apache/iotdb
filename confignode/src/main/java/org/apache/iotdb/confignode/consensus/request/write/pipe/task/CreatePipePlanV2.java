@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
-import org.apache.iotdb.commons.pipe.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -29,29 +29,29 @@ import java.nio.ByteBuffer;
 
 public class CreatePipePlanV2 extends ConfigPhysicalPlan {
 
-  private PipeMeta pipeMeta;
+  private PipeStaticMeta pipeStaticMeta;
 
   public CreatePipePlanV2() {
     super(ConfigPhysicalPlanType.CreatePipeV2);
   }
 
-  public CreatePipePlanV2(PipeMeta pipemeta) {
+  public CreatePipePlanV2(PipeStaticMeta pipeStaticMeta) {
     super(ConfigPhysicalPlanType.CreatePipeV2);
-    this.pipeMeta = pipemeta;
+    this.pipeStaticMeta = pipeStaticMeta;
   }
 
-  public PipeMeta getPipeMeta() {
-    return pipeMeta;
+  public PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    pipeMeta.serialize(stream);
+    pipeStaticMeta.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeMeta = PipeMeta.deserialize(buffer);
+    pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
   }
 }

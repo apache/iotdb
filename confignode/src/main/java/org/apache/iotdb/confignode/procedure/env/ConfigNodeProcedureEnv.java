@@ -28,8 +28,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.pipe.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -659,12 +659,12 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> createPipeOnDataNodes(PipeMeta pipeMeta) throws IOException {
+  public List<TSStatus> createPipeOnDataNodes(PipeStaticMeta pipeStaticMeta) throws IOException {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
 
     TCreatePipeOnDataNodeReq request =
-        new TCreatePipeOnDataNodeReq().setPipeMeta(pipeMeta.serialize());
+        new TCreatePipeOnDataNodeReq().setPipeMeta(pipeStaticMeta.serialize());
     final AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_PIPE, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);

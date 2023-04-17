@@ -20,12 +20,12 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.meta.PipeStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -53,7 +53,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedureV2.class);
 
   private TCreatePipeReq req;
-  private PipeMeta pipeMeta;
+  private PipeStaticMeta pipeStaticMeta;
 
   public CreatePipeProcedureV2() {
     super();
@@ -67,7 +67,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   boolean validateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("Start to validate PIPE [{}]", req.getPipeName());
-    return env.getConfigManager().getPipeManager().getPipeInfo().checkPipeCreateTask(req);
+    final PipeInfo pipeInfo = env.getConfigManager().getPipeManager().getPipeInfo();
+    return pipeInfo.getPipePluginInfo().checkBeforeCreatePipe(req)
+        && pipeInfo.getPipeTaskInfo().checkBeforeCreatePipe(req);
   }
 
   @Override
@@ -77,20 +79,19 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     Map<TConsensusGroupId, Integer> regionGroupToLeaderMap =
         env.getConfigManager().getLoadManager().getLatestRegionLeaderMap();
 
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
+    Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> pipeTasks = new HashMap<>();
     regionGroupToLeaderMap.forEach(
         (region, leader) -> {
-          pipeTasks.put(region, new PipeTaskMeta(0, leader));
+          pipeTasks.put(region, new PipeConsensusGroupTaskMeta(0, leader));
         });
-    this.pipeMeta =
-        new PipeMeta(
+
+    this.pipeStaticMeta =
+        new PipeStaticMeta(
             req.getPipeName(),
             createTime,
-            PipeStatus.STOPPED,
             req.getCollectorAttributes(),
             req.getProcessorAttributes(),
-            req.getConnectorAttributes(),
-            pipeTasks);
+            req.getConnectorAttributes());
   }
 
   @Override
@@ -98,7 +99,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("Start to create PIPE [{}] on Config Nodes", req.getPipeName());
     final ConfigManager configNodeManager = env.getConfigManager();
 
-    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeMeta);
+    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta);
 
     final ConsensusWriteResponse response =
         configNodeManager.getConsensusManager().write(createPipePlanV2);
@@ -111,7 +112,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException, IOException {
     LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", req.getPipeName());
 
-    if (RpcUtils.squashResponseStatusList(env.createPipeOnDataNodes(pipeMeta)).getCode()
+    if (RpcUtils.squashResponseStatusList(env.createPipeOnDataNodes(pipeStaticMeta)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
           String.format("Failed to create pipe instance [%s] on data nodes", req.getPipeName()));
@@ -212,9 +213,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    if (pipeMeta != null) {
+    if (pipeStaticMeta != null) {
       stream.writeBoolean(true);
-      pipeMeta.serialize(stream);
+      pipeStaticMeta.serialize(stream);
     } else {
       stream.writeBoolean(false);
     }
@@ -245,7 +246,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      pipeMeta = PipeMeta.deserialize(byteBuffer);
+      pipeStaticMeta = PipeStaticMeta.deserialize(byteBuffer);
     }
   }
 
@@ -254,8 +255,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
-    if (pipeMeta == null && that.pipeMeta == null) return true;
-    return req.equals(that.req) && pipeMeta.equals(that.pipeMeta);
+    if (pipeStaticMeta == null && that.pipeStaticMeta == null) return true;
+    return req.equals(that.req) && pipeStaticMeta.equals(that.pipeStaticMeta);
   }
 
   @Override

@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
@@ -112,7 +111,6 @@ import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -743,30 +741,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) {
-    // TODO: Add logic
-    return RpcUtils.SUCCESS_STATUS;
+    throw new NotImplementedException("TODO: createPipeOnDataNode");
   }
 
   @Override
   public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) {
     try {
       switch (SyncOperation.values()[req.getOperation()]) {
-          // TODO: change logic
         case START_PIPE:
-          SyncService.getInstance().startPipe(req.getPipeName());
-          break;
         case STOP_PIPE:
-          SyncService.getInstance().stopPipe(req.getPipeName());
-          break;
         case DROP_PIPE:
-          SyncService.getInstance().dropPipe(req.getPipeName());
-          break;
+          throw new NotImplementedException("TODO: operatePipeOnDataNode");
         default:
           return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
               .setMessage("Unsupported operation.");
       }
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (PipeException e) {
+    } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }

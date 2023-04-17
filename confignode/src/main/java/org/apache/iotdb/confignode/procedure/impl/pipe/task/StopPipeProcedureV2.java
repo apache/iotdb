@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.commons.pipe.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
@@ -62,7 +62,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return env.getConfigManager()
         .getPipeManager()
         .getPipeInfo()
-        .checkOperatePipeTask(pipeName, PipeTaskOperation.STOP_PIPE);
+        .getPipeTaskInfo()
+        .checkBeforeStopPipe(pipeName);
   }
 
   @Override

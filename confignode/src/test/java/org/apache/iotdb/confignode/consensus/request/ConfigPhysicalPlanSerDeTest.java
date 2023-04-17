@@ -39,9 +39,9 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
@@ -1045,29 +1045,24 @@ public class ConfigPhysicalPlanSerDeTest {
     collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(0, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
-    PipeMeta pipeMeta =
-        new PipeMeta(
-            "testPipe",
-            121,
-            org.apache.iotdb.commons.pipe.meta.PipeStatus.STOPPED,
-            collectorAttributes,
-            processorAttributes,
-            connectorAttributes,
-            pipeTasks);
-    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeMeta);
+    PipeConsensusGroupTaskMeta pipeConsensusGroupTaskMeta = new PipeConsensusGroupTaskMeta(0, 1);
+    Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeConsensusGroupTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe", 121, collectorAttributes, processorAttributes, connectorAttributes);
+    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta);
     CreatePipePlanV2 createPipePlanV21 =
         (CreatePipePlanV2)
             ConfigPhysicalPlan.Factory.create(createPipePlanV2.serializeToByteBuffer());
-    Assert.assertEquals(createPipePlanV2.getPipeMeta(), createPipePlanV21.getPipeMeta());
+    Assert.assertEquals(
+        createPipePlanV2.getPipeStaticMeta(), createPipePlanV21.getPipeStaticMeta());
   }
 
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
     SetPipeStatusPlanV2 setPipeStatusPlanV2 =
-        new SetPipeStatusPlanV2("pipe", org.apache.iotdb.commons.pipe.meta.PipeStatus.RUNNING);
+        new SetPipeStatusPlanV2("pipe", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
     SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());

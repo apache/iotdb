@@ -19,4 +19,32 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-public class PipeTaskMetaAccessor {}
+public enum PipeStatus {
+  RUNNING((byte) 0),
+  STOPPED((byte) 1),
+  DROPPED((byte) 2),
+  ;
+
+  private final byte type;
+
+  PipeStatus(byte type) {
+    this.type = type;
+  }
+
+  public byte getType() {
+    return type;
+  }
+
+  public static PipeStatus getPipeStatus(byte type) {
+    switch (type) {
+      case 0:
+        return PipeStatus.RUNNING;
+      case 1:
+        return PipeStatus.STOPPED;
+      case 2:
+        return PipeStatus.DROPPED;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + type);
+    }
+  }
+}
