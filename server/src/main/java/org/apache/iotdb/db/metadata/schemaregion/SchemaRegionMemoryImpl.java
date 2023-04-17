@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -521,8 +523,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException();
     }
 
-    schemaQuotaManager.checkMeasurementLevel(1);
-
     try {
       IMeasurementMNode leafMNode;
       PartialPath path = plan.getPath();
@@ -589,8 +589,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
-
-    schemaQuotaManager.checkMeasurementLevel(seriesCount);
 
     try {
       PartialPath prefixPath = plan.getDevicePath();
@@ -676,6 +674,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+  }
+
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+      throws SchemaQuotaExceededException {
+    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
+      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
+    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
+      if (!mtree.checkDeviceNodeExists(devicePath)) {
+        schemaQuotaManager.checkDeviceLevel();
+      }
+    }
   }
 
   @Override

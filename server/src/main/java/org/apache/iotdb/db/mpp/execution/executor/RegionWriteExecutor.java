@@ -36,6 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -318,6 +319,16 @@ public class RegionWriteExecutor {
                   Collections.singletonList(node.getPath().getMeasurement()),
                   Collections.singletonList(node.getAlias()));
           if (failingMeasurementMap.isEmpty()) {
+            try {
+              schemaRegion.checkSchemaQuota(node.getPath().getDevicePath(), 1);
+            } catch (SchemaQuotaExceededException e) {
+              LOGGER.error("Metadata error: ", e);
+              RegionExecutionResult result = new RegionExecutionResult();
+              result.setAccepted(false);
+              result.setMessage(e.getMessage());
+              result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+              return result;
+            }
             return super.visitCreateTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
@@ -350,6 +361,16 @@ public class RegionWriteExecutor {
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(), node.getMeasurements(), node.getAliasList());
           if (failingMeasurementMap.isEmpty()) {
+            try {
+              schemaRegion.checkSchemaQuota(node.getDevicePath(), node.getMeasurements().size());
+            } catch (SchemaQuotaExceededException e) {
+              LOGGER.error("Metadata error: ", e);
+              RegionExecutionResult result = new RegionExecutionResult();
+              result.setAccepted(false);
+              result.setMessage(e.getMessage());
+              result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+              return result;
+            }
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
@@ -615,6 +636,19 @@ public class RegionWriteExecutor {
                   node.getPathSetTemplate());
           result.setMessage(message);
           result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+          return result;
+        }
+        ISchemaRegion schemaRegion =
+            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+        try {
+          schemaRegion.checkSchemaQuota(
+              node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
+        } catch (SchemaQuotaExceededException e) {
+          LOGGER.error("Metadata error: ", e);
+          RegionExecutionResult result = new RegionExecutionResult();
+          result.setAccepted(false);
+          result.setMessage(e.getMessage());
+          result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
           return result;
         }
         return super.visitActivateTemplate(node, context);

@@ -75,7 +75,7 @@ public interface IMTreeStore {
 
   void updateMNode(IMNode node) throws MetadataException;
 
-  IEntityMNode setToEntity(IMNode node) throws MetadataException;
+  IEntityMNode setToEntity(IMNode node);
 
   IMNode setToInternal(IEntityMNode entityMNode) throws MetadataException;
 

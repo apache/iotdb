@@ -140,6 +140,14 @@ public interface IMTreeBelowSG {
   IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
   /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  boolean checkDeviceNodeExists(PartialPath deviceId);
+
+  /**
    * Fetch all measurement path
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
