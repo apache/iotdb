@@ -45,6 +45,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,7 +66,6 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
-import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_OFF_DIG;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_LST;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_METRIC;
 
@@ -80,6 +80,11 @@ public abstract class PageManager implements IPageManager {
 
   protected final Map<Integer, ISchemaPage> pageInstCache;
   protected final Map<Integer, ISchemaPage> dirtyPages;
+
+  // optimize retrieval of the smallest applicable DIRTY segmented page
+  // tiered by: MIN_SEG_SIZE, PAGE/16, PAGE/8, PAGE/4, PAGE/2
+  protected final LinkedList<Integer>[] tieredSpareSegmentedPage =
+      new LinkedList[SEG_SIZE_LST.length];
 
   protected final ReentrantLock evictLock;
   protected final PageLocks pageLocks;
@@ -102,6 +107,10 @@ public abstract class PageManager implements IPageManager {
       throws IOException, MetadataException {
     this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     this.dirtyPages = new ConcurrentHashMap<>();
+    for (int i = 0; i < tieredSpareSegmentedPage.length; i++) {
+      tieredSpareSegmentedPage[i] = new LinkedList<>();
+    }
+
     this.evictLock = new ReentrantLock();
     this.pageLocks = new PageLocks();
     this.lastPageIndex =
@@ -486,10 +495,8 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  @Deprecated
-  // TODO: improve to remove
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISegmentedPage page = getMinApplSegmentedPageInMem((short) (size + SEG_OFF_DIG));
+    ISegmentedPage page = getMinApplSegmentedPageInMem(size);
     return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
@@ -498,14 +505,36 @@ public abstract class PageManager implements IPageManager {
     return addPageToCache(page.getPageIndex(), page);
   }
 
+  /**
+   * Accessing dirtyPages will be expedited, while the retrieval from pageInstCache remains
+   * unaffected due to its limited capacity.
+   */
   protected ISegmentedPage getMinApplSegmentedPageInMem(short size) {
-    for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
-      if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
-        return dirtyPages.get(entry.getKey()).getAsSegmentedPage();
+    ISchemaPage targetPage = null;
+    for (int i = 0; i < tieredSpareSegmentedPage.length && dirtyPages.size() > 0; i++) {
+      if (size < SEG_SIZE_LST[i] && tieredSpareSegmentedPage[i].size() != 0) {
+        targetPage = dirtyPages.get(tieredSpareSegmentedPage[i].pop());
+
+        //  check validity of the retrieved targetPage, as the page type may have changed,
+        //   e.g., from SegmentedPage to InternalPage, or index could be stale
+        while ((tieredSpareSegmentedPage[i].size() != 0)
+            && (targetPage == null
+                || targetPage.getAsSegmentedPage() == null
+                || !targetPage.getAsSegmentedPage().isCapableForSegSize(size))) {
+          targetPage = dirtyPages.get(tieredSpareSegmentedPage[i].pop());
+        }
+
+        // instance returned by this method will NOT be marked as dirty, re-integrate by itself
+        if (targetPage != null
+            && targetPage.getAsSegmentedPage() != null
+            && targetPage.getAsSegmentedPage().isCapableForSegSize(size)) {
+          sortSegmentedIntoIndex(targetPage, size);
+          return targetPage.getAsSegmentedPage();
+        }
       }
     }
 
+    // TODO refactor design related to pageInstCache to index its pages in further development
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
           && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
@@ -514,6 +543,34 @@ public abstract class PageManager implements IPageManager {
       }
     }
     return allocateNewSegmentedPage().getAsSegmentedPage();
+  }
+
+  /**
+   * Index SegmentedPage inside {@linkplain #dirtyPages} into tiered list by {@linkplain
+   * SchemaFileConfig#SEG_SIZE_LST}.
+   *
+   * @param page
+   * @param newSegSize
+   */
+  protected void sortSegmentedIntoIndex(ISchemaPage page, short newSegSize) {
+    short spareSize =
+        newSegSize < 0
+            ? page.getAsSegmentedPage().getSpareSize()
+            : (short) (page.getAsSegmentedPage().getSpareSize() - newSegSize);
+
+    if (spareSize < SEG_HEADER_SIZE) {
+      return;
+    }
+
+    int i = 0;
+    while (i < SEG_SIZE_LST.length) {
+      if (spareSize < SEG_SIZE_LST[i]) {
+        tieredSpareSegmentedPage[i].add(page.getPageIndex());
+        return;
+      }
+      i++;
+    }
+    tieredSpareSegmentedPage[i - 1].add(page.getPageIndex());
   }
 
   protected synchronized ISchemaPage allocateNewSegmentedPage() {
@@ -533,6 +590,10 @@ public abstract class PageManager implements IPageManager {
   protected void markDirty(ISchemaPage page) {
     page.markDirty();
     dirtyPages.put(page.getPageIndex(), page);
+
+    if (page.getAsSegmentedPage() != null) {
+      sortSegmentedIntoIndex(page, (short) -1);
+    }
   }
 
   protected ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {

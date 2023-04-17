@@ -38,6 +38,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
   // segment address array inside a page, map segmentIndex -> segmentOffset
   // if only one full-page segment inside, it still stores the offset
+  // TODO offset bits of segment never removed since it is 'sequential-indexed'
   private final transient List<Short> segOffsetLst;
 
   // maintains leaf segment instance inside this page, lazily instantiated

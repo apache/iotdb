@@ -307,6 +307,49 @@ public class SchemaFileTest {
   }
 
   @Test
+  public void testMassiveSegment() throws MetadataException, IOException {
+    IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
+    fillChildren(sgNode, 100000, "MEN", this::supplyEntity);
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+
+    // verify operation with massive segment under quadratic complexity
+    try {
+      sf.writeMNode(sgNode);
+    } finally {
+      sf.close();
+    }
+
+    IMNode sgNode2 = new StorageGroupMNode(null, "sgRoot2", 11111111L);
+    fillChildren(sgNode2, 1000000, "MEN", this::supplyEntity);
+    ISchemaFile sf2 = SchemaFile.initSchemaFile(sgNode2.getName(), TEST_SCHEMA_REGION_ID);
+    try {
+      sf2.writeMNode(sgNode2);
+    } finally {
+      sf2.close();
+    }
+
+    int cnt = 0;
+    sf = SchemaFile.loadSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+    Iterator<IMNode> ite = sf.getChildren(sgNode);
+    while (ite.hasNext()) {
+      cnt++;
+      ite.next();
+    }
+    Assert.assertEquals(cnt, 100000);
+    sf.close();
+
+    cnt = 0;
+    sf = SchemaFile.loadSchemaFile(sgNode2.getName(), TEST_SCHEMA_REGION_ID);
+    ite = sf.getChildren(sgNode2);
+    while (ite.hasNext()) {
+      cnt++;
+      ite.next();
+    }
+    Assert.assertEquals(cnt, 1000000);
+    sf.close();
+  }
+
+  @Test
   public void test10KDevices() throws MetadataException, IOException {
     int i = 1000;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
