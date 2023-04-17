@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 
 public interface PipeCollector {
-    void start();
+  void start();
 
-    boolean isStarted();
+  boolean hasBeenStarted();
 
-    Event supply();
+  EnrichedEvent supply();
+
+  void close();
 }

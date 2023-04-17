@@ -27,11 +27,46 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeRealtimeCollectorManager {
   private ConcurrentHashMap<String, DataRegionChangeDataCache> id2Cache;
 
-
   public PipeRealtimeCollectorManager() {}
 
-  private void activateChangeDataCapture() {
-    id2Cache = new ConcurrentHashMap<>();
+  private void setId2Cache(ConcurrentHashMap<String, DataRegionChangeDataCache> id2Cache) {
+    this.id2Cache = id2Cache;
     PipeChangeDataCaptureListener.getInstance().setDataRegionChangeDataCaches(id2Cache);
+  }
+
+  public PipeRealtimeCollector createPipeRealtimeCollector(String pattern, String dataRegionId) {
+    return new PipeRealtimeHybridCollector(pattern, dataRegionId, this);
+  }
+
+  public synchronized void register(PipeRealtimeCollector collector, String dataRegionId) {
+    startListeningDataRegion(dataRegionId);
+    id2Cache.get(dataRegionId).register(collector);
+  }
+
+  public synchronized void deregister(PipeRealtimeCollector collector, String dataRegionId) {
+    if (id2Cache != null && id2Cache.containsKey(dataRegionId)) {
+      DataRegionChangeDataCache cache = id2Cache.get(dataRegionId);
+      cache.deregister(collector);
+      if (cache.getRegisterCount() == 0) {
+        stopListeningDataRegion(dataRegionId);
+      }
+    }
+  }
+
+  private void startListeningDataRegion(String dataRegion) {
+    if (id2Cache == null) {
+      setId2Cache(new ConcurrentHashMap<>());
+    }
+
+    id2Cache.putIfAbsent(dataRegion, new DataRegionChangeDataCache());
+  }
+
+  private void stopListeningDataRegion(String dataRegionId) {
+    if (id2Cache != null) {
+      id2Cache.remove(dataRegionId).clear();
+      if (id2Cache.isEmpty()) {
+        setId2Cache(null);
+      }
+    }
   }
 }

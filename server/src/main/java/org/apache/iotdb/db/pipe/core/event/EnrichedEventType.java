@@ -17,6 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
+package org.apache.iotdb.db.pipe.core.event;
 
-public class RulePrefixMatchTree {}
+public enum EnrichedEventType {
+  TABLET_INSERTION((short) 0),
+  TSFILE_INSERTION((short) 1);
+
+  public static final int BYTES = Short.BYTES;
+
+  private final short eventType;
+
+  EnrichedEventType(short eventType) {
+    this.eventType = eventType;
+  }
+
+  public short getEventType() {
+    return eventType;
+  }
+}

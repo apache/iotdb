@@ -29,6 +29,8 @@ public interface PipePatternMatcher {
 
   void deregister(PipeRealtimeCollector collector);
 
+  int getRegisterCount();
+
   Set<PipeRealtimeCollector> match(Map<String, String[]> device2Measurements);
 
   void clear();

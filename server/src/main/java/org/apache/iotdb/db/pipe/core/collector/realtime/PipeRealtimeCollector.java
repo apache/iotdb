@@ -20,32 +20,57 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
 import org.apache.iotdb.db.pipe.core.collector.PipeCollector;
-import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 
-public class PipeRealtimeCollector implements PipeCollector {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public abstract class PipeRealtimeCollector implements PipeCollector {
   private final String pattern;
+  private final String dataRegionId;
+  private final PipeRealtimeCollectorManager manager;
+  private final AtomicBoolean hasBeenStarted;
 
-  public PipeRealtimeCollector(String pattern) {
+  public PipeRealtimeCollector(
+      String pattern, String dataRegionId, PipeRealtimeCollectorManager manager) {
     this.pattern = pattern;
+    this.dataRegionId = dataRegionId;
+    this.manager = manager;
+    this.hasBeenStarted = new AtomicBoolean(false);
   }
 
-  public String getPattern() {
+  public final String getPattern() {
     return pattern;
   }
 
-  public void collectEvent(PipeCollectEvent event) {}
+  public abstract void collectEvent(PipeRealtimeCollectEvent event);
 
   @Override
-  public void start() {}
-
-  @Override
-  public boolean isStarted() {
-    return false;
+  public void start() {
+    manager.register(this, dataRegionId);
+    hasBeenStarted.set(true);
   }
 
   @Override
-  public Event supply() {
-    return null;
+  public boolean hasBeenStarted() {
+    return hasBeenStarted.get();
+  }
+
+  @Override
+  public void close() {
+    manager.deregister(this, dataRegionId);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeRealtimeCollector{"
+        + "pattern='"
+        + pattern
+        + '\''
+        + ", dataRegionId='"
+        + dataRegionId
+        + '\''
+        + ", hasBeenStarted="
+        + hasBeenStarted
+        + '}';
   }
 }

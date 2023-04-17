@@ -31,6 +31,7 @@ public class MapMatcher implements PipePatternMatcher {
     lock.writeLock().lock();
     try {
       collectors.add(collector);
+      deviceCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
     }
@@ -41,8 +42,19 @@ public class MapMatcher implements PipePatternMatcher {
     lock.writeLock().lock();
     try {
       collectors.remove(collector);
+      deviceCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public int getRegisterCount() {
+    lock.readLock().lock();
+    try {
+      return collectors.size();
+    } finally {
+      lock.readLock().unlock();
     }
   }
 
@@ -50,6 +62,10 @@ public class MapMatcher implements PipePatternMatcher {
   public Set<PipeRealtimeCollector> match(Map<String, String[]> device2Measurements) {
     lock.readLock().lock();
     try {
+      if (collectors.isEmpty()) {
+        return new HashSet<>();
+      }
+
       Set<PipeRealtimeCollector> matchCollectors = new HashSet<>();
       for (Map.Entry<String, String[]> entry : device2Measurements.entrySet()) {
         final String device = entry.getKey();

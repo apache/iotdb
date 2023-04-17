@@ -17,30 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event;
+package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
-public class PipeCollectEvent implements Event {
-  private final Event event;
-  private final long timePartitionId;
-  private final boolean isSeq;
-  private final long collectIndex;
+public class PipeRealtimeCollectEvent implements Event {
+  private final EnrichedEvent event;
   private final Map<String, String[]> device2Measurements;
+  private final TsFileEpoch tsFileEpoch;
 
-  public PipeCollectEvent(
-      Event event,
-      long timePartitionId,
-      boolean isSeq,
-      long collectIndex,
-      Map<String, String[]> device2Measurements) {
+  public PipeRealtimeCollectEvent(
+      EnrichedEvent event, Map<String, String[]> device2Measurements, TsFileEpoch tsFileEpoch) {
     this.event = event;
-    this.timePartitionId = timePartitionId;
-    this.isSeq = isSeq;
-    this.collectIndex = collectIndex;
     this.device2Measurements = device2Measurements;
+    this.tsFileEpoch = tsFileEpoch;
+  }
+
+  public EnrichedEvent getEvent() {
+    return event;
   }
 
   public Map<String, String[]> getSchemaInfo() {
@@ -49,5 +46,14 @@ public class PipeCollectEvent implements Event {
 
   public void clearSchemaInfo() {
     device2Measurements.clear();
+  }
+
+  public TsFileEpoch getTsFileEpoch() {
+    return tsFileEpoch;
+  }
+
+  @Override
+  public String toString() {
+    return "PipeRealtimeCollectEvent{" + "event=" + event + ", tsFileEpoch=" + tsFileEpoch + '}';
   }
 }

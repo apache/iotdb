@@ -282,10 +282,7 @@ public class TsFileProcessor {
     // collect plan node in pipe
     PipeChangeDataCaptureListener.getInstance()
         .collectPlanNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            timeRangeId,
-            isSequence(),
-            insertRowNode);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -398,10 +395,7 @@ public class TsFileProcessor {
     // collect plan node in pipe
     PipeChangeDataCaptureListener.getInstance()
         .collectPlanNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
-            timeRangeId,
-            isSequence(),
-            insertTabletNode);
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
@@ -861,11 +855,7 @@ public class TsFileProcessor {
           syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
         PipeChangeDataCaptureListener.getInstance()
-            .collectTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(),
-                timeRangeId,
-                isSequence(),
-                tsFileResource);
+            .collectTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);

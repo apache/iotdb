@@ -17,44 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.access;
+package org.apache.iotdb.db.pipe.core.event.operate.collector;
 
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.access.RowIterator;
-import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.pipe.api.collector.RowCollector;
 
 import java.io.IOException;
-import java.util.List;
 
-public class PipeRowIterator implements RowIterator {
-
-  @Override
-  public boolean hasNextRow() {
-    return false;
-  }
+public class PipeRowCollector implements RowCollector {
 
   @Override
-  public Row next() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void reset() {}
-
-  @Override
-  public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    return 0;
-  }
-
-  @Override
-  public List<Path> getColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<Type> getColumnTypes() {
-    return null;
-  }
+  public void collectRow(Row row) throws IOException {}
 }

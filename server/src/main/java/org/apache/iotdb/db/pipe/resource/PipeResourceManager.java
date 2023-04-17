@@ -19,4 +19,24 @@
 
 package org.apache.iotdb.db.pipe.resource;
 
-public class PipeResourceManager {}
+import java.io.File;
+
+public class PipeResourceManager {
+  private PipeResourceManager() {}
+
+  public File addFileReference(File file) {
+    return file;
+  }
+
+  public File removeFileReference(File file) {
+    return file;
+  }
+
+  public static PipeResourceManager getInstance() {
+    return PipeResourceManagerHolder.INSTANCE;
+  }
+
+  private static class PipeResourceManagerHolder {
+    private static final PipeResourceManager INSTANCE = new PipeResourceManager();
+  }
+}

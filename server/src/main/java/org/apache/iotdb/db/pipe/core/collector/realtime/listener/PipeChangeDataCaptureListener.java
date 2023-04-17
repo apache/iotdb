@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
 import org.apache.iotdb.db.pipe.core.event.factory.PipeEventFactory;
+import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -37,24 +38,23 @@ public class PipeChangeDataCaptureListener {
     this.id2Caches = id2Caches;
   }
 
-  public void collectTsFile(
-      String dataRegionId, long timePartitionId, boolean isSeq, TsFileResource resource) {
+  public void collectTsFile(String dataRegionId, TsFileResource resource) {
     if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
       return;
     }
 
-    id2Caches
-        .get(dataRegionId)
-        .publishCollectorEvent(
-            PipeEventFactory.createCollectorEvent(
-                PipeEventFactory.createTsFileInsertionEvent(resource.getTsFile()),
-                timePartitionId,
-                isSeq,
-                resource));
+    PipeRealtimeCollectEvent event =
+        PipeEventFactory.createCollectEvent(
+            PipeEventFactory.createTsFileInsertionEvent(resource.getTsFile()), resource);
+    event
+        .getTsFileEpoch()
+        .visit(
+            state ->
+                (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TSFILE : state);
+    id2Caches.get(dataRegionId).publishCollectorEvent(event);
   }
 
-  public void collectPlanNode(
-      String dataRegionId, long timePartitionId, boolean isSeq, InsertNode node) {
+  public void collectPlanNode(String dataRegionId, InsertNode node, TsFileResource resource) {
     if (id2Caches == null || !id2Caches.containsKey(dataRegionId)) {
       return;
     }
@@ -62,8 +62,8 @@ public class PipeChangeDataCaptureListener {
     id2Caches
         .get(dataRegionId)
         .publishCollectorEvent(
-            PipeEventFactory.createCollectorEvent(
-                PipeEventFactory.createTabletInsertEvent(node), timePartitionId, isSeq, node));
+            PipeEventFactory.createCollectEvent(
+                PipeEventFactory.createTabletInsertEvent(node), node, resource));
   }
 
   public static PipeChangeDataCaptureListener getInstance() {

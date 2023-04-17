@@ -17,6 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
+package org.apache.iotdb.db.pipe.core.event.realtime;
 
-public class Rule {}
+@FunctionalInterface
+public interface TsFileEpochVisitor {
+  TsFileEpoch.State executeFromState(TsFileEpoch.State state);
+}

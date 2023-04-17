@@ -17,15 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.collector;
+package org.apache.iotdb.db.pipe.core.event.realtime;
 
-import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.collector.RowCollector;
+import java.util.concurrent.atomic.AtomicReference;
 
-import java.io.IOException;
+public class TsFileEpoch {
+  private final String filePath;
+  private final AtomicReference<State> state;
 
-public class PipeRowCollector implements RowCollector {
+  public TsFileEpoch(String filePath) {
+    this.filePath = filePath;
+    this.state = new AtomicReference<>(State.EMPTY);
+  }
+
+  public TsFileEpoch.State getState() {
+    return state.get();
+  }
+
+  public void visit(TsFileEpochVisitor visitor) {
+    state.getAndUpdate(visitor::executeFromState);
+  }
 
   @Override
-  public void collectRow(Row row) throws IOException {}
+  public String toString() {
+    return "TsFileEpoch{" + "filePath='" + filePath + '\'' + ", state=" + state + '}';
+  }
+
+  public enum State {
+    EMPTY,
+    USING_WAL,
+    USING_TSFILE
+  }
 }

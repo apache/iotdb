@@ -17,6 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.recorder;
+package org.apache.iotdb.db.pipe.core.event.operate.collector;
 
-public class TsFileEpochRecorder {}
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+
+import java.io.IOException;
+
+public class PipeEventCollector implements EventCollector {
+
+  @Override
+  public void collectTabletInsertionEvent(TabletInsertionEvent event) throws IOException {}
+
+  @Override
+  public void collectTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException {}
+
+  @Override
+  public void collectDeletionEvent(DeletionEvent event) throws IOException {}
+}

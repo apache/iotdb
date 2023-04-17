@@ -22,31 +22,32 @@ package org.apache.iotdb.db.pipe.core.collector.realtime.cache;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.MapMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipePatternMatcher;
-import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
+import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.queue.DisruptorQueue;
 
 import com.lmax.disruptor.dsl.ProducerType;
 
 public class DataRegionChangeDataCache {
   private final PipePatternMatcher matcher;
-  private final DisruptorQueue<PipeCollectEvent> disruptor;
+  private final DisruptorQueue<PipeRealtimeCollectEvent> disruptor;
 
   public DataRegionChangeDataCache() {
     this.matcher = new MapMatcher();
 
     this.disruptor =
-        new DisruptorQueue.Builder<PipeCollectEvent>()
+        new DisruptorQueue.Builder<PipeRealtimeCollectEvent>()
             .setProducerType(ProducerType.SINGLE)
             .addEventHandler(this::dispatchToCollectors)
             .build();
   }
 
-  private void dispatchToCollectors(PipeCollectEvent event, long sequence, boolean endOfBatch) {
+  private void dispatchToCollectors(
+      PipeRealtimeCollectEvent event, long sequence, boolean endOfBatch) {
     matcher.match(event.getSchemaInfo()).forEach(collector -> collector.collectEvent(event));
     event.clearSchemaInfo();
   }
 
-  public void publishCollectorEvent(PipeCollectEvent event) {
+  public void publishCollectorEvent(PipeRealtimeCollectEvent event) {
     disruptor.publish(event);
   }
 
@@ -58,8 +59,12 @@ public class DataRegionChangeDataCache {
     matcher.deregister(collector);
   }
 
+  public int getRegisterCount() {
+    return matcher.getRegisterCount();
+  }
+
   public void clear() {
-    matcher.clear();
     disruptor.clear();
+    matcher.clear();
   }
 }

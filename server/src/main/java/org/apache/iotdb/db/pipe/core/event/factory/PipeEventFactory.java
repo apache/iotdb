@@ -20,18 +20,17 @@
 package org.apache.iotdb.db.pipe.core.event.factory;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.PipeCollectEvent;
-import org.apache.iotdb.db.pipe.core.event.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.PipeTsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEventManager;
+import org.apache.iotdb.db.pipe.core.event.tablet.PipeTabletInsertionEvent;
 
 import java.io.File;
 
 public class PipeEventFactory {
-  private static final PipeCollectorEventFactory COLLECTOR_EVENT_FACTORY =
-      new PipeCollectorEventFactory();
+  private static final PipeRealtimeCollectEventManager COLLECT_EVENT_MANAGER =
+      new PipeRealtimeCollectEventManager();
 
   public static PipeTabletInsertionEvent createTabletInsertEvent(InsertNode planNode) {
     return new PipeTabletInsertionEvent(planNode);
@@ -41,13 +40,13 @@ public class PipeEventFactory {
     return new PipeTsFileInsertionEvent(tsFile);
   }
 
-  public static PipeCollectEvent createCollectorEvent(
-      Event event, long timePartitionId, boolean isSeq, InsertNode node) {
-    return COLLECTOR_EVENT_FACTORY.createCollectorEvent(event, timePartitionId, isSeq, node);
+  public static PipeRealtimeCollectEvent createCollectEvent(
+      PipeTsFileInsertionEvent event, TsFileResource resource) {
+    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromTsFile(event, resource);
   }
 
-  public static PipeCollectEvent createCollectorEvent(
-      Event event, long timePartitionId, boolean isSeq, TsFileResource resource) {
-    return COLLECTOR_EVENT_FACTORY.createCollectorEvent(event, timePartitionId, isSeq, resource);
+  public static PipeRealtimeCollectEvent createCollectEvent(
+      PipeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
+    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromInsertNode(event, node, resource);
   }
 }
