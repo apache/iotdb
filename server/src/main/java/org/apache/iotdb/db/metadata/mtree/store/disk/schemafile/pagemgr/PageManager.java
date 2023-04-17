@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -435,11 +436,13 @@ public abstract class PageManager implements IPageManager {
     }
     logWriter.commit();
     dirtyPages.clear();
+    Arrays.stream(tieredDirtyPageIndex).forEach(LinkedList::clear);
   }
 
   @Override
   public void clear() throws IOException, MetadataException {
     dirtyPages.clear();
+    Arrays.stream(tieredDirtyPageIndex).forEach(LinkedList::clear);
     pageInstCache.clear();
     lastPageIndex.set(0);
     logWriter = logWriter.renew();
