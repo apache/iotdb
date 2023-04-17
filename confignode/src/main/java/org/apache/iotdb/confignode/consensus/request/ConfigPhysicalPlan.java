@@ -360,6 +360,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case DropPipeV1:
           plan = new DropPipePlanV1();
           break;
+        case ShowPipeV1:
+          plan = new ShowPipePlanV1();
+          break;
+        case RecordPipeMessageV1:
+          plan = new RecordPipeMessagePlan();
+          break;
         case CreatePipeV2:
           plan = new CreatePipePlanV2();
           break;
@@ -368,12 +374,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropPipeV2:
           plan = new DropPipePlanV2();
-          break;
-        case ShowPipeV1:
-          plan = new ShowPipePlanV1();
-          break;
-        case RecordPipeMessageV1:
-          plan = new RecordPipeMessagePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

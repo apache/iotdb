@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
-  private String pipeName;
 
+  private String pipeName;
   private PipeStatus status;
 
   public SetPipeStatusPlanV2() {

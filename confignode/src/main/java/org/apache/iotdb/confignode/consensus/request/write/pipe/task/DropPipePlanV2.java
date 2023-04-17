@@ -35,7 +35,7 @@ public class DropPipePlanV2 extends ConfigPhysicalPlan {
   }
 
   public DropPipePlanV2(String pipeName) {
-    this();
+    super(ConfigPhysicalPlanType.DropPipeV2);
     this.pipeName = pipeName;
   }
 

@@ -20,9 +20,8 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.commons.pipe.meta.ConfigNodePipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 
 import org.slf4j.Logger;
@@ -59,6 +58,7 @@ public class PipeInfo implements SnapshotProcessor {
     return pipeTaskInfo;
   }
 
+  /** for CreatePipeProcedureV2 */
   public boolean checkPipeCreateTask(TCreatePipeReq req) {
     if (pipeTaskInfo.existPipeName(req.getPipeName())) {
       LOGGER.info(
@@ -70,33 +70,42 @@ public class PipeInfo implements SnapshotProcessor {
     return pipePluginInfo.validatePluginForTask(req);
   }
 
-  public boolean checkOperatePipeTask(String pipeName, SyncOperation operation) {
-    if (operation.equals(SyncOperation.START_PIPE)) {
-      if (!pipeTaskInfo.existPipeName(pipeName)) {
-        LOGGER.info(String.format("Failed to start pipe [%s], the pipe does not exist", pipeName));
-        return false;
-      }
-      if (pipeTaskInfo.getPipeStatus(pipeName) != PipeStatus.STOP) {
-        LOGGER.info(
-            String.format("Failed to start pipe [%s], the pipe is already running", pipeName));
-        return false;
-      }
-    } else if (operation.equals(SyncOperation.STOP_PIPE)) {
-      if (!pipeTaskInfo.existPipeName(pipeName)) {
-        LOGGER.info(String.format("Failed to stop pipe [%s], the pipe does not exist", pipeName));
-        return false;
-      }
-      if (pipeTaskInfo.getPipeStatus(pipeName) != PipeStatus.RUNNING) {
-        LOGGER.info(String.format("Failed to stop pipe [%s], the pipe is already stop", pipeName));
-        return false;
-      }
-    } else {
-      if (!pipeTaskInfo.existPipeName(pipeName)) {
-        LOGGER.info(String.format("Failed to drop pipe [%s], the pipe does not exist", pipeName));
-        return false;
-      }
+  /** for DropPipeProcedureV2, StartPipeProcedureV2 & StopPipeProcedureV2 */
+  public boolean checkOperatePipeTask(String pipeName, PipeTaskOperation operation) {
+    switch (operation) {
+      case START_PIPE:
+        if (!pipeTaskInfo.existPipeName(pipeName)) {
+          LOGGER.info(
+              String.format("Failed to start pipe [%s], the pipe does not exist", pipeName));
+          return false;
+        }
+        if (pipeTaskInfo.getPipeStatus(pipeName) != PipeStatus.STOPPED) {
+          LOGGER.info(
+              String.format("Failed to start pipe [%s], the pipe is already running", pipeName));
+          return false;
+        }
+        return true;
+      case STOP_PIPE:
+        if (!pipeTaskInfo.existPipeName(pipeName)) {
+          LOGGER.info(String.format("Failed to stop pipe [%s], the pipe does not exist", pipeName));
+          return false;
+        }
+        if (pipeTaskInfo.getPipeStatus(pipeName) != PipeStatus.RUNNING) {
+          LOGGER.info(
+              String.format("Failed to stop pipe [%s], the pipe is already stop", pipeName));
+          return false;
+        }
+        return true;
+      case DROP_PIPE:
+        if (!pipeTaskInfo.existPipeName(pipeName)) {
+          LOGGER.info(String.format("Failed to drop pipe [%s], the pipe does not exist", pipeName));
+          return false;
+        }
+        return true;
+      case CREATE_PIPE: // will be checked by checkPipeCreateTask
+      default:
+        throw new UnsupportedOperationException();
     }
-    return true;
   }
 
   @Override

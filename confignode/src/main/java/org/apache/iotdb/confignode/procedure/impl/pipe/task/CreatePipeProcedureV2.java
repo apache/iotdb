@@ -22,12 +22,12 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.pipe.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
@@ -86,7 +86,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeMeta(
             req.getPipeName(),
             createTime,
-            PipeStatus.STOP,
+            PipeStatus.STOPPED,
             req.getCollectorAttributes(),
             req.getProcessorAttributes(),
             req.getConnectorAttributes(),
@@ -119,8 +119,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  SyncOperation getOperation() {
-    return SyncOperation.CREATE_PIPE;
+  PipeTaskOperation getOperation() {
+    return PipeTaskOperation.CREATE_PIPE;
   }
 
   @Override
@@ -183,7 +183,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(req.getPipeName())
-            .setOperation((byte) SyncOperation.DROP_PIPE.ordinal());
+            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(

@@ -1052,7 +1052,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeMeta(
             "testPipe",
             121,
-            PipeStatus.STOP,
+            org.apache.iotdb.commons.pipe.meta.PipeStatus.STOPPED,
             collectorAttributes,
             processorAttributes,
             connectorAttributes,
@@ -1066,7 +1066,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
-    SetPipeStatusPlanV2 setPipeStatusPlanV2 = new SetPipeStatusPlanV2("pipe", PipeStatus.RUNNING);
+    SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2("pipe", org.apache.iotdb.commons.pipe.meta.PipeStatus.RUNNING);
     SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());

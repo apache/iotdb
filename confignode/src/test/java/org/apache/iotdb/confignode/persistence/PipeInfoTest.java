@@ -21,9 +21,9 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
@@ -80,7 +80,7 @@ public class PipeInfoTest {
         new PipeMeta(
             "testPipe",
             121,
-            PipeStatus.STOP,
+            PipeStatus.STOPPED,
             collectorAttributes,
             processorAttributes,
             connectorAttributes,

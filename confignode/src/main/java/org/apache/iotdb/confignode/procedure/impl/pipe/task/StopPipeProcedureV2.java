@@ -19,10 +19,10 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
@@ -62,7 +62,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return env.getConfigManager()
         .getPipeManager()
         .getPipeInfo()
-        .checkOperatePipeTask(pipeName, SyncOperation.STOP_PIPE);
+        .checkOperatePipeTask(pipeName, PipeTaskOperation.STOP_PIPE);
   }
 
   @Override
@@ -77,7 +77,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final ConfigManager configNodeManager = env.getConfigManager();
 
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
-        new SetPipeStatusPlanV2(pipeName, PipeStatus.STOP);
+        new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED);
 
     final ConsensusWriteResponse response =
         configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
@@ -93,7 +93,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.STOP_PIPE.ordinal());
+            .setOperation((byte) PipeTaskOperation.STOP_PIPE.ordinal());
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
@@ -102,8 +102,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  SyncOperation getOperation() {
-    return SyncOperation.STOP_PIPE;
+  PipeTaskOperation getOperation() {
+    return PipeTaskOperation.STOP_PIPE;
   }
 
   @Override
@@ -167,7 +167,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.START_PIPE.ordinal());
+            .setOperation((byte) PipeTaskOperation.START_PIPE.ordinal());
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(

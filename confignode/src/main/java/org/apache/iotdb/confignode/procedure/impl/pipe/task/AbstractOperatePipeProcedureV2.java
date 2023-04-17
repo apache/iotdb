@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -59,7 +59,7 @@ abstract class AbstractOperatePipeProcedureV2
   /** Execute at state OPERATE_ON_DATA_NODES */
   abstract void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException, IOException;
 
-  abstract SyncOperation getOperation();
+  abstract PipeTaskOperation getOperation();
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeState state)

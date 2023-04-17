@@ -19,9 +19,9 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
@@ -61,7 +61,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return env.getConfigManager()
         .getPipeManager()
         .getPipeInfo()
-        .checkOperatePipeTask(pipeName, SyncOperation.STOP_PIPE);
+        .checkOperatePipeTask(pipeName, PipeTaskOperation.STOP_PIPE);
   }
 
   @Override
@@ -91,7 +91,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(pipeName)
-            .setOperation((byte) SyncOperation.DROP_PIPE.ordinal());
+            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
@@ -100,8 +100,8 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  SyncOperation getOperation() {
-    return SyncOperation.DROP_PIPE;
+  PipeTaskOperation getOperation() {
+    return PipeTaskOperation.DROP_PIPE;
   }
 
   @Override

@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.meta.ConfigNodePipeMetaKeeper;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.commons.pipe.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
