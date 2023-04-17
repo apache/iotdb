@@ -1601,12 +1601,18 @@ public class ConfigManager implements IManager {
 
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() {
-    return new TGetAllPipeInfoResp();
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().showPipes()
+        : new TGetAllPipeInfoResp().setStatus(status);
   }
 
   @Override
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().recordPipeMessage(req)
+        : status;
   }
 
   @Override

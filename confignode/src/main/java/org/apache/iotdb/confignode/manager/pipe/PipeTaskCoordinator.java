@@ -22,6 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,11 +56,19 @@ public class PipeTaskCoordinator {
     return configManager.getProcedureManager().dropPipe(pipeName);
   }
 
+  public TGetAllPipeInfoResp showPipes() {
+    throw new UnsupportedOperationException("Not implemented yet");
+  }
+
   public void lockPipeTaskInfo() {
     pipeTaskInfo.acquirePipeTaskInfoLock();
   }
 
   public void unlockPipeTaskInfo() {
     pipeTaskInfo.releasePipeTaskInfoLock();
+  }
+
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 }
