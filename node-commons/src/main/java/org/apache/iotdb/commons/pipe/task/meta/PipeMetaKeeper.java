@@ -35,8 +35,8 @@ public class PipeMetaKeeper {
     pipeNameToPipeMetaMap = new ConcurrentHashMap<>();
   }
 
-  public void addPipeMeta(String pipeName, PipeStaticMeta pipeStaticMeta) {
-    pipeNameToPipeMetaMap.put(pipeName, new PipeMeta(pipeStaticMeta));
+  public void addPipeMeta(String pipeName, PipeMeta pipeMeta) {
+    pipeNameToPipeMetaMap.put(pipeName, pipeMeta);
   }
 
   public PipeMeta getPipeMeta(String pipeName) {

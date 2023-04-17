@@ -35,11 +35,6 @@ public class PipeMeta {
     this.runtimeMeta = runtimeMeta;
   }
 
-  public PipeMeta(PipeStaticMeta staticMeta) {
-    this.staticMeta = staticMeta;
-    this.runtimeMeta = new PipeRuntimeMeta();
-  }
-
   public PipeStaticMeta getStaticMeta() {
     return staticMeta;
   }

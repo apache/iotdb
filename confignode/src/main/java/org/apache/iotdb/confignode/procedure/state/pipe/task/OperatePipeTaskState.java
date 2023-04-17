@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.procedure.state.sync;
 
-public enum OperatePipeState {
+package org.apache.iotdb.confignode.procedure.state.pipe.task;
+
+public enum OperatePipeTaskState {
   VALIDATE_TASK,
   CALCULATE_INFO_FOR_TASK,
   OPERATE_ON_DATA_NODES,

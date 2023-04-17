@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -123,7 +124,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /////////////////////////////// Pipe Task Management ///////////////////////////////
 
   public TSStatus createPipe(CreatePipePlanV2 plan) {
-    pipeMetaKeeper.addPipeMeta(plan.getPipeStaticMeta().getPipeName(), plan.getPipeStaticMeta());
+    pipeMetaKeeper.addPipeMeta(
+        plan.getPipeStaticMeta().getPipeName(),
+        new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

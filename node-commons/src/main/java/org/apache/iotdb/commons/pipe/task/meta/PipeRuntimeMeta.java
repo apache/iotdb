@@ -47,6 +47,13 @@ public class PipeRuntimeMeta {
     consensusGroupIdToTaskMetaMap = new ConcurrentHashMap<>();
   }
 
+  public PipeRuntimeMeta(
+      Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> consensusGroupIdToTaskMetaMap) {
+    status = new AtomicReference<>(PipeStatus.STOPPED);
+    exceptionMessages = new LinkedList<>();
+    this.consensusGroupIdToTaskMetaMap = consensusGroupIdToTaskMetaMap;
+  }
+
   public AtomicReference<PipeStatus> getStatus() {
     return status;
   }

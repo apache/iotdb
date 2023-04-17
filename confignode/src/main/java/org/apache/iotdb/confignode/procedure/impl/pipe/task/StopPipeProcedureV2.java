@@ -20,11 +20,8 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
@@ -57,8 +54,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  boolean validateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to validate PIPE [{}]", pipeName);
+  PipeTaskOperation getOperation() {
+    return PipeTaskOperation.STOP_PIPE;
+  }
+
+  @Override
+  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+    LOGGER.info("StopPipeProcedureV2: executeFromValidateTask({})", pipeName);
+
     return env.getConfigManager()
         .getPipeManager()
         .getPipeInfo()
@@ -67,31 +70,30 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+    LOGGER.info("StopPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to stop PIPE [{}] on Config Nodes", pipeName);
-
-    final ConfigManager configNodeManager = env.getConfigManager();
-
-    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
-        new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED);
+  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
+    LOGGER.info("StopPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED));
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
   }
 
   @Override
-  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to broadcast stop PIPE [{}] on Data Nodes", pipeName);
+  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
+    LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    TOperatePipeOnDataNodeReq request =
+    final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(pipeName)
             .setOperation((byte) PipeTaskOperation.STOP_PIPE.ordinal());
@@ -103,69 +105,36 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
-    return PipeTaskOperation.STOP_PIPE;
-  }
-
-  @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    return true;
-  }
-
-  @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back StopPipeProcedure at STATE [{}]", state);
-    switch (state) {
-      case VALIDATE_TASK:
-        rollbackFromValidateTask(env);
-        break;
-      case CALCULATE_INFO_FOR_TASK:
-        rollbackFromCalculateInfoForTask(env);
-        break;
-      case WRITE_CONFIG_NODE_CONSENSUS:
-        rollbackFromWriteConfigNodeConsensus(env);
-        break;
-      case OPERATE_ON_DATA_NODES:
-        rollbackFromOperateOnDataNodes(env);
-        break;
-      default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
-    }
-  }
-
-  private void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from validate task [{}]", pipeName);
-    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-  }
-
-  private void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+    LOGGER.info("StopPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
     // Do nothing
   }
 
-  private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
-        "Start to rollback from write config node consensus for stop pipe task [{}]", pipeName);
+  @Override
+  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+    LOGGER.info("StopPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
+    // Do nothing
+  }
 
-    // Stop pipe
-    final ConfigManager configNodeManager = env.getConfigManager();
-
-    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
-        new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING);
+  @Override
+  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+    LOGGER.info("StopPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(setPipeStatusPlanV2);
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
   }
 
-  private void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  @Override
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
-    LOGGER.info("Start to rollback from stop on data nodes for task [{}]", pipeName);
+    LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    // Stop pipe
-    TOperatePipeOnDataNodeReq request =
+    final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
             .setPipeName(pipeName)
             .setOperation((byte) PipeTaskOperation.START_PIPE.ordinal());
@@ -191,8 +160,12 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     StopPipeProcedureV2 that = (StopPipeProcedureV2) o;
     return pipeName.equals(that.pipeName);
   }

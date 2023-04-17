@@ -21,15 +21,13 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -48,75 +46,24 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeProcedureV2.class);
 
-  private TCreatePipeReq req;
+  private TCreatePipeReq createPipeRequest;
+
   private PipeStaticMeta pipeStaticMeta;
+  private PipeRuntimeMeta pipeRuntimeMeta;
 
   public CreatePipeProcedureV2() {
     super();
   }
 
-  public CreatePipeProcedureV2(TCreatePipeReq req) throws PipeException {
+  public CreatePipeProcedureV2(TCreatePipeReq createPipeRequest) throws PipeException {
     super();
-    this.req = req;
-  }
-
-  @Override
-  boolean validateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to validate PIPE [{}]", req.getPipeName());
-    final PipeInfo pipeInfo = env.getConfigManager().getPipeManager().getPipeInfo();
-    return pipeInfo.getPipePluginInfo().checkBeforeCreatePipe(req)
-        && pipeInfo.getPipeTaskInfo().checkBeforeCreatePipe(req);
-  }
-
-  @Override
-  void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to calculate PIPE [{}] information on Config Nodes", req.getPipeName());
-    long createTime = System.currentTimeMillis();
-    Map<TConsensusGroupId, Integer> regionGroupToLeaderMap =
-        env.getConfigManager().getLoadManager().getLatestRegionLeaderMap();
-
-    Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> pipeTasks = new HashMap<>();
-    regionGroupToLeaderMap.forEach(
-        (region, leader) -> {
-          pipeTasks.put(region, new PipeConsensusGroupTaskMeta(0, leader));
-        });
-
-    this.pipeStaticMeta =
-        new PipeStaticMeta(
-            req.getPipeName(),
-            createTime,
-            req.getCollectorAttributes(),
-            req.getProcessorAttributes(),
-            req.getConnectorAttributes());
-  }
-
-  @Override
-  void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeManagementException {
-    LOGGER.info("Start to create PIPE [{}] on Config Nodes", req.getPipeName());
-    final ConfigManager configNodeManager = env.getConfigManager();
-
-    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta);
-
-    final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(createPipePlanV2);
-    if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
-    }
-  }
-
-  @Override
-  void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException, IOException {
-    LOGGER.info("Start to broadcast create PIPE [{}] on Data Nodes", req.getPipeName());
-
-    if (RpcUtils.squashResponseStatusList(env.createPipeOnDataNodes(pipeStaticMeta)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to create pipe instance [%s] on data nodes", req.getPipeName()));
-    }
+    this.createPipeRequest = createPipeRequest;
   }
 
   @Override
@@ -125,71 +72,119 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    return true;
+  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
+
+    final PipeInfo pipeInfo = env.getConfigManager().getPipeManager().getPipeInfo();
+    return pipeInfo.getPipePluginInfo().checkBeforeCreatePipe(createPipeRequest)
+        && pipeInfo.getPipeTaskInfo().checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back CreatePipeProcedure at STATE [{}]", state);
-    switch (state) {
-      case VALIDATE_TASK:
-        rollbackFromValidateTask(env);
-        break;
-      case CALCULATE_INFO_FOR_TASK:
-        rollbackFromCalculateInfoForTask(env);
-        break;
-      case WRITE_CONFIG_NODE_CONSENSUS:
-        rollbackFromWriteConfigNodeConsensus(env);
-        break;
-      case OPERATE_ON_DATA_NODES:
-        rollbackFromOperateOnDataNodes(env);
-        break;
-      default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
-    }
-  }
-
-  private void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from validate task [{}]", req.getPipeName());
-    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-  }
-
-  private void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from calculate info for task [{}]", req.getPipeName());
-    // Do nothing
-  }
-
-  private void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info(
-        "Start to rollback from write config node consensus for create pipe task [{}]",
-        req.getPipeName());
+        "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
+        createPipeRequest.getPipeName());
 
-    // Drop pipe
-    final ConfigManager configNodeManager = env.getConfigManager();
+    pipeStaticMeta =
+        new PipeStaticMeta(
+            createPipeRequest.getPipeName(),
+            System.currentTimeMillis(),
+            createPipeRequest.getCollectorAttributes(),
+            createPipeRequest.getProcessorAttributes(),
+            createPipeRequest.getConnectorAttributes());
 
-    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2(req.getPipeName());
+    final Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> consensusGroupIdToTaskMetaMap =
+        new HashMap<>();
+    env.getConfigManager()
+        .getLoadManager()
+        .getLatestRegionLeaderMap()
+        .forEach(
+            (region, leader) -> {
+              consensusGroupIdToTaskMetaMap.put(region, new PipeConsensusGroupTaskMeta(0, leader));
+            });
+    pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
+  }
+
+  @Override
+  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
+    LOGGER.info(
+        "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
+        createPipeRequest.getPipeName());
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(dropPipePlanV2);
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
   }
 
-  private void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("Start to rollback from operate on data nodes for task [{}]", req.getPipeName());
+  @Override
+  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeManagementException, IOException {
+    LOGGER.info(
+        "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
+        createPipeRequest.getPipeName());
 
-    TOperatePipeOnDataNodeReq request =
+    if (RpcUtils.squashResponseStatusList(env.createPipeOnDataNodes(pipeStaticMeta)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException(
+          String.format(
+              "Failed to create pipe instance [%s] on data nodes",
+              createPipeRequest.getPipeName()));
+    }
+  }
+
+  @Override
+  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipeProcedureV2: rollbackFromValidateTask({})", createPipeRequest.getPipeName());
+    // Do nothing
+  }
+
+  @Override
+  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipeProcedureV2: rollbackFromCalculateInfoForTask({})",
+        createPipeRequest.getPipeName());
+    // Do nothing
+  }
+
+  @Override
+  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
+        createPipeRequest.getPipeName());
+
+    final ConsensusWriteResponse response =
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
+    if (!response.isSuccessful()) {
+      throw new PipeManagementException(response.getErrorMessage());
+    }
+  }
+
+  @Override
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
+        createPipeRequest.getPipeName());
+
+    final TOperatePipeOnDataNodeReq request =
         new TOperatePipeOnDataNodeReq()
-            .setPipeName(req.getPipeName())
+            .setPipeName(createPipeRequest.getPipeName())
             .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
     if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
           String.format(
-              "Failed to rollback from operate on data nodes for task [%s]", req.getPipeName()));
+              "Failed to rollback from operate on data nodes for task [%s]",
+              createPipeRequest.getPipeName()));
     }
   }
 
@@ -197,19 +192,19 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
-    ReadWriteIOUtils.write(req.getPipeName(), stream);
-    stream.writeInt(req.getCollectorAttributesSize());
-    for (Map.Entry<String, String> entry : req.getCollectorAttributes().entrySet()) {
+    ReadWriteIOUtils.write(createPipeRequest.getPipeName(), stream);
+    stream.writeInt(createPipeRequest.getCollectorAttributesSize());
+    for (Map.Entry<String, String> entry : createPipeRequest.getCollectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(req.getProcessorAttributesSize());
-    for (Map.Entry<String, String> entry : req.getProcessorAttributes().entrySet()) {
+    stream.writeInt(createPipeRequest.getProcessorAttributesSize());
+    for (Map.Entry<String, String> entry : createPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(req.getConnectorAttributesSize());
-    for (Map.Entry<String, String> entry : req.getConnectorAttributes().entrySet()) {
+    stream.writeInt(createPipeRequest.getConnectorAttributesSize());
+    for (Map.Entry<String, String> entry : createPipeRequest.getConnectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -224,7 +219,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    req =
+    createPipeRequest =
         new TCreatePipeReq()
             .setPipeName(ReadWriteIOUtils.readString(byteBuffer))
             .setCollectorAttributes(new HashMap<>())
@@ -232,17 +227,20 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .setConnectorAttributes(new HashMap<>());
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      req.getCollectorAttributes()
+      createPipeRequest
+          .getCollectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      req.getProcessorAttributes()
+      createPipeRequest
+          .getProcessorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      req.getConnectorAttributes()
+      createPipeRequest
+          .getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
@@ -252,15 +250,18 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
-    if (pipeStaticMeta == null && that.pipeStaticMeta == null) return true;
-    return req.equals(that.req) && pipeStaticMeta.equals(that.pipeStaticMeta);
+    return createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName());
   }
 
   @Override
   public int hashCode() {
-    return req.getPipeName().hashCode();
+    return Objects.hash(createPipeRequest.getPipeName());
   }
 }

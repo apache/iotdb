@@ -25,65 +25,71 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
-import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
+import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/** This procedure manage three kinds of PIPE operations: CREATE, START and STOP */
-abstract class AbstractOperatePipeProcedureV2
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, OperatePipeState> {
+/**
+ * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
+ *
+ * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
+ * executed in sequence and node procedures can be locked when a pipe task procedure is running.
+ */
+abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<OperatePipeTaskState> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
 
   private static final int RETRY_THRESHOLD = 3;
 
+  abstract PipeTaskOperation getOperation();
+
   /**
    * Execute at state VALIDATE_TASK
    *
    * @return true if procedure can finish directly
    */
-  abstract boolean validateTask(ConfigNodeProcedureEnv env) throws PipeException, PipeSinkException;
+  abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeException, PipeSinkException;
 
-  /** Execute at state PRE_OPERATE_PIPE_CONFIGNODE */
-  abstract void calculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
+  /** Execute at state CALCULATE_INFO_FOR_TASK */
+  abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
 
   /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
-  abstract void writeConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException;
+  abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+      throws PipeException;
 
   /** Execute at state OPERATE_ON_DATA_NODES */
-  abstract void operateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException, IOException;
-
-  abstract PipeTaskOperation getOperation();
+  abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeException, IOException;
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeState state)
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     try {
       switch (state) {
         case VALIDATE_TASK:
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
-          if (!validateTask(env)) {
+          if (!executeFromValidateTask(env)) {
             env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
             return Flow.NO_MORE_STATE;
           }
-          setNextState(OperatePipeState.CALCULATE_INFO_FOR_TASK);
+          setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
         case CALCULATE_INFO_FOR_TASK:
-          calculateInfoForTask(env);
-          setNextState(OperatePipeState.WRITE_CONFIG_NODE_CONSENSUS);
+          executeFromCalculateInfoForTask(env);
+          setNextState(OperatePipeTaskState.WRITE_CONFIG_NODE_CONSENSUS);
           break;
         case WRITE_CONFIG_NODE_CONSENSUS:
-          writeConfigNodeConsensus(env);
-          setNextState(OperatePipeState.OPERATE_ON_DATA_NODES);
+          executeFromWriteConfigNodeConsensus(env);
+          setNextState(OperatePipeTaskState.OPERATE_ON_DATA_NODES);
           break;
         case OPERATE_ON_DATA_NODES:
-          operateOnDataNodes(env);
+          executeFromOperateOnDataNodes(env);
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
       }
@@ -104,46 +110,52 @@ abstract class AbstractOperatePipeProcedureV2
   }
 
   @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv env) {
-    env.getSchedulerLock().lock();
-    try {
-      if (env.getPipeLock().tryLock(this)) {
-        LOGGER.info("procedureId {} acquire lock.", getProcId());
-        return ProcedureLockState.LOCK_ACQUIRED;
-      }
-      env.getPipeLock().waitProcedure(this);
-      LOGGER.info("procedureId {} wait for lock.", getProcId());
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    } finally {
-      env.getSchedulerLock().unlock();
+  protected boolean isRollbackSupported(OperatePipeTaskState state) {
+    return true;
+  }
+
+  @Override
+  protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
+      throws IOException, InterruptedException, ProcedureException {
+    switch (state) {
+      case VALIDATE_TASK:
+        rollbackFromValidateTask(env);
+        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+        break;
+      case CALCULATE_INFO_FOR_TASK:
+        rollbackFromCalculateInfoForTask(env);
+        break;
+      case WRITE_CONFIG_NODE_CONSENSUS:
+        rollbackFromWriteConfigNodeConsensus(env);
+        break;
+      case OPERATE_ON_DATA_NODES:
+        rollbackFromOperateOnDataNodes(env);
+        break;
+      default:
+        LOGGER.error("Unsupported roll back STATE [{}]", state);
     }
   }
 
+  protected abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
+
+  protected abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+
+  protected abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
+
+  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env);
+
   @Override
-  protected void releaseLock(ConfigNodeProcedureEnv env) {
-    env.getSchedulerLock().lock();
-    try {
-      LOGGER.info("procedureId {} release lock.", getProcId());
-      if (env.getPipeLock().releaseLock(this)) {
-        env.getPipeLock().wakeWaitingProcedures(env.getScheduler());
-      }
-    } finally {
-      env.getSchedulerLock().unlock();
-    }
+  protected OperatePipeTaskState getState(int stateId) {
+    return OperatePipeTaskState.values()[stateId];
   }
 
   @Override
-  protected OperatePipeState getState(int stateId) {
-    return OperatePipeState.values()[stateId];
-  }
-
-  @Override
-  protected int getStateId(OperatePipeState state) {
+  protected int getStateId(OperatePipeTaskState state) {
     return state.ordinal();
   }
 
   @Override
-  protected OperatePipeState getInitialState() {
-    return OperatePipeState.VALIDATE_TASK;
+  protected OperatePipeTaskState getInitialState() {
+    return OperatePipeTaskState.VALIDATE_TASK;
   }
 }

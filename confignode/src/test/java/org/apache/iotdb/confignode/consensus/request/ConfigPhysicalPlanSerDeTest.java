@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
@@ -1051,7 +1052,8 @@ public class ConfigPhysicalPlanSerDeTest {
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, collectorAttributes, processorAttributes, connectorAttributes);
-    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     CreatePipePlanV2 createPipePlanV21 =
         (CreatePipePlanV2)
             ConfigPhysicalPlan.Factory.create(createPipePlanV2.serializeToByteBuffer());
