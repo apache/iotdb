@@ -76,8 +76,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
-          "301: The used quota exceeds the preset quota. Please set a larger value.",
-          throwables.getMessage());
+          "1700: The number of timeSeries has reached the upper limit", throwables.getMessage());
     }
   }
 
@@ -97,8 +96,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
-          "301: The used quota exceeds the preset quota. Please set a larger value.",
-          throwables.getMessage());
+          "1700: The number of devices has reached the upper limit", throwables.getMessage());
     }
   }
 
@@ -140,8 +138,8 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota diskSize=100M on root.sg2");
-      adminStmt.execute("set space quota diskSize=200M on root.sg2");
+      adminStmt.execute("set space quota disk=100M on root.sg2");
+      adminStmt.execute("set space quota disk=200M on root.sg2");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
@@ -448,7 +446,7 @@ public class IoTDBSpaceQuotaIT {
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("set space quota timeserie=5 on root.sg0");
     } catch (SQLException throwables) {
-      Assert.assertEquals("Wrong space quota type: timeserie", throwables.getMessage());
+      Assert.assertEquals("701: Wrong space quota type: timeserie", throwables.getMessage());
     }
   }
 

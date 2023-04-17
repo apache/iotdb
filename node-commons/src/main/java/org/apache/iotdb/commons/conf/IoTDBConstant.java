@@ -301,8 +301,8 @@ public class IoTDBConstant {
   public static final String KB_UNIT = "K";
   public static final String MB_UNIT = "M";
   public static final String GB_UNIT = "G";
-  public static final String PB_UNIT = "T";
-  public static final String TB_UNIT = "P";
+  public static final String TB_UNIT = "T";
+  public static final String PB_UNIT = "P";
 
   // Time
   public static final int SEC = 1000;
