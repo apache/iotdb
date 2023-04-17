@@ -129,6 +129,9 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
+    if (fromLeader(insertRowNode.getSearchIndex())) {
+      return new WALFlushListener(false);
+    }
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
     return log(walEntry);
   }
@@ -136,14 +139,24 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+    if (fromLeader(insertTabletNode.getSearchIndex())) {
+      return new WALFlushListener(false);
+    }
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
     return log(walEntry);
   }
 
   @Override
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
+    if (fromLeader(deleteDataNode.getSearchIndex())) {
+      return new WALFlushListener(false);
+    }
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
     return log(walEntry);
+  }
+
+  private boolean fromLeader(long searchIndex) {
+    return searchIndex == DEFAULT_SEARCH_INDEX;
   }
 
   private WALFlushListener log(WALEntry walEntry) {
