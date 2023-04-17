@@ -559,7 +559,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
 |Type| Int32                                                                                                                |
-|Default| 16                                                                                                                   |
+|Default| 0                                                                                                                   |
 |Effective| After restarting system                                                                                              |
 
 * concurrent\_sub\_rawQuery\_thread
@@ -568,7 +568,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:-------------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
 |Type| Int32                                                                                                                    |
-|Default| 8                                                                                                                        |
+|Default| 0                                                                                                                        |
 |Effective| After restarting system                                                                                                  |
 
 * tsfile\_storage\_fs
