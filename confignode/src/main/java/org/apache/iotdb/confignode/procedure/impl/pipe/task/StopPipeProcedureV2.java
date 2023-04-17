@@ -135,7 +135,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("Start to rollback from validate task [{}]", pipeName);
-    env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
+    env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   private void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {

@@ -25,12 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class PipeTaskCoordinator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinator.class);
 
   private final ConfigManager configManager;
   private final PipeTaskInfo pipeTaskInfo;
@@ -38,6 +33,14 @@ public class PipeTaskCoordinator {
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
     this.pipeTaskInfo = pipeTaskInfo;
+  }
+
+  public void lock() {
+    pipeTaskInfo.acquirePipeTaskInfoLock();
+  }
+
+  public void unlock() {
+    pipeTaskInfo.releasePipeTaskInfoLock();
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {
@@ -58,14 +61,6 @@ public class PipeTaskCoordinator {
 
   public TGetAllPipeInfoResp showPipes() {
     throw new UnsupportedOperationException("Not implemented yet");
-  }
-
-  public void lockPipeTaskInfo() {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
-  }
-
-  public void unlockPipeTaskInfo() {
-    pipeTaskInfo.releasePipeTaskInfoLock();
   }
 
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {

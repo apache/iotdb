@@ -67,9 +67,9 @@ abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager().getPipeManager().lockPipeTaskInfo();
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           if (!validateTask(env)) {
-            env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
+            env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeState.CALCULATE_INFO_FOR_TASK);
@@ -84,7 +84,7 @@ abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           operateOnDataNodes(env);
-          env.getConfigManager().getPipeManager().unlockPipeTaskInfo();
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
       }
     } catch (PipeException | PipeSinkException | IOException e) {
