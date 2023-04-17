@@ -235,6 +235,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
@@ -817,6 +818,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 MergeSortOperator.class.getSimpleName());
+
+    // InputColumn and OutputColumn may have the different, mergeSortOperator needs to do the
+    // projection.
+    List<String> outputColumnNames = node.getOutputColumnNames();
+    List<String> inputColumnNames = node.getChildren().get(0).getOutputColumnNames();
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChildren().get(0), context.getTypeProvider());
+    int[] outputColumnLocations = new int[outputColumnNames.size()];
+    int index = 0;
+    for (String columnName : outputColumnNames) {
+      if (inputColumnNames.contains(columnName)) {
+        outputColumnLocations[index++] = inputColumnNames.indexOf(columnName);
+      }
+    }
+
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -826,15 +842,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
     List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
     genSortInformation(
-        node.getOutputColumnNames(),
-        dataTypes,
-        sortItemList,
-        sortItemIndexList,
-        sortItemDataTypeList);
+        inputColumnNames, inputDataTypes, sortItemList, sortItemIndexList, sortItemDataTypeList);
     return new MergeSortOperator(
         operatorContext,
         children,
         dataTypes,
+        outputColumnLocations,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
@@ -1601,9 +1614,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> inputColumnNames = node.getChild().getOutputColumnNames();
     List<String> outputColumnNames = node.getOutputColumnNames();
     List<Integer> columnsLocations = new LinkedList<>();
-    for (String columnName : outputColumnNames) {
-      if (inputColumnNames.contains(columnName)) {
-        columnsLocations.add(inputColumnNames.indexOf(columnName));
+    if (node.isIgnoreProjection()) {
+      columnsLocations =
+          IntStream.range(0, outputDataTypes.size()).boxed().collect(Collectors.toList());
+    } else {
+      for (String columnName : outputColumnNames) {
+        if (inputColumnNames.contains(columnName)) {
+          columnsLocations.add(inputColumnNames.indexOf(columnName));
+        }
       }
     }
 

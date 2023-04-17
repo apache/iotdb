@@ -601,13 +601,14 @@ public class IoTDBOrderByIT {
   @Test
   public void alignByDeviceOrderByTest1() {
     String sql =
-        "select num+bigNum from root.sg.d order by num+floatNum desc, floatNum desc align by device";
+        "select num+bigNum from root.** order by num+floatNum desc, floatNum desc align by device";
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     String device = "root.sg.d";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
+        int total = 0;
         while (resultSet.next()) {
           String actualTime = resultSet.getString(1);
           String actualDevice = resultSet.getString(2);
@@ -623,8 +624,10 @@ public class IoTDBOrderByIT {
             device = "root.sg.d";
             i++;
           }
+          total++;
         }
-        assertEquals(i, ans.length * 2);
+        assertEquals(i, ans.length);
+        assertEquals(total, ans.length * 2);
       }
     } catch (Exception e) {
       e.printStackTrace();
