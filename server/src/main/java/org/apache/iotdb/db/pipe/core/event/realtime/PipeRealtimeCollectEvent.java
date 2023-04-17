@@ -19,24 +19,24 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.EventType;
 
 import java.util.Map;
 
 public class PipeRealtimeCollectEvent implements Event {
-  private final EnrichedEvent event;
+  private final Event event;
   private final Map<String, String[]> device2Measurements;
   private final TsFileEpoch tsFileEpoch;
 
   public PipeRealtimeCollectEvent(
-      EnrichedEvent event, Map<String, String[]> device2Measurements, TsFileEpoch tsFileEpoch) {
+      Event event, Map<String, String[]> device2Measurements, TsFileEpoch tsFileEpoch) {
     this.event = event;
     this.device2Measurements = device2Measurements;
     this.tsFileEpoch = tsFileEpoch;
   }
 
-  public EnrichedEvent getEvent() {
+  public Event getEvent() {
     return event;
   }
 
@@ -50,6 +50,11 @@ public class PipeRealtimeCollectEvent implements Event {
 
   public TsFileEpoch getTsFileEpoch() {
     return tsFileEpoch;
+  }
+
+  @Override
+  public EventType getType() {
+    return event.getType();
   }
 
   @Override

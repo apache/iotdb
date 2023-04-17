@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.pipe.core.event.tablet;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEventType;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
@@ -30,7 +28,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
+public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   private final InsertNode insertNode;
 
   public PipeTabletInsertionEvent(InsertNode insertNode) {
@@ -50,10 +48,5 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     return null;
-  }
-
-  @Override
-  public EnrichedEventType getType() {
-    return EnrichedEventType.TABLET_INSERTION;
   }
 }

@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
 import org.apache.iotdb.db.pipe.PipeConfig;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEventType;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.EventType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,10 +44,7 @@ public class PipeRealtimeHybridCollector extends PipeRealtimeCollector {
 
   @Override
   public void collectEvent(PipeRealtimeCollectEvent event) {
-    if (event
-        .getEvent()
-        .getType()
-        .equals(EnrichedEventType.TABLET_INSERTION)) { // offer tablet event
+    if (event.getEvent().getType().equals(EventType.TABLET_INSERTION)) { // offer tablet event
       if (approachingCapacity()) {
         event.getTsFileEpoch().visit(state -> TsFileEpoch.State.USING_TSFILE);
       }
@@ -68,12 +65,12 @@ public class PipeRealtimeHybridCollector extends PipeRealtimeCollector {
   }
 
   @Override
-  public EnrichedEvent supply() {
+  public Event supply() {
     PipeRealtimeCollectEvent collectEvent = pendingQueue.poll();
 
     while (collectEvent != null) {
-      EnrichedEvent event = collectEvent.getEvent();
-      if (event.getType().equals(EnrichedEventType.TABLET_INSERTION)) {
+      Event event = collectEvent.getEvent();
+      if (event.getType().equals(EventType.TABLET_INSERTION)) {
         collectEvent
             .getTsFileEpoch()
             .visit(

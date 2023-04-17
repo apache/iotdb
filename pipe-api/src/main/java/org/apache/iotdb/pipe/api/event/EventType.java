@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event;
+package org.apache.iotdb.pipe.api.event;
 
-public interface EnrichedEvent {
-  EnrichedEventType getType();
+public enum EventType {
+  TABLET_INSERTION,
+  TSFILE_INSERTION
 }

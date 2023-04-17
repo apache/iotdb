@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.api.event.insertion;
 
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.EventType;
 
 /**
  * TsFileInsertionEvent is used to define the event of writing TsFile. Event data stores in disks,
@@ -41,4 +42,9 @@ public interface TsFileInsertionEvent extends Event {
    * @return TsFileInsertionEvent
    */
   TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
+
+  @Override
+  default EventType getType() {
+    return EventType.TSFILE_INSERTION;
+  }
 }

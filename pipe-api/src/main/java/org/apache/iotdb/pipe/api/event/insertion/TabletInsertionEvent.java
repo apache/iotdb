@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.api.event.insertion;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.EventType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
@@ -53,4 +54,9 @@ public interface TabletInsertionEvent extends Event {
    *     RowCollector
    */
   TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer);
+
+  @Override
+  default EventType getType() {
+    return EventType.TABLET_INSERTION;
+  }
 }

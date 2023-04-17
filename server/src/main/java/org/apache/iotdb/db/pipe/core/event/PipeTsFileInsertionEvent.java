@@ -25,7 +25,7 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 
 import java.io.File;
 
-public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
+public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
   private final File tsFile;
 
   public PipeTsFileInsertionEvent(File tsFile) {
@@ -40,10 +40,5 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   @Override
   public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
     return null;
-  }
-
-  @Override
-  public EnrichedEventType getType() {
-    return EnrichedEventType.TSFILE_INSERTION;
   }
 }
