@@ -256,6 +256,8 @@ public class QueryExecution implements IQueryExecution {
     context.prepareForRetry();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
+    // re-stop
+    this.stopped = new AtomicBoolean(false);
     // re-start the QueryExecution
     this.start();
     return getStatus();
