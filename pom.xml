@@ -165,6 +165,7 @@
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.8</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
+        <zstd-jni.version>1.5.4-2</zstd-jni.version>
         <netty.version>4.1.82.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -515,6 +516,11 @@
                 <groupId>org.xerial.snappy</groupId>
                 <artifactId>snappy-java</artifactId>
                 <version>${snappy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.luben</groupId>
+                <artifactId>zstd-jni</artifactId>
+                <version>${zstd-jni.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.thrift</groupId>
