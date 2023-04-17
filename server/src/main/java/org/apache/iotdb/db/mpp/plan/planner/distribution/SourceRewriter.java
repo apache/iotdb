@@ -282,11 +282,16 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       return Collections.singletonList(node);
     }
 
+    List<String> projectedColumns = node.getOutputColumnNames();
+    node.setIgnoreProjection(true);
+
     MergeSortNode mergeSortNode =
         new MergeSortNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getOrderByParameter(),
-            node.getOutputColumnNames());
+            projectedColumns);
+
+    mergeSortNode.setInputColumns(node.getOutputColumnNames());
 
     for (PlanNode child : children) {
       SortNode sortNode = cloneSortNodeWithOutChild(node, context);
@@ -294,6 +299,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       sortNode.setIgnoreProjection(true);
       mergeSortNode.addChild(sortNode);
     }
+
     return Collections.singletonList(mergeSortNode);
   }
 
