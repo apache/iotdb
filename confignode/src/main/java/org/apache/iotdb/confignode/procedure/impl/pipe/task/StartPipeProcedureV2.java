@@ -64,7 +64,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     return env.getConfigManager()
         .getPipeManager()
-        .getPipeInfo()
+        .getPipeTaskCoordinator()
         .getPipeTaskInfo()
         .checkBeforeStartPipe(pipeName);
   }

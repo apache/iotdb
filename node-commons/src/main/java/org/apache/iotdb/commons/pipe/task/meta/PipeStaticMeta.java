@@ -65,11 +65,11 @@ public class PipeStaticMeta {
   }
 
   public Map<String, String> getProcessorAttributes() {
-    return collectorAttributes;
+    return processorAttributes;
   }
 
   public Map<String, String> getConnectorAttributes() {
-    return collectorAttributes;
+    return connectorAttributes;
   }
 
   public ByteBuffer serialize() throws IOException {

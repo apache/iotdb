@@ -28,15 +28,15 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeConsensusGroupTaskMeta {
+public class PipeTaskMeta {
 
   // TODO: replace it with consensus index
   private final AtomicLong index = new AtomicLong(0L);
   private final AtomicInteger regionLeader = new AtomicInteger(0);
 
-  private PipeConsensusGroupTaskMeta() {}
+  private PipeTaskMeta() {}
 
-  public PipeConsensusGroupTaskMeta(long index, int regionLeader) {
+  public PipeTaskMeta(long index, int regionLeader) {
     this.index.set(index);
     this.regionLeader.set(regionLeader);
   }
@@ -62,14 +62,14 @@ public class PipeConsensusGroupTaskMeta {
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
   }
 
-  public static PipeConsensusGroupTaskMeta deserialize(ByteBuffer byteBuffer) {
-    final PipeConsensusGroupTaskMeta PipeConsensusGroupTaskMeta = new PipeConsensusGroupTaskMeta();
-    PipeConsensusGroupTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
-    PipeConsensusGroupTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
-    return PipeConsensusGroupTaskMeta;
+  public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
+    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
+    PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
+    PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
+    return PipeTaskMeta;
   }
 
-  public static PipeConsensusGroupTaskMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
@@ -82,7 +82,7 @@ public class PipeConsensusGroupTaskMeta {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeConsensusGroupTaskMeta that = (PipeConsensusGroupTaskMeta) obj;
+    PipeTaskMeta that = (PipeTaskMeta) obj;
     return index.get() == that.index.get() && regionLeader.get() == that.regionLeader.get();
   }
 
