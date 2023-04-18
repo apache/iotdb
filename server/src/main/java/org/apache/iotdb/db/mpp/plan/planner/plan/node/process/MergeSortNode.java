@@ -59,25 +59,13 @@ public class MergeSortNode extends MultiChildProcessNode {
     this.inputColumns = new ArrayList<>();
   }
 
-  public MergeSortNode(
-      PlanNodeId id,
-      OrderByParameter mergeOrderParameter,
-      List<String> inputColumns,
-      List<String> outputColumns) {
-    super(id);
-    this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumns = outputColumns;
-    this.inputColumns = inputColumns;
-  }
-
   public OrderByParameter getMergeOrderParameter() {
     return mergeOrderParameter;
   }
 
   @Override
   public PlanNode clone() {
-    return new MergeSortNode(
-        getPlanNodeId(), getMergeOrderParameter(), inputColumns, outputColumns);
+    return new MergeSortNode(getPlanNodeId(), getMergeOrderParameter(), outputColumns);
   }
 
   @Override
