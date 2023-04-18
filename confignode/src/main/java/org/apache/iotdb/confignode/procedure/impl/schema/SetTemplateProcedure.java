@@ -371,16 +371,34 @@ public class SetTemplateProcedure
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, SetTemplateState state)
       throws IOException, InterruptedException, ProcedureException {
-    switch (state) {
-      case PRE_SET:
-        rollbackPreSet(env);
-        break;
-      case PRE_RELEASE:
-        rollbackPreRelease(env);
-        break;
-      case COMMIT_SET:
-        rollbackCommitSet(env);
-        break;
+    long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case PRE_SET:
+          LOGGER.info(
+              "Start rollback pre set schema template {} on path {}",
+              templateName,
+              templateSetPath);
+          rollbackPreSet(env);
+          break;
+        case PRE_RELEASE:
+          LOGGER.info(
+              "Start rollback pre release schema template {} on path {}",
+              templateName,
+              templateSetPath);
+          rollbackPreRelease(env);
+          break;
+        case COMMIT_SET:
+          LOGGER.info(
+              "Start rollback commit set schema template {} on path {}",
+              templateName,
+              templateSetPath);
+          rollbackCommitSet(env);
+          break;
+      }
+    } finally {
+      LOGGER.info(
+          "Rollback SetTemplate-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
     }
   }
 
