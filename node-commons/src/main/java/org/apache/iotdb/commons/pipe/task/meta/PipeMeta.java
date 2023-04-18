@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -53,6 +54,11 @@ public class PipeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
+    ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
+  }
+
+  public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
     ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
   }
