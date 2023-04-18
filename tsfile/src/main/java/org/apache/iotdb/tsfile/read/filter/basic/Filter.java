@@ -32,7 +32,7 @@ import java.util.List;
 public interface Filter {
 
   /**
-   * To examine whether the statistics is satisfied with the filter.
+   * To examine whether there are data points satisfied with the filter.
    *
    * @param statistics statistics with min time, max time, min value, max value.
    */
