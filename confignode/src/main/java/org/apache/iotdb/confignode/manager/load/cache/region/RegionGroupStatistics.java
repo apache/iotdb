@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition.heartbeat;
+
+package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
@@ -32,8 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionGroupStatistics {
 
-  private RegionGroupStatus regionGroupStatus;
-
+  private volatile RegionGroupStatus regionGroupStatus;
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
 
   public RegionGroupStatistics() {
@@ -51,7 +51,7 @@ public class RegionGroupStatistics {
   }
 
   /**
-   * Get the specified Region's status
+   * Get the specified Region's status.
    *
    * @param dataNodeId Where the Region resides
    * @return Region's latest status if received heartbeat recently, Unknown otherwise
@@ -116,8 +116,12 @@ public class RegionGroupStatistics {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RegionGroupStatistics that = (RegionGroupStatistics) o;
     return regionGroupStatus == that.regionGroupStatus
         && regionStatisticsMap.equals(that.regionStatisticsMap);

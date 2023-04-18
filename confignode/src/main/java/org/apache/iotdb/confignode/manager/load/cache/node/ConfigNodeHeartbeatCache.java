@@ -16,40 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node.heartbeat;
+
+package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
-  /** Only get CURRENT_NODE_ID here due to initialization order */
+  /** Only get CURRENT_NODE_ID here due to initialization order. */
   public static final int CURRENT_NODE_ID =
       ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
 
   public static final NodeStatistics CURRENT_NODE_STATISTICS =
       new NodeStatistics(0, NodeStatus.Running, null);
 
-  private final int configNodeId;
-
-  /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics */
+  /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics. */
   public ConfigNodeHeartbeatCache(int configNodeId) {
-    super();
-    this.configNodeId = configNodeId;
+    super(configNodeId);
   }
 
-  /** Constructor only for ConfigNode-leader */
+  /** Constructor only for ConfigNode-leader. */
   public ConfigNodeHeartbeatCache(int configNodeId, NodeStatistics statistics) {
-    super();
-    this.configNodeId = configNodeId;
-    this.previousStatistics = statistics;
-    this.currentStatistics = statistics;
+    super(configNodeId);
+    this.previousStatistics = new AtomicReference<>(statistics);
+    this.currentStatistics = new AtomicReference<>(statistics);
   }
 
   @Override
   protected void updateCurrentStatistics() {
     // Skip itself
-    if (configNodeId == CURRENT_NODE_ID) {
+    if (nodeId == CURRENT_NODE_ID) {
       return;
     }
 
@@ -76,9 +75,9 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
-    if (!currentStatistics.equals(newStatistics)) {
+    if (!currentStatistics.get().equals(newStatistics)) {
       // Update the current NodeStatistics if necessary
-      currentStatistics = newStatistics;
+      currentStatistics.set(newStatistics);
     }
   }
 }

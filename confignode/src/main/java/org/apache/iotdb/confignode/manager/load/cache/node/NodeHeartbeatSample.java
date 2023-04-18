@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node.heartbeat;
+
+package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -33,7 +34,7 @@ public class NodeHeartbeatSample {
 
   private TLoadSample loadSample = null;
 
-  /** Constructor for ConfigNode sample */
+  /** Constructor for ConfigNode sample. */
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
@@ -41,7 +42,7 @@ public class NodeHeartbeatSample {
     this.statusReason = null;
   }
 
-  /** Constructor for DataNode sample */
+  /** Constructor for DataNode sample. */
   public NodeHeartbeatSample(THeartbeatResp heartbeatResp, long receiveTimestamp) {
     this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
     this.receiveTimestamp = receiveTimestamp;
