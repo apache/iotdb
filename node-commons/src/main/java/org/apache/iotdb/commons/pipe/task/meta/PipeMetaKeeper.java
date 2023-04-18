@@ -89,4 +89,9 @@ public class PipeMetaKeeper {
   public int hashCode() {
     return Objects.hash(pipeNameToPipeMetaMap);
   }
+
+  @Override
+  public String toString() {
+    return "PipeMetaKeeper{" + "pipeNameToPipeMetaMap=" + pipeNameToPipeMetaMap + '}';
+  }
 }

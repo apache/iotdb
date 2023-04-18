@@ -118,7 +118,7 @@ public class PipeRuntimeMeta {
       return false;
     }
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
-    return status.equals(that.status)
+    return Objects.equals(status.get().getType(), that.status.get().getType())
         && exceptionMessages.equals(that.exceptionMessages)
         && consensusGroupIdToTaskMetaMap.equals(that.consensusGroupIdToTaskMetaMap);
   }

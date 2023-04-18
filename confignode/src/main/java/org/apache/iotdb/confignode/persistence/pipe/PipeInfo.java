@@ -90,4 +90,14 @@ public class PipeInfo implements SnapshotProcessor {
   public int hashCode() {
     return Objects.hash(pipePluginInfo, pipeTaskInfo);
   }
+
+  @Override
+  public String toString() {
+    return "PipeInfo{"
+        + "pipePluginInfo="
+        + pipePluginInfo
+        + ", pipeTaskInfo="
+        + pipeTaskInfo
+        + '}';
+  }
 }

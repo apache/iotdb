@@ -176,4 +176,28 @@ public class PipeTaskInfo implements SnapshotProcessor {
       pipeMetaKeeper.processLoadSnapshot(fileInputStream);
     }
   }
+
+  /////////////////////////////// hashCode & equals ///////////////////////////////
+
+  @Override
+  public int hashCode() {
+    return pipeMetaKeeper.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTaskInfo other = (PipeTaskInfo) obj;
+    return pipeMetaKeeper.equals(other.pipeMetaKeeper);
+  }
+
+  @Override
+  public String toString() {
+    return pipeMetaKeeper.toString();
+  }
 }

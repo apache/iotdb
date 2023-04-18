@@ -27,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipeMeta {
 
@@ -67,5 +68,28 @@ public class PipeMeta {
     PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
     PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
     return new PipeMeta(staticMeta, runtimeMeta);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipeMeta pipeMeta = (PipeMeta) o;
+    return Objects.equals(staticMeta, pipeMeta.staticMeta)
+        && Objects.equals(runtimeMeta, pipeMeta.runtimeMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(staticMeta, runtimeMeta);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMeta{" + "staticMeta=" + staticMeta + ", runtimeMeta=" + runtimeMeta + '}';
   }
 }
