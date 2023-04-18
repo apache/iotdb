@@ -21,18 +21,18 @@ package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
+import org.apache.iotdb.db.pipe.core.collector.realtime.assigner.DataRegionChangeDataAssigner;
 import org.apache.iotdb.db.pipe.core.event.factory.PipeEventFactory;
 
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeChangeDataCaptureListener {
-  private ConcurrentMap<String, DataRegionChangeDataCache> id2Caches;
+  private ConcurrentMap<String, DataRegionChangeDataAssigner> id2Caches;
 
   private PipeChangeDataCaptureListener() {}
 
   public void setDataRegionChangeDataCaches(
-      ConcurrentMap<String, DataRegionChangeDataCache> id2Caches) {
+      ConcurrentMap<String, DataRegionChangeDataAssigner> id2Caches) {
     this.id2Caches = id2Caches;
   }
 

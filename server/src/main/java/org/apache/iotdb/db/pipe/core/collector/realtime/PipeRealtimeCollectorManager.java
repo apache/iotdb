@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
-import org.apache.iotdb.db.pipe.core.collector.realtime.cache.DataRegionChangeDataCache;
+import org.apache.iotdb.db.pipe.core.collector.realtime.assigner.DataRegionChangeDataAssigner;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeChangeDataCaptureListener;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeRealtimeCollectorManager {
-  private ConcurrentHashMap<String, DataRegionChangeDataCache> id2Cache;
+  private ConcurrentHashMap<String, DataRegionChangeDataAssigner> id2Cache;
 
   public PipeRealtimeCollectorManager() {}
 
-  private void setId2Cache(ConcurrentHashMap<String, DataRegionChangeDataCache> id2Cache) {
+  private void setId2Cache(ConcurrentHashMap<String, DataRegionChangeDataAssigner> id2Cache) {
     this.id2Cache = id2Cache;
     PipeChangeDataCaptureListener.getInstance().setDataRegionChangeDataCaches(id2Cache);
   }
@@ -45,7 +45,7 @@ public class PipeRealtimeCollectorManager {
 
   public synchronized void deregister(PipeRealtimeCollector collector, String dataRegionId) {
     if (id2Cache != null && id2Cache.containsKey(dataRegionId)) {
-      DataRegionChangeDataCache cache = id2Cache.get(dataRegionId);
+      DataRegionChangeDataAssigner cache = id2Cache.get(dataRegionId);
       cache.deregister(collector);
       if (cache.getRegisterCount() == 0) {
         stopListeningDataRegion(dataRegionId);
@@ -58,7 +58,7 @@ public class PipeRealtimeCollectorManager {
       setId2Cache(new ConcurrentHashMap<>());
     }
 
-    id2Cache.putIfAbsent(dataRegion, new DataRegionChangeDataCache());
+    id2Cache.putIfAbsent(dataRegion, new DataRegionChangeDataAssigner());
   }
 
   private void stopListeningDataRegion(String dataRegionId) {

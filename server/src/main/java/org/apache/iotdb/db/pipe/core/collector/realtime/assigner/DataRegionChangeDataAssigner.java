@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.realtime.cache;
+package org.apache.iotdb.db.pipe.core.collector.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedMatcher;
@@ -27,11 +27,11 @@ import org.apache.iotdb.db.pipe.core.queue.DisruptorQueue;
 
 import com.lmax.disruptor.dsl.ProducerType;
 
-public class DataRegionChangeDataCache {
+public class DataRegionChangeDataAssigner {
   private final PipePatternMatcher matcher;
   private final DisruptorQueue<PipeRealtimeCollectEvent> disruptor;
 
-  public DataRegionChangeDataCache() {
+  public DataRegionChangeDataAssigner() {
     this.matcher = new CachedMatcher();
 
     this.disruptor =
@@ -47,7 +47,7 @@ public class DataRegionChangeDataCache {
     event.clearSchemaInfo();
   }
 
-  public DataRegionChangeDataCache publishCollectorEvent(PipeRealtimeCollectEvent event) {
+  public DataRegionChangeDataAssigner publishCollectorEvent(PipeRealtimeCollectEvent event) {
     disruptor.publish(event);
     return this;
   }
