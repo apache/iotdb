@@ -480,7 +480,7 @@ public class SetTemplateProcedure
 
   @Override
   protected SetTemplateState getInitialState() {
-    return SetTemplateState.PRE_SET;
+    return SetTemplateState.VALIDATE_TEMPLATE_EXISTENCE;
   }
 
   public String getQueryId() {
