@@ -1207,11 +1207,18 @@ public class LogicalPlanBuilder {
     if (orderByParameter.isEmpty()) {
       return this;
     }
-    List<String> outputColumnNames =
-        selectExpression.stream().map(Expression::getExpressionString).collect(Collectors.toList());
-    this.root =
-        new SortNode(
-            context.getQueryId().genPlanNodeId(), root, orderByParameter, outputColumnNames);
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+
+    if (root.getOutputColumnNames().size() != selectExpression.size()) {
+      this.root =
+          new TransformNode(
+              context.getQueryId().genPlanNodeId(),
+              root,
+              selectExpression.toArray(new Expression[0]),
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
+    }
     return this;
   }
 }

@@ -1561,19 +1561,9 @@ public class MergeSortOperatorTest {
       ShowQueriesOperator showQueriesOperator2 =
           new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
       SortOperator sortOperator1 =
-          new SortOperator(
-              operatorContexts.get(2),
-              showQueriesOperator1,
-              dataTypes,
-              new ArrayList<>(),
-              comparator);
+          new SortOperator(operatorContexts.get(2), showQueriesOperator1, dataTypes, comparator);
       SortOperator sortOperator2 =
-          new SortOperator(
-              operatorContexts.get(3),
-              showQueriesOperator2,
-              dataTypes,
-              new ArrayList<>(),
-              comparator);
+          new SortOperator(operatorContexts.get(3), showQueriesOperator2, dataTypes, comparator);
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),

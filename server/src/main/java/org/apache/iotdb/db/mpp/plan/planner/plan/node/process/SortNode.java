@@ -23,44 +23,26 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.base.Objects;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class SortNode extends SingleChildProcessNode {
 
   private final OrderByParameter orderByParameter;
 
-  // the columnNames which will be discarded in projection.
-  private final List<String> outputColumnNames;
-
   public SortNode(PlanNodeId id, PlanNode child, OrderByParameter orderByParameter) {
     super(id, child);
     this.orderByParameter = orderByParameter;
-    this.outputColumnNames = new ArrayList<>();
   }
 
-  public SortNode(
-      PlanNodeId id,
-      PlanNode child,
-      OrderByParameter orderByParameter,
-      List<String> outputColumnNames) {
-    super(id, child);
-    this.orderByParameter = orderByParameter;
-    this.outputColumnNames = outputColumnNames;
-  }
-
-  public SortNode(
-      PlanNodeId id, OrderByParameter orderByParameter, List<String> outputColumnNames) {
+  public SortNode(PlanNodeId id, OrderByParameter orderByParameter) {
     super(id);
     this.orderByParameter = orderByParameter;
-    this.outputColumnNames = outputColumnNames;
   }
 
   public OrderByParameter getOrderByParameter() {
@@ -69,14 +51,12 @@ public class SortNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new SortNode(getPlanNodeId(), child, orderByParameter, outputColumnNames);
+    return new SortNode(getPlanNodeId(), child, orderByParameter);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (this.outputColumnNames == null || this.outputColumnNames.isEmpty())
-      return child.getOutputColumnNames();
-    else return this.outputColumnNames;
+    return child.getOutputColumnNames();
   }
 
   @Override
@@ -88,32 +68,18 @@ public class SortNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SORT.serialize(byteBuffer);
     orderByParameter.serializeAttributes(byteBuffer);
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String column : outputColumnNames) {
-      ReadWriteIOUtils.write(column, byteBuffer);
-    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SORT.serialize(stream);
     orderByParameter.serializeAttributes(stream);
-    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
-    for (String column : outputColumnNames) {
-      ReadWriteIOUtils.write(column, stream);
-    }
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
-    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
-    while (columnSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      columnSize--;
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SortNode(planNodeId, orderByParameter, outputColumnNames);
+    return new SortNode(planNodeId, orderByParameter);
   }
 
   @Override
@@ -122,12 +88,11 @@ public class SortNode extends SingleChildProcessNode {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     SortNode sortNode = (SortNode) o;
-    return Objects.equal(orderByParameter, sortNode.orderByParameter)
-        && Objects.equal(outputColumnNames, sortNode.outputColumnNames);
+    return Objects.equal(orderByParameter, sortNode.orderByParameter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), orderByParameter, outputColumnNames);
+    return Objects.hashCode(super.hashCode(), orderByParameter);
   }
 }
