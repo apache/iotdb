@@ -355,7 +355,7 @@ struct TCountPathsUsingTemplateResp{
 }
 
 struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeStaticMeta
+  1: required binary pipeMeta
 }
 
 struct TOperatePipeOnDataNodeReq {
