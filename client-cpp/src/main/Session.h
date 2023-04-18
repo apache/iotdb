@@ -140,7 +140,8 @@ namespace CompressionType {
         SDT = (char) 4,
         PAA = (char) 5,
         PLA = (char) 6,
-        LZ4 = (char) 7
+        LZ4 = (char) 7,
+        ZSTD = (char) 8
     };
 }
 

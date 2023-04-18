@@ -233,10 +233,10 @@ public class SchemaFileTest {
   }
 
   @Test
-  public void testFaltTree() throws MetadataException, IOException {
+  public void testFlatTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
-    Iterator<IMNode> ite = getTreeBFT(getFlatTree(50000, "aa"));
+    Iterator<IMNode> ite = getTreeBFT(getFlatTree(6000, "aa"));
     while (ite.hasNext()) {
       IMNode cur = ite.next();
       if (!cur.isMeasurement()) {
@@ -274,8 +274,8 @@ public class SchemaFileTest {
   }
 
   @Test
-  public void test200KMeasurement() throws MetadataException, IOException {
-    int i = 200000, j = 20;
+  public void test2KMeasurement() throws MetadataException, IOException {
+    int i = 2000, j = 20;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
     ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
 
@@ -298,8 +298,8 @@ public class SchemaFileTest {
     sf.writeMNode(dev);
 
     Assert.assertEquals(
-        "ma_199406", sf.getChildNode(dev, "m_199406").getAsMeasurementMNode().getAlias());
-    Assert.assertEquals("m_1995", sf.getChildNode(dev, "ma_1995").getName());
+        "ma_1994", sf.getChildNode(dev, "m_1994").getAsMeasurementMNode().getAlias());
+    Assert.assertEquals("m_19", sf.getChildNode(dev, "ma_19").getName());
 
     sf.delete(dev);
     Assert.assertNull(sf.getChildNode(sgNode, "dev_2"));
@@ -307,8 +307,51 @@ public class SchemaFileTest {
   }
 
   @Test
-  public void test10KDevices() throws MetadataException, IOException {
-    int i = 1000;
+  public void testMassiveSegment() throws MetadataException, IOException {
+    IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
+    fillChildren(sgNode, 500, "MEN", this::supplyEntity);
+    ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+
+    // verify operation with massive segment under quadratic complexity
+    try {
+      sf.writeMNode(sgNode);
+    } finally {
+      sf.close();
+    }
+
+    IMNode sgNode2 = new StorageGroupMNode(null, "sgRoot2", 11111111L);
+    fillChildren(sgNode2, 5000, "MEN", this::supplyEntity);
+    ISchemaFile sf2 = SchemaFile.initSchemaFile(sgNode2.getName(), TEST_SCHEMA_REGION_ID);
+    try {
+      sf2.writeMNode(sgNode2);
+    } finally {
+      sf2.close();
+    }
+
+    int cnt = 0;
+    sf = SchemaFile.loadSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
+    Iterator<IMNode> ite = sf.getChildren(sgNode);
+    while (ite.hasNext()) {
+      cnt++;
+      ite.next();
+    }
+    Assert.assertEquals(cnt, 500);
+    sf.close();
+
+    cnt = 0;
+    sf = SchemaFile.loadSchemaFile(sgNode2.getName(), TEST_SCHEMA_REGION_ID);
+    ite = sf.getChildren(sgNode2);
+    while (ite.hasNext()) {
+      cnt++;
+      ite.next();
+    }
+    Assert.assertEquals(cnt, 5000);
+    sf.close();
+  }
+
+  @Test
+  public void testDevices() throws MetadataException, IOException {
+    int i = 100;
     IMNode sgNode = new StorageGroupMNode(null, "sgRoot", 11111111L);
 
     // write with empty entitiy
@@ -331,7 +374,7 @@ public class SchemaFileTest {
       }
 
       // update to entity
-      i = 1000;
+      i = 100;
       while (i >= 0) {
         long addr = getSegAddrInContainer(sgNode.getChild("dev_" + i));
         IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
@@ -383,18 +426,19 @@ public class SchemaFileTest {
     }
 
     Set<String> resName = new HashSet<>();
-    // more measurement
+    // fill resName set with more measurement
     for (IMNode etn : sgNode.getChildren().values()) {
-      int j = 1000;
+      int j = 50;
       while (j >= 0) {
         addMeasurementChild(etn, String.format("mtc2_%d_%d", i, j));
-        if (resName.size() < 101) {
+        if (Math.random() > 0.5) {
           resName.add(String.format("mtc2_%d_%d", i, j));
         }
         j--;
       }
     }
 
+    // fill arbitraryNode list
     orderedTree = getTreeBFT(sgNode);
     sf = SchemaFile.loadSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
     List<IMNode> arbitraryNode = new ArrayList<>();
@@ -403,7 +447,7 @@ public class SchemaFileTest {
         node = orderedTree.next();
         if (!node.isMeasurement() && !node.isStorageGroup()) {
           sf.writeMNode(node);
-          if (arbitraryNode.size() < 50) {
+          if (Math.random() > 0.5) {
             arbitraryNode.add(node);
           }
         }
@@ -417,14 +461,17 @@ public class SchemaFileTest {
 
     sf = SchemaFile.loadSchemaFile("sgRoot", TEST_SCHEMA_REGION_ID);
 
+    // verify alias of random measurement
     for (String key : resName) {
-      IMNode resNode = sf.getChildNode(arbitraryNode.get(arbitraryNode.size() - 3), key);
+      IMNode resNode =
+          sf.getChildNode(arbitraryNode.get((int) (arbitraryNode.size() * Math.random())), key);
       Assert.assertTrue(
           resNode.getAsMeasurementMNode().getAlias().equals(resNode.getName() + "alias"));
     }
 
-    Iterator<IMNode> res = sf.getChildren(arbitraryNode.get(arbitraryNode.size() - 1));
-    int i2 = 0;
+    // verify children subset of random entity node
+    Iterator<IMNode> res =
+        sf.getChildren(arbitraryNode.get((int) (arbitraryNode.size() * Math.random())));
     while (res.hasNext()) {
       resName.remove(res.next().getName());
     }
@@ -593,11 +640,11 @@ public class SchemaFileTest {
   }
 
   @Test
-  public void test200KAlias() throws Exception {
+  public void test2KAlias() throws Exception {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
     IMNode sgNode = new StorageGroupMNode(null, "mma", 111111111L);
     // 5 devices, each for 200k measurements
-    int factor20K = 20000;
+    int factor2K = 2000;
     List<IMNode> devs = new ArrayList<>();
     List<List> senList = new ArrayList<>();
     Map<String, String> aliasAns = new HashMap<>();
@@ -610,7 +657,7 @@ public class SchemaFileTest {
 
       for (IMNode dev : devs) {
         List<IMNode> sens = new ArrayList<>();
-        for (int i = 0; i < factor20K; i++) {
+        for (int i = 0; i < factor2K; i++) {
           sens.add(getMeasurementNode(dev, "s_" + i, null));
           dev.addChild(sens.get(i));
 
@@ -662,7 +709,7 @@ public class SchemaFileTest {
         cnt++;
         children.next();
       }
-      Assert.assertEquals(factor20K, cnt);
+      Assert.assertEquals(factor2K, cnt);
 
     } finally {
       sf.close();

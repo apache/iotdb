@@ -1022,10 +1022,6 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
-
-    conf.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
   }
 
   private void loadAuthorCache(Properties properties) {
