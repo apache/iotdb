@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
@@ -27,34 +28,29 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SetPipeStatusPlan extends ConfigPhysicalPlan {
+// Deprecated, restored for upgrade
+@Deprecated
+public class SetPipeStatusPlanV1 extends ConfigPhysicalPlan {
   private String pipeName;
+
   private PipeStatus pipeStatus;
 
-  public SetPipeStatusPlan() {
-    super(ConfigPhysicalPlanType.SetPipeStatus);
+  public SetPipeStatusPlanV1() {
+    super(ConfigPhysicalPlanType.SetPipeStatusV1);
   }
 
-  public SetPipeStatusPlan(String pipeName, PipeStatus pipeStatus) {
-    this();
+  public SetPipeStatusPlanV1(String pipeName, PipeStatus status) {
+    super(ConfigPhysicalPlanType.SetPipeStatusV1);
     this.pipeName = pipeName;
-    this.pipeStatus = pipeStatus;
+    this.pipeStatus = status;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public void setPipeName(String pipeName) {
-    this.pipeName = pipeName;
-  }
-
   public PipeStatus getPipeStatus() {
     return pipeStatus;
-  }
-
-  public void setPipeStatus(PipeStatus pipeStatus) {
-    this.pipeStatus = pipeStatus;
   }
 
   @Override

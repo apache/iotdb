@@ -27,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -53,16 +52,16 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -623,7 +622,7 @@ public class ProcedureManager {
 
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreatePipeProcedure(req));
+      long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -633,14 +632,14 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
       }
-    } catch (PipeException e) {
+    } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
   public TSStatus startPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new StartPipeProcedure(pipeName));
+      long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -650,14 +649,14 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
       }
-    } catch (PipeException e) {
+    } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
   public TSStatus stopPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new StopPipeProcedure(pipeName));
+      long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -667,14 +666,14 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
       }
-    } catch (PipeException e) {
+    } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
   public TSStatus dropPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new DropPipeProcedure(pipeName));
+      long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -684,7 +683,7 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
       }
-    } catch (PipeException e) {
+    } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }

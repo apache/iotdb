@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
+
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -26,31 +28,39 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ShowPipePlan extends ConfigPhysicalPlan {
-  /** empty pipeName means show all PIPE */
-  private String pipeName;
+public class CreatePipePlanV2 extends ConfigPhysicalPlan {
 
-  public ShowPipePlan() {
-    super(ConfigPhysicalPlanType.ShowPipe);
+  private PipeStaticMeta pipeStaticMeta;
+  private PipeRuntimeMeta pipeRuntimeMeta;
+
+  public CreatePipePlanV2() {
+    super(ConfigPhysicalPlanType.CreatePipeV2);
   }
 
-  public ShowPipePlan(String pipeName) {
-    this();
-    this.pipeName = pipeName;
+  public CreatePipePlanV2(PipeStaticMeta pipeStaticMeta, PipeRuntimeMeta pipeRuntimeMeta) {
+    super(ConfigPhysicalPlanType.CreatePipeV2);
+    this.pipeStaticMeta = pipeStaticMeta;
+    this.pipeRuntimeMeta = pipeRuntimeMeta;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
+  }
+
+  public PipeRuntimeMeta getPipeRuntimeMeta() {
+    return pipeRuntimeMeta;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
+    pipeStaticMeta.serialize(stream);
+    pipeRuntimeMeta.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
+    pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
+    pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
   }
 }

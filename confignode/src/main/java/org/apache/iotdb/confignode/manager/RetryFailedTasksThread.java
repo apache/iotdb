@@ -23,35 +23,26 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Sync, Template
- * and CQ
+ * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Template and
+ * CQ
  */
 public class RetryFailedTasksThread {
 
@@ -71,10 +62,6 @@ public class RetryFailedTasksThread {
 
   /** Trigger */
   private final Set<TDataNodeLocation> oldUnknownNodes;
-
-  /** Sync */
-  private final Map<Integer, Queue<TOperatePipeOnDataNodeReq>> messageMap =
-      new ConcurrentHashMap<>();
 
   public RetryFailedTasksThread(IManager configManager) {
     this.configManager = configManager;
@@ -112,9 +99,6 @@ public class RetryFailedTasksThread {
   private void retryFailedTasks() {
     // trigger
     triggerDetectTask();
-
-    // sync
-    syncDetectTask();
   }
 
   /**
@@ -150,47 +134,4 @@ public class RetryFailedTasksThread {
     }
   }
 
-  public void retryRollbackReq(List<Integer> dataNodeIds, TOperatePipeOnDataNodeReq req) {
-    for (int id : dataNodeIds) {
-      messageMap.computeIfAbsent(id, i -> new LinkedList<>()).add(req);
-    }
-  }
-
-  /**
-   * The syncDetectTask executed periodically to roll back the failed requests in operating pipe.
-   */
-  private void syncDetectTask() {
-    for (Map.Entry<Integer, Queue<TOperatePipeOnDataNodeReq>> entry : messageMap.entrySet()) {
-      int dataNodeId = entry.getKey();
-      if (NodeStatus.Running.equals(loadManager.getNodeStatus(dataNodeId))) {
-        final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-        dataNodeLocationMap.put(
-            dataNodeId, nodeManager.getRegisteredDataNodeLocations().get(dataNodeId));
-        TOperatePipeOnDataNodeReq request;
-        while ((request = entry.getValue().peek()) != null) {
-          AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-              new AsyncClientHandler<>(
-                  DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
-          AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-          TSStatus tsStatus = clientHandler.getResponseList().get(0);
-          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            entry.getValue().poll();
-          } else if (tsStatus.getCode() == TSStatusCode.PIPE_ERROR.getStatusCode()) {
-            // skip
-            LOGGER.warn(
-                String.format(
-                    "Roll back failed because %s. Skip this roll back request [%s].",
-                    tsStatus.getMessage(), request));
-          } else {
-            // connection failure, keep and retry.
-            LOGGER.error(
-                String.format(
-                    "Roll back failed because %s. This roll back request [%s] will be retried later.",
-                    tsStatus.getMessage(), request));
-            break;
-          }
-        }
-      }
-    }
-  }
 }

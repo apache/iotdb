@@ -88,7 +88,6 @@ public class LoadManager {
         new StatisticsService(configManager, routeBalancer, loadCache, eventBus);
 
     eventBus.register(configManager.getClusterSchemaManager());
-    eventBus.register(configManager.getSyncManager());
   }
 
   /**
