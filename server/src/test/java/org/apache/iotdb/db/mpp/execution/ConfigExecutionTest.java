@@ -153,7 +153,7 @@ public class ConfigExecutionTest {
     } catch (InterruptedException e) {
       ExecutionResult result = execution.getStatus();
       assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
-      execution.stop();
+      execution.stop(e);
     }
   }
 

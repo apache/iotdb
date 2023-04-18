@@ -330,7 +330,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .map(FragmentInstanceId::fromThrift)
               .collect(Collectors.toList());
       for (FragmentInstanceId taskId : taskIds) {
-        FragmentInstanceManager.getInstance().cancelTask(taskId);
+        FragmentInstanceManager.getInstance().cancelTask(taskId, req.hasThrowable);
       }
       return new TCancelResp(true);
     }
