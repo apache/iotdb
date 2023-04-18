@@ -135,7 +135,17 @@ public class SchemaPartitionTable {
     return result;
   }
 
+  /**
+   * Query a timePartition's corresponding schemaRegionIds
+   *
+   * @param seriesSlotId SeriesPartitionSlot
+   * @return the timePartition's corresponding dataRegionIds, if seriesSlotId==null, then return all
+   *     seriesPartitionTable's schemaRegionIds;
+   */
   public List<TConsensusGroupId> getRegionId(TSeriesPartitionSlot seriesSlotId) {
+    if (seriesSlotId == null) {
+      return new ArrayList<>(schemaPartitionMap.values());
+    }
     if (!schemaPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
     }

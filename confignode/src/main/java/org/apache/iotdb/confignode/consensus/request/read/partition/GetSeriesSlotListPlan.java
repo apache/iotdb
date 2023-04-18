@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,28 +33,37 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
 
   private String storageGroup;
 
+  private TConsensusGroupType partitionType;
+
   public GetSeriesSlotListPlan() {
     super(ConfigPhysicalPlanType.GetSeriesSlotList);
   }
 
-  public GetSeriesSlotListPlan(String storageGroup) {
+  public GetSeriesSlotListPlan(String storageGroup, TConsensusGroupType partitionType) {
     this();
     this.storageGroup = storageGroup;
+    this.partitionType = partitionType;
   }
 
   public String getDatabase() {
     return storageGroup;
   }
 
+  public TConsensusGroupType getPartitionType() {
+    return partitionType;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(storageGroup, stream);
+    stream.writeInt(partitionType.ordinal());
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.storageGroup = ReadWriteIOUtils.readString(buffer);
+    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
   }
 
   @Override
@@ -68,6 +78,7 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
   public int hashCode() {
     int hashcode = 1;
     hashcode = hashcode * 31 + Objects.hash(storageGroup);
+    hashcode = hashcode * 31 + Objects.hash(partitionType.ordinal());
     return hashcode;
   }
 }

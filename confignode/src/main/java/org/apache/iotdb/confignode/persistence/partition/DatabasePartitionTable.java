@@ -415,8 +415,8 @@ public class DatabasePartitionTable {
   }
 
   public List<TTimePartitionSlot> getTimeSlotList(
-      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
-    return dataPartitionTable.getTimeSlotList(seriesSlotId, startTime, endTime);
+      TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
+    return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList(TConsensusGroupType type) {

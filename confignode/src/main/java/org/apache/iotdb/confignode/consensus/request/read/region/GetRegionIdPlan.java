@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.consensus.request.read.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,61 +33,66 @@ import java.util.Objects;
 
 public class GetRegionIdPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String database;
 
   private TConsensusGroupType partitionType;
 
-  private TSeriesPartitionSlot seriesSlotId;
-
   private TTimePartitionSlot timeSlotId;
+
+  private TSeriesPartitionSlot seriesSlotId;
 
   public GetRegionIdPlan() {
     super(ConfigPhysicalPlanType.GetRegionId);
   }
 
-  public GetRegionIdPlan(
-      String storageGroup,
-      TConsensusGroupType partitionType,
-      TSeriesPartitionSlot seriesSlotId,
-      TTimePartitionSlot timeSlotId) {
+  public GetRegionIdPlan(TConsensusGroupType partitionType) {
     this();
     this.partitionType = partitionType;
-    this.storageGroup = storageGroup;
-    this.timeSlotId = timeSlotId;
-    this.seriesSlotId = seriesSlotId;
   }
 
   public String getDatabase() {
-    return storageGroup;
+    return database;
   }
 
-  public TConsensusGroupType getPartitionType() {
-    return partitionType;
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
+    this.seriesSlotId = seriesSlotId;
   }
 
   public TSeriesPartitionSlot getSeriesSlotId() {
     return seriesSlotId;
   }
 
+  public void setTimeSlotId(TTimePartitionSlot timeSlotId) {
+    this.timeSlotId = timeSlotId;
+  }
+
   public TTimePartitionSlot getTimeSlotId() {
     return timeSlotId;
+  }
+
+  public TConsensusGroupType getPartitionType() {
+    return partitionType;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(storageGroup, stream);
+    ReadWriteIOUtils.write(database, stream);
     stream.writeInt(partitionType.ordinal());
-    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
-    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
+    //    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
+    //    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = ReadWriteIOUtils.readString(buffer);
+    this.database = ReadWriteIOUtils.readString(buffer);
     this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
-    this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-    this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
+    //    this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
+    //    this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
   }
 
   @Override
@@ -96,17 +100,17 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     GetRegionIdPlan that = (GetRegionIdPlan) o;
-    return storageGroup.equals(that.storageGroup)
-        && seriesSlotId.equals(that.seriesSlotId)
-        && timeSlotId.equals(that.timeSlotId);
+    return database.equals(that.database);
+    //        && seriesSlotId.equals(that.seriesSlotId)
+    //        && timeSlotId.equals(that.timeSlotId);
   }
 
   @Override
   public int hashCode() {
     int hashcode = 1;
-    hashcode = hashcode * 31 + Objects.hash(storageGroup);
-    hashcode = hashcode * 31 + seriesSlotId.hashCode();
-    hashcode = hashcode * 31 + timeSlotId.hashCode();
+    hashcode = hashcode * 31 + Objects.hash(database);
+    //    hashcode = hashcode * 31 + seriesSlotId.hashCode();
+    //    hashcode = hashcode * 31 + timeSlotId.hashCode();
     return hashcode;
   }
 }

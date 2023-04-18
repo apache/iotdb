@@ -19,14 +19,7 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.*;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -45,8 +38,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -904,25 +895,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
-    }
     return configManager.getRegionId(req);
   }
 
   @Override
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
-    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
-    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
-    GetTimeSlotListPlan plan =
-        new GetTimeSlotListPlan(req.getDatabase(), req.getSeriesSlotId(), startTime, endTime);
-    return configManager.getTimeSlotList(plan);
+    return configManager.getTimeSlotList(req);
   }
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
-    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase());
-    return configManager.getSeriesSlotList(plan);
+    return configManager.getSeriesSlotList(req);
   }
 
   @Override
