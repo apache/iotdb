@@ -40,8 +40,6 @@ public class SortNode extends SingleChildProcessNode {
   // the columnNames which will be discarded in projection.
   private final List<String> outputColumnNames;
 
-  private boolean ignoreProjection = false;
-
   public SortNode(PlanNodeId id, PlanNode child, OrderByParameter orderByParameter) {
     super(id, child);
     this.orderByParameter = orderByParameter;
@@ -69,24 +67,14 @@ public class SortNode extends SingleChildProcessNode {
     return orderByParameter;
   }
 
-  public void setIgnoreProjection(boolean ignoreProjection) {
-    this.ignoreProjection = ignoreProjection;
-  }
-
-  public boolean isIgnoreProjection() {
-    return ignoreProjection;
-  }
-
   @Override
   public PlanNode clone() {
-    SortNode node = new SortNode(getPlanNodeId(), child, orderByParameter, outputColumnNames);
-    node.setIgnoreProjection(isIgnoreProjection());
-    return node;
+    return new SortNode(getPlanNodeId(), child, orderByParameter, outputColumnNames);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (this.outputColumnNames == null || this.outputColumnNames.isEmpty() || ignoreProjection)
+    if (this.outputColumnNames == null || this.outputColumnNames.isEmpty())
       return child.getOutputColumnNames();
     else return this.outputColumnNames;
   }
@@ -100,7 +88,6 @@ public class SortNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SORT.serialize(byteBuffer);
     orderByParameter.serializeAttributes(byteBuffer);
-    ReadWriteIOUtils.write(ignoreProjection, byteBuffer);
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, byteBuffer);
@@ -111,7 +98,6 @@ public class SortNode extends SingleChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SORT.serialize(stream);
     orderByParameter.serializeAttributes(stream);
-    ReadWriteIOUtils.write(ignoreProjection, stream);
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, stream);
@@ -120,7 +106,6 @@ public class SortNode extends SingleChildProcessNode {
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
-    boolean ignoreProjection = ReadWriteIOUtils.readBool(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
     while (columnSize > 0) {
@@ -128,9 +113,7 @@ public class SortNode extends SingleChildProcessNode {
       columnSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    SortNode node = new SortNode(planNodeId, orderByParameter, outputColumnNames);
-    node.setIgnoreProjection(ignoreProjection);
-    return node;
+    return new SortNode(planNodeId, orderByParameter, outputColumnNames);
   }
 
   @Override

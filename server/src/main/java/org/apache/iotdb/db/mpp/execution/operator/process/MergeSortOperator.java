@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -46,7 +45,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   private final boolean[] noMoreTsBlocks;
   private final MergeSortHeap mergeSortHeap;
   private final Comparator<MergeSortKey> comparator;
-  private final int[] outputColumnLocation;
 
   private boolean finished;
 
@@ -61,22 +59,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.outputColumnLocation = IntStream.range(0, dataTypes.size()).toArray();
-  }
-
-  public MergeSortOperator(
-      OperatorContext operatorContext,
-      List<Operator> inputOperators,
-      List<TSDataType> dataTypes,
-      int[] outputColumnLocation,
-      Comparator<MergeSortKey> comparator) {
-    super(operatorContext, inputOperators);
-    this.dataTypes = dataTypes;
-    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
-    this.comparator = comparator;
-    this.noMoreTsBlocks = new boolean[inputOperatorsCount];
-    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.outputColumnLocation = outputColumnLocation;
   }
 
   @Override
@@ -136,11 +118,11 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       int rowIndex = mergeSortKey.rowIndex;
       timeBuilder.writeLong(targetBlock.getTimeByIndex(rowIndex));
       for (int i = 0; i < valueColumnBuilders.length; i++) {
-        if (targetBlock.getColumn(outputColumnLocation[i]).isNull(rowIndex)) {
+        if (targetBlock.getColumn(i).isNull(rowIndex)) {
           valueColumnBuilders[i].appendNull();
           continue;
         }
-        valueColumnBuilders[i].write(targetBlock.getColumn(outputColumnLocation[i]), rowIndex);
+        valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
       }
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {

@@ -291,7 +291,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     for (PlanNode child : children) {
       SortNode sortNode = cloneSortNodeWithOutChild(node, context);
       sortNode.setChild(child);
-      sortNode.setIgnoreProjection(true);
       mergeSortNode.addChild(sortNode);
     }
     return Collections.singletonList(mergeSortNode);
