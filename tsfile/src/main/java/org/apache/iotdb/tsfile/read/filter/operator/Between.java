@@ -82,8 +82,14 @@ public class Between<T extends Comparable<T>> implements Filter {
     if (filterType == FilterType.TIME_FILTER) {
       long time1 = (Long) value1, time2 = (Long) value2;
       if (not) {
+        if (statistics.getStartTime() >= time1 && statistics.getEndTime() <= time2) {
+          return false;
+        }
         return statistics.getStartTime() < time1 || statistics.getEndTime() > time2;
       } else {
+        if (statistics.getStartTime() > time2 || statistics.getEndTime() < time1) {
+          return false;
+        }
         return statistics.getEndTime() >= time1 || statistics.getStartTime() <= time2;
       }
     } else {
@@ -91,9 +97,17 @@ public class Between<T extends Comparable<T>> implements Filter {
         return true;
       }
       if (not) {
+        if (((T) statistics.getMinValue()).compareTo(value1) >= 0
+            && ((T) statistics.getMaxValue()).compareTo(value2) <= 0) {
+          return false;
+        }
         return ((T) statistics.getMinValue()).compareTo(value1) < 0
             || ((T) statistics.getMaxValue()).compareTo(value2) > 0;
       } else {
+        if (((T) statistics.getMinValue()).compareTo(value2) > 0
+            || ((T) statistics.getMaxValue()).compareTo(value1) < 0) {
+          return false;
+        }
         return ((T) statistics.getMaxValue()).compareTo(value1) >= 0
             && ((T) statistics.getMinValue()).compareTo(value2) <= 0;
       }
