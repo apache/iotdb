@@ -299,7 +299,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
       for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
         if (fragmentRelatedTasks != null) {
           for (DriverTask task : fragmentRelatedTasks) {
-
             task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
             clearDriverTask(task);
           }
