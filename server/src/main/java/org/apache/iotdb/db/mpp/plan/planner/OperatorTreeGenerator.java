@@ -230,7 +230,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1596,25 +1595,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SortOperator.class.getSimpleName());
 
-    List<TSDataType> outputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
-
-    List<String> inputColumnNames = node.getChild().getOutputColumnNames();
-    List<String> outputColumnNames = node.getOutputColumnNames();
-    List<Integer> columnsLocations = new LinkedList<>();
-    for (String columnName : outputColumnNames) {
-      if (inputColumnNames.contains(columnName)) {
-        columnsLocations.add(inputColumnNames.indexOf(columnName));
-      }
-    }
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
     List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node.getChild(), context.getTypeProvider());
     genSortInformation(
-        node.getChild().getOutputColumnNames(),
+        node.getOutputColumnNames(),
         dataTypes,
         sortItemList,
         sortItemIndexList,
@@ -1622,8 +1611,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SortOperator(
         operatorContext,
         child,
-        outputDataTypes,
-        columnsLocations,
+        dataTypes,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 

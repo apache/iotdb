@@ -298,9 +298,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   private SortNode cloneSortNodeWithOutChild(SortNode node, DistributionPlanContext context) {
     return new SortNode(
-        context.queryContext.getQueryId().genPlanNodeId(),
-        node.getOrderByParameter(),
-        node.getOutputColumnNames());
+        context.queryContext.getQueryId().genPlanNodeId(), node.getOrderByParameter());
   }
 
   @Override
