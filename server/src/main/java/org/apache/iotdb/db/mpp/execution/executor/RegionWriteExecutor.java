@@ -691,6 +691,8 @@ public class RegionWriteExecutor {
       // activate template operation shall be blocked by unset template check
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
+        ISchemaRegion schemaRegion =
+            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
         for (PartialPath devicePath : node.getTemplateActivationMap().keySet()) {
           Pair<Template, PartialPath> templateSetInfo =
               ClusterTemplateManager.getInstance().checkTemplateSetInfo(devicePath);
@@ -707,6 +709,12 @@ public class RegionWriteExecutor {
             result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
             return result;
           }
+          RegionExecutionResult result =
+              checkQuotaBeforeCreatingTimeSeries(
+                  schemaRegion, devicePath, templateSetInfo.left.getMeasurementNumber());
+          if (result != null) {
+            return result;
+          }
         }
 
         return super.visitBatchActivateTemplate(node, context);
@@ -721,6 +729,8 @@ public class RegionWriteExecutor {
       // activate template operation shall be blocked by unset template check
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
+        ISchemaRegion schemaRegion =
+            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
         for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
             node.getTemplateActivationMap().entrySet()) {
           Pair<Template, PartialPath> templateSetInfo =
@@ -738,6 +748,12 @@ public class RegionWriteExecutor {
                         .getFullPath());
             result.setMessage(message);
             result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+            return result;
+          }
+          RegionExecutionResult result =
+              checkQuotaBeforeCreatingTimeSeries(
+                  schemaRegion, entry.getKey(), templateSetInfo.left.getMeasurementNumber());
+          if (result != null) {
             return result;
           }
         }
