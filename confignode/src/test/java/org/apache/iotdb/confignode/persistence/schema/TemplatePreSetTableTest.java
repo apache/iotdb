@@ -61,9 +61,9 @@ public class TemplatePreSetTableTest {
     PartialPath templateSetPath1 = new PartialPath("root.db.t1");
     PartialPath templateSetPath2 = new PartialPath("root.db.t2");
     Assert.assertFalse(templatePreSetTable.isPreSet(templateId1, templateSetPath1));
-    Assert.assertFalse(templatePreSetTable.commitSetTemplate(templateId1, templateSetPath1));
+    Assert.assertFalse(templatePreSetTable.removeSetTemplate(templateId1, templateSetPath1));
     Assert.assertFalse(templatePreSetTable.isPreSet(templateId2, templateSetPath1));
-    Assert.assertFalse(templatePreSetTable.commitSetTemplate(templateId2, templateSetPath1));
+    Assert.assertFalse(templatePreSetTable.removeSetTemplate(templateId2, templateSetPath1));
 
     templatePreSetTable.preSetTemplate(templateId1, templateSetPath1);
     templatePreSetTable.preSetTemplate(templateId2, templateSetPath1);
@@ -73,8 +73,8 @@ public class TemplatePreSetTableTest {
     Assert.assertTrue(templatePreSetTable.isPreSet(templateId2, templateSetPath1));
     Assert.assertTrue(templatePreSetTable.isPreSet(templateId2, templateSetPath2));
 
-    Assert.assertTrue(templatePreSetTable.commitSetTemplate(templateId1, templateSetPath1));
-    Assert.assertTrue(templatePreSetTable.commitSetTemplate(templateId2, templateSetPath1));
+    Assert.assertTrue(templatePreSetTable.removeSetTemplate(templateId1, templateSetPath1));
+    Assert.assertTrue(templatePreSetTable.removeSetTemplate(templateId2, templateSetPath1));
 
     Assert.assertFalse(templatePreSetTable.isPreSet(templateId1, templateSetPath1));
     Assert.assertFalse(templatePreSetTable.isPreSet(templateId2, templateSetPath1));

@@ -353,11 +353,13 @@ public class SetTemplateProcedure
             templateName,
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Commit set template failed")));
+        submitTemplateMaintainTask(dataNodeLocationMap.get(entry.getKey()));
         return;
       }
     }
   }
+
+  private void submitTemplateMaintainTask(TDataNodeLocation dataNodeLocation) {}
 
   @Override
   protected boolean isRollbackSupported(SetTemplateState setTemplateState) {
@@ -385,9 +387,7 @@ public class SetTemplateProcedure
         new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
     TSStatus status =
         env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan).getStatus();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(SetTemplateState.PRE_RELEASE);
-    } else {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Failed to rollback pre set template {} on path {} due to {}",
           templateName,
@@ -432,7 +432,20 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackCommitSet(ConfigNodeProcedureEnv env) {}
+  private void rollbackCommitSet(ConfigNodeProcedureEnv env) {
+    CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+        new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
+    TSStatus status =
+        env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan).getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to rollback commit set template {} on path {} due to {}",
+          templateName,
+          templateSetPath,
+          status.getMessage());
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   @Override
   protected SetTemplateState getState(int stateId) {

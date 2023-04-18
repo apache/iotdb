@@ -574,13 +574,8 @@ public class ConfigMTree {
     return result;
   }
 
-  public void preSetTemplate(int templateId, PartialPath templateSetPath) throws MetadataException {
+  public void setTemplate(int templateId, PartialPath templateSetPath) throws MetadataException {
     getNodeWithAutoCreate(templateSetPath).setSchemaTemplateId(templateId);
-  }
-
-  public void rollbackPreSetTemplate(int templateId, PartialPath templateSetPath)
-      throws MetadataException {
-    getNodeSetTemplate(templateId, templateSetPath).unsetSchemaTemplate();
   }
 
   public void preUnsetTemplate(int templateId, PartialPath path) throws MetadataException {

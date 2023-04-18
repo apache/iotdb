@@ -727,7 +727,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
-      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      mTree.setTemplate(templateId, path);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -760,13 +760,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private void preSetSchemaTemplate(int templateId, PartialPath templateSetPath)
       throws MetadataException {
     templatePreSetTable.preSetTemplate(templateId, templateSetPath);
-    mTree.preSetTemplate(templateId, templateSetPath);
+    mTree.setTemplate(templateId, templateSetPath);
   }
 
   private void rollbackPreSetSchemaTemplate(int templateId, PartialPath templateSetPath)
       throws MetadataException {
-    templatePreSetTable.rollbackPreSetTemplate(templateId, templateSetPath);
-    mTree.rollbackPreSetTemplate(templateId, templateSetPath);
+    try {
+      mTree.unsetTemplate(templateId, templateSetPath);
+    } catch (MetadataException ignore) {
+      // node not exists or not set template
+    }
+    templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
   }
 
   public synchronized TSStatus commitSetSchemaTemplate(
@@ -781,11 +785,24 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(commitSetSchemaTemplatePlan.getName()).getId();
-      templatePreSetTable.commitSetTemplate(templateId, path);
+      if (commitSetSchemaTemplatePlan.isRollback()) {
+        rollbackCommitSetSchemaTemplate(templateId, path);
+      } else {
+        commitSetSchemaTemplate(templateId, path);
+      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  private void commitSetSchemaTemplate(int templateId, PartialPath templateSetPath) {
+    templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
+  }
+
+  private void rollbackCommitSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    mTree.unsetTemplate(templateId, templateSetPath);
   }
 
   public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
