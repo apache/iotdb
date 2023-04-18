@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -31,20 +30,21 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class DropPipePluginProcedureTest {
+public class StartPipeProcedureV2Test {
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    DropPipePluginProcedure proc = new DropPipePluginProcedure("test");
+    StartPipeProcedureV2 proc = new StartPipeProcedureV2("testPipe");
 
     try {
       proc.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      DropPipePluginProcedure proc2 =
-          (DropPipePluginProcedure) ProcedureFactory.getInstance().create(buffer);
+      StartPipeProcedureV2 proc2 =
+          (StartPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
+
       assertEquals(proc, proc2);
     } catch (Exception e) {
       fail();

@@ -105,7 +105,6 @@ public class LoadManager {
     this.routeBalancer = new RouteBalancer(configManager);
 
     eventBus.register(configManager.getClusterSchemaManager());
-    eventBus.register(configManager.getSyncManager());
   }
 
   /**

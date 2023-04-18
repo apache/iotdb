@@ -178,3 +178,4 @@ Result:
 |                  1677570933|
 +----------------------------+
 ```
+> Note: Returns 0 if there is only one data point, or null if the data point is null.

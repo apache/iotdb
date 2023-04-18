@@ -21,7 +21,7 @@
 DATANODE_CONF="`dirname "$0"`/../conf"
 dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 
-echo "check whether the rpc_port is used..., port is" $dn_rpc_port
+echo "Check whether the rpc_port is used..., port is" $dn_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
   PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)

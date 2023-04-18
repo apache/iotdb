@@ -28,6 +28,10 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
@@ -102,6 +106,18 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
+        break;
+      case CREATE_PIPE_PROCEDURE_V2:
+        procedure = new CreatePipeProcedureV2();
+        break;
+      case START_PIPE_PROCEDURE_V2:
+        procedure = new StartPipeProcedureV2();
+        break;
+      case STOP_PIPE_PROCEDURE_V2:
+        procedure = new StopPipeProcedureV2();
+        break;
+      case DROP_PIPE_PROCEDURE_V2:
+        procedure = new DropPipeProcedureV2();
         break;
       case CREATE_CQ_PROCEDURE:
         procedure =

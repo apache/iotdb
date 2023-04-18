@@ -221,6 +221,12 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case CREATE_PIPE:
+          client.createPipeOnDataNode(
+              (TCreatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case MERGE:
         case FULL_MERGE:
           client.merge(
@@ -303,20 +309,8 @@ public class AsyncDataNodeClientPool {
               (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PRE_CREATE_PIPE:
-          client.createPipeOnDataNode(
-              (TCreatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
-          break;
         case OPERATE_PIPE:
           client.operatePipeOnDataNode(
-              (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
-          break;
-        case ROLLBACK_OPERATE_PIPE:
-          client.operatePipeOnDataNodeForRollback(
               (TOperatePipeOnDataNodeReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));

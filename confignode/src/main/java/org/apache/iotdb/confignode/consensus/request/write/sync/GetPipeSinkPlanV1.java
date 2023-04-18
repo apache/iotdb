@@ -26,31 +26,33 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DropPipePlan extends ConfigPhysicalPlan {
+// Deprecated, restored for upgrade
+@Deprecated
+public class GetPipeSinkPlanV1 extends ConfigPhysicalPlan {
+  /** empty pipeSinkName means get all PIPESINK */
+  private String pipeSinkName;
 
-  private String pipeName;
-
-  public DropPipePlan() {
-    super(ConfigPhysicalPlanType.DropPipe);
+  public GetPipeSinkPlanV1() {
+    super(ConfigPhysicalPlanType.GetPipeSinkV1);
   }
 
-  public DropPipePlan(String pipeName) {
+  public GetPipeSinkPlanV1(String pipeSinkName) {
     this();
-    this.pipeName = pipeName;
+    this.pipeSinkName = pipeSinkName;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public String getPipeSinkName() {
+    return pipeSinkName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
+    BasicStructureSerDeUtil.write(pipeSinkName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
+    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
   }
 }
