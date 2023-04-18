@@ -38,14 +38,11 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   private final List<String> outputColumns;
 
-  private final List<String> inputColumns;
-
   public MergeSortNode(
       PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
-    this.inputColumns = new ArrayList<>();
   }
 
   public MergeSortNode(
@@ -56,7 +53,6 @@ public class MergeSortNode extends MultiChildProcessNode {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
-    this.inputColumns = new ArrayList<>();
   }
 
   public OrderByParameter getMergeOrderParameter() {
@@ -95,10 +91,6 @@ public class MergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
-    ReadWriteIOUtils.write(inputColumns.size(), byteBuffer);
-    for (String column : inputColumns) {
-      ReadWriteIOUtils.write(column, byteBuffer);
-    }
   }
 
   @Override
@@ -109,21 +101,6 @@ public class MergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, stream);
     }
-    ReadWriteIOUtils.write(inputColumns.size(), stream);
-    for (String column : inputColumns) {
-      ReadWriteIOUtils.write(column, stream);
-    }
-  }
-
-  public void setInputColumns(List<String> inputColumns) {
-    this.inputColumns.addAll(inputColumns);
-  }
-
-  public List<String> getInputColumnNames() {
-    if (inputColumns.isEmpty()) {
-      return outputColumns;
-    }
-    return inputColumns;
   }
 
   public static MergeSortNode deserialize(ByteBuffer byteBuffer) {
@@ -134,16 +111,8 @@ public class MergeSortNode extends MultiChildProcessNode {
       outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
-    columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> projectedColumns = new ArrayList<>();
-    while (columnSize > 0) {
-      projectedColumns.add(ReadWriteIOUtils.readString(byteBuffer));
-      columnSize--;
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    MergeSortNode mergeSortNode = new MergeSortNode(planNodeId, orderByParameter, outputColumns);
-    mergeSortNode.setInputColumns(projectedColumns);
-    return mergeSortNode;
+    return new MergeSortNode(planNodeId, orderByParameter, outputColumns);
   }
 
   @Override

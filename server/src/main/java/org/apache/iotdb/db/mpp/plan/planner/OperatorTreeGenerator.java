@@ -822,12 +822,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // InputColumn and OutputColumn may have the different, mergeSortOperator needs to do the
     // projection.
     List<String> outputColumnNames = node.getOutputColumnNames();
-    List<String> inputColumnNames = node.getInputColumnNames();
+    List<String> inputColumnNames = node.getChildren().get(0).getOutputColumnNames();
     List<TSDataType> inputDataTypes =
-        inputColumnNames.stream()
-            .map(context.getTypeProvider()::getType)
-            .collect(Collectors.toList());
-    context.setCachedDataTypes(inputDataTypes);
+        getOutputColumnTypes(node.getChildren().get(0), context.getTypeProvider());
     int[] outputColumnLocations = new int[outputColumnNames.size()];
     int index = 0;
     for (String columnName : outputColumnNames) {
@@ -837,6 +834,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
