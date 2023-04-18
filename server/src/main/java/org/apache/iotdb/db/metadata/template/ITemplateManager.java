@@ -58,7 +58,7 @@ public interface ITemplateManager {
    * @param name templateName
    * @param path mount path
    */
-  void setSchemaTemplate(String name, PartialPath path);
+  void setSchemaTemplate(String queryId, String name, PartialPath path);
 
   /**
    * get info of mounted template

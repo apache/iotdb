@@ -74,6 +74,7 @@ public class SetTemplateProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTemplateProcedure.class);
 
+  private String queryId;
   private String templateName;
   private String templateSetPath;
 
@@ -81,8 +82,9 @@ public class SetTemplateProcedure
     super();
   }
 
-  public SetTemplateProcedure(String templateName, String templateSetPath) {
+  public SetTemplateProcedure(String queryId, String templateName, String templateSetPath) {
     super();
+    this.queryId = queryId;
     this.templateName = templateName;
     this.templateSetPath = templateSetPath;
   }
@@ -462,10 +464,23 @@ public class SetTemplateProcedure
     return SetTemplateState.PRE_SET;
   }
 
+  public String getQueryId() {
+    return queryId;
+  }
+
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public String getTemplateSetPath() {
+    return templateSetPath;
+  }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.SET_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
+    ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(templateSetPath, stream);
   }
@@ -473,6 +488,7 @@ public class SetTemplateProcedure
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+    queryId = ReadWriteIOUtils.readString(byteBuffer);
     templateName = ReadWriteIOUtils.readString(byteBuffer);
     templateSetPath = ReadWriteIOUtils.readString(byteBuffer);
   }
