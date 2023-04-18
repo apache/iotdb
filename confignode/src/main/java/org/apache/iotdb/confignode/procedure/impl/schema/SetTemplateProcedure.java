@@ -431,7 +431,8 @@ public class SetTemplateProcedure
     invalidateTemplateSetInfoReq.setType(
         TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
     invalidateTemplateSetInfoReq.setTemplateInfo(
-        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+        TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(
+            template.getId(), templateSetPath));
 
     AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
