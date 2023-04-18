@@ -45,11 +45,18 @@ public class StatisticsFilterTest {
     Filter timeEq = TimeFilter.eq(10L);
     Assert.assertTrue(timeEq.satisfy(statistics1));
     Assert.assertFalse(timeEq.satisfy(statistics2));
+    Assert.assertFalse(timeEq.allSatisfy(statistics1));
+    Assert.assertFalse(timeEq.allSatisfy(statistics2));
 
     Filter valueEq = ValueFilter.eq(101L);
     Assert.assertFalse(valueEq.satisfy(statistics1));
     Assert.assertTrue(valueEq.satisfy(statistics2));
+    Assert.assertFalse(valueEq.allSatisfy(statistics1));
+    Assert.assertFalse(valueEq.allSatisfy(statistics2));
   }
+
+  @Test
+  public void testNotEq() {}
 
   @Test
   public void testGt() {
@@ -105,4 +112,10 @@ public class StatisticsFilterTest {
     Assert.assertTrue(orFilter.satisfy(statistics1));
     Assert.assertTrue(orFilter.satisfy(statistics2));
   }
+
+  @Test
+  public void testNot() {}
+
+  @Test
+  public void testBetweenAnd() {}
 }
