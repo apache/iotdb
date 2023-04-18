@@ -39,6 +39,7 @@ public class RaftConfig {
   private boolean enableWeakAcceptance = false;
   private int maxNumOfLogsInMem = 10000;
   private int minNumOfLogsInMem = 1000;
+  private int entryDefaultSerializationBufferSize = 16 * 1024;
   private long maxMemorySizeForRaftLog = 512 * 1024 * 1024L;
   private int logDeleteCheckIntervalSecond = 1;
   private boolean enableRaftLogPersistence = true;
@@ -436,6 +437,14 @@ public class RaftConfig {
     this.maxRaftLogPersistDataSizePerFile = maxRaftLogPersistDataSizePerFile;
   }
 
+  public int getEntryDefaultSerializationBufferSize() {
+    return entryDefaultSerializationBufferSize;
+  }
+
+  public void setEntryDefaultSerializationBufferSize(int entryDefaultSerializationBufferSize) {
+    this.entryDefaultSerializationBufferSize = entryDefaultSerializationBufferSize;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -646,6 +655,12 @@ public class RaftConfig {
         Double.parseDouble(
             properties.getProperty(
                 "flow_control_max_flow", String.valueOf(this.getFlowControlMaxFlow()))));
+
+    this.setEntryDefaultSerializationBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "entry_serialization_buffer_size",
+                String.valueOf(this.getEntryDefaultSerializationBufferSize()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

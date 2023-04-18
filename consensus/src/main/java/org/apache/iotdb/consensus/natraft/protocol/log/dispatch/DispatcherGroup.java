@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DispatcherGroup {
   private static final Logger logger = LoggerFactory.getLogger(DispatcherGroup.class);
@@ -65,22 +67,22 @@ public class DispatcherGroup {
       // ignore
     }
     if (!closeSucceeded) {
-      logger.warn("Cannot shut down dispatcher pool of {}-{}", logDispatcher.member.getName(),
-          peer);
+      logger.warn(
+          "Cannot shut down dispatcher pool of {}-{}", logDispatcher.member.getName(), peer);
     }
   }
+
   public void addThread() {
     int threadNum = groupThreadNum.incrementAndGet();
     if (threadNum <= maxBindingThreadNum) {
-      dispatcherThreadPool
-          .submit(newDispatcherThread(peer, entryQueue, rateLimiter));
+      dispatcherThreadPool.submit(newDispatcherThread(peer, entryQueue, rateLimiter));
     } else {
       groupThreadNum.decrementAndGet();
     }
   }
 
-  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingEntry> logBlockingQueue,
-      RateLimiter rateLimiter) {
+  DispatcherThread newDispatcherThread(
+      Peer node, BlockingQueue<VotingEntry> logBlockingQueue, RateLimiter rateLimiter) {
     return new DispatcherThread(logDispatcher, node, logBlockingQueue, rateLimiter, this);
   }
 

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.VotingLogList.AcceptedType;
 import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
@@ -76,8 +77,17 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
       member.getVotingLogList().onStronglyAccept(votingEntry, trueReceiver);
       member.getStatus().getPeerMap().get(trueReceiver).setMatchIndex(response.lastLogIndex);
-      synchronized (votingEntry.getEntry()) {
-        votingEntry.getEntry().notifyAll();
+      if (!votingEntry.isNotified()) {
+        AcceptedType acceptedType = member.getVotingLogList().computeAcceptedType(votingEntry);
+        if (acceptedType == AcceptedType.STRONGLY_ACCEPTED
+            || acceptedType == AcceptedType.WEAKLY_ACCEPTED) {
+          synchronized (votingEntry.getEntry()) {
+            votingEntry.getEntry().notifyAll();
+            votingEntry.setNotified(true);
+            Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_NOTIFIED.calOperationCostTimeFromStart(
+                votingEntry.getEntry().createTime);
+          }
+        }
       }
     } else if (resp > 0) {
       // a response > 0 is the follower's term
@@ -91,14 +101,25 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       member.stepDown(resp, null);
       synchronized (votingEntry.getEntry()) {
         votingEntry.getEntry().notifyAll();
+        votingEntry.setNotified(true);
+        Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_NOTIFIED.calOperationCostTimeFromStart(
+            votingEntry.getEntry().createTime);
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       votingEntry.getEntry().acceptedTime = System.nanoTime();
       Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.add(
           votingEntry.getEntry().acceptedTime - votingEntry.getEntry().createTime);
-      synchronized (votingEntry.getEntry()) {
-        votingEntry.addWeaklyAcceptedNodes(trueReceiver);
-        votingEntry.getEntry().notifyAll();
+      votingEntry.addWeaklyAcceptedNodes(trueReceiver);
+      if (!votingEntry.isNotified()) {
+        AcceptedType acceptedType = member.getVotingLogList().computeAcceptedType(votingEntry);
+        if (acceptedType == AcceptedType.WEAKLY_ACCEPTED) {
+          synchronized (votingEntry.getEntry()) {
+            votingEntry.getEntry().notifyAll();
+            votingEntry.setNotified(true);
+            Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_NOTIFIED.calOperationCostTimeFromStart(
+                votingEntry.getEntry().createTime);
+          }
+        }
       }
     } else {
       // e.g., Response.RESPONSE_LOG_MISMATCH

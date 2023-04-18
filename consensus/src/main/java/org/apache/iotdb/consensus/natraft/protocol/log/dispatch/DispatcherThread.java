@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
@@ -35,12 +30,20 @@ import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
+
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+
 class DispatcherThread implements Runnable {
+
   private static final Logger logger = LoggerFactory.getLogger(DispatcherThread.class);
 
   private final LogDispatcher logDispatcher;
@@ -54,8 +57,11 @@ class DispatcherThread implements Runnable {
   private long runningTimeSum;
   private long lastDispatchTime;
 
-  protected DispatcherThread(LogDispatcher logDispatcher, Peer receiver,
-      BlockingQueue<VotingEntry> logBlockingDeque, RateLimiter rateLimiter,
+  protected DispatcherThread(
+      LogDispatcher logDispatcher,
+      Peer receiver,
+      BlockingQueue<VotingEntry> logBlockingDeque,
+      RateLimiter rateLimiter,
       DispatcherGroup group) {
     this.logDispatcher = logDispatcher;
     this.receiver = receiver;
@@ -75,8 +81,8 @@ class DispatcherThread implements Runnable {
       long runningStart = 0;
       while (!Thread.interrupted()) {
         if (group.isDelayed()) {
-          if (logBlockingDeque.size() < logDispatcher.maxBatchSize &&
-          System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
+          if (logBlockingDeque.size() < logDispatcher.maxBatchSize
+              && System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
             // the follower is being delayed, if there is not enough requests, and it has
             // dispatched recently, wait for a while to get a larger batch
             Thread.sleep(100);
@@ -95,7 +101,7 @@ class DispatcherThread implements Runnable {
           }
         }
         long currTime = System.nanoTime();
-        idleTimeSum = currTime - idleStart;
+        idleTimeSum += currTime - idleStart;
         runningStart = currTime;
         if (logger.isDebugEnabled()) {
           logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
@@ -110,22 +116,23 @@ class DispatcherThread implements Runnable {
 
         currTime = System.nanoTime();
         lastDispatchTime = currTime;
-        runningTimeSum = currTime - runningStart;
+        runningTimeSum += currTime - runningStart;
         idleStart = currTime;
 
         // thread too idle
-        if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) < 0.5 &&
-        runningTimeSum > 10_000_000_000L) {
+        if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) > 0.5
+            && runningTimeSum > 10_000_000_000L) {
           int remaining = group.getGroupThreadNum().decrementAndGet();
           if (remaining > 1) {
             logger.info("Dispatcher thread too idle");
+            group.getGroupThreadNum().incrementAndGet();
             break;
           } else {
             group.getGroupThreadNum().incrementAndGet();
           }
           // thread too busy
-        } else if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) > 0.5 &&
-            runningTimeSum > 10_000_000_000L) {
+        } else if (idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum) < 0.1
+            && runningTimeSum > 10_000_000_000L) {
           int groupThreadNum = group.getGroupThreadNum().get();
           if (groupThreadNum < group.getMaxBindingThreadNum()) {
             group.addThread();
@@ -140,10 +147,13 @@ class DispatcherThread implements Runnable {
     } catch (Exception e) {
       logger.error("Unexpected error in log dispatcher", e);
     }
-    logger.info("Dispatcher exits, idle ratio: {}", idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum));
+    logger.info(
+        "Dispatcher exits, idle ratio: {}, running time: {}ms, idle time: {}ms",
+        idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum),
+        runningTimeSum / 1_000_000L,
+        idleTimeSum / 1_000_000L);
     group.getGroupThreadNum().decrementAndGet();
   }
-
 
   protected void serializeEntries() throws InterruptedException {
     for (VotingEntry request : currBatch) {
@@ -167,7 +177,9 @@ class DispatcherThread implements Runnable {
     }
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "{}: append entries {} with {} logs", logDispatcher.member.getName(), receiver,
+          "{}: append entries {} with {} logs",
+          logDispatcher.member.getName(),
+          receiver,
           logList.size());
     }
   }
@@ -189,7 +201,9 @@ class DispatcherThread implements Runnable {
     }
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "{}: append entries {} with {} logs", logDispatcher.member.getName(), receiver,
+          "{}: append entries {} with {} logs",
+          logDispatcher.member.getName(),
+          receiver,
           logList.size());
     }
   }
@@ -256,7 +270,7 @@ class DispatcherThread implements Runnable {
       }
 
       if (logDispatcher.getConfig().isUseFollowerLoadBalance()) {
-        FlowMonitorManager.INSTANCE.report(receiver, logSize);
+        FlowMonitorManager.INSTANCE.report(receiver.getEndpoint(), logSize);
       }
       rateLimiter.acquire((int) logSize);
     }

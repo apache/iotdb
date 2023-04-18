@@ -385,6 +385,7 @@ public class RaftMember {
       return;
     }
 
+    logDispatcher.stop();
     heartbeatThread.stop();
     catchUpManager.stop();
 
@@ -633,6 +634,7 @@ public class RaftMember {
 
     logger.debug("{}: Processing request {}", name, request);
     Entry entry = new RequestEntry(request);
+    entry.preSerialize();
     entry.receiveTime = System.nanoTime();
 
     // just like processPlanLocally,we need to check the size of log
@@ -655,19 +657,15 @@ public class RaftMember {
       return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
     }
 
-    TSStatus tsStatus1 = waitForEntryResult(votingEntry);
-    entry.waitEndTime = System.nanoTime();
-    Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPLY_END.add(
-        entry.waitEndTime - entry.createTime);
-    return tsStatus1;
+    return waitForEntryResult(votingEntry);
   }
 
   protected void waitApply(Entry entry) throws LogExecutionException {
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
-    synchronized (entry) {
-      while (!entry.isApplied()) {
-        // wait until the log is applied
+    while (!entry.isApplied()) {
+      // wait until the log is applied
+      synchronized (entry) {
         try {
           entry.wait(1);
         } catch (InterruptedException e) {
@@ -676,6 +674,7 @@ public class RaftMember {
         }
       }
     }
+
     if (entry.getException() != null) {
       throw new LogExecutionException(entry.getException());
     }
@@ -753,10 +752,17 @@ public class RaftMember {
     long waitTime = 1;
     AcceptedType acceptedType = votingLogList.computeAcceptedType(log);
 
+    Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPEND_START.calOperationCostTimeFromStart(
+        log.getEntry().createTime);
+    long startTime = Statistic.RAFT_SENDER_LOG_APPEND_WAIT.getOperationStartTime();
     while (acceptedType == AcceptedType.NOT_ACCEPTED
         && alreadyWait < config.getWriteOperationTimeoutMS()) {
-      long startTime = Statistic.RAFT_SENDER_LOG_APPEND_WAIT.getOperationStartTime();
       synchronized (log.getEntry()) {
+        acceptedType = votingLogList.computeAcceptedType(log);
+        if (acceptedType != AcceptedType.NOT_ACCEPTED) {
+          break;
+        }
+
         try {
           log.getEntry().wait(waitTime);
         } catch (InterruptedException e) {
@@ -764,7 +770,6 @@ public class RaftMember {
           logger.warn("Unexpected interruption when sending a log", e);
         }
       }
-      Statistic.RAFT_SENDER_LOG_APPEND_WAIT.calOperationCostTimeFromStart(startTime);
 
       acceptedType = votingLogList.computeAcceptedType(log);
       alreadyWait = (System.nanoTime() - waitStart) / 1000000;
@@ -777,6 +782,7 @@ public class RaftMember {
         nextTimeToPrint *= 2;
       }
     }
+    Statistic.RAFT_SENDER_LOG_APPEND_WAIT.calOperationCostTimeFromStart(startTime);
 
     if (logger.isDebugEnabled()) {
       Thread.currentThread().setName(threadBaseName);
@@ -1260,6 +1266,9 @@ public class RaftMember {
         case OK:
           if (config.isWaitApply()) {
             waitApply(votingEntry.getEntry());
+            votingEntry.getEntry().waitEndTime = System.nanoTime();
+            Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPLY_END.add(
+                votingEntry.getEntry().waitEndTime - votingEntry.getEntry().createTime);
             return includeLogNumbersInStatus(
                 StatusUtils.OK.deepCopy(),
                 votingEntry.getEntry().getCurrLogIndex(),

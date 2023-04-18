@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.common.request;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface IConsensusRequest {
@@ -38,6 +40,14 @@ public interface IConsensusRequest {
    * changed or an error may occur
    */
   ByteBuffer serializeToByteBuffer();
+
+  default void serializeTo(DataOutputStream outputStream) throws IOException {
+    ByteBuffer byteBuffer = serializeToByteBuffer();
+    outputStream.write(
+        byteBuffer.array(),
+        byteBuffer.arrayOffset() + byteBuffer.position(),
+        byteBuffer.remaining());
+  }
 
   default long estimateSize() {
     return 0;

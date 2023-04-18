@@ -124,18 +124,7 @@ public class VotingLogList {
     }
 
     if (enableWeakAcceptance) {
-      int currNodeQuorumNum = votingEntry.currNodesQuorumNum();
-      int newNodeQuorumNum = votingEntry.newNodesQuorumNum();
-      int stronglyAcceptedNumByCurrNodes =
-          votingEntry.stronglyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
-      int stronglyAcceptedNumByNewNodes =
-          votingEntry.stronglyAcceptedNumByNewNodes(stronglyAcceptedIndices);
-      int weaklyAcceptedNumByCurrNodes =
-          votingEntry.weaklyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
-      int weaklyAcceptedNumByNewNodes =
-          votingEntry.weaklyAcceptedNumByNewNodes(stronglyAcceptedIndices);
-      if ((weaklyAcceptedNumByCurrNodes + stronglyAcceptedNumByCurrNodes) >= currNodeQuorumNum
-          && (weaklyAcceptedNumByNewNodes + stronglyAcceptedNumByNewNodes) >= newNodeQuorumNum) {
+      if (votingEntry.isWeaklyAccepted(stronglyAcceptedIndices)) {
         return AcceptedType.WEAKLY_ACCEPTED;
       }
     }

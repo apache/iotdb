@@ -47,6 +47,7 @@ import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.exception.CheckConsistencyException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
@@ -99,6 +100,7 @@ public class RaftConsensus implements IConsensus {
             .createClientManager(new AsyncRaftServiceClientPoolFactory(this.config));
     FlowMonitorManager.INSTANCE.setConfig(this.config);
     SyncClientAdaptor.setConfig(this.config);
+    Entry.DEFAULT_SERIALIZATION_BUFFER_SIZE = this.config.getEntryDefaultSerializationBufferSize();
   }
 
   @Override
@@ -115,6 +117,11 @@ public class RaftConsensus implements IConsensus {
             new Thread(
                 () -> {
                   logger.info(Timer.Statistic.getReport());
+                  try {
+                    stop();
+                  } catch (IOException e) {
+                    logger.error("Error during exiting", e);
+                  }
                 }));
     reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
@@ -158,6 +165,7 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public void stop() throws IOException {
+    reportThread.shutdownNow();
     clientManager.close();
     stateMachineMap.values().parallelStream().forEach(RaftMember::stop);
     registerManager.deregisterAll();
@@ -167,6 +175,7 @@ public class RaftConsensus implements IConsensus {
   @Override
   public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
     if (config.isOnlyTestNetwork()) {
+      request.serializeToByteBuffer();
       return ConsensusWriteResponse.newBuilder().setStatus(StatusUtils.OK).build();
     }
     RaftMember impl = stateMachineMap.get(groupId);

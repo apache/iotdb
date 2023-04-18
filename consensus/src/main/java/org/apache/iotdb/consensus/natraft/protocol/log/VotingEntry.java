@@ -38,6 +38,8 @@ public class VotingEntry {
   protected List<Peer> currNodes;
   protected List<Peer> newNodes;
   private boolean isStronglyAccepted;
+  private boolean isWeaklyAccepted;
+  private boolean notified;
 
   public VotingEntry(
       Entry entry,
@@ -108,6 +110,24 @@ public class VotingEntry {
     return stronglyAcceptedByCurrNodes && stronglyAcceptedByNewNodes;
   }
 
+  public boolean isWeaklyAccepted(Map<Peer, Long> stronglyAcceptedIndices) {
+    if (isWeaklyAccepted) {
+      return true;
+    }
+    int currNodeQuorumNum = currNodesQuorumNum();
+    int newNodeQuorumNum = newNodesQuorumNum();
+    int stronglyAcceptedNumByCurrNodes = stronglyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
+    int stronglyAcceptedNumByNewNodes = stronglyAcceptedNumByNewNodes(stronglyAcceptedIndices);
+    int weaklyAcceptedNumByCurrNodes = weaklyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
+    int weaklyAcceptedNumByNewNodes = weaklyAcceptedNumByNewNodes(stronglyAcceptedIndices);
+    if ((weaklyAcceptedNumByCurrNodes + stronglyAcceptedNumByCurrNodes) >= currNodeQuorumNum
+        && (weaklyAcceptedNumByNewNodes + stronglyAcceptedNumByNewNodes) >= newNodeQuorumNum) {
+      isWeaklyAccepted = true;
+      return true;
+    }
+    return false;
+  }
+
   public int stronglyAcceptedNumByCurrNodes(Map<Peer, Long> stronglyAcceptedIndices) {
     int num = 0;
     for (Peer node : currNodes) {
@@ -158,5 +178,13 @@ public class VotingEntry {
 
   public boolean hasNewNodes() {
     return newNodes != null;
+  }
+
+  public boolean isNotified() {
+    return notified;
+  }
+
+  public void setNotified(boolean notified) {
+    this.notified = notified;
   }
 }

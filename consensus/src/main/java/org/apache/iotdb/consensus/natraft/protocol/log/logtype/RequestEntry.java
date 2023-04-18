@@ -49,6 +49,8 @@ public class RequestEntry extends Entry {
   @Override
   protected ByteBuffer serializeInternal() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS(getDefaultSerializationBufferSize());
+    int requestSize = 0;
+    int requestPos = 0;
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) CLIENT_REQUEST.ordinal());
 
@@ -56,25 +58,20 @@ public class RequestEntry extends Entry {
       dataOutputStream.writeLong(getCurrLogTerm());
       dataOutputStream.writeLong(getPrevTerm());
 
-      ByteBuffer byteBuffer = request.serializeToByteBuffer();
-      byteBuffer.rewind();
-      dataOutputStream.writeInt(byteBuffer.remaining());
-      dataOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.remaining());
+      requestPos = byteArrayOutputStream.size();
+      dataOutputStream.writeInt(0);
+      request.serializeTo(dataOutputStream);
+      requestSize = byteArrayOutputStream.size() - requestPos - 4;
     } catch (IOException e) {
       // unreachable
     }
 
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-  }
-
-  @Override
-  public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) CLIENT_REQUEST.ordinal());
-    buffer.putLong(getCurrLogIndex());
-    buffer.putLong(getCurrLogTerm());
-    ByteBuffer byteBuffer = request.serializeToByteBuffer();
-    buffer.putInt(byteBuffer.remaining());
-    buffer.put(byteBuffer);
+    ByteBuffer wrap =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    wrap.position(requestPos);
+    wrap.putInt(requestSize);
+    wrap.position(0);
+    return wrap;
   }
 
   @Override

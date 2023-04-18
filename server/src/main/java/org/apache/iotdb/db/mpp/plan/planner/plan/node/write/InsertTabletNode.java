@@ -460,8 +460,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
-    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
+    stream.writeInt(measurements.length - getFailedMeasurementNumber());
+    stream.write((byte) (measurementSchemas != null ? 1 : 0));
 
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
@@ -624,31 +624,31 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
       case INT32:
         int[] intValues = (int[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], stream);
+          stream.writeInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], stream);
+          stream.writeLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], stream);
+          stream.writeFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], stream);
+          stream.writeDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
+          stream.write(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:

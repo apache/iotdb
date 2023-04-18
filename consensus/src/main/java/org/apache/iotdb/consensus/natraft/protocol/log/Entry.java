@@ -35,7 +35,7 @@ public abstract class Entry implements Comparable<Entry> {
       Comparator.comparingLong(Entry::getCurrLogIndex).thenComparing(Entry::getCurrLogTerm);
 
   // make this configurable or adaptive
-  protected static final int DEFAULT_SERIALIZATION_BUFFER_SIZE = 16 * 1024;
+  public static int DEFAULT_SERIALIZATION_BUFFER_SIZE = 16 * 1024;
   private volatile long currLogIndex = Long.MIN_VALUE;
   private long currLogTerm = -1;
   private long prevTerm = -1;
@@ -55,6 +55,8 @@ public abstract class Entry implements Comparable<Entry> {
   public long committedTime;
   public long applyTime;
   public long waitEndTime;
+
+  private ByteBuffer preSerializationCache;
   private ByteBuffer serializationCache;
 
   public int getDefaultSerializationBufferSize() {
@@ -63,21 +65,45 @@ public abstract class Entry implements Comparable<Entry> {
 
   protected abstract ByteBuffer serializeInternal();
 
+  /**
+   * Perform serialization before indexing to avoid serialization under locked environment. It
+   * should be noticed that at this time point, the index is not set yet, so when the final
+   * serialization is called, it must set the correct index, term, and prevTerm (starting from the
+   * second byte in the ByteBuffer).
+   */
+  public void preSerialize() {
+    if (preSerializationCache != null || serializationCache != null) {
+      return;
+    }
+    long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
+    ByteBuffer byteBuffer = serializeInternal();
+    Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
+    preSerializationCache = byteBuffer;
+  }
+
   public ByteBuffer serialize() {
     ByteBuffer cache = serializationCache;
     if (cache != null) {
       return cache.slice();
     }
-    ByteBuffer byteBuffer = serializeInternal();
-    serializationCache = byteBuffer;
-    return byteBuffer.slice();
-  };
+    if (preSerializationCache != null) {
+      preSerializationCache.position(1);
+      preSerializationCache.putLong(getCurrLogIndex());
+      preSerializationCache.putLong(getCurrLogTerm());
+      preSerializationCache.putLong(getPrevTerm());
+      preSerializationCache.position(0);
+      serializationCache = preSerializationCache;
+      preSerializationCache = null;
+    } else {
+      long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
+      ByteBuffer byteBuffer = serializeInternal();
+      Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
+      serializationCache = byteBuffer;
+    }
+    return serializationCache.slice();
+  }
 
   public abstract void deserialize(ByteBuffer buffer);
-
-  public void serialize(ByteBuffer buffer) {
-    buffer.put(serialize());
-  }
 
   public enum Types {
     // DO CHECK LogParser when you add a new type of log
@@ -152,6 +178,12 @@ public abstract class Entry implements Comparable<Entry> {
   }
 
   public long estimateSize() {
+    ByteBuffer cache;
+    if ((cache = serializationCache) != null) {
+      return cache.remaining();
+    } else if ((cache = preSerializationCache) != null) {
+      return cache.remaining();
+    }
     return byteSize;
   };
 
