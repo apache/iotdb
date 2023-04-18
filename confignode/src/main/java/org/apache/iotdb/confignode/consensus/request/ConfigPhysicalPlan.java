@@ -77,6 +77,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -85,14 +88,14 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
@@ -339,29 +342,38 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateRegionLocation:
           plan = new UpdateRegionLocationPlan();
           break;
-        case CreatePipeSink:
-          plan = new CreatePipeSinkPlan();
+        case CreatePipeSinkV1:
+          plan = new CreatePipeSinkPlanV1();
           break;
-        case DropPipeSink:
-          plan = new DropPipeSinkPlan();
+        case DropPipeSinkV1:
+          plan = new DropPipeSinkPlanV1();
           break;
-        case GetPipeSink:
-          plan = new GetPipeSinkPlan();
+        case GetPipeSinkV1:
+          plan = new GetPipeSinkPlanV1();
           break;
-        case PreCreatePipe:
-          plan = new PreCreatePipePlan();
+        case PreCreatePipeV1:
+          plan = new PreCreatePipePlanV1();
           break;
-        case SetPipeStatus:
-          plan = new SetPipeStatusPlan();
+        case SetPipeStatusV1:
+          plan = new SetPipeStatusPlanV1();
           break;
-        case DropPipe:
-          plan = new DropPipePlan();
+        case DropPipeV1:
+          plan = new DropPipePlanV1();
           break;
-        case ShowPipe:
-          plan = new ShowPipePlan();
+        case ShowPipeV1:
+          plan = new ShowPipePlanV1();
           break;
-        case RecordPipeMessage:
+        case RecordPipeMessageV1:
           plan = new RecordPipeMessagePlan();
+          break;
+        case CreatePipeV2:
+          plan = new CreatePipePlanV2();
+          break;
+        case SetPipeStatusV2:
+          plan = new SetPipeStatusPlanV2();
+          break;
+        case DropPipeV2:
+          plan = new DropPipePlanV2();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

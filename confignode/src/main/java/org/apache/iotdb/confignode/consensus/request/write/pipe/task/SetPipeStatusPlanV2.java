@@ -16,52 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
+
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-// Deprecated, restored for upgrade
-@Deprecated
-public class RecordPipeMessagePlan extends ConfigPhysicalPlan {
+public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
-  private PipeMessage pipeMessage;
+  private PipeStatus status;
 
-  public RecordPipeMessagePlan() {
-    super(ConfigPhysicalPlanType.RecordPipeMessageV1);
+  public SetPipeStatusPlanV2() {
+    super(ConfigPhysicalPlanType.SetPipeStatusV2);
   }
 
-  public RecordPipeMessagePlan(String pipeName, PipeMessage pipeMessage) {
-    this();
+  public SetPipeStatusPlanV2(String pipeName, PipeStatus status) {
+    super(ConfigPhysicalPlanType.SetPipeStatusV2);
     this.pipeName = pipeName;
-    this.pipeMessage = pipeMessage;
+    this.status = status;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public PipeMessage getPipeMessage() {
-    return pipeMessage;
+  public PipeStatus getPipeStatus() {
+    return status;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
-    pipeMessage.serialize(stream);
+    ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(status.getType(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
-    pipeMessage = PipeMessage.deserialize(buffer);
+    pipeName = ReadWriteIOUtils.readString(buffer);
+    status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
   }
 }

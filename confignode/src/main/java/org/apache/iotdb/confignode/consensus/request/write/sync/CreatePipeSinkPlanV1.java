@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -29,39 +29,31 @@ import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
 @Deprecated
-public class RecordPipeMessagePlan extends ConfigPhysicalPlan {
+public class CreatePipeSinkPlanV1 extends ConfigPhysicalPlan {
 
-  private String pipeName;
-  private PipeMessage pipeMessage;
+  private TPipeSinkInfo pipeSinkInfo;
 
-  public RecordPipeMessagePlan() {
-    super(ConfigPhysicalPlanType.RecordPipeMessageV1);
+  public CreatePipeSinkPlanV1() {
+    super(ConfigPhysicalPlanType.CreatePipeSinkV1);
   }
 
-  public RecordPipeMessagePlan(String pipeName, PipeMessage pipeMessage) {
+  public CreatePipeSinkPlanV1(TPipeSinkInfo pipeSinkInfo) {
     this();
-    this.pipeName = pipeName;
-    this.pipeMessage = pipeMessage;
+    this.pipeSinkInfo = pipeSinkInfo;
   }
 
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public PipeMessage getPipeMessage() {
-    return pipeMessage;
+  public TPipeSinkInfo getPipeSinkInfo() {
+    return pipeSinkInfo;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
-    pipeMessage.serialize(stream);
+    ThriftConfigNodeSerDeUtils.serializeTPipeSinkInfo(pipeSinkInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
-    pipeMessage = PipeMessage.deserialize(buffer);
+    pipeSinkInfo = ThriftConfigNodeSerDeUtils.deserializeTPipeSinkInfo(buffer);
   }
 }

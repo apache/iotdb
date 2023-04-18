@@ -17,12 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Test;
@@ -33,26 +30,22 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class CreatePipePluginProcedureTest {
+public class DropPipeProcedureV2Test {
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    PipePluginMeta pipePluginMeta =
-        new PipePluginMeta("test", "test.class", "test.jar", "testMD5test");
-    CreatePipePluginProcedure proc =
-        new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3});
+    DropPipeProcedureV2 proc = new DropPipeProcedureV2("testPipe");
 
     try {
       proc.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      CreatePipePluginProcedure proc2 =
-          (CreatePipePluginProcedure) ProcedureFactory.getInstance().create(buffer);
+      DropPipeProcedureV2 proc2 =
+          (DropPipeProcedureV2) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
-      assertEquals(new Binary(proc.getJarFile()), new Binary(proc2.getJarFile()));
     } catch (Exception e) {
       fail();
     }

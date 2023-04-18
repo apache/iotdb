@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
-import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
+import org.apache.iotdb.confignode.manager.pipe.PipePluginCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -102,18 +102,18 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   private Flow executeFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromLock({})", pluginName);
-    final PipePluginInfo pipePluginInfo =
-        env.getConfigManager().getPipeManager().getPipePluginCoordinator().getPipePluginInfo();
+    final PipePluginCoordinator pipePluginCoordinator =
+        env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
-    pipePluginInfo.acquirePipePluginInfoLock();
+    pipePluginCoordinator.lock();
 
     try {
-      pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
+      pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
     } catch (PipeManagementException e) {
       // if the pipe plugin is not exist, we should end the procedure
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
-      pipePluginInfo.releasePipePluginInfoLock();
+      pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;
     }
 
@@ -149,11 +149,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private Flow executeFromUnlock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromUnlock({})", pluginName);
 
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipePluginCoordinator()
-        .getPipePluginInfo()
-        .releasePipePluginInfoLock();
+    env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
 
     return Flow.NO_MORE_STATE;
   }
@@ -177,11 +173,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private void rollbackFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: rollbackFromLock({})", pluginName);
 
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipePluginCoordinator()
-        .getPipePluginInfo()
-        .releasePipePluginInfoLock();
+    env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
   }
 
   private void rollbackFromDropOnDataNodes(ConfigNodeProcedureEnv env) {

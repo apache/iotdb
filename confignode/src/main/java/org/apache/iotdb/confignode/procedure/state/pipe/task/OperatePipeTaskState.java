@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
 
-public enum SyncOperation {
-  CREATE_PIPESINK,
-  DROP_PIPESINK,
-  // PIPE
-  CREATE_PIPE,
-  START_PIPE,
-  STOP_PIPE,
-  DROP_PIPE
+package org.apache.iotdb.confignode.procedure.state.pipe.task;
+
+public enum OperatePipeTaskState {
+  VALIDATE_TASK,
+  CALCULATE_INFO_FOR_TASK,
+  OPERATE_ON_DATA_NODES,
+  WRITE_CONFIG_NODE_CONSENSUS
 }

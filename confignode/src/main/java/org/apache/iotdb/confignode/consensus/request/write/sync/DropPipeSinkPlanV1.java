@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -29,39 +28,31 @@ import java.nio.ByteBuffer;
 
 // Deprecated, restored for upgrade
 @Deprecated
-public class RecordPipeMessagePlan extends ConfigPhysicalPlan {
+public class DropPipeSinkPlanV1 extends ConfigPhysicalPlan {
 
-  private String pipeName;
-  private PipeMessage pipeMessage;
+  private String pipeSinkName;
 
-  public RecordPipeMessagePlan() {
-    super(ConfigPhysicalPlanType.RecordPipeMessageV1);
+  public DropPipeSinkPlanV1() {
+    super(ConfigPhysicalPlanType.DropPipeSinkV1);
   }
 
-  public RecordPipeMessagePlan(String pipeName, PipeMessage pipeMessage) {
+  public DropPipeSinkPlanV1(String pipeSinkName) {
     this();
-    this.pipeName = pipeName;
-    this.pipeMessage = pipeMessage;
+    this.pipeSinkName = pipeSinkName;
   }
 
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public PipeMessage getPipeMessage() {
-    return pipeMessage;
+  public String getPipeSinkName() {
+    return pipeSinkName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
-    pipeMessage.serialize(stream);
+    BasicStructureSerDeUtil.write(pipeSinkName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
-    pipeMessage = PipeMessage.deserialize(buffer);
+    pipeSinkName = BasicStructureSerDeUtil.readString(buffer);
   }
 }
