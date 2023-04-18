@@ -35,7 +35,9 @@ public class TsFileEpoch {
   }
 
   public TsFileEpoch.State getState(PipeRealtimeCollector collector) {
-    return collector2State.get(collector).get();
+    return collector2State
+        .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
+        .get();
   }
 
   public void visit(PipeRealtimeCollector collector, TsFileEpochVisitor visitor) {

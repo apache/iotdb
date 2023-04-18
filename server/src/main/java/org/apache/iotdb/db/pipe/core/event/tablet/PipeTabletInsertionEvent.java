@@ -49,4 +49,9 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     return null;
   }
+
+  @Override
+  public String toString() {
+    return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
+  }
 }

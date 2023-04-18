@@ -2,6 +2,7 @@ package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
 
 import org.apache.iotdb.db.pipe.PipeConfig;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -13,13 +14,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class MapMatcher implements PipePatternMatcher {
-  private static final Logger logger = LoggerFactory.getLogger(MapMatcher.class);
+public class CachedMatcher implements PipePatternMatcher {
+  private static final Logger logger = LoggerFactory.getLogger(CachedMatcher.class);
   private final ReentrantReadWriteLock lock;
   private final Set<PipeRealtimeCollector> collectors;
   private final Cache<String, Set<PipeRealtimeCollector>> deviceCache;
 
-  public MapMatcher() {
+  public CachedMatcher() {
     this.lock = new ReentrantReadWriteLock();
     this.collectors = new HashSet<>();
     this.deviceCache =
@@ -87,7 +88,7 @@ public class MapMatcher implements PipePatternMatcher {
                   matchCollectors.add(collector);
                 } else {
                   for (String measurement : measurements) {
-                    if (pattern.endsWith(measurement)
+                    if (pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)
                         && pattern.length() == device.length() + measurement.length() + 1) {
                       matchCollectors.add(collector);
                       break;

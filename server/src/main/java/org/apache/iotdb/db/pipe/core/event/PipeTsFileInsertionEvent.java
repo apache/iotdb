@@ -41,4 +41,9 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
   public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
     return null;
   }
+
+  @Override
+  public String toString() {
+    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
+  }
 }

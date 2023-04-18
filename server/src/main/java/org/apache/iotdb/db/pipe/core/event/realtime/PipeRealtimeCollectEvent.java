@@ -26,7 +26,7 @@ import java.util.Map;
 
 public class PipeRealtimeCollectEvent implements Event {
   private final Event event;
-  private final Map<String, String[]> device2Measurements;
+  private Map<String, String[]> device2Measurements;
   private final TsFileEpoch tsFileEpoch;
 
   public PipeRealtimeCollectEvent(
@@ -45,7 +45,7 @@ public class PipeRealtimeCollectEvent implements Event {
   }
 
   public void clearSchemaInfo() {
-    device2Measurements.clear();
+    device2Measurements = null;
   }
 
   public TsFileEpoch getTsFileEpoch() {

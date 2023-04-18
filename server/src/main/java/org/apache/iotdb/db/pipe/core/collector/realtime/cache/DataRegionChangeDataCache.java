@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime.cache;
 
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
-import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.MapMatcher;
+import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipePatternMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.queue.DisruptorQueue;
@@ -32,7 +32,7 @@ public class DataRegionChangeDataCache {
   private final DisruptorQueue<PipeRealtimeCollectEvent> disruptor;
 
   public DataRegionChangeDataCache() {
-    this.matcher = new MapMatcher();
+    this.matcher = new CachedMatcher();
 
     this.disruptor =
         new DisruptorQueue.Builder<PipeRealtimeCollectEvent>()
