@@ -287,7 +287,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   @Override
-  public void stop() {}
+  public void stop(Throwable t) {}
 
   @Override
   public Duration getTotalCpuTime() {

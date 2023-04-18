@@ -129,7 +129,7 @@ public class QueryExecution implements IQueryExecution {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
-  private AtomicBoolean stopped;
+  private final AtomicBoolean stopped;
 
   private long totalExecutionTime;
 
@@ -179,7 +179,7 @@ public class QueryExecution implements IQueryExecution {
               Throwable cause = stateMachine.getFailureException();
               releaseResource(cause);
             }
-            this.stop();
+            this.stop(null);
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -254,10 +254,10 @@ public class QueryExecution implements IQueryExecution {
     partitionFetcher.invalidAllCache();
     // clear runtime variables in MPPQueryContext
     context.prepareForRetry();
+    // re-stop
+    this.stopped.compareAndSet(true, false);
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
-    // re-stop
-    this.stopped = new AtomicBoolean(false);
     // re-start the QueryExecution
     this.start();
     return getStatus();
@@ -359,16 +359,16 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Stop the workers for this query
-  public void stop() {
+  public void stop(Throwable t) {
     // only stop once
     if (stopped.compareAndSet(false, true) && this.scheduler != null) {
-      this.scheduler.stop();
+      this.scheduler.stop(t);
     }
   }
 
   // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup() {
-    stop();
+    stop(null);
     releaseResource();
   }
 
@@ -390,13 +390,13 @@ public class QueryExecution implements IQueryExecution {
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
     if (resultHandle != null) {
-      resultHandle.abort();
+      resultHandle.close();
     }
   }
 
   // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup(Throwable t) {
-    stop();
+    stop(t);
     releaseResource(t);
   }
 
@@ -410,7 +410,11 @@ public class QueryExecution implements IQueryExecution {
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
     if (resultHandle != null) {
-      resultHandle.abort(t);
+      if (t != null) {
+        resultHandle.abort(t);
+      } else {
+        resultHandle.close();
+      }
     }
   }
 

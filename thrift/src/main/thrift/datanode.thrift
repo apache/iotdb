@@ -144,6 +144,7 @@ struct TFragmentInstanceInfoResp {
 struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
+  3: required bool hasThrowable
 }
 
 struct TCancelPlanFragmentReq {
