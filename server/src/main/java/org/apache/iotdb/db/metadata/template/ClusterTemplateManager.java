@@ -208,6 +208,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSetSchemaTemplateReq req = new TSetSchemaTemplateReq();
+      req.setQueryId(queryId);
       req.setName(name);
       req.setPath(path.getFullPath());
 
