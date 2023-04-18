@@ -78,6 +78,23 @@ public class TemplatePreSetTable {
     }
   }
 
+  public void rollbackPreSetTemplate(int templateId, PartialPath templateSetPath) {
+    readWriteLock.writeLock().lock();
+    try {
+      Set<PartialPath> set = templatePreSetMap.get(templateId);
+      if (set == null) {
+        return;
+      }
+      if (set.remove(templateSetPath)) {
+        if (set.isEmpty()) {
+          templatePreSetMap.remove(templateId);
+        }
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public boolean commitSetTemplate(int templateId, PartialPath templateSetPath) {
     readWriteLock.writeLock().lock();
     try {

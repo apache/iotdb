@@ -380,7 +380,22 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackPreSet(ConfigNodeProcedureEnv env) {}
+  private void rollbackPreSet(ConfigNodeProcedureEnv env) {
+    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
+        new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
+    TSStatus status =
+        env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan).getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setNextState(SetTemplateState.PRE_RELEASE);
+    } else {
+      LOGGER.warn(
+          "Failed to rollback pre set template {} on path {} due to {}",
+          templateName,
+          templateSetPath,
+          status.getMessage());
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+    }
+  }
 
   private void rollbackPreRelease(ConfigNodeProcedureEnv env) {}
 

@@ -746,12 +746,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
-      templatePreSetTable.preSetTemplate(templateId, path);
-      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      if (preSetSchemaTemplatePlan.isRollback()) {
+        rollbackPreSetSchemaTemplate(templateId, path);
+      } else {
+        preSetSchemaTemplate(templateId, path);
+      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  private void preSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    templatePreSetTable.preSetTemplate(templateId, templateSetPath);
+    mTree.preSetTemplate(templateId, templateSetPath);
+  }
+
+  private void rollbackPreSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    templatePreSetTable.rollbackPreSetTemplate(templateId, templateSetPath);
+    mTree.rollbackPreSetTemplate(templateId, templateSetPath);
   }
 
   public synchronized TSStatus commitSetSchemaTemplate(

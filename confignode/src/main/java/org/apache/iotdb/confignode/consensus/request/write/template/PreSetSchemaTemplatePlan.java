@@ -32,6 +32,8 @@ public class PreSetSchemaTemplatePlan extends ConfigPhysicalPlan {
   private String name;
   private String path;
 
+  private boolean isRollback = false;
+
   public PreSetSchemaTemplatePlan() {
     super(ConfigPhysicalPlanType.PreSetSchemaTemplate);
   }
@@ -42,6 +44,13 @@ public class PreSetSchemaTemplatePlan extends ConfigPhysicalPlan {
     this.path = path;
   }
 
+  public PreSetSchemaTemplatePlan(String name, String path, boolean isRollback) {
+    super(ConfigPhysicalPlanType.PreSetSchemaTemplate);
+    this.name = name;
+    this.path = path;
+    this.isRollback = isRollback;
+  }
+
   public String getName() {
     return name;
   }
@@ -50,16 +59,22 @@ public class PreSetSchemaTemplatePlan extends ConfigPhysicalPlan {
     return path;
   }
 
+  public boolean isRollback() {
+    return isRollback;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(name, stream);
     ReadWriteIOUtils.write(path, stream);
+    ReadWriteIOUtils.write(isRollback, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.name = ReadWriteIOUtils.readString(buffer);
     this.path = ReadWriteIOUtils.readString(buffer);
+    this.isRollback = ReadWriteIOUtils.readBool(buffer);
   }
 }
