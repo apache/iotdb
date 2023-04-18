@@ -397,7 +397,40 @@ public class SetTemplateProcedure
     }
   }
 
-  private void rollbackPreRelease(ConfigNodeProcedureEnv env) {}
+  private void rollbackPreRelease(ConfigNodeProcedureEnv env) {
+    Template template = getTemplate(env);
+    if (template == null) {
+      // already setFailure
+      return;
+    }
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+
+    TUpdateTemplateReq invalidateTemplateSetInfoReq = new TUpdateTemplateReq();
+    invalidateTemplateSetInfoReq.setType(
+        TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
+    invalidateTemplateSetInfoReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      // all dataNodes must clear the related template cache
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "Failed to rollback pre release template info of template {} set on path {} on DataNode {}",
+            template.getName(),
+            templateSetPath,
+            dataNodeLocationMap.get(entry.getKey()));
+        setFailure(
+            new ProcedureException(new MetadataException("Rollback pre release template failed")));
+      }
+    }
+  }
 
   private void rollbackCommitSet(ConfigNodeProcedureEnv env) {}
 

@@ -397,17 +397,28 @@ public class ClusterTemplateManager implements ITemplateManager {
       String pathSetTemplate = parsedInfo.right;
       try {
         PartialPath path = new PartialPath(pathSetTemplate);
+
         pathSetTemplateMap.remove(path);
         if (templateSetOnPathsMap.containsKey(templateId)) {
           templateSetOnPathsMap.get(templateId).remove(path);
           if (templateSetOnPathsMap.get(templateId).isEmpty()) {
             templateSetOnPathsMap.remove(templateId);
-            if (!templatePreSetOnPathsMap.containsKey(templateId)) {
-              // such template is useless on DataNode since no related set/preset path
-              Template template = templateIdMap.remove(templateId);
-              templateNameMap.remove(template.getName());
-            }
           }
+        }
+
+        pathPreSetTemplateMap.remove(path);
+        if (templatePreSetOnPathsMap.containsKey(templateId)) {
+          templatePreSetOnPathsMap.get(templateId).remove(path);
+          if (templatePreSetOnPathsMap.get(templateId).isEmpty()) {
+            templatePreSetOnPathsMap.remove(templateId);
+          }
+        }
+
+        if (!templateSetOnPathsMap.containsKey(templateId)
+            && !templatePreSetOnPathsMap.containsKey(templateId)) {
+          // such template is useless on DataNode since no related set/preset path
+          Template template = templateIdMap.remove(templateId);
+          templateNameMap.remove(template.getName());
         }
       } catch (IllegalPathException ignored) {
 
