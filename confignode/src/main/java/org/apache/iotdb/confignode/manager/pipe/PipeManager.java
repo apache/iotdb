@@ -28,13 +28,10 @@ public class PipeManager {
 
   private final PipeTaskCoordinator pipeTaskCoordinator;
 
-  private final PipeInfo pipeInfo;
-
   public PipeManager(ConfigManager configManager, PipeInfo pipeInfo) {
     this.pipePluginCoordinator =
         new PipePluginCoordinator(configManager, pipeInfo.getPipePluginInfo());
     this.pipeTaskCoordinator = new PipeTaskCoordinator(configManager, pipeInfo.getPipeTaskInfo());
-    this.pipeInfo = pipeInfo;
   }
 
   public PipePluginCoordinator getPipePluginCoordinator() {
@@ -43,9 +40,5 @@ public class PipeManager {
 
   public PipeTaskCoordinator getPipeTaskCoordinator() {
     return pipeTaskCoordinator;
-  }
-
-  public PipeInfo getPipeInfo() {
-    return pipeInfo;
   }
 }

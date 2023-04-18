@@ -20,13 +20,13 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeConsensusGroupTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
-import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -77,9 +77,15 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
-    final PipeInfo pipeInfo = env.getConfigManager().getPipeManager().getPipeInfo();
-    return pipeInfo.getPipePluginInfo().checkBeforeCreatePipe(createPipeRequest)
-        && pipeInfo.getPipeTaskInfo().checkBeforeCreatePipe(createPipeRequest);
+    final PipeManager pipeManager = env.getConfigManager().getPipeManager();
+    return pipeManager
+            .getPipePluginCoordinator()
+            .getPipePluginInfo()
+            .checkBeforeCreatePipe(createPipeRequest)
+        && pipeManager
+            .getPipeTaskCoordinator()
+            .getPipeTaskInfo()
+            .checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override
@@ -96,14 +102,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    final Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> consensusGroupIdToTaskMetaMap =
-        new HashMap<>();
+    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getLatestRegionLeaderMap()
         .forEach(
             (region, leader) -> {
-              consensusGroupIdToTaskMetaMap.put(region, new PipeConsensusGroupTaskMeta(0, leader));
+              consensusGroupIdToTaskMetaMap.put(region, new PipeTaskMeta(0, leader));
             });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }

@@ -35,6 +35,10 @@ public class PipeTaskCoordinator {
     this.pipeTaskInfo = pipeTaskInfo;
   }
 
+  public PipeTaskInfo getPipeTaskInfo() {
+    return pipeTaskInfo;
+  }
+
   public void lock() {
     pipeTaskInfo.acquirePipeTaskInfoLock();
   }

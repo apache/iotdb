@@ -39,7 +39,7 @@ public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status;
   private final List<String> exceptionMessages;
-  private final Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> consensusGroupIdToTaskMetaMap;
+  private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap;
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
@@ -47,8 +47,7 @@ public class PipeRuntimeMeta {
     consensusGroupIdToTaskMetaMap = new ConcurrentHashMap<>();
   }
 
-  public PipeRuntimeMeta(
-      Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> consensusGroupIdToTaskMetaMap) {
+  public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap) {
     status = new AtomicReference<>(PipeStatus.STOPPED);
     exceptionMessages = new LinkedList<>();
     this.consensusGroupIdToTaskMetaMap = consensusGroupIdToTaskMetaMap;
@@ -62,7 +61,7 @@ public class PipeRuntimeMeta {
     return exceptionMessages;
   }
 
-  public Map<TConsensusGroupId, PipeConsensusGroupTaskMeta> getConsensusGroupIdToTaskMetaMap() {
+  public Map<TConsensusGroupId, PipeTaskMeta> getConsensusGroupIdToTaskMetaMap() {
     return consensusGroupIdToTaskMetaMap;
   }
 
@@ -79,7 +78,7 @@ public class PipeRuntimeMeta {
     // ignore exception messages
 
     ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);
-    for (Map.Entry<TConsensusGroupId, PipeConsensusGroupTaskMeta> entry :
+    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
         consensusGroupIdToTaskMetaMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
       entry.getValue().serialize(outputStream);
@@ -103,7 +102,7 @@ public class PipeRuntimeMeta {
       pipeRuntimeMeta.consensusGroupIdToTaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
-          PipeConsensusGroupTaskMeta.deserialize(byteBuffer));
+          PipeTaskMeta.deserialize(byteBuffer));
     }
 
     return pipeRuntimeMeta;

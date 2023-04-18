@@ -63,7 +63,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     return env.getConfigManager()
         .getPipeManager()
-        .getPipeInfo()
+        .getPipeTaskCoordinator()
         .getPipeTaskInfo()
         .checkBeforeDropPipe(pipeName);
   }
