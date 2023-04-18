@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.mockito.Mockito;
 
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.function.Consumer;
 
 import static org.mockito.Mockito.mock;
 
@@ -42,7 +43,8 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 "PipeProcessorSubtaskExecutorTest",
                 mock(ArrayBlockingQueue.class),
                 mock(PipeProcessor.class),
-                mock(EventCollector.class)) {
+                mock(EventCollector.class),
+                mock(Consumer.class)) {
               @Override
               public void executeForAWhile() {}
             });
