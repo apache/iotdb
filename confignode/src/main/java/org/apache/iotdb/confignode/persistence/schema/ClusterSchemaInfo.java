@@ -827,21 +827,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public AllTemplateSetInfoResp getAllTemplateSetInfo() {
     List<Template> templateList = templateTable.getAllTemplate();
-    Map<Integer, List<String>> templateSetInfo = new HashMap<>();
+    Map<Integer, List<Pair<String, Boolean>>> templateSetInfo = new HashMap<>();
     int id;
     for (Template template : templateList) {
       id = template.getId();
       try {
         List<String> pathList = mTree.getPathsSetOnTemplate(id, true);
         if (!pathList.isEmpty()) {
-          templateSetInfo.put(id, pathList);
+          List<Pair<String, Boolean>> pathSetInfoList = new ArrayList<>();
+          for (String path : pathList) {
+            pathSetInfoList.add(
+                new Pair<>(path, templatePreSetTable.isPreSet(id, new PartialPath(path))));
+          }
+          templateSetInfo.put(id, pathSetInfoList);
         }
       } catch (MetadataException e) {
         LOGGER.error("Error occurred when get paths set on template {}", id, e);
       }
     }
 
-    Map<Template, List<String>> templateSetInfoMap = new HashMap<>();
+    Map<Template, List<Pair<String, Boolean>>> templateSetInfoMap = new HashMap<>();
     for (Template template : templateList) {
       if (templateSetInfo.containsKey(template.getId())) {
         templateSetInfoMap.put(template, templateSetInfo.get(template.getId()));
@@ -849,7 +854,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     return new AllTemplateSetInfoResp(
-        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(templateSetInfoMap));
+        TemplateInternalRPCUtil.generateAddAllTemplateSetInfoBytes(templateSetInfoMap));
   }
 
   /**

@@ -384,21 +384,33 @@ public class ClusterTemplateManager implements ITemplateManager {
     try {
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
 
-      Map<Template, List<String>> parsedTemplateSetInfo =
-          TemplateInternalRPCUtil.parseAddTemplateSetInfoBytes(buffer);
-      for (Map.Entry<Template, List<String>> entry : parsedTemplateSetInfo.entrySet()) {
+      Map<Template, List<Pair<String, Boolean>>> parsedTemplateSetInfo =
+          TemplateInternalRPCUtil.parseAddAllTemplateSetInfoBytes(buffer);
+      for (Map.Entry<Template, List<Pair<String, Boolean>>> entry :
+          parsedTemplateSetInfo.entrySet()) {
         Template template = entry.getKey();
         templateIdMap.put(template.getId(), template);
         templateNameMap.put(template.getName(), template.getId());
 
-        for (String pathSetTemplate : entry.getValue()) {
+        for (Pair<String, Boolean> pathSetTemplate : entry.getValue()) {
           try {
-            PartialPath path = new PartialPath(pathSetTemplate);
-            pathSetTemplateMap.put(path, template.getId());
-            List<PartialPath> pathList =
-                templateSetOnPathsMap.computeIfAbsent(
-                    template.getId(), integer -> new ArrayList<>());
-            pathList.add(path);
+            PartialPath path = new PartialPath(pathSetTemplate.left);
+            if (pathSetTemplate.right) {
+              // pre set
+              pathPreSetTemplateMap.put(path, template.getId());
+              Set<PartialPath> paths =
+                  templatePreSetOnPathsMap.computeIfAbsent(
+                      template.getId(), integer -> new HashSet<>());
+              paths.add(path);
+            } else {
+              // commit set
+              pathSetTemplateMap.put(path, template.getId());
+              List<PartialPath> pathList =
+                  templateSetOnPathsMap.computeIfAbsent(
+                      template.getId(), integer -> new ArrayList<>());
+              pathList.add(path);
+            }
+
           } catch (IllegalPathException ignored) {
 
           }
