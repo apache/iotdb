@@ -17,31 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.NoReturnValueVisitor;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
-import java.util.Collections;
-import java.util.List;
-
-public class CollectSourceExpressionsVisitor extends CollectVisitor {
+public class CheckIsAllMeasurementVisitor extends NoReturnValueVisitor<Void> {
   @Override
-  public List<Expression> visitFunctionExpression(
-      FunctionExpression functionExpression, Void context) {
-    return mergeList(getResultsFromChild(functionExpression, null));
-  }
-
-  @Override
-  public List<Expression> visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, Void context) {
-    return Collections.singletonList(timeSeriesOperand);
-  }
-
-  @Override
-  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
-    return Collections.emptyList();
+  public Void visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
+    PartialPath path = timeSeriesOperand.getPath();
+    if (path.getNodes().length > 1
+        || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      throw new SemanticException("the suffix paths can only be measurement or one-level wildcard");
+    }
+    return null;
   }
 }

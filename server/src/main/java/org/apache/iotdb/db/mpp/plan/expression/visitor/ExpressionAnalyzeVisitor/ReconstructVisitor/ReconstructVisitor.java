@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -25,11 +25,12 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ExpressionAnalyzeVisitor;
 
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
@@ -62,7 +63,7 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   public Expression visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<Expression> childResults = getResultsFromChild(caseWhenThenExpression, context);
-    return reconstructCaseWHenThenExpression(childResults);
+    return reconstructCaseWhenThenExpression(childResults);
   }
 
   @Override

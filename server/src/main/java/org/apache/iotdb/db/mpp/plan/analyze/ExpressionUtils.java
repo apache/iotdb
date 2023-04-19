@@ -100,7 +100,7 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
-  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
+  public static Expression reconstructCaseWhenThenExpression(List<Expression> childExpressions) {
     return new CaseWhenThenExpression(
         childExpressions // transform to List<WhenThenExpression>
             .subList(0, childExpressions.size() - 1).stream()

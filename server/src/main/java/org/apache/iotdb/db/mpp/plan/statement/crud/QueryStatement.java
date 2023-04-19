@@ -128,7 +128,7 @@ public class QueryStatement extends Statement {
     List<ResultColumn> resultColumns = selectComponent.getResultColumns();
     for (ResultColumn resultColumn : resultColumns) {
       Expression expression = resultColumn.getExpression();
-      authPaths.addAll(ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths));
+      authPaths.addAll(ExpressionAnalyzer.extractFullPathFromExpression(expression, prefixPaths));
     }
     return new ArrayList<>(authPaths);
   }

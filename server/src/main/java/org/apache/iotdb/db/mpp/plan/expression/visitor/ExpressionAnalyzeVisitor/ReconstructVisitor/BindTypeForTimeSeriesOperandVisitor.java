@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ReconstructVisitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;

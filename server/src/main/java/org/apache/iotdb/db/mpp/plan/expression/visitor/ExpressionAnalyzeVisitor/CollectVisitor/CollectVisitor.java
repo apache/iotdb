@@ -17,23 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CollectVisitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.ExpressionAnalyzeVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Simply collects result from child-expression. For example, two child give me 3 and 4 results, I
+ * Simply collects results from child-expression. For example, two child give me 3 and 4 results, I
  * will return 3+4 = 7 results to upper level.
  */
 public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expression>, Void> {
-  List<Expression> mergeList(List<List<Expression>> listOfList) {
+  List<Expression> collect(List<List<Expression>> listOfList) {
     List<Expression> result = new ArrayList<>();
     listOfList.forEach(result::addAll);
     return result;
@@ -42,22 +43,22 @@ public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expre
   @Override
   public List<Expression> visitTernaryExpression(
       TernaryExpression ternaryExpression, Void context) {
-    return mergeList(getResultsFromChild(ternaryExpression, null));
+    return collect(getResultsFromChild(ternaryExpression, null));
   }
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
-    return mergeList(getResultsFromChild(binaryExpression, null));
+    return collect(getResultsFromChild(binaryExpression, null));
   }
 
   @Override
   public List<Expression> visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, Void context) {
-    return mergeList(getResultsFromChild(caseWhenThenExpression, null));
+    return collect(getResultsFromChild(caseWhenThenExpression, null));
   }
 
   @Override
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, Void context) {
-    return mergeList(getResultsFromChild(unaryExpression, null));
+    return collect(getResultsFromChild(unaryExpression, null));
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor.CartesianProductVisitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -61,9 +61,7 @@ public class RemoveWildcardInExpressionVisitor extends CartesianProductVisitor<I
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         List<Expression> children = functionExpression.getExpressions();
         bindTypeForAggregationNonSeriesInputExpressions(
-            ((FunctionExpression) functionExpression).getFunctionName(),
-            children,
-            extendedExpressions);
+            functionExpression.getFunctionName(), children, extendedExpressions);
         break;
       }
     }
@@ -73,8 +71,7 @@ public class RemoveWildcardInExpressionVisitor extends CartesianProductVisitor<I
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
 
-    return reconstructFunctionExpressions(
-        (FunctionExpression) functionExpression, childExpressionsList);
+    return reconstructFunctionExpressions(functionExpression, childExpressionsList);
   }
 
   @Override
