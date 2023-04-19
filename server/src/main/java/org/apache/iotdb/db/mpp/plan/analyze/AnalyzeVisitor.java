@@ -1724,7 +1724,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void checkIsTemplateCompatible(PartialPath timeseriesPath, String alias) {
     Pair<Template, PartialPath> templateInfo =
-        schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath);
+        schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
       throw new RuntimeException(
           new TemplateImcompatibeException(
@@ -1734,14 +1734,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void checkIsTemplateCompatible(
       PartialPath devicePath, List<String> measurements, List<String> aliasList) {
-    Pair<Template, PartialPath> templateInfo =
-        schemaFetcher.checkTemplateSetAndPreSetInfo(devicePath);
-    if (templateInfo != null) {
-      throw new RuntimeException(
-          new TemplateImcompatibeException(
-              devicePath.getFullPath() + measurements,
-              templateInfo.left.getName(),
-              templateInfo.right));
+    for (int i = 0; i < measurements.size(); i++) {
+      Pair<Template, PartialPath> templateInfo =
+          schemaFetcher.checkTemplateSetAndPreSetInfo(
+              devicePath.concatNode(measurements.get(i)),
+              aliasList == null ? null : aliasList.get(i));
+      if (templateInfo != null) {
+        throw new RuntimeException(
+            new TemplateImcompatibeException(
+                devicePath.getFullPath() + measurements,
+                templateInfo.left.getName(),
+                templateInfo.right));
+      }
     }
   }
 

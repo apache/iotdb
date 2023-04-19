@@ -84,9 +84,10 @@ public interface ISchemaFetcher {
       List<CompressionType[]> compressionTypes,
       List<Boolean> aligned);
 
-  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 
-  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias);
 
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 

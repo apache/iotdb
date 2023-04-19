@@ -68,9 +68,10 @@ public interface ITemplateManager {
    */
   List<PartialPath> getPathsSetTemplate(String name);
 
-  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 
-  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 

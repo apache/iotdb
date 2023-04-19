@@ -636,6 +636,23 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         }
       }
       Assert.assertEquals(0, expectedResultSet.size());
+
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d2.tmp.m");
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d2 INT32");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d2] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
+            e.getMessage());
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d2.s(tmp) INT32");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d2.s] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
+            e.getMessage());
+      }
+      statement.execute("CREATE TIMESERIES root.sg1.d2.s INT32");
     }
   }
 }

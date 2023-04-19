@@ -279,11 +279,11 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
     readWriteLock.readLock().lock();
     try {
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
-        if (path.startsWith(templateSetPath.getNodes())) {
+        if (devicePath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
           return new Pair<>(
               templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
         }
@@ -295,19 +295,41 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(PartialPath path) {
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias) {
     readWriteLock.readLock().lock();
     try {
       for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
-        if (path.startsWith(templateSetPath.getNodes())) {
+        if (timeSeriesPath.startsWithOrPrefixOf(templateSetPath.getNodes())) {
           return new Pair<>(
               templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
         }
+        if (alias != null) {
+          if (timeSeriesPath
+              .getDevicePath()
+              .concatNode(alias)
+              .startsWithOrPrefixOf(templateSetPath.getNodes())) {
+            return new Pair<>(
+                templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
+          }
+        }
       }
       for (PartialPath templatePreSetPath : pathPreSetTemplateMap.keySet()) {
-        if (path.startsWith(templatePreSetPath.getNodes())) {
+        if (timeSeriesPath.startsWithOrPrefixOf(templatePreSetPath.getNodes())
+            || timeSeriesPath.startsWithOrPrefixOf(
+                timeSeriesPath.getDevicePath().concatNode(alias).getNodes())) {
           return new Pair<>(
               templateIdMap.get(pathPreSetTemplateMap.get(templatePreSetPath)), templatePreSetPath);
+        }
+        if (alias != null) {
+          if (timeSeriesPath
+              .getDevicePath()
+              .concatNode(alias)
+              .startsWithOrPrefixOf(templatePreSetPath.getNodes())) {
+            return new Pair<>(
+                templateIdMap.get(pathPreSetTemplateMap.get(templatePreSetPath)),
+                templatePreSetPath);
+          }
         }
       }
       return null;
