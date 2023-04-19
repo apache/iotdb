@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
@@ -33,14 +33,9 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * Regexp.
- *
- * @param <T> comparable data type
- */
-public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
+public class NotRegexp<T extends Comparable<T>> implements Filter, Serializable {
 
-  private static final long serialVersionUID = -1168073851950524983L;
+  private static final long serialVersionUID = 3736477149558748084L;
 
   protected String value;
 
@@ -48,9 +43,9 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   protected Pattern pattern;
 
-  public Regexp() {}
+  public NotRegexp() {}
 
-  public Regexp(String value, FilterType filterType) {
+  public NotRegexp(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
     try {
@@ -81,7 +76,9 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
     if (filterType != FilterType.VALUE_FILTER) {
       throw new UnsupportedOperationException("");
     }
-    return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
+    return !pattern
+        .matcher(new Regexp.MatcherInput(value.toString(), new Regexp.AccessCount()))
+        .find();
   }
 
   @Override
@@ -96,7 +93,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public Filter copy() {
-    return new Regexp(value, filterType);
+    return new NotRegexp(value, filterType);
   }
 
   @Override
@@ -125,7 +122,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public String toString() {
-    return filterType + " match " + value;
+    return filterType + " not match " + value;
   }
 
   @Override
@@ -137,51 +134,6 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.REGEXP;
-  }
-
-  public static class AccessCount {
-    private int count;
-    private final int accessThreshold =
-        TSFileDescriptor.getInstance().getConfig().getPatternMatchingThreshold();
-
-    public void check() throws IllegalStateException {
-      if (this.count++ > accessThreshold) {
-        throw new IllegalStateException("Pattern access threshold exceeded");
-      }
-    }
-  }
-
-  public static class MatcherInput implements CharSequence {
-
-    private final CharSequence value;
-
-    private final AccessCount access;
-
-    public MatcherInput(CharSequence value, AccessCount access) {
-      this.value = value;
-      this.access = access;
-    }
-
-    @Override
-    public char charAt(int index) {
-      this.access.check();
-      return this.value.charAt(index);
-    }
-
-    @Override
-    public CharSequence subSequence(int start, int end) {
-      return new MatcherInput(this.value.subSequence(start, end), this.access);
-    }
-
-    @Override
-    public int length() {
-      return this.value.length();
-    }
-
-    @Override
-    public String toString() {
-      return this.value.toString();
-    }
+    return FilterSerializeId.NOT_REGEXP;
   }
 }

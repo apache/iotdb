@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
@@ -29,18 +29,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * Regexp.
- *
- * @param <T> comparable data type
- */
-public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
+import static org.apache.iotdb.tsfile.read.filter.operator.Like.unescapeString;
 
-  private static final long serialVersionUID = -1168073851950524983L;
+public class NotLike<T extends Comparable<T>> implements Filter, Serializable {
 
   protected String value;
 
@@ -48,15 +42,38 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   protected Pattern pattern;
 
-  public Regexp() {}
+  private NotLike() {}
 
-  public Regexp(String value, FilterType filterType) {
+  public NotLike(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
     try {
-      this.pattern = Pattern.compile(this.value);
+      String unescapeValue = unescapeString(value);
+      String specialRegexStr = ".^$*+?{}[]|()";
+      StringBuilder patternStrBuild = new StringBuilder();
+      patternStrBuild.append("^");
+      for (int i = 0; i < unescapeValue.length(); i++) {
+        String ch = String.valueOf(unescapeValue.charAt(i));
+        if (specialRegexStr.contains(ch)) {
+          ch = "\\" + unescapeValue.charAt(i);
+        }
+        if ((i == 0)
+            || (i > 0 && !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1))))
+            || (i >= 2
+                && "\\\\"
+                    .equals(
+                        patternStrBuild.substring(
+                            patternStrBuild.length() - 2, patternStrBuild.length())))) {
+          String replaceStr = ch.replace("%", ".*?").replace("_", ".");
+          patternStrBuild.append(replaceStr);
+        } else {
+          patternStrBuild.append(ch);
+        }
+      }
+      patternStrBuild.append("$");
+      this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
-      throw new PatternSyntaxException("Regular expression error", value, e.getIndex());
+      throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
     }
   }
 
@@ -81,7 +98,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
     if (filterType != FilterType.VALUE_FILTER) {
       throw new UnsupportedOperationException("");
     }
-    return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
+    return !pattern.matcher(value.toString()).find();
   }
 
   @Override
@@ -96,7 +113,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public Filter copy() {
-    return new Regexp(value, filterType);
+    return new NotLike(value, filterType);
   }
 
   @Override
@@ -104,7 +121,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
     try {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
-      ReadWriteIOUtils.write(value, outputStream);
+      ReadWriteIOUtils.writeObject(value, outputStream);
     } catch (IOException ex) {
       throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
     }
@@ -114,74 +131,15 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
-    if (value != null) {
-      try {
-        this.pattern = Pattern.compile(value);
-      } catch (PatternSyntaxException e) {
-        throw new PatternSyntaxException("Regular expression error", value, e.getIndex());
-      }
-    }
   }
 
   @Override
   public String toString() {
-    return filterType + " match " + value;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof Regexp
-        && Objects.equals(((Regexp<?>) o).value, value)
-        && ((Regexp<?>) o).filterType == filterType;
+    return filterType + " not like " + value;
   }
 
   @Override
   public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.REGEXP;
-  }
-
-  public static class AccessCount {
-    private int count;
-    private final int accessThreshold =
-        TSFileDescriptor.getInstance().getConfig().getPatternMatchingThreshold();
-
-    public void check() throws IllegalStateException {
-      if (this.count++ > accessThreshold) {
-        throw new IllegalStateException("Pattern access threshold exceeded");
-      }
-    }
-  }
-
-  public static class MatcherInput implements CharSequence {
-
-    private final CharSequence value;
-
-    private final AccessCount access;
-
-    public MatcherInput(CharSequence value, AccessCount access) {
-      this.value = value;
-      this.access = access;
-    }
-
-    @Override
-    public char charAt(int index) {
-      this.access.check();
-      return this.value.charAt(index);
-    }
-
-    @Override
-    public CharSequence subSequence(int start, int end) {
-      return new MatcherInput(this.value.subSequence(start, end), this.access);
-    }
-
-    @Override
-    public int length() {
-      return this.value.length();
-    }
-
-    @Override
-    public String toString() {
-      return this.value.toString();
-    }
+    return FilterSerializeId.NOT_LIKE;
   }
 }

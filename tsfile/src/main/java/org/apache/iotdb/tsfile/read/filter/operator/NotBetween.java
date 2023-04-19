@@ -31,9 +31,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class Between<T extends Comparable<T>> implements Filter, Serializable {
+public class NotBetween<T extends Comparable<T>> implements Filter, Serializable {
 
-  private static final long serialVersionUID = -537390606419370764L;
+  private static final long serialVersionUID = 5939421238701173620L;
 
   protected T value1;
 
@@ -41,9 +41,9 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
 
   protected FilterType filterType;
 
-  public Between() {}
+  public NotBetween() {}
 
-  public Between(T value1, T value2, FilterType filterType) {
+  public NotBetween(T value1, T value2, FilterType filterType) {
     this.value1 = value1;
     this.value2 = value2;
     this.filterType = filterType;
@@ -70,45 +70,46 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.BETWEEN;
+    return FilterSerializeId.NOT_BETWEEN;
   }
 
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return statistics.getEndTime() >= (Long) value1 && statistics.getStartTime() <= (Long) value2;
+      return statistics.getStartTime() < (Long) value1 || statistics.getEndTime() > (Long) value2;
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
-      return ((T) statistics.getMaxValue()).compareTo(value1) >= 0
-          && ((T) statistics.getMinValue()).compareTo(value2) <= 0;
+      return ((T) statistics.getMinValue()).compareTo(value1) < 0
+          || ((T) statistics.getMaxValue()).compareTo(value2) > 0;
     }
   }
 
   @Override
   public boolean allSatisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return statistics.getStartTime() >= (Long) value1 && statistics.getEndTime() <= (Long) value2;
+      return statistics.getStartTime() > (Long) value1 || statistics.getEndTime() < (Long) value2;
+
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
-      return ((T) statistics.getMinValue()).compareTo(value1) >= 0
-          && ((T) statistics.getMaxValue()).compareTo(value2) <= 0;
+      return ((T) statistics.getMinValue()).compareTo(value2) > 0
+          || ((T) statistics.getMaxValue()).compareTo(value1) < 0;
     }
   }
 
   @Override
   public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
-    return value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0;
+    return value1.compareTo((T) v) > 0 || ((T) v).compareTo(value2) > 0;
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
-      return endTime >= (Long) value1 && startTime <= (Long) value2;
+      return startTime < (Long) value1 || endTime > (Long) value2;
     } else {
       return true;
     }
@@ -117,7 +118,7 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
-      return startTime >= (Long) value1 && endTime <= (Long) value2;
+      return endTime < (Long) value1 || startTime > (Long) value2;
     } else {
       return true;
     }
@@ -125,6 +126,6 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public Filter copy() {
-    return new Between(value1, value2, filterType);
+    return new NotBetween(value1, value2, filterType);
   }
 }

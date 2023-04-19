@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -35,7 +36,7 @@ import java.util.regex.PatternSyntaxException;
  *
  * @param <T> comparable data type
  */
-public class Like<T extends Comparable<T>> implements Filter {
+public class Like<T extends Comparable<T>> implements Filter, Serializable {
 
   private static final long serialVersionUID = 2171102599229260789L;
 
@@ -97,7 +98,7 @@ public class Like<T extends Comparable<T>> implements Filter {
   @Override
   public boolean satisfy(long time, Object value) {
     if (filterType != FilterType.VALUE_FILTER) {
-      return false;
+      throw new UnsupportedOperationException("");
     }
     return pattern.matcher(value.toString()).find();
   }
@@ -136,7 +137,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public String toString() {
-    return filterType + " is " + value;
+    return filterType + " like " + value;
   }
 
   @Override
@@ -148,7 +149,7 @@ public class Like<T extends Comparable<T>> implements Filter {
    * This Method is for unescaping strings except '\' before special string '%', '_', '\', because
    * we need to use '\' to judege whether to replace this to regexp string
    */
-  public String unescapeString(String value) {
+  public static String unescapeString(String value) {
     String out = "";
     for (int i = 0; i < value.length(); i++) {
       String ch = String.valueOf(value.charAt(i));
