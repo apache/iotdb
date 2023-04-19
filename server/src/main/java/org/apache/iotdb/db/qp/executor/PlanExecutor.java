@@ -1496,7 +1496,7 @@ public class PlanExecutor implements IPlanExecutor {
                   + fileName);
       FileUtils.copyURLToFile(url, destFile);
       return destFile;
-    } catch (MalformedURLException | URISyntaxException e) {
+    } catch (MalformedURLException | URISyntaxException | IllegalArgumentException e) {
       // try to get local files
       File file = new File(filePath);
       if (!file.exists()) {
