@@ -376,6 +376,8 @@ public class ClusterTemplateManager implements ITemplateManager {
     return false;
   }
 
+  // This is used for template info sync when activating DataNode and registering into cluster. All
+  // set and pre-set info will be updated.
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
     if (templateSetInfo == null) {
       return;
@@ -413,6 +415,41 @@ public class ClusterTemplateManager implements ITemplateManager {
 
           } catch (IllegalPathException ignored) {
 
+          }
+        }
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  // This is used for rollback template unset operation. The provided template will be directly
+  // added to pathSetTemplateMap without any processing on pathPreSetTemplateMap
+  public void addTemplateSetInfo(byte[] templateSetInfo) {
+    if (templateSetInfo == null) {
+      return;
+    }
+    readWriteLock.writeLock().lock();
+    try {
+      ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
+
+      Map<Template, List<String>> parsedTemplateSetInfo =
+          TemplateInternalRPCUtil.parseAddTemplateSetInfoBytes(buffer);
+      for (Map.Entry<Template, List<String>> entry : parsedTemplateSetInfo.entrySet()) {
+        Template template = entry.getKey();
+        int templateId = template.getId();
+        templateIdMap.put(templateId, template);
+        templateNameMap.put(template.getName(), templateId);
+
+        for (String pathSetTemplate : entry.getValue()) {
+          try {
+            PartialPath path = new PartialPath(pathSetTemplate);
+            pathSetTemplateMap.put(path, templateId);
+            templateSetOnPathsMap
+                .computeIfAbsent(templateId, integer -> new ArrayList<>())
+                .add(path);
+          } catch (IllegalPathException ignored) {
+            // won't happen
           }
         }
       }
