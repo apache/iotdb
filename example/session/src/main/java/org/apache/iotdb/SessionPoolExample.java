@@ -61,6 +61,27 @@ public class SessionPoolExample {
             .build();
   }
 
+  /** Build a slave SessionPool for this example */
+  private static void slaveSessionPool() {
+    List<String> nodeUrls = new ArrayList<>();
+    nodeUrls.add("127.0.0.1:6667");
+    nodeUrls.add("127.0.0.1:6668");
+    nodeUrls.add("127.0.0.1:6669");
+    List<String> slaveList = new ArrayList<>();
+    slaveList.add("127.0.0.1:6767");
+    slaveList.add("127.0.0.1:6768");
+    sessionPool =
+            new SessionPool.Builder()
+                    .nodeUrls(nodeUrls)
+                    .user("root")
+                    .password("root")
+                    .slaveNodeUrls(slaveList)
+                    .slaveUsername("root")
+                    .slavePassword("123456")
+                    .maxSize(3)
+                    .build();
+  }
+
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use

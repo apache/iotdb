@@ -61,12 +61,18 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
+    List<String> slaveList = new ArrayList<>();
+    slaveList.add("127.0.0.1:6767");
+    slaveList.add("127.0.0.1:6768");
     session =
         new Session.Builder()
             .host(LOCAL_HOST)
             .port(6667)
             .username("root")
             .password("root")
+                .slaveNodeUrls(slaveList)
+                .slaveUsername("root")
+                .slavePassword("123456")
             .version(Version.V_1_0)
             .build();
     session.open(false);
@@ -97,9 +103,6 @@ public class SessionExample {
     query();
     //    queryWithTimeout();
     rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();

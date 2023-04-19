@@ -112,6 +112,9 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  protected List<String> slaveNodeUrls;
+  protected String slaveUsername;
+  protected String slavePassword;
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -149,6 +152,9 @@ public class Session implements ISession {
         rpcPort,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -163,6 +169,9 @@ public class Session implements ISession {
         Integer.parseInt(rpcPort),
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -177,6 +186,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -191,6 +203,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         fetchSize,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -211,6 +226,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         fetchSize,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -226,6 +244,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -241,6 +262,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -262,6 +286,9 @@ public class Session implements ISession {
         rpcPort,
         username,
         password,
+        null,
+        null,
+        null,
         fetchSize,
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -276,6 +303,9 @@ public class Session implements ISession {
       int rpcPort,
       String username,
       String password,
+      List<String> slaveNodeUrls,
+      String slaveUsername,
+      String slavePassword,
       int fetchSize,
       ZoneId zoneId,
       int thriftDefaultBufferSize,
@@ -285,6 +315,9 @@ public class Session implements ISession {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
+    this.slaveNodeUrls = slaveNodeUrls;
+    this.slaveUsername = slaveUsername;
+    this.slavePassword = slavePassword;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -298,6 +331,9 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -316,6 +352,9 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
+        null,
+        null,
+        null,
         fetchSize,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -329,6 +368,9 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
+        null,
+        null,
+        null,
         SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -341,6 +383,9 @@ public class Session implements ISession {
       List<String> nodeUrls,
       String username,
       String password,
+      List<String> slaveNodeUrls,
+      String slaveUsername,
+      String slavePassword,
       int fetchSize,
       ZoneId zoneId,
       int thriftDefaultBufferSize,
@@ -350,6 +395,9 @@ public class Session implements ISession {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
+    this.slaveNodeUrls = slaveNodeUrls;
+    this.slaveUsername = slaveUsername;
+    this.slavePassword = slavePassword;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -3453,6 +3501,8 @@ public class Session implements ISession {
     private int rpcPort = SessionConfig.DEFAULT_PORT;
     private String username = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String slaveUsername = SessionConfig.DEFAULT_USER;
+    private String slavePassword = SessionConfig.DEFAULT_PASSWORD;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private ZoneId zoneId = null;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -3462,6 +3512,7 @@ public class Session implements ISession {
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
+    private List<String> slaveNodeUrls = null;
 
     public Builder host(String host) {
       this.host = host;
@@ -3513,6 +3564,21 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder slaveNodeUrls(List<String> slaveNodeUrls) {
+      this.slaveNodeUrls = slaveNodeUrls;
+      return this;
+    }
+
+    public Builder slaveUsername(String slaveUsername) {
+      this.slaveUsername = slaveUsername;
+      return this;
+    }
+
+    public Builder slavePassword(String slavePassword) {
+      this.slavePassword = slavePassword;
+      return this;
+    }
+
     public Builder version(Version version) {
       this.version = version;
       return this;
@@ -3536,6 +3602,9 @@ public class Session implements ISession {
                 nodeUrls,
                 username,
                 password,
+                slaveNodeUrls,
+                slaveUsername,
+                slavePassword,
                 fetchSize,
                 zoneId,
                 thriftDefaultBufferSize,
@@ -3551,6 +3620,9 @@ public class Session implements ISession {
           rpcPort,
           username,
           password,
+          slaveNodeUrls,
+          slaveUsername,
+          slavePassword,
           fetchSize,
           zoneId,
           thriftDefaultBufferSize,

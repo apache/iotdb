@@ -965,6 +965,9 @@ public class SessionCacheLeaderUT {
       super(
           host,
           rpcPort,
+          null,
+          null,
+          null,
           SessionConfig.DEFAULT_USER,
           SessionConfig.DEFAULT_PASSWORD,
           SessionConfig.DEFAULT_FETCH_SIZE,

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.util.ClusterStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -77,12 +78,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.StringJoiner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
+  private static final long CHECK_CONNECT_PRIMARY_NODE_S = 10;
   private Session session;
   private TTransport transport;
   private IClientRPCService.Iface client;
@@ -92,7 +97,9 @@ public class SessionConnection {
   private TEndPoint endPoint;
   private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
-
+  private List<TEndPoint> slaveEndPointList = new ArrayList<>();
+  private ClusterStatus clusterStatus;
+  private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
   // TestOnly
   public SessionConnection() {}
 
@@ -101,9 +108,14 @@ public class SessionConnection {
     this.session = session;
     this.endPoint = endPoint;
     endPointList.add(endPoint);
+    this.slaveEndPointList =
+        null == session.slaveNodeUrls
+            ? slaveEndPointList
+            : SessionUtils.parseSeedNodeUrls(session.slaveNodeUrls);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     try {
       init(endPoint);
+      clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -113,10 +125,19 @@ public class SessionConnection {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
+    this.slaveEndPointList =
+        null == session.slaveNodeUrls
+            ? slaveEndPointList
+            : SessionUtils.parseSeedNodeUrls(session.slaveNodeUrls);
     initClusterConn();
   }
 
   private void init(TEndPoint endPoint) throws IoTDBConnectionException {
+    initWithUser(endPoint, session.username, session.password);
+  }
+
+  private void initWithUser(TEndPoint endPoint, String username, String password)
+      throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
@@ -139,8 +160,8 @@ public class SessionConnection {
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
-    openReq.setUsername(session.username);
-    openReq.setPassword(session.password);
+    openReq.setUsername(username);
+    openReq.setPassword(password);
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
 
@@ -178,6 +199,7 @@ public class SessionConnection {
       try {
         session.defaultEndPoint = endPoint;
         init(endPoint);
+        clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
@@ -199,6 +221,16 @@ public class SessionConnection {
       if (transport != null) {
         transport.close();
       }
+      if (null != executorService && !executorService.isShutdown()) {
+        executorService.shutdown();
+      }
+    }
+  }
+
+  protected void checkPrimaryClusterBeReady() {
+    if (ClusterStatus.PRIMARY_CLUSTER_BE_READY.equals(clusterStatus)) {
+      reconnect();
+      logger.info("primary cluster restart");
     }
   }
 
@@ -208,6 +240,7 @@ public class SessionConnection {
 
   protected void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
+    checkPrimaryClusterBeReady();
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
     TSStatus resp;
     try {
@@ -241,6 +274,7 @@ public class SessionConnection {
 
   protected void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     try {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroup));
     } catch (TException e) {
@@ -258,6 +292,7 @@ public class SessionConnection {
 
   protected void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     try {
       RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
     } catch (TException e) {
@@ -275,6 +310,7 @@ public class SessionConnection {
 
   protected void createTimeseries(TSCreateTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));
@@ -294,6 +330,7 @@ public class SessionConnection {
 
   protected void createAlignedTimeseries(TSCreateAlignedTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
@@ -313,6 +350,7 @@ public class SessionConnection {
 
   protected void createMultiTimeseries(TSCreateMultiTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.createMultiTimeseries(request));
@@ -349,6 +387,7 @@ public class SessionConnection {
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    checkPrimaryClusterBeReady();
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(session.fetchSize);
     execReq.setTimeout(timeout);
@@ -390,6 +429,7 @@ public class SessionConnection {
 
   protected void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
@@ -413,6 +453,7 @@ public class SessionConnection {
   protected SessionDataSet executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    checkPrimaryClusterBeReady();
     TSRawDataQueryReq execReq =
         new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId);
     execReq.setFetchSize(session.fetchSize);
@@ -453,6 +494,7 @@ public class SessionConnection {
 
   protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    checkPrimaryClusterBeReady();
     TSLastDataQueryReq tsLastDataQueryReq =
         new TSLastDataQueryReq(sessionId, paths, time, statementId);
     tsLastDataQueryReq.setFetchSize(session.fetchSize);
@@ -574,6 +616,7 @@ public class SessionConnection {
 
   private TSAggregationQueryReq createAggregationQueryReq(
       List<String> paths, List<TAggregationType> aggregations) {
+    checkPrimaryClusterBeReady();
     TSAggregationQueryReq req =
         new TSAggregationQueryReq(sessionId, statementId, paths, aggregations);
     req.setFetchSize(session.getFetchSize());
@@ -583,6 +626,7 @@ public class SessionConnection {
 
   protected void insertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertRecord(request));
@@ -602,6 +646,7 @@ public class SessionConnection {
 
   protected void insertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertStringRecord(request));
@@ -621,6 +666,7 @@ public class SessionConnection {
 
   protected void insertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
@@ -641,6 +687,7 @@ public class SessionConnection {
 
   protected void insertRecords(TSInsertStringRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
@@ -661,6 +708,7 @@ public class SessionConnection {
 
   protected void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertRecordsOfOneDevice(request));
@@ -680,6 +728,7 @@ public class SessionConnection {
 
   protected void insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertStringRecordsOfOneDevice(request));
@@ -699,6 +748,7 @@ public class SessionConnection {
 
   protected void insertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
@@ -718,6 +768,7 @@ public class SessionConnection {
 
   protected void insertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
@@ -738,6 +789,7 @@ public class SessionConnection {
 
   protected void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     try {
       RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
@@ -755,6 +807,7 @@ public class SessionConnection {
 
   public void deleteData(TSDeleteDataReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.deleteData(request));
@@ -774,6 +827,7 @@ public class SessionConnection {
 
   protected void testInsertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
@@ -793,6 +847,7 @@ public class SessionConnection {
 
   protected void testInsertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertRecord(request));
@@ -812,6 +867,7 @@ public class SessionConnection {
 
   public void testInsertRecords(TSInsertStringRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecords(request));
@@ -831,6 +887,7 @@ public class SessionConnection {
 
   public void testInsertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertRecords(request));
@@ -850,6 +907,7 @@ public class SessionConnection {
 
   protected void testInsertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertTablet(request));
@@ -869,6 +927,7 @@ public class SessionConnection {
 
   protected void testInsertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertTablets(request));
@@ -887,6 +946,34 @@ public class SessionConnection {
   }
 
   private boolean reconnect() {
+    return reconnectPrimary(endPointList)
+        ? reconnectPrimary(endPointList)
+        : reconnectSlave(slaveEndPointList);
+  }
+
+  private boolean reconnectPrimary(List<TEndPoint> endPointList) {
+    boolean connectedSuccess = reconnectCluster(endPointList, session.username, session.password);
+    if (connectedSuccess) {
+      clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
+    }
+    return connectedSuccess;
+  }
+
+  private boolean reconnectSlave(List<TEndPoint> endPointList) {
+    if (endPointList.isEmpty()) {
+      return false;
+    }
+    boolean connectedSuccess =
+        reconnectCluster(endPointList, session.slaveUsername, session.slavePassword);
+    if (connectedSuccess && !ClusterStatus.SLAVE_CLUSTER_UP.equals(clusterStatus)) {
+      //      System.out.println(clusterStatus);
+      clusterStatus = ClusterStatus.SLAVE_CLUSTER_UP;
+      checkPrimaryClusterStatus();
+    }
+    return connectedSuccess;
+  }
+
+  private boolean reconnectCluster(List<TEndPoint> endPointList, String username, String password) {
     boolean connectedSuccess = false;
     Random random = new Random();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
@@ -905,7 +992,7 @@ public class SessionConnection {
           }
           tryHostNum++;
           try {
-            init(endPoint);
+            initWithUser(endPoint, username, password);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.error("The current node may have been down {},try next node", endPoint);
@@ -921,8 +1008,45 @@ public class SessionConnection {
     return connectedSuccess;
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
+  private void checkPrimaryClusterStatus() {
+    if (executorService.isShutdown()) {
+      executorService = Executors.newScheduledThreadPool(1);
+    }
+    executorService.scheduleAtFixedRate(
+        this::checkNode,
+        CHECK_CONNECT_PRIMARY_NODE_S,
+        CHECK_CONNECT_PRIMARY_NODE_S,
+        TimeUnit.SECONDS);
+  }
+
+  private void checkNode() {
+    for (int i = 0; i < endPointList.size(); i++) {
+      try {
+        transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                // as there is a try-catch already, we do not need to use TSocket.wrap
+                endPointList.get(i).getIp(),
+                endPointList.get(i).getPort(),
+                session.connectionTimeoutInMs);
+        if (!transport.isOpen()) {
+          transport.open();
+        }
+        if (ClusterStatus.SLAVE_CLUSTER_UP == clusterStatus) {
+          clusterStatus = ClusterStatus.PRIMARY_CLUSTER_BE_READY;
+        }
+        executorService.shutdown();
+        logger.info("primary cluster is ready");
+        break;
+      } catch (TTransportException e) {
+        logger.info("primary cluster is not ready");
+      }
+    }
+  }
+
   protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.createSchemaTemplate(request));
@@ -942,6 +1066,7 @@ public class SessionConnection {
 
   protected void appendSchemaTemplate(TSAppendSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.appendSchemaTemplate(request));
@@ -961,6 +1086,7 @@ public class SessionConnection {
 
   protected void pruneSchemaTemplate(TSPruneSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.pruneSchemaTemplate(request));
@@ -980,6 +1106,7 @@ public class SessionConnection {
 
   protected TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req)
       throws StatementExecutionException, IoTDBConnectionException {
+    checkPrimaryClusterBeReady();
     TSQueryTemplateResp execResp;
     req.setSessionId(sessionId);
     try {
@@ -1003,6 +1130,7 @@ public class SessionConnection {
 
   protected void setSchemaTemplate(TSSetSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.setSchemaTemplate(request));
@@ -1022,6 +1150,7 @@ public class SessionConnection {
 
   protected void unsetSchemaTemplate(TSUnsetSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.unsetSchemaTemplate(request));
@@ -1041,6 +1170,7 @@ public class SessionConnection {
 
   protected void dropSchemaTemplate(TSDropSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.dropSchemaTemplate(request));
@@ -1061,6 +1191,7 @@ public class SessionConnection {
   protected void createTimeseriesUsingSchemaTemplate(
       TCreateTimeseriesUsingSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
+    checkPrimaryClusterBeReady();
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.createTimeseriesUsingSchemaTemplate(request));
@@ -1081,6 +1212,7 @@ public class SessionConnection {
   protected TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     TSBackupConfigurationResp execResp;
+    checkPrimaryClusterBeReady();
     try {
       execResp = client.getBackupConfiguration();
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -1100,6 +1232,7 @@ public class SessionConnection {
   }
 
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
+    checkPrimaryClusterBeReady();
     try {
       return client.fetchAllConnectionsInfo();
     } catch (TException e) {
