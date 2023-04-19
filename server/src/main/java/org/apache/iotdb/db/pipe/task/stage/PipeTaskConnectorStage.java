@@ -20,45 +20,61 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.PipeSubtaskManager;
 import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskConnectorStage extends PipeTaskAbstractStage {
+public class PipeTaskConnectorStage implements PipeTaskStage {
 
+  protected final PipeSubtaskExecutor executor;
+  protected final PipeSubtask subtask;
   private final PipeSubtaskManager subtaskManager;
 
+  private final String pipeConnectorAttributes;
+
   protected PipeTaskConnectorStage(
-      PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask) {
-    super(executor, subtask);
+      PipeConnectorSubtaskExecutor executor,
+      PipeConnectorSubtask subtask,
+      String pipeConnectorAttributes) {
+    this.executor = executor;
+    this.subtask = subtask;
+    this.pipeConnectorAttributes = pipeConnectorAttributes;
+
     subtaskManager = PipeSubtaskManager.setupAndGetInstance();
   }
 
   @Override
   public void create() throws PipeException {
-    if (subtaskManager.increaseAlivePipePluginRef(subtask.getPipePluginName()) == 1) {
-      super.create();
+    if (subtaskManager.increaseAlivePipePluginRef(pipeConnectorAttributes) == 1) {
+      executor.register(subtask);
     }
   }
 
   @Override
   public void start() throws PipeException {
-    if (subtaskManager.increaseRuntimePipePluginRef(subtask.getPipePluginName()) == 1) {
-      super.start();
+    if (subtaskManager.increaseRuntimePipePluginRef(pipeConnectorAttributes) == 1) {
+      executor.start(subtask.getTaskID());
     }
   }
 
   @Override
   public void stop() throws PipeException {
-    if (!subtaskManager.decreaseRuntimePipePluginRef(subtask.getPipePluginName())) {
-      super.stop();
+    if (!subtaskManager.decreaseRuntimePipePluginRef(pipeConnectorAttributes)) {
+      executor.stop(subtask.getTaskID());
     }
   }
 
   @Override
   public void drop() throws PipeException {
-    if (!subtaskManager.decreaseAlivePipePluginRef(subtask.getPipePluginName())) {
-      super.drop();
+    if (!subtaskManager.decreaseAlivePipePluginRef(pipeConnectorAttributes)) {
+      executor.deregister(subtask.getTaskID());
     }
+  }
+
+  @Override
+  public PipeSubtask getSubtask() {
+    return subtask;
   }
 }

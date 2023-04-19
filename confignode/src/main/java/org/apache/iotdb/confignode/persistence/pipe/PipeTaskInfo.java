@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskInfo implements SnapshotProcessor {
@@ -119,6 +120,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private PipeStatus getPipeStatus(String pipeName) {
     return pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getStatus().get();
+  }
+
+  // TODO: invoke this method by PipeTaskConnectorStage.
+  public String getPipeConnectorAttributes(String pipeName) {
+    return new TreeMap<>(
+            pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta().getConnectorAttributes())
+        .toString();
   }
 
   /////////////////////////////// Pipe Task Management ///////////////////////////////

@@ -71,9 +71,4 @@ public class PipeProcessorSubtask extends PipeSubtask {
           e);
     }
   }
-
-  @Override
-  public String getPipePluginName() {
-    return pipeProcessor.getPluginName();
-  }
 }

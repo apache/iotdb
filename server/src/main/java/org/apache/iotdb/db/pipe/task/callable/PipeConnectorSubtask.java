@@ -66,9 +66,4 @@ public class PipeConnectorSubtask extends PipeSubtask {
           e);
     }
   }
-
-  @Override
-  public String getPipePluginName() {
-    return pipeConnector.getPluginName();
-  }
 }
