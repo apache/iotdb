@@ -730,8 +730,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       throws TException {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
-    AtomicLong result = new AtomicLong(0);
-    resp.setStatus(
+    TSStatus status =
         executeInternalSchemaTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
@@ -753,7 +752,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
-                      result.getAndAdd(1);
+                      return RpcUtils.getStatus(TSStatusCode.TIMESERIES_ALREADY_EXIST);
                     }
                   } catch (Exception e) {
                     LOGGER.warn(e.getMessage(), e);
@@ -764,8 +763,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               } finally {
                 readWriteLock.writeLock().unlock();
               }
-            }));
-    resp.setCount(result.get());
+            });
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      resp.setExists(false);
+    } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      boolean hasFailure = false;
+      for (TSStatus subStatus : status.getSubStatus()) {
+        if (subStatus.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+          resp.setExists(true);
+        } else if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          hasFailure = true;
+          break;
+        }
+      }
+      if (hasFailure) {
+        resp.setStatus(status);
+      } else {
+        resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      }
+    } else {
+      resp.setStatus(status);
+    }
     return resp;
   }
 

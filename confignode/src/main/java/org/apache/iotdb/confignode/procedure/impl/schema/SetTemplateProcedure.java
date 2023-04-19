@@ -271,7 +271,9 @@ public class SetTemplateProcedure
                 if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
                   List<TSStatus> subStatus = response.getStatus().getSubStatus();
                   for (int i = 0; i < subStatus.size(); i++) {
-                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                        && subStatus.get(i).getCode()
+                            != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
                       failedRegionList.add(consensusGroupIdList.get(i));
                     }
                   }
@@ -301,16 +303,12 @@ public class SetTemplateProcedure
       return;
     }
 
-    long result = 0;
     for (TCheckTimeSeriesExistenceResp resp : respList) {
-      result += resp.getCount();
+      if (resp.isExists()) {
+        setFailure(new ProcedureException(new TemplateImcompatibeException(templateName, path)));
+      }
     }
-
-    if (result == 0) {
-      setNextState(SetTemplateState.COMMIT_SET);
-    } else {
-      setFailure(new ProcedureException(new TemplateImcompatibeException(templateName, path)));
-    }
+    setNextState(SetTemplateState.COMMIT_SET);
   }
 
   private void commitSetTemplate(ConfigNodeProcedureEnv env) {

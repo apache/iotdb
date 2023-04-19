@@ -362,7 +362,7 @@ struct TCheckTimeSeriesExistenceReq{
 
 struct TCheckTimeSeriesExistenceResp{
   1: required common.TSStatus status
-  2: optional i64 count
+  2: optional bool exists
 }
 
 struct TCreatePipeOnDataNodeReq{
