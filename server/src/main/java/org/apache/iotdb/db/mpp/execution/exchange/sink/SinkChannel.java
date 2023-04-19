@@ -151,7 +151,8 @@ public class SinkChannel implements ISinkChannel {
   public synchronized ListenableFuture<?> isFull() {
     checkState();
     // blocked could be null if this channel is closed before it is opened by ShuffleSinkHandle
-    if (blocked == null) {
+    // return immediateVoidFuture() to avoid NPE
+    if (closed) {
       return immediateVoidFuture();
     }
     return nonCancellationPropagating(blocked);
