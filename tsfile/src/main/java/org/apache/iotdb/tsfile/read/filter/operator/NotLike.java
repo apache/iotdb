@@ -42,7 +42,7 @@ public class NotLike<T extends Comparable<T>> implements Filter, Serializable {
 
   protected Pattern pattern;
 
-  private NotLike() {}
+  public NotLike() {}
 
   public NotLike(String value, FilterType filterType) {
     this.value = value;
@@ -122,8 +122,8 @@ public class NotLike<T extends Comparable<T>> implements Filter, Serializable {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.writeObject(value, outputStream);
-    } catch (IOException ex) {
-      throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
+    } catch (IOException ignored) {
+      // ignore
     }
   }
 

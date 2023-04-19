@@ -46,7 +46,7 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
 
   protected Pattern pattern;
 
-  private Like() {}
+  public Like() {}
 
   /**
    * The main idea of this part comes from
@@ -87,11 +87,17 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public boolean satisfy(Statistics statistics) {
+    if (filterType != FilterType.VALUE_FILTER) {
+      throw new UnsupportedOperationException("");
+    }
     return true;
   }
 
   @Override
   public boolean allSatisfy(Statistics statistics) {
+    if (filterType != FilterType.VALUE_FILTER) {
+      throw new UnsupportedOperationException("");
+    }
     return false;
   }
 
@@ -105,12 +111,12 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return true;
+    throw new UnsupportedOperationException("");
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return true;
+    throw new UnsupportedOperationException("");
   }
 
   @Override
@@ -124,8 +130,8 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.writeObject(value, outputStream);
-    } catch (IOException ex) {
-      throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
+    } catch (IOException ignored) {
+      // ignore
     }
   }
 

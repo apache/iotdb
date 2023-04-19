@@ -102,8 +102,8 @@ public class NotRegexp<T extends Comparable<T>> implements Filter, Serializable 
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.write(value, outputStream);
-    } catch (IOException ex) {
-      throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
+    } catch (IOException ignored) {
+      // ignore
     }
   }
 
