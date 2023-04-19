@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -332,8 +333,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   @Override
-  public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node)
-      throws SchemaQuotaExceededException {
+  public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
     IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
       regionStatistics.addDevice();

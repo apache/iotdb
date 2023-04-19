@@ -296,6 +296,11 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("checkMeasurementExistence");
   }
 
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum) {
+    throw new UnsupportedOperationException();
+  }
+
   private void filterExistingMeasurements(
       ICreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
     List<String> measurements = plan.getMeasurements();

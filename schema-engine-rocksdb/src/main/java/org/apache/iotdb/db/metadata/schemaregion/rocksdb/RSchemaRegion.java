@@ -534,6 +534,11 @@ public class RSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum) {
+    throw new UnsupportedOperationException();
+  }
+
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {

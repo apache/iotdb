@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -127,6 +128,16 @@ public interface ISchemaRegion {
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
+
+  /**
+   * Check whether time series can be created.
+   *
+   * @param devicePath the path of device that you want to check
+   * @param timeSeriesNum the number of time series that you want to check
+   * @throws SchemaQuotaExceededException if the number of time series or devices exceeds the limit
+   */
+  void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+      throws SchemaQuotaExceededException;
 
   /**
    * Construct schema black list via setting matched timeseries to pre deleted.

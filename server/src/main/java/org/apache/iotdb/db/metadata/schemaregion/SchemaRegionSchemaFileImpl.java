@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -602,11 +604,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       CacheMemoryManager.getInstance().waitIfReleasing();
     }
 
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
-      throw new SeriesNumberOverflowException();
-    }
-    schemaQuotaManager.checkMeasurementLevel(1);
-
     try {
       PartialPath path = plan.getPath();
       IMeasurementMNode<ICachedMNode> leafMNode;
@@ -722,11 +719,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       CacheMemoryManager.getInstance().waitIfReleasing();
     }
 
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
-      throw new SeriesNumberOverflowException();
-    }
-    schemaQuotaManager.checkMeasurementLevel(seriesCount);
-
     try {
       PartialPath prefixPath = plan.getDevicePath();
       List<String> measurements = plan.getMeasurements();
@@ -829,6 +821,18 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+  }
+
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+      throws SchemaQuotaExceededException {
+    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
+      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
+    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
+      if (!mtree.checkDeviceNodeExists(devicePath)) {
+        schemaQuotaManager.checkDeviceLevel();
+      }
+    }
   }
 
   @Override
