@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -60,8 +61,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcat
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
@@ -70,7 +73,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -78,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -93,77 +98,161 @@ public abstract class PlanVisitor<R, C> {
 
   public abstract R visitPlan(PlanNode node, C context);
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Data Query Node
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // source --------------------------------------------------------------------------------------
+
+  public R visitSourceNode(SourceNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitSourceNode(node, context);
   }
 
   public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
   public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
-  public R visitDeviceView(DeviceViewNode node, C context) {
-    return visitPlan(node, context);
+  public R visitLastQueryScan(LastQueryScanNode node, C context) {
+    return visitSourceNode(node, context);
   }
 
-  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+  public R visitAlignedLastQueryScan(AlignedLastQueryScanNode node, C context) {
+    return visitSourceNode(node, context);
+  }
+
+  // single child --------------------------------------------------------------------------------
+
+  public R visitSingleChildProcess(SingleChildProcessNode node, C context) {
     return visitPlan(node, context);
   }
 
   public R visitFill(FillNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitFilter(FilterNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitGroupByLevel(GroupByLevelNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitGroupByTag(GroupByTagNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSlidingWindowAggregation(SlidingWindowAggregationNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitLimit(LimitNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitOffset(OffsetNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitAggregation(AggregationNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSort(SortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitProject(ProjectNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitTimeJoin(TimeJoinNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitExchange(ExchangeNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitTransform(TransformNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitInto(IntoNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  // multi child --------------------------------------------------------------------------------
+
+  public R visitMultiChildProcess(MultiChildProcessNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitDeviceView(DeviceViewNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitGroupByLevel(GroupByLevelNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitGroupByTag(GroupByTagNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitAggregation(AggregationNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitTimeJoin(TimeJoinNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitLastQuery(LastQueryNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitLastQueryMerge(LastQueryMergeNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitLastQueryCollect(LastQueryCollectNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitMergeSort(MergeSortNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  // others -----------------------------------------------------------------------------------
+
+  public R visitShowQueries(ShowQueriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitIdentitySink(IdentitySinkNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitShuffleSink(ShuffleSinkNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Schema Write & Query Node
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public R visitSchemaQueryMerge(SchemaQueryMergeNode node, C context) {
     return visitPlan(node, context);
@@ -201,10 +290,6 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitFragmentSink(FragmentSinkNode node, C context) {
-    return visitPlan(node, context);
-  }
-
   public R visitCreateTimeSeries(CreateTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
@@ -229,9 +314,69 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitTransform(TransformNode node, C context) {
+  public R visitInternalCreateTimeSeries(InternalCreateTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitActivateTemplate(ActivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPreDeactivateTemplate(PreDeactivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRollbackPreDeactivateTemplate(RollbackPreDeactivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeactivateTemplate(DeactivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInternalBatchActivateTemplate(InternalBatchActivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodePathsSchemaScan(NodePathsSchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodeManagementMemoryMerge(NodeManagementMemoryMergeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodePathConvert(NodePathsConvertNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodePathsCount(NodePathsCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteTimeseries(DeleteTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRollbackSchemaBlackList(RollbackSchemaBlackListNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitBatchActivateTemplate(BatchActivateTemplateNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Data Write Node
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public R visitInsertRow(InsertRowNode node, C context) {
     return visitPlan(node, context);
@@ -253,107 +398,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitNodePathsSchemaScan(NodePathsSchemaScanNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitNodeManagementMemoryMerge(NodeManagementMemoryMergeNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitNodePathConvert(NodePathsConvertNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitNodePathsCount(NodePathsCountNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitLastQueryScan(LastQueryScanNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitAlignedLastQueryScan(AlignedLastQueryScanNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitLastQuery(LastQueryNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitLastQueryMerge(LastQueryMergeNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitLastQueryCollect(LastQueryCollectNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitDeleteTimeseries(DeleteTimeSeriesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitRollbackSchemaBlackList(RollbackSchemaBlackListNode node, C context) {
-    return visitPlan(node, context);
-  }
-
   public R visitDeleteData(DeleteDataNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitInternalCreateTimeSeries(InternalCreateTimeSeriesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitActivateTemplate(ActivateTemplateNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitPreDeactivateTemplate(PreDeactivateTemplateNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitRollbackPreDeactivateTemplate(RollbackPreDeactivateTemplateNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitDeactivateTemplate(DeactivateTemplateNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitInto(IntoNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitMergeSort(MergeSortNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitShowQueries(ShowQueriesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitInternalBatchActivateTemplate(InternalBatchActivateTemplateNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 }

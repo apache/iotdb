@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -84,6 +85,8 @@ public class WALNode implements IWALNode {
 
   /** timeout threshold when waiting for next wal entry */
   private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
+
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** unique identifier of this WALNode */
   private final String identifier;
@@ -230,6 +233,7 @@ public class WALNode implements IWALNode {
         return;
       }
       double effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
+      WRITING_METRICS.recordWALNodeEffectiveInfoRatio(identifier, effectiveInfoRatio);
       logger.debug(
           "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
           effectiveInfoRatio,
@@ -350,13 +354,17 @@ public class WALNode implements IWALNode {
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
       // it's snapshot count or size reach threshold.
       int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
+      long oldestMemTableTVListsRamCost = oldestMemTable.getTVListsRamCost();
       if (TsFileUtils.getTimePartition(new File(oldestMemTableInfo.getTsFilePath()))
               < dataRegion.getLatestTimePartition()
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
-          || oldestMemTable.getTVListsRamCost() > config.getWalMemTableSnapshotThreshold()) {
+          || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
+        WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
+        WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
+            identifier, oldestMemTableTVListsRamCost);
       }
       return true;
     }

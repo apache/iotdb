@@ -18,26 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 public interface Accumulator {
 
   /**
-   * Column should be like: | ControlColumn | Time | Value |
+   * Column should be like: |Time | Value |
    *
    * <p>IgnoringNull is required when considering the row where the value of controlColumn is null
    *
-   * <p>Return the last read row index of current timeColumn
+   * <p>bitMap is required for group-by framework. When needed(eq. controlColumn is null), bitMap
+   * can guide accumulator to skip some rows
+   *
+   * <p>lastIndex is required for group-by framework indicating the row to return to leave in
+   * advance for various reasons(eq. current row doesn't satisfy the window)
    */
-  default int addInput(Column[] column, IWindow window) {
-    return addInput(column, window, true);
-  }
-
-  int addInput(Column[] column, IWindow window, boolean ignoringNull);
+  void addInput(Column[] column, BitMap bitMap, int lastIndex);
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,

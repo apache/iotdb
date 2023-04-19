@@ -50,7 +50,7 @@ public class LogicalPlanner {
           .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);
 
       for (PlanOptimizer optimizer : optimizers) {
-        rootNode = optimizer.optimize(rootNode, context);
+        rootNode = optimizer.optimize(rootNode, analysis, context);
       }
     }
 

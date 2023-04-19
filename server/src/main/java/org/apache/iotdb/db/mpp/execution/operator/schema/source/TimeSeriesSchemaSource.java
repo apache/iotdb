@@ -41,8 +41,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final PartialPath pathPattern;
   private final boolean isPrefixMatch;
 
-  private final int limit;
-  private final int offset;
+  private final long limit;
+  private final long offset;
 
   private final String key;
   private final String value;
@@ -53,8 +53,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       String key,
       String value,
       boolean isContains,

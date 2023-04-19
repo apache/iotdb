@@ -27,12 +27,9 @@ import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSinkFactory;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-
-import java.util.Map;
 
 public class SyncPipeUtil {
 
@@ -49,26 +46,6 @@ public class SyncPipeUtil {
 
     pipeSink.setAttribute(createPipeSinkStatement.getAttributes());
     return pipeSink;
-  }
-
-  public static PipeInfo parseCreatePipeStatementAsPipeInfo(
-      CreatePipeStatement createPipeStatement, long pipeCreateTime) throws PipeException {
-    boolean syncDelOp = false;
-    for (Map.Entry<String, String> entry : createPipeStatement.getPipeAttributes().entrySet()) {
-      String attributeKey = entry.getKey().toLowerCase();
-      if ("syncdelop".equals(attributeKey)) {
-        syncDelOp = Boolean.parseBoolean(entry.getValue());
-      } else {
-        throw new PipeException(String.format("Can not recognition attribute %s", entry.getKey()));
-      }
-    }
-
-    return new TsFilePipeInfo(
-        createPipeStatement.getPipeName(),
-        createPipeStatement.getPipeSinkName(),
-        pipeCreateTime,
-        createPipeStatement.getStartTime(),
-        syncDelOp);
   }
 
   /** parse PipeInfo to Pipe, ignore status */
@@ -102,21 +79,6 @@ public class SyncPipeUtil {
   /** parse TPipeInfo to PipeInfo */
   public static PipeInfo parseTCreatePipeReqAsPipeInfo(TCreatePipeReq pipeInfo, long pipeCreateTime)
       throws PipeException {
-    boolean syncDelOp = false;
-    for (Map.Entry<String, String> entry : pipeInfo.getAttributes().entrySet()) {
-      String attributeKey = entry.getKey().toLowerCase();
-      if ("syncdelop".equals(attributeKey)) {
-        syncDelOp = Boolean.parseBoolean(entry.getValue());
-      } else {
-        throw new PipeException(String.format("Can not recognition attribute %s", entry.getKey()));
-      }
-    }
-
-    return new TsFilePipeInfo(
-        pipeInfo.getPipeName(),
-        pipeInfo.getPipeSinkName(),
-        pipeCreateTime,
-        pipeInfo.getStartTime(),
-        syncDelOp);
+    return new TsFilePipeInfo();
   }
 }

@@ -58,7 +58,7 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     this.seriesSlotId = seriesSlotId;
   }
 
-  public String getStorageGroup() {
+  public String getDatabase() {
     return storageGroup;
   }
 

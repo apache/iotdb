@@ -152,6 +152,10 @@ public class SlidingWindowAggregatorFactory {
             : new EmptyQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case COUNT_IF:
         throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
+      case TIME_DURATION:
+        throw new SemanticException("TIME_DURATION with slidingWindow is not supported now");
+      case MODE:
+        throw new SemanticException("MODE with slidingWindow is not supported now");
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType);
     }

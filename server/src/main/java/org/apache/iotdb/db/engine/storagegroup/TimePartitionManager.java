@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -31,6 +34,7 @@ import java.util.TreeSet;
 
 /** Manage all the time partitions for all data regions and control the total memory of them */
 public class TimePartitionManager {
+  private static final Logger logger = LoggerFactory.getLogger(TimePartitionManager.class);
   final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
 
   long memCost = 0;
@@ -102,7 +106,10 @@ public class TimePartitionManager {
       }
 
       while (memCost > timePartitionInfoMemoryThreshold) {
-        TimePartitionInfo timePartitionInfo = treeSet.first();
+        TimePartitionInfo timePartitionInfo = treeSet.pollFirst();
+        if (timePartitionInfo == null) {
+          return;
+        }
         memCost -= timePartitionInfo.memSize;
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.query.info;
 
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 
 public interface INodeSchemaInfo extends ISchemaInfo {
 

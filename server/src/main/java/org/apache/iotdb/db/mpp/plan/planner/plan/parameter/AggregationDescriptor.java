@@ -141,6 +141,10 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.LAST_VALUE);
           outputAggregationNames.add(SqlConstant.MAX_TIME);
           break;
+        case TIME_DURATION:
+          outputAggregationNames.add(SqlConstant.MAX_TIME);
+          outputAggregationNames.add(SqlConstant.MIN_TIME);
+          break;
         default:
           outputAggregationNames.add(aggregationFuncName);
       }

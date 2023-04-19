@@ -21,23 +21,24 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 
 // This class defines MeasurementMNode as target node and defines the measurement process framework.
 // TODO: set R is ITimeseriesInfo
-public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
+public abstract class MeasurementCollector<R, N extends IMNode<N>>
+    extends MeasurementTraverser<R, N> {
 
   protected MeasurementCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
+  protected R generateResult(N nextMatchedNode) {
     return collectMeasurement(nextMatchedNode.getAsMeasurementMNode());
   }
 
@@ -46,18 +47,19 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
    *
    * @param node MeasurementMNode holding the measurement schema
    */
-  protected abstract R collectMeasurement(IMeasurementMNode node);
+  protected abstract R collectMeasurement(IMeasurementMNode<N> node);
 
   /**
    * When traverse goes into a template, IMNode.getPartialPath may not work as nodes in template has
    * no parent on MTree. So this methods will construct a path from root to node in template using a
    * stack traverseContext.
    */
-  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode) {
-    IMNode par = getParentOfNextMatchedNode();
+  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode<N> currentNode) {
+    N par = getParentOfNextMatchedNode();
     MeasurementPath retPath =
-        new MeasurementPath(getPartialPathFromRootToNode(currentNode), currentNode.getSchema());
-    retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
+        new MeasurementPath(
+            getPartialPathFromRootToNode(currentNode.getAsMNode()), currentNode.getSchema());
+    retPath.setUnderAlignedEntity(par.getAsDeviceMNode().isAligned());
     return retPath;
   }
 }

@@ -92,7 +92,7 @@ public class GroupByTagNodeSerdeTest {
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
         new HashMap<>();
     tagValuesToAggregationDescriptors.put(
-        Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, s1Avg));
+        Arrays.asList("v1", "v2"), Arrays.asList(s1MaxTime, null, s1Avg));
     GroupByTagNode expectedNode =
         new GroupByTagNode(
             new PlanNodeId("TestGroupByTagNode"),

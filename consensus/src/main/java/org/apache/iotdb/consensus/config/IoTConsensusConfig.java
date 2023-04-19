@@ -77,6 +77,8 @@ public class IoTConsensusConfig {
     private final boolean isRpcThriftCompressionEnabled;
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
+
+    private final boolean printLogWhenThriftClientEncounterException;
     private final int thriftMaxFrameSize;
     private final int coreClientNumForEachNode;
     private final int maxClientNumForEachNode;
@@ -89,6 +91,7 @@ public class IoTConsensusConfig {
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
         int connectionTimeoutInMs,
+        boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
         int coreClientNumForEachNode,
         int maxClientNumForEachNode) {
@@ -99,6 +102,7 @@ public class IoTConsensusConfig {
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
       this.coreClientNumForEachNode = coreClientNumForEachNode;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
@@ -132,6 +136,10 @@ public class IoTConsensusConfig {
       return connectionTimeoutInMs;
     }
 
+    public boolean isPrintLogWhenThriftClientEncounterException() {
+      return printLogWhenThriftClientEncounterException;
+    }
+
     public int getThriftMaxFrameSize() {
       return thriftMaxFrameSize;
     }
@@ -157,6 +165,8 @@ public class IoTConsensusConfig {
       private boolean isRpcThriftCompressionEnabled = false;
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+
+      private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
 
       private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
@@ -199,6 +209,13 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setPrintLogWhenThriftClientEncounterException(
+          boolean printLogWhenThriftClientEncounterException) {
+        this.printLogWhenThriftClientEncounterException =
+            printLogWhenThriftClientEncounterException;
+        return this;
+      }
+
       public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
         this.thriftMaxFrameSize = thriftMaxFrameSize;
         return this;
@@ -223,6 +240,7 @@ public class IoTConsensusConfig {
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
             connectionTimeoutInMs,
+            printLogWhenThriftClientEncounterException,
             thriftMaxFrameSize,
             coreClientNumForEachNode,
             maxClientNumForEachNode);

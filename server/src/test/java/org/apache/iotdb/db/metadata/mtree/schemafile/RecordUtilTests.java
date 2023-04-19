@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -42,6 +42,8 @@ import java.util.Map;
 
 public class RecordUtilTests {
 
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -54,15 +56,22 @@ public class RecordUtilTests {
 
   @Test
   public void internalNodeTest() throws MetadataException {
-    IMNode oneNode = new InternalMNode(null, "abcd");
+    ICachedMNode oneNode = nodeFactory.createInternalMNode(null, "abcd");
+    ICachedMNode twoNode = nodeFactory.createDeviceMNode(null, "efgh").getAsMNode();
     ICachedMNodeContainer.getCachedMNodeContainer(oneNode).setSegmentAddress(1234567L);
-    oneNode.setUseTemplate(true);
+    ICachedMNodeContainer.getCachedMNodeContainer(twoNode).setSegmentAddress(66666L);
+    twoNode.getAsDeviceMNode().setUseTemplate(true);
     ByteBuffer buffer = RecordUtils.node2Buffer(oneNode);
     buffer.clear();
-    IMNode node2 = RecordUtils.buffer2Node("abcd", buffer);
+    ICachedMNode node1 = RecordUtils.buffer2Node("abcd", buffer);
     Assert.assertEquals(
-        ICachedMNodeContainer.getCachedMNodeContainer(node2).getSegmentAddress(), 1234567L);
-    Assert.assertEquals(node2.isUseTemplate(), oneNode.isUseTemplate());
+        1234567L, ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress());
+    buffer = RecordUtils.node2Buffer(twoNode);
+    buffer.clear();
+    node1 = RecordUtils.buffer2Node("efgh", buffer);
+    Assert.assertEquals(
+        66666L, ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress());
+    Assert.assertTrue(node1.getAsDeviceMNode().isUseTemplate());
   }
 
   @Test
@@ -74,7 +83,8 @@ public class RecordUtilTests {
     IMeasurementSchema schema =
         new MeasurementSchema(
             "amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP, props);
-    IMNode amn = MeasurementMNode.getMeasurementMNode(null, "amn", schema, "anothername");
+    ICachedMNode amn =
+        nodeFactory.createMeasurementMNode(null, "amn", schema, "anothername").getAsMNode();
 
     ByteBuffer tBuf = RecordUtils.node2Buffer(amn);
     tBuf.clear();
@@ -89,7 +99,7 @@ public class RecordUtilTests {
 
     ByteBuffer buffer = RecordUtils.node2Buffer(amn);
     buffer.clear();
-    IMNode node2 = RecordUtils.buffer2Node("amn", buffer);
+    ICachedMNode node2 = RecordUtils.buffer2Node("amn", buffer);
 
     Assert.assertTrue(
         amn.getAsMeasurementMNode().getSchema().equals(node2.getAsMeasurementMNode().getSchema()));

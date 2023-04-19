@@ -48,7 +48,7 @@ import static org.junit.Assert.assertTrue;
 public class LinearFillOperatorTest {
 
   @Test
-  public void batchLinearFillTest1() {
+  public void batchLinearFillTest1() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -131,7 +131,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -155,12 +155,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -261,7 +261,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillTest1OrderByDesc() {
+  public void batchLinearFillTest1OrderByDesc() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -344,7 +344,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -368,12 +368,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -474,7 +474,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillTest2() {
+  public void batchLinearFillTest2() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -557,7 +557,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -581,12 +581,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -687,7 +687,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillTest2OrderByDesc() {
+  public void batchLinearFillTest2OrderByDesc() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -770,7 +770,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder =
                       new TsBlockBuilder(
                           ImmutableList.of(
@@ -794,12 +794,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 3;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 3;
                 }
 
@@ -900,7 +900,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillTest3() {
+  public void batchLinearFillTest3() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -937,7 +937,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.FLOAT));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + index);
@@ -955,12 +955,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 7;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 
@@ -1020,7 +1020,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillTest3OrderByDesc() {
+  public void batchLinearFillTest3OrderByDesc() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -1057,7 +1057,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.FLOAT));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + (6 - index));
@@ -1075,12 +1075,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 7;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 
@@ -1140,7 +1140,7 @@ public class LinearFillOperatorTest {
   }
 
   @Test
-  public void batchLinearFillBooleanTest() {
+  public void batchLinearFillBooleanTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -1177,7 +1177,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public TsBlock next() {
+                public TsBlock next() throws Exception {
                   TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.BOOLEAN));
                   for (int i = 0; i < 1; i++) {
                     builder.getTimeColumnBuilder().writeLong(i + index);
@@ -1195,12 +1195,12 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public boolean hasNext() {
+                public boolean hasNext() throws Exception {
                   return index < 7;
                 }
 
                 @Override
-                public boolean isFinished() {
+                public boolean isFinished() throws Exception {
                   return index >= 7;
                 }
 

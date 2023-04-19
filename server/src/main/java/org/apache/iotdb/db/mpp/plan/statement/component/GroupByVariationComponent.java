@@ -25,7 +25,7 @@ public class GroupByVariationComponent extends GroupByComponent {
   private double delta = 0;
 
   public GroupByVariationComponent() {
-    super(WindowType.EVENT_WINDOW);
+    super(WindowType.VARIATION_WINDOW);
   }
 
   public double getDelta() {

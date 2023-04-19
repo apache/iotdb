@@ -29,7 +29,7 @@
     </dependency>
 ```
 
-Here are some [examples](https://github.com/apache/iotdb/tree/master/example/inflxudb-protocol-example/src/main/java/org/apache/iotdb/influxdb/InfluxDBExample.java) of connecting IoTDB using the InfluxDB-Protocol adapter.
+Here are some [examples](https://github.com/apache/iotdb/blob/master/example/influxdb-protocol-example/src/main/java/org/apache/iotdb/influxdb/InfluxDBExample.java) of connecting IoTDB using the InfluxDB-Protocol adapter.
 
 ## 1. Switching Scheme
 
@@ -51,9 +51,9 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 Based on the IoTDB Java ServiceProvider interface, the adapter implements the 'interface InfluxDB' of the java interface of InfluxDB, and provides users with all the interface methods of InfluxDB. End users can use the InfluxDB protocol to initiate write and read requests to IoTDB without perception.
 
-![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
+![architecture-design](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
-![class-diagram](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
+![class-diagram](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
 
 
 ### 2.2 Metadata Format Conversion
@@ -66,7 +66,7 @@ The metadata of InfluxDB is tag field model, and the metadata of IoTDB is tree m
 3. tags: various indexed attributes.
 4. fields: various record values(attributes without index).
 
-![influxdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
+![influxdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
 
 #### 2.2.2 IoTDB Metadata
 
@@ -74,7 +74,7 @@ The metadata of InfluxDB is tag field model, and the metadata of IoTDB is tree m
 2. path(time series ID): storage path.
 3. measurement: physical quantity.
 
-![iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
+![iotdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
 
 #### 2.2.3 Mapping relationship between the two
 
@@ -87,7 +87,7 @@ The transformation relationship from InfluxDB metadata to IoTDB metadata can be 
 
 `root.{database}.{measurement}.{tag value 1}.{tag value 2}...{tag value N-1}.{tag value N}.{field key}`
 
-![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
+![influxdb-vs-iotdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
 As shown in the figure above, it can be seen that:
 

@@ -30,45 +30,45 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 public class DoNothingMetricManager extends AbstractMetricManager {
 
-  public static final DoNothingCounter doNothingCounter = new DoNothingCounter();
-  public static final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
-  public static final DoNothingAutoGauge doNothingAutoGauge = new DoNothingAutoGauge();
-  public static final DoNothingGauge doNothingGauge = new DoNothingGauge();
-  public static final DoNothingRate doNothingRate = new DoNothingRate();
-  public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
+  public static final DoNothingCounter DO_NOTHING_COUNTER = new DoNothingCounter();
+  public static final DoNothingHistogram DO_NOTHING_HISTOGRAM = new DoNothingHistogram();
+  public static final DoNothingAutoGauge DO_NOTHING_AUTO_GAUGE = new DoNothingAutoGauge();
+  public static final DoNothingGauge DO_NOTHING_GAUGE = new DoNothingGauge();
+  public static final DoNothingRate DO_NOTHING_RATE = new DoNothingRate();
+  public static final DoNothingTimer DO_NOTHING_TIMER = new DoNothingTimer();
 
   @Override
   public Counter createCounter(MetricInfo metricInfo) {
-    return doNothingCounter;
+    return DO_NOTHING_COUNTER;
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
-    return doNothingAutoGauge;
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+    return DO_NOTHING_AUTO_GAUGE;
   }
 
   @Override
   public Gauge createGauge(MetricInfo metricInfo) {
-    return doNothingGauge;
+    return DO_NOTHING_GAUGE;
   }
 
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
-    return doNothingHistogram;
+    return DO_NOTHING_HISTOGRAM;
   }
 
   @Override
   public Rate createRate(MetricInfo metricInfo) {
-    return doNothingRate;
+    return DO_NOTHING_RATE;
   }
 
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
-    return doNothingTimer;
+    return DO_NOTHING_TIMER;
   }
 
   @Override

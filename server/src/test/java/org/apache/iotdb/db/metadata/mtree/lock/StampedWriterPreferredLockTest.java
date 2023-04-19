@@ -192,6 +192,14 @@ public class StampedWriterPreferredLockTest {
         .start();
     new Thread(
             () -> {
+              // it will not be blocked because of priority
+              lock.threadReadLock(true);
+              counter.incrementAndGet();
+              lock.threadReadUnlock();
+            })
+        .start();
+    new Thread(
+            () -> {
               // it will be blocked because of writer preferred
               long stamp1 = lock.stampedReadLock();
               counter.incrementAndGet();
@@ -199,14 +207,14 @@ public class StampedWriterPreferredLockTest {
             })
         .start();
     try {
-      Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 3);
+      Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
       Assert.fail();
     } catch (ConditionTimeoutException e) {
-      Assert.assertEquals(0, counter.get());
+      Assert.assertEquals(1, counter.get());
     }
     // release main read lock
     lock.stampedReadUnlock(stamp);
-    Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 3);
-    Assert.assertEquals(3, counter.get());
+    Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
+    Assert.assertEquals(4, counter.get());
   }
 }

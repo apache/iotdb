@@ -67,8 +67,31 @@ public class AccumulatorFactory {
         return new CountIfAccumulator(
             initKeepEvaluator(inputExpressions.get(1)),
             Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
+      case TIME_DURATION:
+        return new TimeDurationAccumulator();
+      case MODE:
+        return crateModeAccumulator(tsDataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
+  private static Accumulator crateModeAccumulator(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case BOOLEAN:
+        return new BooleanModeAccumulator();
+      case TEXT:
+        return new BinaryModeAccumulator();
+      case INT32:
+        return new IntModeAccumulator();
+      case INT64:
+        return new LongModeAccumulator();
+      case FLOAT:
+        return new FloatModeAccumulator();
+      case DOUBLE:
+        return new DoubleModeAccumulator();
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + tsDataType);
     }
   }
 

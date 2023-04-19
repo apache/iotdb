@@ -37,13 +37,13 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   private final PartialPath pathPattern;
   private final boolean isPrefixMatch;
 
-  private final int limit;
-  private final int offset;
+  private final long limit;
+  private final long offset;
 
   private final boolean hasSgCol;
 
   DeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, int limit, int offset, boolean hasSgCol) {
+      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 

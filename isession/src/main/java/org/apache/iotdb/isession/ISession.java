@@ -478,6 +478,9 @@ public interface ISession extends AutoCloseable {
   void dropSchemaTemplate(String templateName)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   boolean isEnableQueryRedirection();
 
   void setEnableQueryRedirection(boolean enableQueryRedirection);

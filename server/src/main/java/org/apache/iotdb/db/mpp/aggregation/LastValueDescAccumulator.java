@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
 
@@ -40,134 +40,86 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateIntLastValue(column[1].getInt(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override
-  protected int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateLongLastValue(column[1].getLong(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override
-  protected int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateFloatLastValue(column[1].getFloat(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override
-  protected int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateDoubleLastValue(column[1].getDouble(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override
-  protected int addBooleanInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addBooleanInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateBooleanLastValue(column[1].getBoolean(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override
-  protected int addBinaryInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  protected void addBinaryInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateBinaryLastValue(column[1].getBinary(i), column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 }

@@ -19,9 +19,9 @@
 
 -->
 
-# 告警
+## 告警
 
-## 概览
+### 概览
 IoTDB 告警功能预计支持两种模式：
 
 * 写入触发：用户写入原始数据到原始时间序列，每插入一条数据都会触发 `Trigger` 的判断逻辑，
@@ -41,10 +41,10 @@ IoTDB 告警功能预计支持两种模式：
 
 随着 [Trigger](../Trigger/Instructions.md) 模块的引入，可以实现写入触发模式的告警。
 
-## 部署 AlertManager 
+### 部署 AlertManager 
 
-### 安装与运行
-#### 二进制文件
+#### 安装与运行
+##### 二进制文件
 预编译好的二进制文件可在 [这里](https://prometheus.io/download/) 下载。
 
 运行方法：
@@ -52,7 +52,7 @@ IoTDB 告警功能预计支持两种模式：
 ./alertmanager --config.file=<your_file>
 ````
 
-#### Docker 镜像
+##### Docker 镜像
 可在  [Quay.io](https://hub.docker.com/r/prom/alertmanager/) 
 或 [Docker Hub](https://quay.io/repository/prometheus/alertmanager) 获得。
 
@@ -61,7 +61,7 @@ IoTDB 告警功能预计支持两种模式：
 docker run --name alertmanager -d -p 127.0.0.1:9093:9093 quay.io/prometheus/alertmanager
 ````
 
-###  配置
+####  配置
 
 如下是一个示例，可以覆盖到大部分配置规则，详细的配置规则参见 
 [这里](https://prometheus.io/docs/alerting/latest/configuration/)。
@@ -225,7 +225,7 @@ inhibit_rules:
     equal: ['alertname']
 ````
 
-### API
+#### API
 `AlertManager` API 分为 `v1` 和 `v2` 两个版本，当前 `AlertManager` API 版本为 `v2` 
 （配置参见
 [api/v2/openapi.yaml](https://github.com/prometheus/alertmanager/blob/master/api/v2/openapi.yaml))。
@@ -238,12 +238,12 @@ inhibit_rules:
 发送告警的 endpoint 变为 `/alertmanager/api/v1/alerts` 
 或 `/alertmanager/api/v2/alerts`。
 
-## 创建 trigger
+### 创建 trigger
 
-### 编写 trigger 类
+#### 编写 trigger 类
 
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
-具体配置流程参见 [Triggers](Triggers.md)。
+具体配置流程参见 [Trigger](../Trigger/Implement-Trigger.md)。
 
 下面的示例创建了 `org.apache.iotdb.trigger.ClusterAlertingExample` 类，
 其 `alertManagerHandler` 
@@ -335,7 +335,7 @@ public class ClusterAlertingExample implements Trigger {
 }
 ```
 
-### 创建 trigger
+#### 创建 trigger
 
 如下的 sql 语句在 `root.ln.wf01.wt01.temperature` 
 时间序列上注册了名为 `root-ln-wf01-wt01-alert`、
@@ -350,7 +350,7 @@ public class ClusterAlertingExample implements Trigger {
   USING URI 'http://jar/ClusterAlertingExample.jar'
 ```
 
-## 写入数据
+### 写入数据
 
 当我们完成 AlertManager 的部署和启动、Trigger 的创建，
 可以通过向时间序列写入数据来测试告警功能。
@@ -367,4 +367,4 @@ INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (5, 120);
 会抑制 `severity` 为 `warning` 的告警，我们收到的告警邮件中只包含写入
 `(5, 120)` 后触发的告警。                    
 
-<img  alt="alerting" src="https://user-images.githubusercontent.com/34649843/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
+<img  alt="alerting" src="https://alioss.timecho.com/docs/img/github/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">

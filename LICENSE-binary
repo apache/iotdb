@@ -279,6 +279,11 @@ org.ow2.asm:asm:5.0.4
 org.jline:jline:3.21.0
 
 
+BSD 2-Clause
+------------
+com.github.luben:zstd-jni:1.5.4-2
+
+
 MIT License
 ------------
 org.slf4j:slf4j-api
@@ -300,3 +305,8 @@ javax.annotation:javax.annotation-api:1.3.2
 javax.servlet:javax.servlet-api:3.1.0
 javax.xml.bind:jaxb-api:2.4.0-b180725.0427
 org.glassfish.jaxb:jaxb-runtime:2.4.0-b180725.0644
+
+
+Public Domain
+------------
+org.tukaani:xz:1.9

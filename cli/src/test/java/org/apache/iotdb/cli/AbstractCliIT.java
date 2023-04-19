@@ -193,7 +193,8 @@ public class AbstractCliIT {
 
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(String.format("%s=", AbstractCli.SET_TIME_ZONE), connection));
+        AbstractCli.handleInputCmd(
+            String.format("%s=%s", AbstractCli.SET_TIME_ZONE, "Asis/chongqing"), connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(

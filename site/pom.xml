@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -181,6 +181,15 @@
                                         <resource>
                                             <directory>${basedir}/src/main/</directory>
                                             <filtering>true</filtering>
+                                            <excludes>
+                                                <exclude>.eslintignore</exclude>
+                                                <exclude>.eslintrc.cjs</exclude>
+                                                <exclude>.gitignore</exclude>
+                                                <exclude>package-lock.json</exclude>
+                                                <exclude>package.json</exclude>
+                                                <exclude>tsconfig.base.json</exclude>
+                                                <exclude>tsconfig.json</exclude>
+                                            </excludes>
                                         </resource>
                                     </resources>
                                 </configuration>
@@ -333,11 +342,23 @@
                                 </goals>
                                 <phase>compile</phase>
                                 <configuration>
-                                    <nodeVersion>v16.9.1</nodeVersion>
-                                    <npmVersion>6.14.4</npmVersion>
+                                    <nodeVersion>v18.14.2</nodeVersion>
+                                    <npmVersion>9.5.1</npmVersion>
                                 </configuration>
                             </execution>
                             <!-- Install all project dependencies -->
+                            <!-- Install pnpm -->
+                            <execution>
+                                <id>npm install pnpm</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>compile</phase>
+                                <!-- Optional configuration which provides for running any npm command -->
+                                <configuration>
+                                    <arguments>install -g pnpm</arguments>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>npm install</id>
                                 <goals>
@@ -379,6 +400,22 @@
                                         <fileSet>
                                             <sourceFile>${basedir}/src/main/package.json</sourceFile>
                                             <destinationFile>${project.build.directory}/vue-source/package.json</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.eslintrc.cjs</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/.eslintrc.cjs</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.eslintignore</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/.eslintignore</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/tsconfig.base.json</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/tsconfig.base.json</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/tsconfig.json</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/tsconfig.json</destinationFile>
                                         </fileSet>
                                         <fileSet>
                                             <sourceFile>${basedir}/src/main/deploy.js</sourceFile>
@@ -458,6 +495,70 @@
                             </execution>
                         </executions>
                     </plugin>-->
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>compile-site-1.1</id>
+            <build>
+                <plugins>
+                    <!-- download 1.1 docs from iotdb repo -->
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.6.7</version>
+                        <executions>
+                            <execution>
+                                <id>get-1.1-docs</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>https://github.com/apache/iotdb/archive/rel/1.1.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
+                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
+                                    <outputFileName>1.1.x.zip</outputFileName>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- unpack 1.1 docs from the zip files-->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>truezip-maven-plugin</artifactId>
+                        <version>1.2</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>copy-1.1-documentation</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <fileset>
+                                        <directory>${project.build.directory}/download/1.1.x.zip/iotdb-rel-1.1/docs/UserGuide</directory>
+                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V1.1.x</outputDirectory>
+                                    </fileset>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-1.1-zh-documentation</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <fileset>
+                                        <directory>${project.build.directory}/download/1.1.x.zip/iotdb-rel-1.1/docs/zh/UserGuide</directory>
+                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V1.1.x</outputDirectory>
+                                    </fileset>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -581,326 +682,6 @@
                                     <fileset>
                                         <directory>${project.build.directory}/download/0.13.x.zip/iotdb-rel-0.13/docs/zh/UserGuide</directory>
                                         <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.13.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.12</id>
-            <build>
-                <plugins>
-                    <!-- download 0.12 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.12-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.12.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.12.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.12 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.12-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.12.x.zip/iotdb-rel-0.12/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.12.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.12-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.12.x.zip/iotdb-rel-0.12/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.12.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.11</id>
-            <build>
-                <plugins>
-                    <!-- download 0.11 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.11-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.11.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.11.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.11 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.11-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.11.x.zip/iotdb-rel-0.11/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.11.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.11-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.11.x.zip/iotdb-rel-0.11/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.11.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.10</id>
-            <build>
-                <plugins>
-                    <!-- download 0.10 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.10-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.10.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.10.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.11 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.10-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.10.x.zip/iotdb-rel-0.10/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.10.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.10-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.10.x.zip/iotdb-rel-0.10/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.10.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.9</id>
-            <build>
-                <plugins>
-                    <!-- download 0.9 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.9-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.9.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.9.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.9 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.9-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.9.x.zip/iotdb-rel-0.9/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.9.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.9-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.9.x.zip/iotdb-rel-0.9/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.9.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>compile-site-0.8</id>
-            <build>
-                <plugins>
-                    <!-- download 0.8 docs from iotdb repo -->
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <executions>
-                            <execution>
-                                <id>get-0.8-docs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>https://github.com/apache/iotdb/archive/rel/0.8.zip</url>
-                                    <skipCache>true</skipCache>
-                                    <overwrite>true</overwrite>
-                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
-                                    <outputFileName>0.8.x.zip</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- unpack 0.8 docs from the zip files-->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>truezip-maven-plugin</artifactId>
-                        <version>1.2</version>
-                        <inherited>false</inherited>
-                        <executions>
-                            <execution>
-                                <id>copy-0.8-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.8.x.zip/iotdb-rel-0.8/docs/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.8.x</outputDirectory>
-                                    </fileset>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>copy-0.8-zh-documentation</id>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <fileset>
-                                        <directory>${project.build.directory}/download/0.8.x.zip/iotdb-rel-0.8/docs/zh/UserGuide</directory>
-                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.8.x</outputDirectory>
                                     </fileset>
                                 </configuration>
                             </execution>

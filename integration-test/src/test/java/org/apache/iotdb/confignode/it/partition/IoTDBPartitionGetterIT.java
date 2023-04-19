@@ -370,7 +370,7 @@ public class IoTDBPartitionGetterIT {
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
 
       // Get RegionId with wrong RegionType
-      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
@@ -415,7 +415,7 @@ public class IoTDBPartitionGetterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
-      getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
@@ -461,7 +461,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
-      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
+      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(

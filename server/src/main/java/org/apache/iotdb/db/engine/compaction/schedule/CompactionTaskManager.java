@@ -58,6 +58,8 @@ public class CompactionTaskManager implements IService {
 
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
   private WrappedThreadPoolExecutor taskExecutionPool;
@@ -67,7 +69,8 @@ public class CompactionTaskManager implements IService {
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
+      new FixedPriorityBlockingQueue<>(
+          config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
   // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
@@ -76,7 +79,6 @@ public class CompactionTaskManager implements IService {
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private volatile boolean init = false;
 
   public static CompactionTaskManager getInstance() {
@@ -322,6 +324,10 @@ public class CompactionTaskManager implements IService {
 
   public int getTotalTaskCount() {
     return getExecutingTaskCount() + candidateCompactionTaskQueue.size();
+  }
+
+  public int getCompactionCandidateTaskCount() {
+    return candidateCompactionTaskQueue.size();
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {

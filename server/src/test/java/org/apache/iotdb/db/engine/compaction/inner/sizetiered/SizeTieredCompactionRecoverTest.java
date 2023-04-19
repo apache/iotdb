@@ -105,7 +105,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -192,7 +191,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -224,7 +222,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -300,7 +297,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -332,7 +328,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -410,7 +405,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -442,7 +436,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -515,7 +508,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true).subList(3, 6),
             new ArrayList<>(),
@@ -765,7 +757,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -829,7 +820,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true).subList(0, 5),
             new ArrayList<>(),
@@ -861,7 +851,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -918,7 +907,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -951,7 +939,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -1010,7 +997,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -1053,7 +1039,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -1094,7 +1079,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
@@ -1150,7 +1134,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),

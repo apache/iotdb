@@ -29,7 +29,7 @@
 
 当你配置使用 HDFS 存储 TSFile 之后，你的数据文件将会被分布式存储。系统架构如下：
 
-<img style="width:100%; max-width:700px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/66922722-35180400-f05a-11e9-8ff0-7dd51716e4a8.png">
+<img style="width:100%; max-width:700px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/66922722-35180400-f05a-11e9-8ff0-7dd51716e4a8.png">
 
 #### Config and usage
 

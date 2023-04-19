@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -122,14 +122,16 @@ public class LocalExecutionPlanContext {
     this.pipelineDriverFactories = new ArrayList<>();
   }
 
-  public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {
+  public void addPipelineDriverFactory(
+      Operator operation, DriverContext driverContext, long estimatedMemorySize) {
     driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext ->
                 operatorContext.setMaxRunTime(
                     driverContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
-    pipelineDriverFactories.add(new PipelineDriverFactory(operation, driverContext));
+    pipelineDriverFactories.add(
+        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
   }
 
   public LocalExecutionPlanContext createSubContext() {
@@ -142,6 +144,10 @@ public class LocalExecutionPlanContext {
 
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
+  }
+
+  public PipelineDriverFactory getCurrentPipelineDriverFactory() {
+    return pipelineDriverFactories.get(pipelineDriverFactories.size() - 1);
   }
 
   public int getPipelineNumber() {
@@ -229,10 +235,10 @@ public class LocalExecutionPlanContext {
     return cachedLastValueAndPathList;
   }
 
-  public void setSinkHandle(ISinkHandle sinkHandle) {
-    requireNonNull(sinkHandle, "sinkHandle is null");
-    checkArgument(driverContext.getSinkHandle() == null, "There must be at most one SinkNode");
-    driverContext.setSinkHandle(sinkHandle);
+  public void setISink(ISink sink) {
+    requireNonNull(sink, "sink is null");
+    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    driverContext.setSink(sink);
   }
 
   public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -104,16 +106,26 @@ public class AggregationUtil {
         inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
-      int lastReadRowIndex = 0;
+      // Get the row which need to be processed by aggregator
+      IWindow curWindow = new TimeWindow(curTimeRange);
+      TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+      int lastIndexToProcess = 0;
+      for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
+        if (!curWindow.satisfy(timeColumn, i)) {
+          break;
+        }
+        lastIndexToProcess = i;
+      }
+
       for (Aggregator aggregator : aggregators) {
         // current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        lastReadRowIndex =
-            Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock, true));
+        aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
       }
+      int lastReadRowIndex = lastIndexToProcess + 1;
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
       } else {

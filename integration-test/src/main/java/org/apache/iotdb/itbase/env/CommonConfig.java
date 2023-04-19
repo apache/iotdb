@@ -33,9 +33,7 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
-  CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum);
-
-  CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
+  CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
 
@@ -112,4 +110,6 @@ public interface CommonConfig {
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
+
+  CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 }

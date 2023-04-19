@@ -41,6 +41,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,7 +59,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -95,8 +96,7 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate unary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult1()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testAggregateIntermediateResult1() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -120,7 +120,9 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
+
       if (resultTsBlock == null) {
         continue;
       }
@@ -137,8 +139,7 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate binary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult2()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testAggregateIntermediateResult2() throws Exception {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
@@ -161,7 +162,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -174,8 +176,7 @@ public class AggregationOperatorTest {
   }
 
   @Test
-  public void testGroupByIntermediateResult1()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testGroupByIntermediateResult1() throws Exception {
     int[][] result =
         new int[][] {
           {100, 100, 100, 99},
@@ -209,7 +210,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -229,8 +231,7 @@ public class AggregationOperatorTest {
   }
 
   @Test
-  public void testGroupByIntermediateResult2()
-      throws IllegalPathException, ExecutionException, InterruptedException {
+  public void testGroupByIntermediateResult2() throws Exception {
     double[][] result =
         new double[][] {
           {20049.5, 20149.5, 6249.5, 8429.808},
@@ -260,7 +261,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = null;
+      resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -320,18 +322,21 @@ public class AggregationOperatorTest {
             Collections.emptyMap(),
             true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.PARTIAL)));
+
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
     SeriesAggregationScanOperator seriesAggregationScanOperator1 =
         new SeriesAggregationScanOperator(
             planNodeId1,
             measurementPath1,
-            Collections.singleton("sensor0"),
+            Ordering.ASC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
-            null,
-            true,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
     List<TsFileResource> seqResources1 = new ArrayList<>();
     List<TsFileResource> unSeqResources1 = new ArrayList<>();
     seqResources1.add(seqResources.get(0));
@@ -348,14 +353,14 @@ public class AggregationOperatorTest {
         new SeriesAggregationScanOperator(
             planNodeId2,
             measurementPath1,
-            Collections.singleton("sensor0"),
-            driverContext.getOperatorContexts().get(1),
+            Ordering.ASC,
+            scanOptionsBuilder.build(),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
-            null,
-            true,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
     List<TsFileResource> seqResources2 = new ArrayList<>();
     List<TsFileResource> unSeqResources2 = new ArrayList<>();
     seqResources2.add(seqResources.get(2));

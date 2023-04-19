@@ -37,7 +37,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
@@ -91,33 +90,20 @@ public class TemplateTableTest {
   }
 
   private Template newSchemaTemplate(String name) throws IllegalPathException {
-    List<List<String>> measurements =
-        Arrays.asList(
-            Collections.singletonList(name + "_" + "temperature"),
-            Collections.singletonList(name + "_" + "status"));
-    List<List<TSDataType>> dataTypes =
-        Arrays.asList(
-            Collections.singletonList(TSDataType.FLOAT),
-            Collections.singletonList(TSDataType.BOOLEAN));
-    List<List<TSEncoding>> encodings =
-        Arrays.asList(
-            Collections.singletonList(TSEncoding.RLE), Collections.singletonList(TSEncoding.PLAIN));
-    List<List<CompressionType>> compressors =
-        Arrays.asList(
-            Collections.singletonList(CompressionType.SNAPPY),
-            Collections.singletonList(CompressionType.SNAPPY));
+    List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
   }
 
   private Template newAlignedSchemaTemplate(String name) throws IllegalPathException {
-    List<List<String>> measurements =
-        Collections.singletonList(Arrays.asList(name + "_" + "lat", name + "_" + "lon"));
-    List<List<TSDataType>> dataTypes =
-        Collections.singletonList(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
-    List<List<TSEncoding>> encodings =
-        Collections.singletonList(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
-    List<List<CompressionType>> compressors =
-        Collections.singletonList(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
-    return new Template(name, measurements, dataTypes, encodings, compressors);
+    List<String> measurements = Arrays.asList(name + "_" + "lat", name + "_" + "lon");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
+    return new Template(name, measurements, dataTypes, encodings, compressors, true);
   }
 }

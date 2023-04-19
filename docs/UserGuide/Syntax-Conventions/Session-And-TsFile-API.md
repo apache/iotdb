@@ -25,7 +25,7 @@ When using the Session and TsFile APIs, if the method you call requires paramete
 
 1. Take creating a time series createTimeseries as an example:
 
-```Java
+```java
 public void createTimeseries(
     String path,
     TSDataType dataType,
@@ -36,7 +36,7 @@ public void createTimeseries(
 
 If you wish to create the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should look like this:
 
-```SQL
+```sql
 create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 
 # node names contain special characters, each node in the time series is ["root","sg","a.`\"b"]
@@ -48,7 +48,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SN
 
 When you call the createTimeseries method, you should assign the path string as follows to ensure that the content of the path string is the same as when using SQL:
 
-```Java
+```java
 // timeseries root.sg.a
 String path = "root.sg.a";
 
@@ -61,7 +61,7 @@ String path = "root.sg.`111`";
 
 2. Take inserting data insertRecord as an example:
 
-```Java
+```java
 public void insertRecord(
     String deviceId,
     long time,
@@ -73,13 +73,13 @@ public void insertRecord(
 
 If you want to insert data into the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should be as follows:
 
-```SQL
+```sql
 insert into root.sg(timestamp, a, `a.``"b`, `111`) values (1, 2, 2, 2);
 ```
 
 When you call the insertRecord method, you should assign deviceId and measurements as follows:
 
-```Java
+```java
 // deviceId is root.sg
 String deviceId = "root.sg";
 
@@ -90,7 +90,7 @@ List<String> measurementList = Arrays.asList(measurements);
 
 3. Take executeRawDataQuery as an example:
 
-```Java
+```java
 public SessionDataSet executeRawDataQuery(
     List<String> paths, 
     long startTime, 
@@ -100,7 +100,7 @@ public SessionDataSet executeRawDataQuery(
 
 If you wish to query the data of the time series root.sg.a, root.sg.\`a.\`\`"b\`, root.sg.\`111\`, the SQL statement you use should be as follows :
 
-```SQL
+```sql
 select a from root.sg
 
 # node name contains special characters
@@ -112,7 +112,7 @@ select `111` from root.sg
 
 When you call the executeRawDataQuery method, you should assign paths as follows:
 
-```Java
+```java
 // paths
 String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"};
 List<String> pathList = Arrays.asList(paths);

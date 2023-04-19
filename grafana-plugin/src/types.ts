@@ -32,6 +32,7 @@ export interface IoTDBQuery extends DataQuery {
   groupBy?: GroupBy;
   limitAll?: LimitAll;
   options: Array<Array<SelectableValue<string>>>;
+  hide: boolean;
 }
 
 export interface GroupBy {

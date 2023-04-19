@@ -274,7 +274,7 @@ Different configuration parameters take effect in the following three ways:
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a database can be inserted concurrently <br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -487,7 +487,7 @@ Different configuration parameters take effect in the following three ways:
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 |:-----------:|:---------------------------------------------|
-| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+| Description | The read consistency level, <br>1. strong(Default, read from the leader replica) <br>2. weak(Read from a random replica) |
 |    Type     | string                                          |
 |   Default   | strong                                           |
 |  Effective  | After restarting system                      |
@@ -781,6 +781,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000                                                                    |
 |Effective| After restarting system                                                 |
 
+* 0.13\_data\_insert\_adapt
+
+|Name| 0.13\_data\_insert\_adapt                                             |
+|:---:|:----------------------------------------------------------------------|
+|Description| if using v0.13 client to insert data, set this configuration to true. |
+|Type| Boolean                                                               |
+|Default| false                                                                 |
+|Effective| After restarting system                                               |
+
 * upgrade\_thread\_count
 
 |   Name    | upgrade\_thread\_count                                                                            |
@@ -1026,6 +1035,14 @@ Different configuration parameters take effect in the following three ways:
 |Default| true                                                            |
 |Effective| After restart system                                            |
 
+* candidate\_compaction\_task\_queue\_size
+
+|Name| candidate\_compaction\_task\_queue\_size    |
+|:---:|:--------------------------------------------|
+|Description| The size of candidate compaction task queue |
+|Type| Int32                                       |
+|Default| 50                                          |
+|Effective| After restart system                        |
 
 ### Write Ahead Log Configuration
 
@@ -1204,12 +1221,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                                     |
+|:-----------:|:---------------------------------------------------------------|
+| Description | Data compression method                                        |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|   Default   | SNAPPY                                                         |
+|  Effective  | hot-load                                                       |
 
 * bloomFilterErrorRate
 
@@ -1383,6 +1400,16 @@ Different configuration parameters take effect in the following three ways:
 
 
 ### SELECT-INTO
+
+* into\_operation\_buffer\_size\_in\_byte
+
+|    Name     | into\_operation\_buffer\_size\_in\_byte                                                                                            |
+| :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Description | When the select-into statement is executed, the maximum memory occupied by the data to be written (unit: Byte) |
+|    Type     | int64                                                        |
+|   Default   | 100MB                                                        |
+|  Effective  | hot-load                                                      |
+
 
 * select\_into\_insert\_tablet\_plan\_row\_limit
 

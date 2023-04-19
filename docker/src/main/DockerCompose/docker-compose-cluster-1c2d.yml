@@ -19,12 +19,14 @@
 version: "3"
 services:
   iodb-confignode:
-    image: apache/iotdb:1.0.0-confignode
+    image: apache/iotdb:1.1.0-confignode
     hostname: iotdb-confignode
     container_name: iotdb-confignode
     environment:
       - cn_internal_address=iotdb-confignode
-      - cn_target_config_node_list=iotdb-confignode:22277
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
+      - cn_target_config_node_list=iotdb-confignode:10710
     volumes:
         - ./data/confignode:/iotdb/data
         - ./logs/confignode:/iotdb/logs
@@ -33,7 +35,7 @@ services:
         ipv4_address: 172.18.0.2
 
   iotdb-datanode1:
-    image: apache/iotdb:1.0.0-datanode
+    image: apache/iotdb:1.1.0-datanode
     hostname: iotdb-datanode-1
     container_name: iotdb-datanode-1
     ports:
@@ -41,7 +43,11 @@ services:
     environment:
       - dn_rpc_address=iotdb-datanode-1
       - dn_internal_address=iotdb-datanode-1
-      - dn_target_config_node_list=iotdb-confignode:22277
+      - dn_target_config_node_list=iotdb-confignode:10710
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
     volumes:
       - ./data/datanode1:/iotdb/data/
       - ./logs/datanode1:/iotdb/logs/
@@ -50,13 +56,17 @@ services:
         ipv4_address: 172.18.0.3
 
   iotdb-datanode2:
-    image: apache/iotdb:1.0.0-datanode
+    image: apache/iotdb:1.1.0-datanode
     hostname: iotdb-datanode-2
     container_name: iotdb-datanode-2
     environment:
       - dn_rpc_address=iotdb-datanode-2
       - dn_internal_address=iotdb-datanode-2
-      - dn_target_config_node_list=iotdb-confignode:22277
+      - dn_target_config_node_list=iotdb-confignode:10710
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
     volumes:
       - ./data/datanode2:/iotdb/data/
       - ./logs/datanode2:/iotdb/logs/

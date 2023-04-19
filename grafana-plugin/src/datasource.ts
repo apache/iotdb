@@ -31,19 +31,24 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
   }
   applyTemplateVariables(query: IoTDBQuery, scopedVars: ScopedVars) {
     if (query.sqlType === 'SQL: Full Customized') {
-      query.expression.map(
-        (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
-      );
-      query.prefixPath.map(
-        (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
-      );
+      if (query.expression) {
+        query.expression.map(
+          (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
+        );
+      }
+      if (query.prefixPath) {
+        query.prefixPath.map(
+          (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
+        );
+      }
+     
       if (query.condition) {
         query.condition = getTemplateSrv().replace(query.condition, scopedVars);
       }
       if (query.control) {
         query.control = getTemplateSrv().replace(query.control, scopedVars);
       }
-    } else {
+    } else if (query.sqlType === 'SQL: Drop-down List') {
       if (query.groupBy?.samplingInterval) {
         query.groupBy.samplingInterval = getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars);
       }

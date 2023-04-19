@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AbstractConsumeAllOperator;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -30,13 +30,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 /**
  * This operator is used to horizontally concatenate TsBlocks with the same timestamp column.
@@ -45,16 +41,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
  *
  * <p>HorizontallyConcat(A,B) is: [1, 1.0, true; 2, 2.0, false]
  */
-public class HorizontallyConcatOperator implements ProcessOperator {
-
-  private final OperatorContext operatorContext;
-
-  private final List<Operator> children;
-
-  private final int inputOperatorsCount;
-
-  /** TsBlock from child operator. Only one cache now. */
-  private final TsBlock[] inputTsBlocks;
+public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
@@ -67,51 +54,23 @@ public class HorizontallyConcatOperator implements ProcessOperator {
 
   public HorizontallyConcatOperator(
       OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
+    super(operatorContext, children);
     checkArgument(
-        children != null && !children.isEmpty(),
-        "child size of VerticallyConcatOperator should be larger than 0");
-    this.operatorContext = operatorContext;
-    this.children = children;
-    this.inputOperatorsCount = children.size();
-    this.inputTsBlocks = new TsBlock[this.inputOperatorsCount];
+        !children.isEmpty(), "child size of VerticallyConcatOperator should be larger than 0");
     this.inputIndex = new int[this.inputOperatorsCount];
     this.outputColumnCount = dataTypes.size();
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (empty(i)) {
-        ListenableFuture<?> blocked = children.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          listenableFutures.add(blocked);
-        }
-      }
+  public TsBlock next() throws Exception {
+    if (!prepareInput()) {
+      return null;
     }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
-  }
-
-  @Override
-  public TsBlock next() {
     tsBlockBuilder.reset();
     // indicates how many rows can be built in this calculate
     int maxRowCanBuild = Integer.MAX_VALUE;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (empty(i)) {
-        inputIndex[i] = 0;
-        inputTsBlocks[i] = children.get(i).nextWithTimer();
-        if (empty(i)) {
-          // child operator has not prepared TsBlock well
-          return null;
-        }
-      }
       maxRowCanBuild =
           Math.min(maxRowCanBuild, inputTsBlocks[i].getPositionCount() - inputIndex[i]);
     }
@@ -147,26 +106,24 @@ public class HorizontallyConcatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
-    return !empty(0) || children.get(0).hasNextWithTimer();
+    return !isEmpty(readyChildIndex)
+        || (children.get(readyChildIndex) != null
+            && children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
-    return finished = empty(0) && !children.get(0).hasNextWithTimer();
+    return finished =
+        isEmpty(readyChildIndex)
+            && (children.get(readyChildIndex) == null
+                || !children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
@@ -207,8 +164,15 @@ public class HorizontallyConcatOperator implements ProcessOperator {
    * If the tsBlock of tsBlockIndex is null or has no more data in the tsBlock, return true; else
    * return false;
    */
-  private boolean empty(int tsBlockIndex) {
+  @Override
+  protected boolean isEmpty(int tsBlockIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == inputIndex[tsBlockIndex];
+  }
+
+  @Override
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
+    inputIndex[childIndex] = 0;
+    return children.get(childIndex).nextWithTimer();
   }
 }

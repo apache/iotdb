@@ -32,17 +32,18 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.StubSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.StubSink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -119,18 +120,18 @@ public class DataDriverTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       driverContext.addSourceOperator(seriesScanOperator1);
       driverContext.addPath(measurementPath1);
       seriesScanOperator1
@@ -144,11 +145,8 @@ public class DataDriverTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       driverContext.addSourceOperator(seriesScanOperator2);
       driverContext.addPath(measurementPath2);
 
@@ -156,8 +154,8 @@ public class DataDriverTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
@@ -176,11 +174,11 @@ public class DataDriverTest {
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
-      StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
-      driverContext.setSinkHandle(sinkHandle);
+      StubSink stubSink = new StubSink(fragmentInstanceContext);
+      driverContext.setSink(stubSink);
       IDriver dataDriver = null;
       try {
-        dataDriver = new DataDriver(limitOperator, driverContext);
+        dataDriver = new DataDriver(limitOperator, driverContext, 0);
         assertEquals(
             fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
 
@@ -194,7 +192,7 @@ public class DataDriverTest {
 
         assertEquals(FragmentInstanceState.FLUSHING, stateMachine.getState());
 
-        List<TsBlock> result = sinkHandle.getTsBlocks();
+        List<TsBlock> result = stubSink.getTsBlocks();
 
         int row = 0;
         for (TsBlock tsBlock : result) {

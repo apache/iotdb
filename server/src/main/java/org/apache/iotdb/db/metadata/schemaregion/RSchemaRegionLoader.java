@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +37,6 @@ public class RSchemaRegionLoader {
   private static URLClassLoader urlClassLoader = null;
   private static final String RSCHEMA_REGION_CLASS_NAME =
       "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion";
-  private static final String RSCHEMA_CONF_LOADER_CLASS_NAME =
-      "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader";
   private static final String LIB_PATH =
       ".." + File.separator + "lib" + File.separator + "rschema-region" + File.separator;
 
@@ -49,23 +46,15 @@ public class RSchemaRegionLoader {
    * Load the jar files for RSchemaRegion and create an instance of it. The jar files should be
    * located in "../lib/rschema-region". If jar files cannot be found, the function will return
    * null.
-   *
-   * @param storageGroup
-   * @param schemaRegionId
-   * @return
    */
-  public ISchemaRegion loadRSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
-    ISchemaRegion region = null;
+  public ISchemaRegion loadRSchemaRegion(ISchemaRegionParams schemaRegionParams)
+      throws MetadataException {
     LOGGER.info("Creating instance for schema-engine-rocksdb");
     try {
       loadRSchemaRegionJar();
       Class<?> classForRSchemaRegion = urlClassLoader.loadClass(RSCHEMA_REGION_CLASS_NAME);
-      Class<?> classForRSchemaConfLoader = urlClassLoader.loadClass(RSCHEMA_CONF_LOADER_CLASS_NAME);
-      Constructor<?> constructor =
-          classForRSchemaRegion.getConstructor(
-              PartialPath.class, SchemaRegionId.class, classForRSchemaConfLoader);
-      Object rSchemaLoader = classForRSchemaConfLoader.getConstructor().newInstance();
-      region = (ISchemaRegion) constructor.newInstance(storageGroup, schemaRegionId, rSchemaLoader);
+      Constructor<?> constructor = classForRSchemaRegion.getConstructor(ISchemaRegionParams.class);
+      return (ISchemaRegion) constructor.newInstance(schemaRegionParams);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -74,9 +63,8 @@ public class RSchemaRegionLoader {
         | MalformedURLException
         | RuntimeException e) {
       LOGGER.error("Cannot initialize RSchemaRegion", e);
-      return null;
+      throw new MetadataException(e);
     }
-    return region;
   }
 
   /**

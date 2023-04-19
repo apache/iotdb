@@ -424,7 +424,7 @@ public class ReceiverManager {
     try {
       DatabaseSchemaStatement statement =
           new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setStorageGroupPath(new PartialPath(database));
+      statement.setDatabasePath(new PartialPath(database));
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()

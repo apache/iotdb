@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -73,6 +76,11 @@ public interface ISchemaRegion {
   void clear();
 
   void forceMlog();
+
+  @TestOnly
+  ISchemaRegionStatistics getSchemaRegionStatistics();
+
+  ISchemaRegionMetric createSchemaRegionMetric();
   // endregion
 
   // region Interfaces for schema region Info query and operation
@@ -269,4 +277,9 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   // endregion
+
+  // count
+  long countDeviceNumBySchemaRegion() throws MetadataException;
+
+  long countTimeSeriesNumBySchemaRegion() throws MetadataException;
 }

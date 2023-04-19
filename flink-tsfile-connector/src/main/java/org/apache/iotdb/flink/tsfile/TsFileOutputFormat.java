@@ -56,7 +56,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
   private FileOutputStream fos = null;
   protected transient TsFileWriter writer = null;
 
-  public TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
+  protected TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
     super(path == null ? null : new Path(path));
     this.schema = Preconditions.checkNotNull(schema);
     this.config = config;

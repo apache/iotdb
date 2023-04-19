@@ -30,4 +30,8 @@ public enum Ordering {
       return ASC;
     }
   }
+
+  public boolean isAscending() {
+    return this == ASC;
+  }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -33,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -86,7 +87,7 @@ public class DataNodeRemoveHandler {
         .filter(
             replicaSet ->
                 replicaSet.getDataNodeLocations().contains(removedDataNode)
-                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
+                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
@@ -326,7 +327,7 @@ public class DataNodeRemoveHandler {
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
 
     status =
-        configManager.getNodeManager().getNodeStatusByNodeId(originalDataNode.getDataNodeId())
+        configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
                 == NodeStatus.Unknown
             ? SyncDataNodeClientPool.getInstance()
                 .sendSyncRequestToDataNodeWithGivenRetry(
@@ -372,6 +373,9 @@ public class DataNodeRemoveHandler {
         status,
         getIdWithRpcEndpoint(originalDataNode),
         getIdWithRpcEndpoint(destDataNode));
+
+    // Remove the RegionGroupCache of the regionId
+    configManager.getLoadManager().removeRegionGroupCache(regionId);
 
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
@@ -425,7 +429,7 @@ public class DataNodeRemoveHandler {
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithGivenRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
-    configManager.getNodeManager().removeNodeCache(dataNode.getDataNodeId());
+    configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",
         REMOVE_DATANODE_PROCESS,
@@ -507,9 +511,8 @@ public class DataNodeRemoveHandler {
     if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
         // check whether removed data node is in running state
-        BaseNodeCache nodeCache =
-            configManager.getNodeManager().getNodeCacheMap().get(dataNodeLocation.getDataNodeId());
-        if (!NodeStatus.Running.equals(nodeCache.getNodeStatus())) {
+        if (!NodeStatus.Running.equals(
+            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
           removedDataNodes.remove(dataNodeLocation);
           LOGGER.error(
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
@@ -528,7 +531,7 @@ public class DataNodeRemoveHandler {
             removeDataNodePlan.getDataNodeLocations().stream()
                 .filter(
                     x ->
-                        configManager.getNodeManager().getNodeStatusByNodeId(x.getDataNodeId())
+                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
                             != NodeStatus.Unknown)
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
@@ -551,11 +554,19 @@ public class DataNodeRemoveHandler {
   /**
    * Remove data node in node info
    *
-   * @param tDataNodeLocation data node location
+   * @param dataNodeLocation data node location
    */
-  public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);
+  public void removeDataNodePersistence(TDataNodeLocation dataNodeLocation) {
+    // Remove consensus record
+    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+
+    // Adjust maxRegionGroupNum
+    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
+
+    // Remove metrics
+    PartitionMetrics.unbindDataNodePartitionMetrics(
+        NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
   }
 
   /**

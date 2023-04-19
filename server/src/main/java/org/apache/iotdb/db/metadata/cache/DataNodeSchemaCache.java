@@ -24,14 +24,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
+import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheComputation;
+import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCacheBuilder;
+import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -51,25 +53,28 @@ public class DataNodeSchemaCache {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Cache<PartialPath, SchemaCacheEntry> cache;
+  private final IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache;
 
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private DataNodeSchemaCache() {
-    cache =
-        Caffeine.newBuilder()
-            .maximumWeight(config.getAllocateMemoryForSchemaCache())
-            .weigher(
-                (PartialPath key, SchemaCacheEntry value) ->
-                    PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
-            .recordStats()
+    DualKeyCacheBuilder<PartialPath, String, SchemaCacheEntry> dualKeyCacheBuilder =
+        new DualKeyCacheBuilder<>();
+    dualKeyCache =
+        dualKeyCacheBuilder
+            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .memoryCapacity(config.getAllocateMemoryForSchemaCache())
+            .firstKeySizeComputer(PartialPath::estimateSize)
+            .secondKeySizeComputer(s -> 32 + 2 * s.length())
+            .valueSizeComputer(SchemaCacheEntry::estimateSize)
             .build();
+
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
 
   public double getHitRate() {
-    return cache.stats().hitRate() * 100;
+    return dualKeyCache.stats().hitRate() * 100;
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -107,27 +112,40 @@ public class DataNodeSchemaCache {
   public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     Set<String> storageGroupSet = new HashSet<>();
-    SchemaCacheEntry schemaCacheEntry;
-    for (String measurement : measurements) {
-      PartialPath path = devicePath.concatNode(measurement);
-      schemaCacheEntry = cache.getIfPresent(path);
-      if (schemaCacheEntry != null) {
-        schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(schemaCacheEntry.getSchemaEntryId()),
-            schemaCacheEntry.getMeasurementSchema(),
-            schemaCacheEntry.getTagMap(),
-            null,
-            schemaCacheEntry.isAligned());
-        storageGroupSet.add(schemaCacheEntry.getStorageGroup());
-      }
-    }
+
+    dualKeyCache.compute(
+        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return devicePath;
+          }
+
+          @Override
+          public String[] getSecondKeyList() {
+            return measurements;
+          }
+
+          @Override
+          public void computeValue(int index, SchemaCacheEntry value) {
+            if (value != null) {
+              schemaTree.appendSingleMeasurement(
+                  devicePath.concatNode(value.getSchemaEntryId()),
+                  value.getMeasurementSchema(),
+                  value.getTagMap(),
+                  null,
+                  value.isAligned());
+              storageGroupSet.add(value.getStorageGroup());
+            }
+          }
+        });
     schemaTree.setDatabases(storageGroupSet);
     return schemaTree;
   }
 
   public ClusterSchemaTree get(PartialPath fullPath) {
+    SchemaCacheEntry schemaCacheEntry =
+        dualKeyCache.get(fullPath.getDevicePath(), fullPath.getMeasurement());
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
     if (schemaCacheEntry != null) {
       schemaTree.appendSingleMeasurement(
           fullPath,
@@ -141,42 +159,33 @@ public class DataNodeSchemaCache {
   }
 
   public List<Integer> compute(ISchemaComputation schemaComputation) {
-    PartialPath devicePath = schemaComputation.getDevicePath();
-    String[] measurements = schemaComputation.getMeasurements();
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    boolean isFirstMeasurement = true;
-    PartialPath fullPath;
-    for (int i = 0, length = measurements.length; i < length; i++) {
-      String measurement = measurements[i];
-      fullPath = devicePath.concatNode(measurement);
-      SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
-      if (schemaCacheEntry == null) {
-        indexOfMissingMeasurements.add(i);
-      } else {
-        if (isFirstMeasurement) {
-          schemaComputation.computeDevice(schemaCacheEntry.isAligned());
-          isFirstMeasurement = false;
-        }
-        schemaComputation.computeMeasurement(
-            i,
-            new IMeasurementSchemaInfo() {
-              @Override
-              public String getName() {
-                return measurement;
-              }
+    final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
+    dualKeyCache.compute(
+        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return schemaComputation.getDevicePath();
+          }
 
-              @Override
-              public MeasurementSchema getSchema() {
-                return schemaCacheEntry.getMeasurementSchema();
-              }
+          @Override
+          public String[] getSecondKeyList() {
+            return schemaComputation.getMeasurements();
+          }
 
-              @Override
-              public String getAlias() {
-                throw new UnsupportedOperationException();
+          @Override
+          public void computeValue(int index, SchemaCacheEntry value) {
+            if (value == null) {
+              indexOfMissingMeasurements.add(index);
+            } else {
+              if (isFirstMeasurement.get()) {
+                schemaComputation.computeDevice(value.isAligned());
+                isFirstMeasurement.getAndSet(false);
               }
-            });
-      }
-    }
+              schemaComputation.computeMeasurement(index, value);
+            }
+          }
+        });
     return indexOfMissingMeasurements;
   }
 
@@ -193,11 +202,13 @@ public class DataNodeSchemaCache {
             (MeasurementSchema) measurementPath.getMeasurementSchema(),
             measurementPath.getTagMap(),
             measurementPath.isUnderAlignedEntity());
-    cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+    dualKeyCache.put(
+        measurementPath.getDevicePath(), measurementPath.getMeasurement(), schemaCacheEntry);
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
-    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    SchemaCacheEntry entry =
+        dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
     if (null == entry) {
       return null;
     }
@@ -207,11 +218,12 @@ public class DataNodeSchemaCache {
 
   /** get SchemaCacheEntry and update last cache */
   public void updateLastCache(
-      PartialPath seriesPath,
+      PartialPath devicePath,
+      String measurement,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    SchemaCacheEntry entry = dualKeyCache.get(devicePath, measurement);
     if (null == entry) {
       return;
     }
@@ -231,10 +243,11 @@ public class DataNodeSchemaCache {
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     PartialPath seriesPath = measurementPath.transformToPartialPath();
-    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    SchemaCacheEntry entry =
+        dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
     if (null == entry) {
-      synchronized (cache) {
-        entry = cache.getIfPresent(seriesPath);
+      synchronized (dualKeyCache) {
+        entry = dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
         if (null == entry) {
           entry =
               new SchemaCacheEntry(
@@ -242,7 +255,7 @@ public class DataNodeSchemaCache {
                   (MeasurementSchema) measurementPath.getMeasurementSchema(),
                   measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
-          cache.put(seriesPath, entry);
+          dualKeyCache.put(seriesPath.getDevicePath(), seriesPath.getMeasurement(), entry);
         }
       }
     }
@@ -251,43 +264,11 @@ public class DataNodeSchemaCache {
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
-  public void resetLastCache(PartialPath seriesPath) {
-    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
-    if (null == entry) {
-      return;
-    }
-
-    DataNodeLastCacheManager.resetLastCache(entry);
-  }
-
-  /**
-   * For delete timeseries meatadata cache operation
-   *
-   * @param partialPath
-   * @return
-   */
-  public void invalidate(PartialPath partialPath) {
-    resetLastCache(partialPath);
-    cache.invalidate(partialPath);
-  }
-
-  public void invalidateMatchedSchema(PartialPath pathPattern) {
-    cache
-        .asMap()
-        .forEach(
-            (k, v) -> {
-              if (pathPattern.matchFullPath(k)) {
-                cache.invalidate(k);
-              }
-            });
-  }
-
-  public long estimatedSize() {
-    return cache.estimatedSize();
+  public void invalidateAll() {
+    dualKeyCache.invalidateAll();
   }
 
   public void cleanUp() {
-    cache.invalidateAll();
-    cache.cleanUp();
+    dualKeyCache.cleanUp();
   }
 }

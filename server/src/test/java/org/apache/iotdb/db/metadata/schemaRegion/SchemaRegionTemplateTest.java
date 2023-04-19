@@ -71,16 +71,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
-            Arrays.asList(
-                Collections.singletonList(TSDataType.DOUBLE),
-                Collections.singletonList(TSDataType.INT32)),
-            Arrays.asList(
-                Collections.singletonList(TSEncoding.RLE),
-                Collections.singletonList(TSEncoding.RLE)),
-            Arrays.asList(
-                Collections.singletonList(CompressionType.SNAPPY),
-                Collections.singletonList(CompressionType.SNAPPY)));
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -137,16 +131,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
-            Arrays.asList(
-                Collections.singletonList(TSDataType.DOUBLE),
-                Collections.singletonList(TSDataType.INT32)),
-            Arrays.asList(
-                Collections.singletonList(TSEncoding.RLE),
-                Collections.singletonList(TSEncoding.RLE)),
-            Arrays.asList(
-                Collections.singletonList(CompressionType.SNAPPY),
-                Collections.singletonList(CompressionType.SNAPPY)));
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -194,16 +182,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
-            Arrays.asList(
-                Collections.singletonList(TSDataType.DOUBLE),
-                Collections.singletonList(TSDataType.INT32)),
-            Arrays.asList(
-                Collections.singletonList(TSEncoding.RLE),
-                Collections.singletonList(TSEncoding.RLE)),
-            Arrays.asList(
-                Collections.singletonList(CompressionType.SNAPPY),
-                Collections.singletonList(CompressionType.SNAPPY)));
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -251,16 +233,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
-            Arrays.asList(
-                Collections.singletonList(TSDataType.DOUBLE),
-                Collections.singletonList(TSDataType.INT32)),
-            Arrays.asList(
-                Collections.singletonList(TSEncoding.RLE),
-                Collections.singletonList(TSEncoding.RLE)),
-            Arrays.asList(
-                Collections.singletonList(CompressionType.SNAPPY),
-                Collections.singletonList(CompressionType.SNAPPY)));
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(

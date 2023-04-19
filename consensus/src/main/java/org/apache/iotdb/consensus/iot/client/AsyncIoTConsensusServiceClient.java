@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,20 +41,22 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncIoTConsensusServiceClient.class);
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
 
   public AsyncIoTConsensusServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager)
       throws IOException {
     super(
-        protocolFactory,
+        property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
+        TNonblockingSocketWrapper.wrap(
+            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
@@ -83,6 +84,11 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   @Override
   public void invalidateAll() {
     clientManager.clear(endpoint);
+  }
+
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
   }
 
   /**
@@ -134,8 +140,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
         throws Exception {
       return new DefaultPooledObject<>(
           new AsyncIoTConsensusServiceClient(
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+              thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));

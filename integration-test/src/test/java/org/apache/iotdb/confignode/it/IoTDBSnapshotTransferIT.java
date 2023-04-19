@@ -144,9 +144,7 @@ public class IoTDBSnapshotTransferIT {
           registerResult.getRegionInfoList().stream()
               .filter(
                   info ->
-                      info.getConsensusGroupId()
-                          .getType()
-                          .equals(TConsensusGroupType.ConfigNodeRegion))
+                      info.getConsensusGroupId().getType().equals(TConsensusGroupType.ConfigRegion))
               .count();
       Assert.assertEquals(4, configNodeGroupCount);
     }

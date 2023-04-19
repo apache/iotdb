@@ -23,9 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
@@ -44,6 +47,10 @@ public class ExpressionFactory {
 
   public static TimeSeriesOperand timeSeries(String pathStr) throws IllegalPathException {
     PartialPath path = new PartialPath(pathStr);
+    return new TimeSeriesOperand(path);
+  }
+
+  public static TimeSeriesOperand timeSeries(PartialPath path) {
     return new TimeSeriesOperand(path);
   }
 
@@ -99,5 +106,17 @@ public class ExpressionFactory {
 
   public static GreaterThanExpression gt(Expression leftExpression, Expression rightExpression) {
     return new GreaterThanExpression(leftExpression, rightExpression);
+  }
+
+  public static LessThanExpression lt(Expression leftExpression, Expression rightExpression) {
+    return new LessThanExpression(leftExpression, rightExpression);
+  }
+
+  public static EqualToExpression eq(Expression leftExpression, Expression rightExpression) {
+    return new EqualToExpression(leftExpression, rightExpression);
+  }
+
+  public static WhenThenExpression whenThen(Expression whenExpression, Expression thenExpression) {
+    return new WhenThenExpression(whenExpression, thenExpression);
   }
 }

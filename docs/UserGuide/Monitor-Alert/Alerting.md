@@ -248,7 +248,7 @@ or `/alertmanager/api/v2/alerts`.
 ### Writing the trigger class
 
 The user defines a trigger by creating a Java class and writing the logic in the hook.
-Please refer to [Triggers](Triggers.md) for the specific configuration process.
+Please refer to [Trigger](../Trigger/Implement-Trigger.md) for the specific configuration process.
 
 The following example creates the `org.apache.iotdb.trigger.ClusterAlertingExample` class,
 Its alertManagerHandler member variables can send alerts to the AlertManager instance 
@@ -396,6 +396,6 @@ makes alerts of `critical` severity inhibit those of `warning` severity,
 the alerting email we receive only contains the alert triggered
 by the writing of `(5, 120)`.
 
-<img width="669" alt="alerting" src="https://user-images.githubusercontent.com/34649843/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
+<img width="669" alt="alerting" src="https://alioss.timecho.com/docs/img/github/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
 
 

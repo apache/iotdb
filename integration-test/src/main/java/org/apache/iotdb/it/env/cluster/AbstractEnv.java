@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -706,11 +707,14 @@ public abstract class AbstractEnv implements BaseEnv {
         for (int j = 0; j < nodes.size(); j++) {
           String endpoint = nodes.get(j).getIpAndPortString();
           if (!nodeIds.containsKey(endpoint)) {
-            throw new IllegalStateException(
-                "The node " + nodes.get(j).getIpAndPortString() + " is not found!");
+            // Node not exist
+            // Notice: Never modify this line, since the NodeLocation might be modified in IT
+            errorMessages.add("The node " + nodes.get(j).getIpAndPortString() + " is not found!");
+            continue;
           }
           String status = showClusterResp.getNodeStatus().get(nodeIds.get(endpoint));
           if (!targetStatus.get(j).getStatus().equals(status)) {
+            // Error status
             errorMessages.add(
                 String.format(
                     "Node %s is in status %s, but expected %s",

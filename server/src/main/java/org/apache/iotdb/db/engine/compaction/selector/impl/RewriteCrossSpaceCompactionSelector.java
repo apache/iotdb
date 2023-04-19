@@ -48,17 +48,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final int SELECT_WARN_THRESHOLD = 10;
   protected String logicalStorageGroupName;
   protected String dataRegionId;
   protected long timePartition;
   protected TsFileManager tsFileManager;
 
-  private long totalCost;
+  private static boolean hasPrintedLog = false;
+
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
   private final long maxCrossCompactionFileSize;
-  private int seqSelectedNum;
 
   private AbstractCompactionEstimator compactionEstimator;
 
@@ -110,21 +109,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    */
   private CrossCompactionTaskResource selectOneTaskResources(
       CrossSpaceCompactionCandidate candidate) throws MergeException {
-    long startTime = System.currentTimeMillis();
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
       CrossCompactionTaskResource taskResource = executeTaskResourceSelection(candidate);
-      LOGGER.info(
-          "selected one cross compaction task resource. is valid: {}, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "time consumption {}ms",
-          taskResource.isValid(),
-          taskResource.getSeqFiles().size(),
-          taskResource.getUnseqFiles().size(),
-          taskResource.getTotalMemoryCost(),
-          System.currentTimeMillis() - startTime);
+
       return taskResource;
     } catch (IOException e) {
       throw new MergeException(e);
@@ -163,6 +154,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       TsFileResource unseqFile = split.unseqFile.resource;
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
+
+      if (!split.hasOverlap) {
+        LOGGER.info("Unseq file {} does not overlap with any seq files.", unseqFile);
+        TsFileResource latestSealedSeqFile =
+            getLatestSealedSeqFile(candidate.getSeqFileCandidates());
+        if (latestSealedSeqFile == null) {
+          break;
+        }
+        targetSeqFiles.add(latestSealedSeqFile);
+      }
+
       long memoryCost =
           compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
@@ -174,10 +176,29 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           unseqFile,
           targetSeqFiles,
           memoryCost,
-          totalCost);
+          taskResource.getTotalMemoryCost());
     }
     taskResource.sortSeqFiles(candidate.getSeqFiles());
     return taskResource;
+  }
+
+  private TsFileResource getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
+    for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
+      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
+      if (seqResourceCandidate.resource.isClosed()) {
+        // We must select the latest sealed and valid seq file to compact with, in order to avoid
+        // overlapping of the new compacted files with the subsequent seq files.
+        if (seqResourceCandidate.isValidCandidate) {
+          LOGGER.info(
+              "Select one valid seq file {} for unseq file to compact with.",
+              seqResourceCandidate.resource);
+          return seqResourceCandidate.resource;
+        }
+        break;
+      }
+    }
+    return null;
   }
 
   // TODO: (xingtanzjr) need to confirm whether we should strictly guarantee the conditions
@@ -215,9 +236,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return false;
   }
 
-  private boolean canSubmitCrossTask() {
-    return config.isEnableCrossSpaceCompaction()
-        && (CompactionTaskManager.currentTaskNum.get() < config.getCompactionThreadCount());
+  private boolean canSubmitCrossTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
+    return !sequenceFileList.isEmpty() && !unsequenceFileList.isEmpty();
   }
 
   /**
@@ -231,13 +252,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @Override
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-    if (!canSubmitCrossTask()) {
+    if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
       return Collections.emptyList();
     }
-    if (sequenceFileList.isEmpty() || unsequenceFileList.isEmpty()) {
-      return Collections.emptyList();
-    }
+
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
+    long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     // we record the variable `candidate` here is used for selecting more than one
     // CrossCompactionTaskResources in this method
@@ -246,27 +266,35 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     try {
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
       if (!taskResources.isValid()) {
-        LOGGER.info(
-            "{} [Compaction] Cannot select any files, because source files may be occupied by other compaction threads.",
-            logicalStorageGroupName + "-" + dataRegionId);
+        if (!hasPrintedLog) {
+          LOGGER.info(
+              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
+              logicalStorageGroupName + "-" + dataRegionId,
+              sequenceFileList.size(),
+              unsequenceFileList.size(),
+              candidate.getSeqFiles().size(),
+              candidate.getUnseqFiles().size());
+          hasPrintedLog = true;
+        }
         return Collections.emptyList();
       }
-
       LOGGER.info(
-          "{} [Compaction] submit a task with {} sequence file and {} unseq files",
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms.",
           logicalStorageGroupName + "-" + dataRegionId,
+          sequenceFileList.size(),
+          unsequenceFileList.size(),
+          candidate.getSeqFiles().size(),
+          candidate.getUnseqFiles().size(),
           taskResources.getSeqFiles().size(),
-          taskResources.getUnseqFiles().size());
+          taskResources.getUnseqFiles().size(),
+          taskResources.getTotalMemoryCost(),
+          System.currentTimeMillis() - startTime);
+      hasPrintedLog = false;
       return Collections.singletonList(taskResources);
 
     } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();
-  }
-
-  @Override
-  public List<Long> getCompactionMemoryCost() {
-    return Collections.singletonList(totalCost);
   }
 }

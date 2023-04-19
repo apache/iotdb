@@ -1,0 +1,56 @@
+{
+  "compilerOptions": {
+    // types
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // Modules
+    "baseUrl": "./",
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+
+    // Emit
+    "downlevelIteration": false,
+    "importHelpers": true,
+    "importsNotUsedAsValues": "remove",
+    "newLine": "lf",
+    "noEmitOnError": true,
+    "removeComments": false,
+    "inlineSources": true,
+    "inlineSourceMap": false,
+    "sourceMap": true,
+
+    // JavaScript
+    "allowJs": false,
+    "checkJs": false,
+
+    // Interop Constraints
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // lib
+    "lib": ["DOM", "ESNext"],
+    // minimal node 14 support
+    "target": "ES2020",
+    // minimal node 16 support
+    // "target": "ES2021",
+
+    // Compiler Diagnostics
+    "diagnostics": false,
+    "listEmittedFiles": false,
+
+    "skipLibCheck": true,
+    "pretty": true
+  }
+}

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.driver;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 
@@ -61,7 +62,7 @@ public class DataDriverContext extends DriverContext {
     return getFragmentInstanceContext().getDataRegion();
   }
 
-  public QueryDataSource getSharedQueryDataSource() {
+  public QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     return getFragmentInstanceContext().getSharedQueryDataSource();
   }
 

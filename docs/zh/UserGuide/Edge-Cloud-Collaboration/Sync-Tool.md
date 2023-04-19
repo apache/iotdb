@@ -31,7 +31,7 @@ IoTDB 同步工具内嵌于 IoTDB 引擎，与下游接收端相连，下游支�
 
 ## 2.模型定义
 
-![pipe2.png](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Sync-Tool/pipe2.png?raw=true)
+![pipe2.png](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Sync-Tool/pipe2.png?raw=true)
 
 TsFile 同步工具实现了数据从 "流入-> IoTDB ->流出" 的闭环。假设目前有两台机器A和B都安装了IoTDB，希望将 A 上的数据不断同步至 B 中。为了更好地描述这个过程，我们引入以下概念。
 

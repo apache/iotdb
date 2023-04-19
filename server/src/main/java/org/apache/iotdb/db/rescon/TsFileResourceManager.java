@@ -94,8 +94,9 @@ public class TsFileResourceManager {
       if (tsFileResource == null
           || TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
               == TimeIndexLevel.FILE_TIME_INDEX) {
-        logger.error("Can't degrade any more");
-        throw new RuntimeException("Can't degrade any more");
+        logger.debug("Can't degrade time index any more because all time index are file level.");
+        sealedTsFileResources.add(tsFileResource);
+        return;
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
       logger.info("Degrade tsfile resource {}", tsFileResource.getTsFilePath());

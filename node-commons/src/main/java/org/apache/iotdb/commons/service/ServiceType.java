@@ -73,6 +73,9 @@ public enum ServiceType {
   MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
   INTERNAL_SERVICE("Internal Service", "InternalService"),
   IOT_CONSENSUS_SERVICE("IoTConsensus Service", "IoTConsensusRPCService"),
+  PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
+      "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
+  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService"),
   RAFT_CONSENSUS_SERVICE("Raft consensus Service", "RaftRPCService");
 
   private final String name;

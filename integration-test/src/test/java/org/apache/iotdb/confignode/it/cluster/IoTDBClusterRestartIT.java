@@ -16,56 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.cluster;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.AbstractEnv;
-import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.checkNodeConfig;
-import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
-import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.getClusterNodeInfos;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterRestartIT {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClusterRestartIT.class);
 
   private static final String ratisConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
@@ -84,6 +68,7 @@ public class IoTDBClusterRestartIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor);
+
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
@@ -118,96 +103,51 @@ public class IoTDBClusterRestartIT {
   }
 
   @Test
-  @Ignore
-  public void clusterRestartAfterUpdateDataNodeTest() throws InterruptedException {
-    TShowClusterResp clusterNodes;
-    final String sg0 = "root.sg0";
-
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    // Shutdown all data nodes
+  public void clusterRestartAfterUpdateDataNodeTest()
+      throws InterruptedException, ClientManagerException, IOException, TException {
+    // Shutdown all DataNodes
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().shutdownDataNode(i);
     }
-
-    // Sleep 1s before restart
     TimeUnit.SECONDS.sleep(1);
 
-    // Modify data node config
     List<DataNodeWrapper> dataNodeWrapperList = EnvFactory.getEnv().getDataNodeWrapperList();
-    List<ConfigNodeWrapper> configNodeWrappersList = EnvFactory.getEnv().getConfigNodeWrapperList();
     for (int i = 0; i < testDataNodeNum; i++) {
+      // Modify DataNode clientRpcEndPoint
       int[] portList = EnvUtils.searchAvailablePorts();
       dataNodeWrapperList.get(i).setPort(portList[0]);
-      dataNodeWrapperList.get(i).setInternalPort(portList[1]);
-      dataNodeWrapperList.get(i).setMppDataExchangePort(portList[2]);
-
-      // update data node files'names
+      // Update DataNode files' names
       dataNodeWrapperList.get(i).renameFile();
     }
 
+    // Restart DataNodes
     for (int i = 0; i < testDataNodeNum; i++) {
       dataNodeWrapperList
           .get(i)
           .changeConfig(
               (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
               (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
-              null);
+              (MppJVMConfig) EnvFactory.getEnv().getConfig().getDataNodeJVMConfig());
       EnvFactory.getEnv().startDataNode(i);
     }
 
-    ((AbstractEnv) EnvFactory.getEnv()).testWorking();
+    // Check DataNode status
+    EnvFactory.getEnv()
+        .ensureNodeStatus(
+            Arrays.asList(
+                EnvFactory.getEnv().getDataNodeWrapper(0),
+                EnvFactory.getEnv().getDataNodeWrapper(1)),
+            Arrays.asList(NodeStatus.Running, NodeStatus.Running));
 
-    // check nodeInfo in cluster
+    // Check DataNode EndPoint
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // check the number and status of nodes
-      clusterNodes = getClusterNodeInfos(client, testConfigNodeNum, testDataNodeNum);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), clusterNodes.getStatus().getCode());
-
-      // check the configuration of nodes
-      List<TConfigNodeLocation> configNodeLocationList = clusterNodes.getConfigNodeList();
-      List<TDataNodeLocation> dataNodeLocationList = clusterNodes.getDataNodeList();
-      checkNodeConfig(
-          configNodeLocationList,
-          dataNodeLocationList,
-          configNodeWrappersList,
+      TShowClusterResp showClusterResp = client.showCluster();
+      ConfigNodeTestUtils.checkNodeConfig(
+          showClusterResp.getConfigNodeList(),
+          showClusterResp.getDataNodeList(),
+          EnvFactory.getEnv().getConfigNodeWrapperList(),
           dataNodeWrapperList);
-
-      // check whether the cluster is working by testing GetAndCreateSchemaPartition
-      TSStatus status;
-      ByteBuffer buffer;
-      TSchemaPartitionReq schemaPartitionReq;
-      TSchemaPartitionTableResp schemaPartitionTableResp;
-      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable;
-
-      // Set StorageGroups
-      status = client.setDatabase((new TDatabaseSchema(sg0)));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      // Test getSchemaPartition, the result should be empty
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01});
-      schemaPartitionReq = new TSchemaPartitionReq(buffer);
-      schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(0, schemaPartitionTableResp.getSchemaPartitionTableSize());
-
-      // Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartitions and return
-      buffer = generatePatternTreeBuffer(new String[] {d00, d01});
-      schemaPartitionReq.setPathPatternTree(buffer);
-      schemaPartitionTableResp = client.getOrCreateSchemaPartitionTable(schemaPartitionReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          schemaPartitionTableResp.getStatus().getCode());
-      Assert.assertEquals(1, schemaPartitionTableResp.getSchemaPartitionTableSize());
-      schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg0));
-      Assert.assertEquals(2, schemaPartitionTable.get(sg0).size());
-    } catch (Exception e) {
-      LOGGER.error(e.getMessage());
-      fail(e.getMessage());
     }
   }
 

@@ -99,6 +99,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showTriggersColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowPipePluginsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showPipePluginsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowRegionHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, true);
   }
@@ -163,5 +167,21 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
+  }
+
+  public static DatasetHeader getShowSpaceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowThrottleQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showThrottleQuotaColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowModelsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowTrailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, true);
   }
 }

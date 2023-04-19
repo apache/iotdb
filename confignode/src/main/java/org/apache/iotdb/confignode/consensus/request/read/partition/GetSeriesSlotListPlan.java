@@ -45,7 +45,7 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
     this.partitionType = partitionType;
   }
 
-  public String getStorageGroup() {
+  public String getDatabase() {
     return storageGroup;
   }
 

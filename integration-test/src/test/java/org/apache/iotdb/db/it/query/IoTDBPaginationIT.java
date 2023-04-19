@@ -33,7 +33,6 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
@@ -82,7 +81,6 @@ public class IoTDBPaginationIT {
 
   @BeforeClass
   public static void setUp() throws InterruptedException {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxQueryDeduplicatedPathNum(2);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
@@ -136,12 +134,5 @@ public class IoTDBPaginationIT {
     for (int i = 0; i < querySQLs.size(); i++) {
       resultSetEqualTest(querySQLs.get(0), expectHeaders.get(0), retArrays.get(0));
     }
-  }
-
-  @Test
-  public void pathNumOverLimitTest() {
-    assertTestFail(
-        "select * from root.vehicle.d0",
-        "Too many paths in one query! Currently allowed max deduplicated path number is 2.");
   }
 }

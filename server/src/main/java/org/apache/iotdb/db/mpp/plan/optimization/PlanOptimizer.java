@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.mpp.plan.optimization;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 public interface PlanOptimizer {
-  PlanNode optimize(PlanNode plan, MPPQueryContext context);
+  PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context);
 }

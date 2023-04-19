@@ -23,18 +23,20 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 public class SchemaCountNodeSerdeTest {
 
@@ -45,14 +47,18 @@ public class SchemaCountNodeSerdeTest {
     DevicesCountNode devicesCountNode =
         new DevicesCountNode(
             new PlanNodeId("devicesCount"), new PartialPath("root.sg.device0"), true);
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
-    fragmentSinkNode.addChild(devicesCountNode);
-    fragmentSinkNode.setDownStream(
-        new TEndPoint("127.0.0.1", 6667),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
-    exchangeNode.addChild(countMergeNode);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            new PlanNodeId("sink"),
+            Collections.singletonList(devicesCountNode),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint("127.0.0.1", 6667),
+                    new FragmentInstanceId(new PlanFragmentId("q", 1), "ds").toThrift(),
+                    new PlanNodeId("test").getId())));
+    countMergeNode.addChild(sinkNode);
+    exchangeNode.addChild(sinkNode);
+    exchangeNode.setOutputColumnNames(exchangeNode.getChild().getOutputColumnNames());
     exchangeNode.setUpstream(
         new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
@@ -77,14 +83,18 @@ public class SchemaCountNodeSerdeTest {
             null,
             null,
             false);
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
-    fragmentSinkNode.addChild(levelTimeSeriesCountNode);
-    fragmentSinkNode.setDownStream(
-        new TEndPoint("127.0.0.1", 6667),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
-    exchangeNode.addChild(countMergeNode);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            new PlanNodeId("sink"),
+            Collections.singletonList(levelTimeSeriesCountNode),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint("127.0.0.1", 6667),
+                    new FragmentInstanceId(new PlanFragmentId("q", 1), "ds").toThrift(),
+                    new PlanNodeId("test").getId())));
+    countMergeNode.addChild(exchangeNode);
+    exchangeNode.addChild(sinkNode);
+    exchangeNode.setOutputColumnNames(exchangeNode.getChild().getOutputColumnNames());
     exchangeNode.setUpstream(
         new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),

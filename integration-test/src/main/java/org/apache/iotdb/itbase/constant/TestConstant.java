@@ -111,6 +111,14 @@ public class TestConstant {
     return String.format("min_value(%s)", path);
   }
 
+  public static String timeDuration(String path) {
+    return String.format("time_duration(%s)", path);
+  }
+
+  public static String mode(String path) {
+    return String.format("mode(%s)", path);
+  }
+
   public static String recordToInsert(TSRecord record) {
     StringBuilder measurements = new StringBuilder();
     StringBuilder values = new StringBuilder();

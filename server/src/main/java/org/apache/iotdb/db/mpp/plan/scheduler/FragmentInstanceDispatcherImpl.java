@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -74,6 +75,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       asyncInternalServiceClientManager;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
@@ -176,19 +179,26 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     AsyncPlanNodeSender asyncPlanNodeSender =
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
-    // sync dispatch to local
-    for (FragmentInstance localInstance : localInstances) {
-      try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-        dispatchOneInstance(localInstance);
-      } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+
+    List<TSStatus> dataNodeFailureList = new ArrayList<>();
+
+    if (!localInstances.isEmpty()) {
+      // sync dispatch to local
+      long localScheduleStartTime = System.nanoTime();
+      for (FragmentInstance localInstance : localInstances) {
+        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
+          dispatchOneInstance(localInstance);
+        } catch (FragmentInstanceDispatchException e) {
+          dataNodeFailureList.add(e.getFailureStatus());
+        } catch (Throwable t) {
+          logger.warn("[DispatchFailed]", t);
+          dataNodeFailureList.add(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+        }
       }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+          System.nanoTime() - localScheduleStartTime);
     }
     // wait until remote dispatch done
     try {
@@ -201,7 +211,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
     }
-    return asyncPlanNodeSender.getResult();
+
+    dataNodeFailureList.addAll(asyncPlanNodeSender.getFailureStatusList());
+
+    if (dataNodeFailureList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    }
+    if (instances.size() == 1) {
+      return immediateFuture(new FragInstanceDispatchResult(dataNodeFailureList.get(0)));
+    } else {
+      List<TSStatus> failureStatusList = new ArrayList<>();
+      for (TSStatus dataNodeFailure : dataNodeFailureList) {
+        if (dataNodeFailure.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          failureStatusList.addAll(dataNodeFailure.getSubStatus());
+        } else {
+          failureStatusList.add(dataNodeFailure);
+        }
+      }
+      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+    }
   }
 
   private void dispatchOneInstance(FragmentInstance instance)

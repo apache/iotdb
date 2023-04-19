@@ -20,16 +20,24 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategyNumBasedImpl;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
+import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -41,20 +49,26 @@ public class CacheMemoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CacheMemoryManager.class);
 
-  private final List<CachedMTreeStore> storeList = new ArrayList<>();
+  private final List<CachedMTreeStore> storeList = new CopyOnWriteArrayList<>();
 
-  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private CachedSchemaEngineStatistics engineStatistics;
+  private SchemaEngineCachedMetric engineMetric;
 
   private static final int CONCURRENT_NUM = 10;
 
-  private ExecutorService flushTaskExecutor;
-  private ExecutorService releaseTaskExecutor;
+  private ExecutorService flushTaskProcessor;
+  private ExecutorService flushTaskMonitor;
+  private ExecutorService releaseTaskProcessor;
+  private ExecutorService releaseTaskMonitor;
+
+  private FiniteSemaphore flushSemaphore;
+  private FiniteSemaphore releaseSemaphore;
 
   private volatile boolean hasFlushTask;
-  private int flushCount = 0;
 
   private volatile boolean hasReleaseTask;
-  private int releaseCount = 0;
+
+  private IReleaseFlushStrategy releaseFlushStrategy;
 
   private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
   private final Object blockObject = new Object();
@@ -65,21 +79,83 @@ public class CacheMemoryManager {
    * @param store CachedMTreeStore
    * @return LRUCacheManager
    */
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store) {
-    synchronized (storeList) {
-      ICacheManager cacheManager = new LRUCacheManager();
-      storeList.add(store);
-      return cacheManager;
-    }
+  public ICacheManager createLRUCacheManager(CachedMTreeStore store, MemManager memManager) {
+    ICacheManager cacheManager = new LRUCacheManager(memManager);
+    storeList.add(store);
+    return cacheManager;
   }
 
-  public void init() {
-    flushTaskExecutor =
+  public void init(ISchemaEngineStatistics engineStatistics) {
+    flushSemaphore = new FiniteSemaphore(2, 0);
+    releaseSemaphore = new FiniteSemaphore(2, 0);
+    this.engineStatistics = engineStatistics.getAsCachedSchemaEngineStatistics();
+    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
+      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(this.engineStatistics);
+    } else {
+      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(this.engineStatistics);
+    }
+    flushTaskMonitor =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_FLUSH_MONITOR.getName());
+    flushTaskProcessor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
-    releaseTaskExecutor =
+            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_PROCESSOR.getName());
+    releaseTaskMonitor =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_RELEASE_MONITOR.getName());
+    releaseTaskProcessor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_RELEASE_POOL.getName());
+            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_RELEASE_PROCESSOR.getName());
+    releaseTaskMonitor.submit(
+        () -> {
+          try {
+            while (!Thread.currentThread().isInterrupted()) {
+              releaseSemaphore.acquire();
+              try {
+                if (isExceedReleaseThreshold()) {
+                  hasReleaseTask = true;
+                  tryExecuteMemoryRelease();
+                }
+              } catch (Throwable throwable) {
+                hasReleaseTask = false;
+                logger.error("Something wrong happened during MTree release.", throwable);
+              }
+            }
+          } catch (InterruptedException e) {
+            logger.info("ReleaseTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
+          }
+        });
+    flushTaskMonitor.submit(
+        () -> {
+          try {
+            while (!Thread.currentThread().isInterrupted()) {
+              flushSemaphore.acquire();
+              try {
+                if (isExceedFlushThreshold()) {
+                  hasFlushTask = true;
+                  tryFlushVolatileNodes();
+                }
+              } catch (Throwable throwable) {
+                hasFlushTask = false;
+                logger.error("Something wrong happened during MTree flush.", throwable);
+              }
+            }
+          } catch (InterruptedException e) {
+            logger.info("FlushTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
+          }
+        });
+  }
+
+  public void setEngineMetric(SchemaEngineCachedMetric engineMetric) {
+    this.engineMetric = engineMetric;
+  }
+
+  public boolean isExceedReleaseThreshold() {
+    return releaseFlushStrategy.isExceedReleaseThreshold();
+  }
+
+  public boolean isExceedFlushThreshold() {
+    return releaseFlushStrategy.isExceedFlushThreshold();
   }
 
   /**
@@ -87,7 +163,7 @@ public class CacheMemoryManager {
    * perform an internal and external memory swap to release the memory.
    */
   public void ensureMemoryStatus() {
-    if (memManager.isExceedReleaseThreshold() && !hasReleaseTask) {
+    if (isExceedReleaseThreshold()) {
       registerReleaseTask();
     }
   }
@@ -106,26 +182,14 @@ public class CacheMemoryManager {
           logger.warn(
               "Interrupt because the release task and flush task did not finish within {} milliseconds.",
               MAX_WAITING_TIME_WHEN_RELEASING);
+          Thread.currentThread().interrupt();
         }
       }
     }
   }
 
-  private synchronized void registerReleaseTask() {
-    if (hasReleaseTask) {
-      return;
-    }
-    hasReleaseTask = true;
-    releaseTaskExecutor.submit(
-        () -> {
-          try {
-            tryExecuteMemoryRelease();
-          } catch (Throwable throwable) {
-            logger.error("Something wrong happened during MTree release.", throwable);
-            throwable.printStackTrace();
-            throw throwable;
-          }
-        });
+  private void registerReleaseTask() {
+    releaseSemaphore.release();
   }
 
   /**
@@ -134,102 +198,133 @@ public class CacheMemoryManager {
    * added or updated, fire flush task.
    */
   private void tryExecuteMemoryRelease() {
-    synchronized (storeList) {
-      CompletableFuture.allOf(
-              storeList.stream()
-                  .map(
-                      store ->
-                          CompletableFuture.runAsync(
-                              () -> {
-                                store.getLock().threadReadLock();
-                                try {
-                                  store.executeMemoryRelease();
-                                } finally {
-                                  store.getLock().threadReadUnlock();
-                                }
-                              },
-                              releaseTaskExecutor))
-                  .toArray(CompletableFuture[]::new))
-          .join();
-      releaseCount++;
-      synchronized (blockObject) {
-        hasReleaseTask = false;
-        if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
-          registerFlushTask();
-        } else {
-          blockObject.notifyAll();
-        }
-      }
+    long startTime = System.currentTimeMillis();
+    CompletableFuture.allOf(
+            storeList.stream()
+                .map(
+                    store ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              store.getLock().threadReadLock();
+                              try {
+                                executeMemoryRelease(store);
+                              } finally {
+                                store.getLock().threadReadUnlock();
+                              }
+                            },
+                            releaseTaskProcessor))
+                .toArray(CompletableFuture[]::new))
+        .join();
+    if (engineMetric != null) {
+      engineMetric.recordRelease(System.currentTimeMillis() - startTime);
     }
-  }
-
-  private synchronized void registerFlushTask() {
-    if (hasFlushTask) {
-      return;
-    }
-    hasFlushTask = true;
-    flushTaskExecutor.submit(
-        () -> {
-          try {
-            tryFlushVolatileNodes();
-          } catch (Throwable throwable) {
-            logger.error("Something wrong happened during MTree flush.", throwable);
-            throwable.printStackTrace();
-            throw throwable;
-          }
-        });
-  }
-
-  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
-  private void tryFlushVolatileNodes() {
-    synchronized (storeList) {
-      CompletableFuture.allOf(
-              storeList.stream()
-                  .map(
-                      store ->
-                          CompletableFuture.runAsync(
-                              () -> {
-                                store.getLock().writeLock();
-                                try {
-                                  store.flushVolatileNodes();
-                                  store.executeMemoryRelease();
-                                } finally {
-                                  store.getLock().unlockWrite();
-                                }
-                              },
-                              flushTaskExecutor))
-                  .toArray(CompletableFuture[]::new))
-          .join();
-      flushCount++;
-      synchronized (blockObject) {
-        hasFlushTask = false;
+    synchronized (blockObject) {
+      hasReleaseTask = false;
+      if (isExceedFlushThreshold()) {
+        registerFlushTask();
+      } else {
         blockObject.notifyAll();
       }
     }
   }
 
+  /**
+   * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
+   * no node could be evicted. Update the memory status after evicting each node.
+   */
+  private void executeMemoryRelease(CachedMTreeStore store) {
+    while (isExceedReleaseThreshold()) {
+      // store try to release memory if not exceed release threshold
+      if (store.executeMemoryRelease()) {
+        // if store can not release memory, break
+        break;
+      }
+    }
+  }
+
+  private void registerFlushTask() {
+    flushSemaphore.release();
+  }
+
+  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
+  private void tryFlushVolatileNodes() {
+    long startTime = System.currentTimeMillis();
+    CompletableFuture.allOf(
+            storeList.stream()
+                .map(
+                    store ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              store.getLock().writeLock();
+                              try {
+                                store.flushVolatileNodes();
+                                executeMemoryRelease(store);
+                              } finally {
+                                store.getLock().unlockWrite();
+                              }
+                            },
+                            flushTaskProcessor))
+                .toArray(CompletableFuture[]::new))
+        .join();
+    if (engineMetric != null) {
+      engineMetric.recordFlush(System.currentTimeMillis() - startTime);
+    }
+    synchronized (blockObject) {
+      hasFlushTask = false;
+      blockObject.notifyAll();
+    }
+  }
+
   public void clear() {
-    if (releaseTaskExecutor != null) {
+    if (releaseTaskMonitor != null) {
+      releaseTaskMonitor.shutdownNow();
+      while (true) {
+        if (releaseTaskMonitor.isTerminated()) break;
+      }
+      releaseTaskMonitor = null;
+    }
+    if (flushTaskMonitor != null) {
+      flushTaskMonitor.shutdownNow();
+      while (true) {
+        if (flushTaskMonitor.isTerminated()) break;
+      }
+      releaseTaskMonitor = null;
+    }
+    if (releaseTaskProcessor != null) {
       while (true) {
         if (!hasReleaseTask) break;
       }
-      releaseTaskExecutor.shutdown();
+      releaseTaskProcessor.shutdown();
       while (true) {
-        if (releaseTaskExecutor.isTerminated()) break;
+        if (releaseTaskProcessor.isTerminated()) break;
       }
-      releaseTaskExecutor = null;
+      releaseTaskProcessor = null;
     }
     // the release task may submit flush task, thus must be shut down and clear first
-    if (flushTaskExecutor != null) {
+    if (flushTaskProcessor != null) {
       while (true) {
         if (!hasFlushTask) break;
       }
-      flushTaskExecutor.shutdown();
+      flushTaskProcessor.shutdown();
       while (true) {
-        if (flushTaskExecutor.isTerminated()) break;
+        if (flushTaskProcessor.isTerminated()) break;
       }
-      flushTaskExecutor = null;
+      flushTaskProcessor = null;
     }
+    storeList.clear();
+    releaseFlushStrategy = null;
+    engineStatistics = null;
+    releaseSemaphore = null;
+    flushSemaphore = null;
+    engineMetric = null;
+  }
+
+  public int getReleaseThreadNum() {
+    return ((WrappedThreadPoolExecutor) releaseTaskProcessor).getActiveCount();
+  }
+
+  public int getFlushThreadNum() {
+    return ((WrappedThreadPoolExecutor) flushTaskProcessor).getActiveCount();
   }
 
   private CacheMemoryManager() {}

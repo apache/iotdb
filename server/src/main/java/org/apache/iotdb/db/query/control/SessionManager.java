@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,6 +34,8 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
@@ -54,11 +60,11 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedExce
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
-  public static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
   private final ThreadLocal<IClientSession> currSession = new ThreadLocal<>();
+
+  private final ThreadLocal<Long> currSessionIdleTime = new ThreadLocal<>();
 
   // sessions does not contain MqttSessions..
   private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
@@ -141,6 +147,12 @@ public class SessionManager implements SessionManagerMBean {
 
   public boolean closeSession(IClientSession session, Consumer<Long> releaseByQueryId) {
     releaseSessionResource(session, releaseByQueryId);
+    MetricService.getInstance()
+        .remove(
+            MetricType.HISTOGRAM,
+            Metric.SESSION_IDLE_TIME.toString(),
+            Tag.NAME.toString(),
+            String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out
     //    // close the socket.
     //    // currently, we only focus on RPC service.
@@ -253,13 +265,32 @@ public class SessionManager implements SessionManagerMBean {
     return QueryResourceManager.getInstance().assignQueryId();
   }
 
-  /**
-   * this method can be only used in client-thread model.
-   *
-   * @return
-   */
+  /** this method can be only used in client-thread model. */
   public IClientSession getCurrSession() {
     return currSession.get();
+  }
+
+  /** get current session and update session idle time. */
+  public IClientSession getCurrSessionAndUpdateIdleTime() {
+    IClientSession clientSession = getCurrSession();
+    Long idleTime = currSessionIdleTime.get();
+    if (idleTime == null) {
+      currSessionIdleTime.set(System.nanoTime());
+    } else {
+      MetricService.getInstance()
+          .getOrCreateHistogram(
+              Metric.SESSION_IDLE_TIME.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              String.valueOf(clientSession.getId()))
+          .update(System.nanoTime() - idleTime);
+    }
+    return clientSession;
+  }
+
+  /** update connection idle time after execution. */
+  public void updateIdleTime() {
+    currSessionIdleTime.set(System.nanoTime());
   }
 
   public TimeZone getSessionTimeZone() {
@@ -277,20 +308,18 @@ public class SessionManager implements SessionManagerMBean {
    * service, calling this method has no side effect. <br>
    * MUST CALL THIS METHOD IN client-thread model services. Fortunately, we can just call this
    * method in thrift's event handler.
-   *
-   * @return
    */
   public void removeCurrSession() {
     IClientSession session = currSession.get();
     sessions.remove(session);
     currSession.remove();
+    currSessionIdleTime.remove();
   }
 
   /**
    * this method can be only used in client-thread model. Do not use this method in message-thread
    * model based service.
    *
-   * @param session
    * @return false if the session has been initialized.
    */
   public boolean registerSession(IClientSession session) {
@@ -299,17 +328,12 @@ public class SessionManager implements SessionManagerMBean {
       return false;
     }
     this.currSession.set(session);
+    this.currSessionIdleTime.set(System.nanoTime());
     sessions.put(session, placeHolder);
     return true;
   }
 
-  /**
-   * must be called after registerSession()) will mark the session login.
-   *
-   * @param username
-   * @param zoneId
-   * @param clientVersion
-   */
+  /** must be called after registerSession()) will mark the session login. */
   public void supplySession(
       IClientSession session,
       String username,
@@ -334,7 +358,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    return new SessionInfo(session.getId(), session.getUsername(), session.getZoneId().getId());
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId().getId(),
+        session.getClientVersion());
   }
 
   @Override
@@ -356,6 +384,8 @@ public class SessionManager implements SessionManagerMBean {
 
     private static final SessionManager INSTANCE = new SessionManager();
 
-    private SessionManagerHelper() {}
+    private SessionManagerHelper() {
+      // empty constructor
+    }
   }
 }

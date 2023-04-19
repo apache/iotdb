@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.conf;
 
 import java.io.File;
@@ -39,16 +40,6 @@ public class ConfigNodeConstant {
   public static final String UDF_FOLDER = "udf";
 
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-
-  /** These variables are only used for cluster gauge metrics */
-  public static final String METRIC_TAG_TOTAL = "total";
-
-  public static final String METRIC_STATUS_REGISTER = "Registered";
-  public static final String METRIC_STATUS_ONLINE = "Online";
-  public static final String METRIC_STATUS_UNKNOWN = "Unknown";
-
-  public static final String METRIC_CONFIG_NODE = "ConfigNode";
-  public static final String METRIC_DATA_NODE = "DataNode";
 
   public static final String REMOVE_CONFIGNODE_USAGE =
       "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";

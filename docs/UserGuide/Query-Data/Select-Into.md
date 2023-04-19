@@ -278,18 +278,18 @@ This statement specifies that `root.sg_copy.d1` is an unaligned device and `root
 ### Implement IoTDB internal ETL
 ETL the original data and write a new time series.
 ```shell
-IOTDB > SELECT preprocess_udf(*) INTO ::(preprocessed_${3}) FROM root.sg.*;
-+-------------------------------+---------------------------+--------+
-|                  source column|          target timeseries| written|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s1)| root.sg.d1.preprocessed_s1|    8000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s2)| root.sg.d1.preprocessed_s1|   10000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s1)| root.sg.d2.preprocessed_s1|   11000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s2)| root.sg.d2.preprocessed_s1|    9000|
-+-------------------------------+---------------------------+--------+
+IOTDB > SELECT preprocess_udf(s1, s2) INTO ::(preprocessed_s1, preprocessed_s2) FROM root.sg.* ALIGN BY DEIVCE;
++--------------+-------------------+---------------------------+--------+
+| source device|      source column|          target timeseries| written|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s1)| root.sg.d1.preprocessed_s1|    8000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s2)| root.sg.d1.preprocessed_s2|   10000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s1)| root.sg.d2.preprocessed_s1|   11000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s2)| root.sg.d2.preprocessed_s2|    9000|
++--------------+-------------------+---------------------------+--------+
 ```
 
 ### Query result storage

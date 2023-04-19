@@ -24,12 +24,14 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -131,5 +133,13 @@ public abstract class ExpressionVisitor<R, C> {
 
   public R visitNullOperand(NullOperand nullOperand, C context) {
     return visitLeafOperand(nullOperand, context);
+  }
+
+  public R visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
+    return visitExpression(caseWhenThenExpression, context);
+  }
+
+  public R visitWhenThenExpression(WhenThenExpression whenThenExpression, C context) {
+    return visitBinaryExpression(whenThenExpression, context);
   }
 }

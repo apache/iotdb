@@ -43,6 +43,7 @@ import static org.apache.iotdb.itbase.constant.TestConstant.maxValue;
 import static org.apache.iotdb.itbase.constant.TestConstant.minTime;
 import static org.apache.iotdb.itbase.constant.TestConstant.minValue;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
+import static org.apache.iotdb.itbase.constant.TestConstant.timeDuration;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -167,14 +168,15 @@ public class IoTDBAggregationOptimizeIT {
           lastValue("root.test.1region_d1.s1"),
           maxTime("root.test.1region_d1.s1"),
           minTime("root.test.1region_d1.s1"),
-          count("root.test.2region_d1.s1")
+          count("root.test.2region_d1.s1"),
+          timeDuration("root.test.2region_d1.s1")
         };
-    String[] retArray = new String[] {"2,3.0,1.5,2,2,1,1,2,2,1,2,"};
+    String[] retArray = new String[] {"2,3.0,1.5,2,2,1,1,2,2,1,2,999999999999,"};
     resultSetEqualWithDescOrderTest(
         "select count(1region_d1.s1),sum(1region_d1.s1),avg(1region_d1.s1),"
             + "extreme(1region_d1.s1),max_value(1region_d1.s1),min_value(1region_d1.s1),"
             + "first_value(1region_d1.s1),last_value(1region_d1.s1),max_time(1region_d1.s1),"
-            + "min_time(1region_d1.s1),count(2region_d1.s1) from root.test",
+            + "min_time(1region_d1.s1),count(2region_d1.s1),time_duration(2region_d1.s1) from root.test",
         expectedHeader,
         retArray);
   }

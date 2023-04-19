@@ -65,12 +65,11 @@ public class LocalExecutionPlanner {
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
 
-    context.addPipelineDriverFactory(root, context.getDriverContext());
+    context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
-    List<PartialPath> sourcePaths = collectSourcePaths(context);
-    instanceContext.initQueryDataSource(sourcePaths);
+    instanceContext.setSourcePaths(collectSourcePaths(context));
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
@@ -89,7 +88,7 @@ public class LocalExecutionPlanner {
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    context.addPipelineDriverFactory(root, context.getDriverContext());
+    context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
@@ -97,12 +96,13 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()) {
-      return;
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()
+        && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      return 0;
     }
 
     long estimatedMemorySize = root.calculateMaxPeekMemory();
@@ -142,6 +142,7 @@ public class LocalExecutionPlanner {
             }
           }
         });
+    return estimatedMemorySize;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {

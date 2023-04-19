@@ -60,7 +60,7 @@ public abstract class AbstractSchemaIT {
         break;
       case SchemaFile:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-        allocateMemoryForSchemaRegion(3600);
+        allocateMemoryForSchemaRegion(4000);
         break;
     }
   }

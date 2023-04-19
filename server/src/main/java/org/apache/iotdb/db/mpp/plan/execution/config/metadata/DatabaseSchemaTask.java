@@ -49,32 +49,29 @@ public class DatabaseSchemaTask implements IConfigTask {
   }
 
   /** Construct DatabaseSchema according to statement */
-  public static TDatabaseSchema constructStorageGroupSchema(
+  public static TDatabaseSchema constructDatabaseSchema(
       DatabaseSchemaStatement databaseSchemaStatement) {
-    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
-    storageGroupSchema.setName(databaseSchemaStatement.getStorageGroupPath().getFullPath());
+    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    databaseSchema.setName(databaseSchemaStatement.getDatabasePath().getFullPath());
     if (databaseSchemaStatement.getTTL() != null) {
-      storageGroupSchema.setTTL(databaseSchemaStatement.getTTL());
+      databaseSchema.setTTL(databaseSchemaStatement.getTTL());
     }
     if (databaseSchemaStatement.getSchemaReplicationFactor() != null) {
-      storageGroupSchema.setSchemaReplicationFactor(
+      databaseSchema.setSchemaReplicationFactor(
           databaseSchemaStatement.getSchemaReplicationFactor());
     }
     if (databaseSchemaStatement.getDataReplicationFactor() != null) {
-      storageGroupSchema.setDataReplicationFactor(
-          databaseSchemaStatement.getDataReplicationFactor());
+      databaseSchema.setDataReplicationFactor(databaseSchemaStatement.getDataReplicationFactor());
     }
     if (databaseSchemaStatement.getTimePartitionInterval() != null) {
-      storageGroupSchema.setTimePartitionInterval(
-          databaseSchemaStatement.getTimePartitionInterval());
+      databaseSchema.setTimePartitionInterval(databaseSchemaStatement.getTimePartitionInterval());
     }
     if (databaseSchemaStatement.getSchemaRegionGroupNum() != null) {
-      storageGroupSchema.setMinSchemaRegionGroupNum(
-          databaseSchemaStatement.getSchemaRegionGroupNum());
+      databaseSchema.setMinSchemaRegionGroupNum(databaseSchemaStatement.getSchemaRegionGroupNum());
     }
     if (databaseSchemaStatement.getDataRegionGroupNum() != null) {
-      storageGroupSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
+      databaseSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
     }
-    return storageGroupSchema;
+    return databaseSchema;
   }
 }

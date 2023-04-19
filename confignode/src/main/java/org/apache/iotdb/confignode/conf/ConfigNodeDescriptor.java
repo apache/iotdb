@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBa
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.NodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,7 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+            .updateRpcInstance(conf.getClusterName(), NodeType.CONFIGNODE);
       }
     } else {
       LOGGER.warn(
@@ -249,11 +250,11 @@ public class ConfigNodeDescriptor {
                 "default_data_region_group_num_per_database",
                 String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
-    conf.setDataRegionPerProcessor(
+    conf.setDataRegionPerDataNode(
         Double.parseDouble(
             properties
                 .getProperty(
-                    "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
+                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
                 .trim()));
 
     try {
@@ -328,6 +329,8 @@ public class ConfigNodeDescriptor {
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
 
     conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
+
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
 
     conf.setTimePartitionInterval(
         Long.parseLong(

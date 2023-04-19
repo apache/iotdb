@@ -73,16 +73,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    cnConfig.setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
-    dnConfig.setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
-    cnConfig.setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
-    dnConfig.setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+    cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
+    dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     return this;
   }
 
@@ -348,6 +341,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     dnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
     cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    dnConfig.setWriteMemoryProportion(writeMemoryProportion);
+    cnConfig.setWriteMemoryProportion(writeMemoryProportion);
     return this;
   }
 }

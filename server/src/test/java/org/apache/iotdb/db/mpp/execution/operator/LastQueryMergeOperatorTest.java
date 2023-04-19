@@ -33,12 +33,12 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 
@@ -63,7 +63,7 @@ public class LastQueryMergeOperatorTest {
   }
 
   @Test
-  public void testLastQueryMergeOperatorDesc() {
+  public void testLastQueryMergeOperatorDesc() throws Exception {
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -104,7 +104,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = timeArray[index].length - 1; i >= 0; i--) {
               LastQueryUtil.appendLastValue(
@@ -119,12 +119,12 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index >= 0;
           }
 
           @Override
-          public boolean isFinished() {
+          public boolean isFinished() throws Exception {
             return !hasNext();
           }
 
@@ -168,7 +168,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = timeArray[index].length - 1; i >= 0; i--) {
               LastQueryUtil.appendLastValue(
@@ -183,12 +183,12 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index >= 0;
           }
 
           @Override
-          public boolean isFinished() {
+          public boolean isFinished() throws Exception {
             return !hasNext();
           }
 
@@ -211,7 +211,12 @@ public class LastQueryMergeOperatorTest {
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
             driverContext.getOperatorContexts().get(0),
-            ImmutableList.of(operator1, operator2),
+            new ArrayList<Operator>() {
+              {
+                add(operator1);
+                add(operator2);
+              }
+            },
             Comparator.reverseOrder());
 
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
@@ -241,7 +246,9 @@ public class LastQueryMergeOperatorTest {
     int count = timeArray.length - 1;
     while (!lastQueryMergeOperator.isFinished()) {
       assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-      TsBlock result = lastQueryMergeOperator.next();
+      TsBlock result = null;
+      result = lastQueryMergeOperator.next();
+
       if (result == null) {
         continue;
       }
@@ -255,11 +262,12 @@ public class LastQueryMergeOperatorTest {
         count--;
       }
     }
+
     assertEquals(-1, count);
   }
 
   @Test
-  public void testLastQueryMergeOperatorAsc() {
+  public void testLastQueryMergeOperatorAsc() throws Exception {
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -300,7 +308,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               LastQueryUtil.appendLastValue(
@@ -315,12 +323,13 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index < 2;
           }
 
           @Override
-          public boolean isFinished() {
+          public boolean isFinished() throws Exception {
+
             return !hasNext();
           }
 
@@ -364,7 +373,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public TsBlock next() {
+          public TsBlock next() throws Exception {
             TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
             for (int i = 0, size = timeArray[index].length; i < size; i++) {
               LastQueryUtil.appendLastValue(
@@ -379,12 +388,13 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public boolean hasNext() {
+          public boolean hasNext() throws Exception {
             return index < 2;
           }
 
           @Override
-          public boolean isFinished() {
+          public boolean isFinished() throws Exception {
+
             return !hasNext();
           }
 
@@ -407,7 +417,12 @@ public class LastQueryMergeOperatorTest {
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
             driverContext.getOperatorContexts().get(0),
-            ImmutableList.of(operator1, operator2),
+            new ArrayList<Operator>() {
+              {
+                add(operator1);
+                add(operator2);
+              }
+            },
             Comparator.naturalOrder());
 
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
@@ -437,7 +452,8 @@ public class LastQueryMergeOperatorTest {
     int count = 0;
     while (!lastQueryMergeOperator.isFinished()) {
       assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-      TsBlock result = lastQueryMergeOperator.next();
+      TsBlock result = null;
+      result = lastQueryMergeOperator.next();
       if (result == null) {
         continue;
       }

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.LongSupplier;
 
 public class SyncStatusTest {
 
@@ -46,6 +47,7 @@ public class SyncStatusTest {
       new Peer(new DataRegionId(1), 2, new TEndPoint("127.0.0.1", 6667));
   private static final IoTConsensusConfig config = new IoTConsensusConfig.Builder().build();
   private static final long CHECK_POINT_GAP = 500;
+  private static final LongSupplier supplier = () -> -1L;
 
   @Before
   public void setUp() throws IOException {
@@ -64,7 +66,7 @@ public class SyncStatusTest {
         new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
-    SyncStatus status = new SyncStatus(controller, config);
+    SyncStatus status = new SyncStatus(controller, config, supplier);
     List<Batch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatchesNum(); i++) {
@@ -96,7 +98,7 @@ public class SyncStatusTest {
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    SyncStatus status = new SyncStatus(controller, config);
+    SyncStatus status = new SyncStatus(controller, config, supplier);
     List<Batch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatchesNum(); i++) {
@@ -134,7 +136,7 @@ public class SyncStatusTest {
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    SyncStatus status = new SyncStatus(controller, config);
+    SyncStatus status = new SyncStatus(controller, config, supplier);
     List<Batch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatchesNum(); i++) {
@@ -184,7 +186,7 @@ public class SyncStatusTest {
         new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
-    SyncStatus status = new SyncStatus(controller, config);
+    SyncStatus status = new SyncStatus(controller, config, supplier);
     List<Batch> batchList = new ArrayList<>();
 
     for (long i = 0; i < config.getReplication().getMaxPendingBatchesNum(); i++) {

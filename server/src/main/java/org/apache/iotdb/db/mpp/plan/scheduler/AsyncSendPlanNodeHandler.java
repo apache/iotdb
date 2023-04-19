@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -25,26 +26,36 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNodeResp> {
   private final int instanceId;
-  private final CountDownLatch countDownLatch;
+  private final AtomicLong pendingNumber;
   private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+  private final long sendTime;
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   public AsyncSendPlanNodeHandler(
       int instanceId,
-      CountDownLatch countDownLatch,
-      Map<Integer, TSendPlanNodeResp> instanceId2RespMap) {
+      AtomicLong pendingNumber,
+      Map<Integer, TSendPlanNodeResp> instanceId2RespMap,
+      long sendTime) {
     this.instanceId = instanceId;
-    this.countDownLatch = countDownLatch;
+    this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
+    this.sendTime = sendTime;
   }
 
   @Override
   public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
     instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
-    countDownLatch.countDown();
+    if (pendingNumber.decrementAndGet() == 0) {
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
+      synchronized (pendingNumber) {
+        pendingNumber.notifyAll();
+      }
+    }
   }
 
   @Override
@@ -56,6 +67,11 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
     resp.setStatus(
         RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg));
     instanceId2RespMap.put(instanceId, resp);
-    countDownLatch.countDown();
+    if (pendingNumber.decrementAndGet() == 0) {
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
+      synchronized (pendingNumber) {
+        pendingNumber.notifyAll();
+      }
+    }
   }
 }

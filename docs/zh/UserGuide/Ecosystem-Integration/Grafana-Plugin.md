@@ -19,11 +19,11 @@
 
 -->
 
-# 系统集成
+## 系统集成
 
 
 
-## Grafana 插件
+### Grafana 插件
 
 Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。
 
@@ -31,20 +31,20 @@ Grafana 是开源的指标量监测和可视化工具，可用于展示时序数
 
 
 
-### 部署 Grafana 插件
+#### 部署 Grafana 插件
 
-#### 安装 Grafana 
+##### 安装 Grafana 
 
 * Grafana 组件下载地址：https://grafana.com/grafana/download
-* 版本 >= 7.0.0
+* 版本 >= 9.3.0
 
-#### grafana-plugin 获取
+##### grafana-plugin 获取
 
-##### 方案一 grafana-plugin 下载
+###### 方案一 grafana-plugin 下载
 
 二进制文件下载地址：https://iotdb.apache.org/zh/Download/
 
-##### 方案二 grafana-plugin 单独编译
+###### 方案二 grafana-plugin 单独编译
 
 我们需要编译 IoTDB 仓库 `grafana-plugin` 目录下的前端工程并生成 `dist` 目标目录，具体执行流程如下。
 
@@ -83,9 +83,9 @@ go get: module github.com/grafana/grafana-plugin-sdk-go: Get "https://proxy.gola
 
 如果编译成功，我们将看到生成的目标文件夹 `dist`，它包含了编译好的 Grafana 前端插件：
 
-<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana-plugin-build.png?raw=true">
+<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/grafana-plugin-build.png?raw=true">
 
-##### 方案三 IoTDB 的分发包完整编译
+###### 方案三 IoTDB 的分发包完整编译
 
 我们也可以通过执行 IoTDB 项目的**打包指令**获取 `grafana-plugin ` 的前端工程和其他配套的 IoTDB 可执行文件。
 
@@ -108,11 +108,11 @@ git clone https://github.com/apache/iotdb.git
 
 如果编译成功，我们将看到 `distribution/target` 路径下包含了编译好的 Grafana 前端插件：
 
-<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/distribution.png?raw=true">
+<img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/distribution.png?raw=true">
 
 
 
-#### grafana-plugin 插件安装
+##### grafana-plugin 插件安装
 
 * 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`。如果没有此目录可以手动建或者启动grafana会自动建立，当然也可以修改plugins的位置,具体请查看下面的修改Grafana 的插件目录位置说明。
 
@@ -131,7 +131,7 @@ git clone https://github.com/apache/iotdb.git
 更多详情，请点 [这里](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 
-#### 启动 Grafana
+##### 启动 Grafana
 
 进入 Grafana 的安装目录，使用以下命令启动 Grafana：
 * Windows 系统：
@@ -153,7 +153,7 @@ brew services start grafana
 
 
 
-#### 配置 IoTDB REST 服务
+##### 配置 IoTDB REST 服务
 
 进入 `{iotdb 目录}/conf`，打开 `iotdb-common.properties` 文件，并作如下修改：
 
@@ -169,9 +169,9 @@ rest_service_port=18080
 
 
 
-### 使用 Grafana 插件
+#### 使用 Grafana 插件
 
-#### 访问 Grafana dashboard
+##### 访问 Grafana dashboard
 
 Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打开浏览器，访问 `http://<ip>:<port>`。
 
@@ -183,13 +183,13 @@ Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打�
 
 
 
-#### 添加 IoTDB 数据源
+##### 添加 IoTDB 数据源
 
 点击左侧的 `设置` 图标，选择 `Data Source` 选项，然后再点击 `Add data source`。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_1.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/datasource_1.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_2.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/datasource_2.png?raw=true">
 
 选择 `Apache IoTDB` 数据源，`URL` 一栏填写  `http://<ip>:<port>`。
 
@@ -197,31 +197,31 @@ Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运�
 
 输入 IoTDB 服务器的 username 和 password，点击 `Save & Test`，出现 `Success` 则提示配置成功。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_3.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/datasource_3.png?raw=true">
 
 
 
-#### 创建一个新的 Panel
+##### 创建一个新的 Panel
 
 点击左侧的 `Dashboards` 图标，选择 `Manage`，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/manage.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/manage.png?raw=true">
 
 点击右上方的 `New Dashboard`  图标，选择 `Add an empty panel`，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/add-empty-panel.png?raw=true">
 
 Grafana Plugin 支持SQL: Full Customized和SQL: Drop-down List 两种方式，默认是SQL: Full Customized方式。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/grafana_input_style.png?raw=true">
 
-##### SQL: Full Customized 输入方式
+###### SQL: Full Customized 输入方式
 
 在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE 和 CONTROL 输入框为非必填。
 
 如果一个查询涉及多个表达式，我们可以点击 SELECT 输入框右侧的 `+` 来添加 SELECT 子句中的表达式，也可以点击 FROM 输入框右侧的 `+` 来添加路径前缀，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/grafana_input.png?raw=true">
 
 SELECT 输入框中的内容可以是时间序列的后缀，可以是函数或自定义函数，可以是算数表达式，也可以是它们的嵌套表达式。您还可以使用 as 子句来重命名需要显示的结果序列名字。
 
@@ -251,43 +251,43 @@ CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类
 
 提示：为了避免OOM问题，不推荐使用select * from root.xx.** 这种语句在Grafana plugin中使用。
 
-##### SQL: Drop-down List 输入方式
+###### SQL: Drop-down List 输入方式
 在 TIME-SERIES 选择框中选择一条时间序列、FUNCTION 选择一个函数、SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL 输入框中输入内容，其中 TIME-SERIESL 为必填项其余为非必填项。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input2.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/grafana_input2.png?raw=true">
 
-#### 变量与模板功能的支持
+##### 变量与模板功能的支持
 
 SQL: Full Customized和SQL: Drop-down List两种输入方式都支持 Grafana 的变量与模板功能，下面示例中使用SQL: Full Customized输入方式，SQL: Drop-down List与之类似。
 
 创建一个新的 Panel 后，点击右上角的设置按钮，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/setconf.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/setconf.png?raw=true">
 
 选择 `Variables`，点击 `Add variable` ，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/addvaribles.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/addvaribles.png?raw=true">
 
 示例一：输入 `Name`，`Label`，选择Type的`Query`、在Query 中输入show child paths xx ， 点击 `Update` 按钮，如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variblesinput.png?raw=true">
 
 应用 Variables，在 `grafana  panel` 中输入变量点击 `save` 按钮，如下图所示
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/applyvariables.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/applyvariables.png?raw=true">
 
 示例二：变量嵌套使用，如下图所示
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variblesinput2.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2-1.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variblesinput2-1.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput2-2.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variblesinput2-2.png?raw=true">
 
 
 示例三：函数变量使用，如下图所示
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variablesinput3.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variablesinput3.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variablesinput3-1.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/variablesinput3-1.png?raw=true">
 
 上图中Name 是变量名称也是将来我们在panel中使用的变量名称，Label是变量的展示名称如果为空就显示Name的变量反之则显示Label的名称，
 Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、Ad hoc filters等这些都可以在IoTDB的Grafana Plugin 中使用
@@ -304,63 +304,57 @@ Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、A
 
 * 提示：如果查询的字段中有布尔类型的数据，会将true转化成1，false转化成0结果值进行显示。
 
-#### 告警功能
-本插件支持 Grafana alert功能。
+##### 告警功能
+本插件支持 Grafana alert功能。在Grafana 9告警界面一共有6个Tab，分别是Alert rules、Contact points、Notification policies、Silences、Alert groups、Admin
 
-1、在 Grafana 侧栏中，将光标悬停在`Alerting`图标上，然后单击`Notification channels`。
+* `Alert rules` 告警规则列表，用于展示和配置告警规则
+* `Contact points` 为通知渠道，包括DingDing、Email、Slack、WebHook、Prometheus Alertmanager等
+* `Notification policies` 配置告警发送到哪个通道的路由，以及发送通知的时间和重复频率，静默配置
+* `Silences` 为配置告警静默时间段
+* `Alert groups` 告警组，配置的告警触发后会在这里显示
+* `Admin` 提供通过JSON方式修改告警配置
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting1.png?raw=true">
+1. 在Grafana panel中，点击alerting按钮，如下图所示：
 
-2、单击添加频道。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert1.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting2.png?raw=true">
+2. 点击`Create alert rule from this panel`，如下图所示：
 
-3、填写下面描述的字段或选择选项，Type有好多种类型包括DingDing、Email、Slack、WebHook、Prometheus Alertmanager等。
-本次示例Type使用`Prometheus Alertmanager`，需要提前安装好Prometheus Alertmanager，更多详细的配置及参数介绍请参考官方文档：https://grafana.com/docs/grafana/v8.0/alerting/old-alerting/notifications/。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert2.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting3.png?raw=true">
+3. 在第1步中设置查询和警报条件，Conditions 表示查询条件，可以配置多个组合查询条件。如下图所示：
 
-4、点击`Test`按钮，出现`Test notification sent`点击`Save`按钮保存
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.jpg?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting4.png?raw=true">
-
-5、创建一个新的 Panel 后，输入查询参数后点击保存然后选择`Alert`点击`Create Alert`，如下图所示：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle1.png?raw=true">
-
-6、填写下面描述的字段或选择选项， 其中`Name`是规则名称，`Evaluate every` 指定调度程序评估警报规则的频率，称为评估间隔，
-`FOR` 指定在触发警报通知之前查询需要在多长时间内违反配置的阈值。`Conditions` 表示查询条件，可以配置多个组合查询条件。
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle2.jpg?raw=true">
-
-图中的查询条件：avg() OF query(A,5m,now) IS ABOVE -1
-
-avg()控制如何将每个系列的值减少到可以与阈值进行比较的值。单击该函数可将其更改为另一个聚合函数。
-query(A, 15m, now)，表示从A选项卡执行查询，后两个参数定义时间范围15m，now 表示从15分钟前到现在。
-IS ABOVE -1 定义阈值的类型和阈值。IS ABOVE表示在-1之上，可以单击IS ABOVE更改阈值类型。
+图中的查询条件：min() OF A IS BELOW 0，表示将A选项卡中的最小值在0一下就会触发条件，单击该函数可将其更改为另一个函数。
 
 提示:警报规则中使用的查询不能包含任何模板变量。目前我们只支持条件之间的AND和OR运算符，它们是串行执行的。
-例如，我们按以下顺序有 3 个条件： 条件：A（计算为：TRUE）或条件：B（计算为：FALSE）和条件：C（计算为：TRUE） 所以结果将计算为（（对或错）和对）=对。
-更多详细的告警规则可以查看官方文档:https://grafana.com/docs/grafana/latest/alerting/old-alerting/create-alerts/
+例如，我们按以下顺序有 3 个条件： 条件：B（计算为：TRUE）或条件：C（计算为：FALSE）和条件：D（计算为：TRUE） 所以结果将计算为（（对或错）和对）=对。
 
+4. 选择完指标及告警规则后点击`Preview`按钮，进行数据预览如下图所示：
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert4.png?raw=true">
 
-7、点击`Test rule` 按钮出现`firing: true`则配置成功，点击`save` 按钮
+5. 在第 2 步中，指定警报评估间隔，对于`Evaluate every`，指定评估频率。必须是 10 秒的倍数。例如，1m，30s。 
+对于`Evaluate for`，指定在警报触发之前的持续时间。如下图所示：
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert5.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel3.png?raw=true">
+6. 在第 3 步中，添加存储位置、规则组以及与规则关联的其他元数据。 其中`Rule name`指定规则的名称。规则名称必须是唯一的。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert6.png?raw=true">
 
-8、下图为grafana panel 中显示告警
+7. 在第 4 步中，添加自定义标签。 从下拉列表中选择现有键值对添加自定义标签，或通过输入新键或值来添加新标签。如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel4.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert7.png?raw=true">
 
-9、查看告警规则
+8. 单击保存以保存规则或单击保存并退出以保存规则并返回到警报页面。
+9. 告警状态常用的有`Normal`、`Pending`、`Firing`等状态，如下图所示：
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert8.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert9.png?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertPanel5.png?raw=true">
+10. 我们也可以为告警配置`Contact points`用来接收告警通知，更加详细操作可以参考官方文档(https://grafana.com/docs/grafana/latest/alerting/manage-notifications/create-contact-point/)。
 
-10、在promehthus alertmanager 中查看告警记录
+想了解alert更多详细的操作可以查看官方文档https://grafana.com/docs/grafana/latest/alerting/
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel6.png?raw=true">
-
-### 更多
+#### 更多
 
 更多关于 Grafana 操作详情可参看 Grafana 官方文档：http://docs.grafana.org/guides/getting_started/。
 

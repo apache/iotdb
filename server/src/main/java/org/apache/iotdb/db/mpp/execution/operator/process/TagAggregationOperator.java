@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 
 import java.util.ArrayList;
@@ -37,25 +36,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+public class TagAggregationOperator extends AbstractConsumeAllOperator {
 
-public class TagAggregationOperator implements ProcessOperator {
-
-  private final OperatorContext operatorContext;
   private final List<List<String>> groups;
   private final List<List<Aggregator>> groupedAggregators;
-  private final List<Operator> children;
-  private final TsBlock[] inputTsBlocks;
-
-  // Indicate whether a child operator's next() can be called
-  private final boolean[] canCallNext;
 
   // These fields record the to be consumed index of each tsBlock.
   private final int[] consumedIndices;
   private final TsBlockBuilder tsBlockBuilder;
   private final long maxRetainedSize;
   private final long childrenRetainedSize;
-  private final long maxReturnSize;
 
   public TagAggregationOperator(
       OperatorContext operatorContext,
@@ -63,10 +53,9 @@ public class TagAggregationOperator implements ProcessOperator {
       List<List<Aggregator>> groupedAggregators,
       List<Operator> children,
       long maxReturnSize) {
-    this.operatorContext = Validate.notNull(operatorContext);
+    super(operatorContext, children);
     this.groups = Validate.notNull(groups);
     this.groupedAggregators = Validate.notNull(groupedAggregators);
-    this.children = Validate.notNull(children);
     List<TSDataType> actualOutputColumnTypes = new ArrayList<>();
     for (String ignored : groups.get(0)) {
       actualOutputColumnTypes.add(TSDataType.TEXT);
@@ -83,9 +72,6 @@ public class TagAggregationOperator implements ProcessOperator {
       }
     }
     this.tsBlockBuilder = new TsBlockBuilder(actualOutputColumnTypes);
-    // Initialize input tsblocks for each aggregator group.
-    this.inputTsBlocks = new TsBlock[children.size()];
-    this.canCallNext = new boolean[children.size()];
     Arrays.fill(canCallNext, false);
     this.consumedIndices = new int[children.size()];
     this.maxRetainedSize = children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
@@ -95,18 +81,14 @@ public class TagAggregationOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
-    boolean successful = true;
-    while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull() && successful) {
-      successful = processOneRow();
+    while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull()) {
+      if (!prepareInput()) {
+        break;
+      }
+      processOneRow();
     }
     TsBlock tsBlock = null;
     if (tsBlockBuilder.getPositionCount() > 0) {
@@ -116,27 +98,7 @@ public class TagAggregationOperator implements ProcessOperator {
     return tsBlock;
   }
 
-  private boolean processOneRow() {
-    for (int i = 0; i < children.size(); i++) {
-      if (!dataUnavailable(i)) {
-        continue;
-      }
-
-      if (!canCallNext[i] || !children.get(i).hasNextWithTimer()) {
-        return false;
-      }
-
-      // If the data is unavailable first, try to find next tsblock of the child.
-      inputTsBlocks[i] = children.get(i).nextWithTimer();
-      consumedIndices[i] = 0;
-      canCallNext[i] = false;
-
-      // If it's still unavailable, then blocked by children i.
-      if (dataUnavailable(i)) {
-        return false;
-      }
-    }
-
+  private void processOneRow() {
     TsBlock[] rowBlocks = new TsBlock[children.size()];
     for (int i = 0; i < children.size(); i++) {
       rowBlocks[i] = inputTsBlocks[i].getRegion(consumedIndices[i], 1);
@@ -180,39 +142,16 @@ public class TagAggregationOperator implements ProcessOperator {
     for (int i = 0; i < children.size(); i++) {
       consumedIndices[i]++;
     }
-    return true;
   }
 
   @Override
-  public boolean hasNext() {
-    for (int i = 0; i < children.size(); i++) {
-      if (dataUnavailable(i) && !children.get(i).hasNextWithTimer()) {
-        return false;
-      }
-    }
-    return true;
+  public boolean hasNext() throws Exception {
+    return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
-    for (int i = 0, size = children.size(); i < size; i++) {
-      ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (blocked.isDone()) {
-        canCallNext[i] = true;
-      } else {
-        if (dataUnavailable(i)) {
-          listenableFutures.add(blocked);
-          canCallNext[i] = true;
-        }
-      }
-    }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
   @Override
@@ -231,14 +170,14 @@ public class TagAggregationOperator implements ProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
-  }
-
-  private boolean dataUnavailable(int index) {
+  protected boolean isEmpty(int index) {
     return inputTsBlocks[index] == null
         || consumedIndices[index] == inputTsBlocks[index].getPositionCount();
+  }
+
+  @Override
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
+    consumedIndices[childIndex] = 0;
+    return children.get(childIndex).nextWithTimer();
   }
 }

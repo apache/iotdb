@@ -143,7 +143,6 @@ public class MetricConfigDescriptor {
                 "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
-
     loadConfig.setInternalReportType(
         InternalReporterType.valueOf(
             properties.getProperty(

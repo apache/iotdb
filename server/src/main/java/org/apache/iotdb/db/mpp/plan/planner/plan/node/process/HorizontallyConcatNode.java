@@ -88,7 +88,7 @@ public class HorizontallyConcatNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return "VerticallyConcatNode-" + this.getPlanNodeId();
+    return "HorizontallyConcatNode-" + this.getPlanNodeId();
   }
 
   @Override

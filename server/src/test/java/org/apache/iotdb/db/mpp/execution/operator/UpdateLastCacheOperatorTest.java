@@ -36,6 +36,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOp
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -111,7 +113,7 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -141,7 +143,7 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -171,7 +173,7 @@ public class UpdateLastCacheOperatorTest {
       assertFalse(updateLastCacheOperator.hasNext());
       assertTrue(updateLastCacheOperator.isFinished());
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -207,16 +209,18 @@ public class UpdateLastCacheOperatorTest {
               operatorContext.setMaxRunTime(TEST_TIME_SLICE);
             });
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             planNodeId1,
             measurementPath,
-            allSensors,
+            ascending ? Ordering.ASC : Ordering.DESC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
-            timeFilter,
-            ascending,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(

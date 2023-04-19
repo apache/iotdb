@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -72,7 +73,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -162,7 +164,10 @@ public enum PlanNodeType {
   MERGE_SORT((short) 66),
   SHOW_QUERIES((short) 67),
   INTERNAL_BATCH_ACTIVATE_TEMPLATE((short) 68),
-  INTERNAL_CREATE_MULTI_TIMESERIES((short) 69);
+  INTERNAL_CREATE_MULTI_TIMESERIES((short) 69),
+  IDENTITY_SINK((short) 70),
+  SHUFFLE_SINK((short) 71),
+  BATCH_ACTIVATE_TEMPLATE((short) 72);
 
   public static final int BYTES = Short.BYTES;
 
@@ -233,8 +238,6 @@ public enum PlanNodeType {
         return SortNode.deserialize(buffer);
       case 9:
         return TimeJoinNode.deserialize(buffer);
-      case 10:
-        return FragmentSinkNode.deserialize(buffer);
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
@@ -351,6 +354,12 @@ public enum PlanNodeType {
         return InternalBatchActivateTemplateNode.deserialize(buffer);
       case 69:
         return InternalCreateMultiTimeSeriesNode.deserialize(buffer);
+      case 70:
+        return IdentitySinkNode.deserialize(buffer);
+      case 71:
+        return ShuffleSinkNode.deserialize(buffer);
+      case 72:
+        return BatchActivateTemplateNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

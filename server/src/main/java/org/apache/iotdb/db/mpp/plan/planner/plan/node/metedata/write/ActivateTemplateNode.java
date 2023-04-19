@@ -45,7 +45,7 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   private int templateSetLevel;
   private int templateId;
 
-  private boolean isAligned;
+  private transient boolean isAligned;
 
   private TRegionReplicaSet regionReplicaSet;
 

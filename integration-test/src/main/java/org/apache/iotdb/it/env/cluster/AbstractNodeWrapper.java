@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -217,6 +218,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       MppBaseConfig outputNodeConfig = nodeConfig.emptyClone();
 
       // 2. Override by values which are hardcoded in mutable properties fields.
+      reloadMutableFields();
       outputCommonConfig.updateProperties(mutableCommonProperties);
       outputNodeConfig.updateProperties(mutableNodeProperties);
 
@@ -424,7 +426,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return testClassName + "_" + testMethodName;
   }
 
-  /* Abstract methods, which must be implemented in ConfigNode and Datanode. */
+  /* Abstract methods, which must be implemented in ConfigNode and DataNode. */
+  protected abstract void reloadMutableFields();
+
   protected abstract void renameFile();
 
   protected abstract String getTargetNodeConfigPath();

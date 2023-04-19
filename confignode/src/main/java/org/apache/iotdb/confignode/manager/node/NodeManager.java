@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -26,18 +27,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -53,15 +48,15 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -77,7 +72,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -85,22 +79,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
@@ -115,24 +102,10 @@ public class NodeManager {
 
   private final ReentrantLock removeConfigNodeLock;
 
-  /** Heartbeat executor service */
-  // Monitor for leadership change
-  private final Object scheduleMonitor = new Object();
-  // Map<NodeId, INodeCache>
-  private final Map<Integer, BaseNodeCache> nodeCacheMap;
-  private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
-  private Future<?> currentHeartbeatFuture;
-  private final ScheduledExecutorService heartBeatExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
-
-  private final Random random;
-
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
-    this.nodeCacheMap = new ConcurrentHashMap<>();
-    this.random = new Random(System.currentTimeMillis());
   }
 
   /**
@@ -229,6 +202,8 @@ public class NodeManager {
   }
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
+    getPipeManager().getPipePluginCoordinator().lock();
+    getPipeManager().getPipeTaskCoordinator().lock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
 
@@ -239,12 +214,16 @@ public class NodeManager {
           getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
       runtimeConfiguration.setAllUDFInformation(
           getUDFManager().getUDFTable().getAllUDFInformation());
+      runtimeConfiguration.setAllPipeInformation(
+          getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
           DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
       getUDFManager().getUdfInfo().releaseUDFTableLock();
+      getPipeManager().getPipeTaskCoordinator().unlock();
+      getPipeManager().getPipePluginCoordinator().unlock();
     }
   }
 
@@ -256,14 +235,15 @@ public class NodeManager {
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+    int dataNodeId = nodeInfo.generateNextNodeId();
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
     // Register new DataNode
-    registerDataNodePlan
-        .getDataNodeConfiguration()
-        .getLocation()
-        .setDataNodeId(nodeInfo.generateNextNodeId());
+    registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
     getConsensusManager().write(registerDataNodePlan);
+
+    // Bind DataNode metrics
+    PartitionMetrics.bindDataNodePartitionMetrics(configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();
@@ -276,8 +256,16 @@ public class NodeManager {
     return resp;
   }
 
-  public TDataNodeRestartResp restartDataNode(TDataNodeLocation dataNodeLocation) {
-    // TODO: @Itami-Sho update peer if necessary
+  public TDataNodeRestartResp updateDataNodeIfNecessary(
+      TDataNodeConfiguration dataNodeConfiguration) {
+    TDataNodeConfiguration recordConfiguration =
+        getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
+    if (!recordConfiguration.equals(dataNodeConfiguration)) {
+      // Update DataNodeConfiguration when modified during restart
+      UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      getConsensusManager().write(updateDataNodePlan);
+    }
+
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setConfigNodeList(getRegisteredConfigNodes());
@@ -335,48 +323,6 @@ public class NodeManager {
     return dataSet;
   }
 
-  /**
-   * Update the specified DataNode‘s location
-   *
-   * @param updateDataNodePlan UpdateDataNodePlan
-   * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
-   *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
-   *     failed.
-   */
-  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
-    LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
-
-    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
-    TSStatus status;
-    // check if node is already exist
-    boolean found = false;
-    List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
-    for (TDataNodeConfiguration configuration : configurationList) {
-      if (configuration.getLocation().getDataNodeId()
-          == updateDataNodePlan.getDataNodeLocation().getDataNodeId()) {
-        found = true;
-        break;
-      }
-    }
-    if (found) {
-      getConsensusManager().write(updateDataNodePlan);
-      status =
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              .setMessage("updateDataNode(nodeId=%d) success.");
-    } else {
-      status =
-          new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
-              .setMessage(
-                  String.format(
-                      "The specified DataNode(nodeId=%d) doesn't exist",
-                      updateDataNodePlan.getDataNodeLocation().getDataNodeId()));
-    }
-    dataSet.setStatus(status);
-    dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
-    dataSet.setConfigNodeList(getRegisteredConfigNodes());
-    return dataSet;
-  }
-
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     int nodeId = nodeInfo.generateNextNodeId();
     req.getConfigNodeLocation().setConfigNodeId(nodeId);
@@ -409,15 +355,6 @@ public class NodeManager {
    */
   public int getRegisteredDataNodeCount() {
     return nodeInfo.getRegisteredDataNodeCount();
-  }
-
-  /**
-   * Only leader use this interface
-   *
-   * @return The number of total cpu cores in online DataNodes
-   */
-  public int getTotalCpuCoreCount() {
-    return nodeInfo.getTotalCpuCoreCount();
   }
 
   /**
@@ -463,7 +400,7 @@ public class NodeManager {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
-            dataNodeInfo.setStatus(getNodeStatusWithReason(dataNodeId));
+            dataNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(dataNodeId));
             dataNodeInfo.setRpcAddresss(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
@@ -527,7 +464,7 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getNodeStatusWithReason(configNodeId));
+            info.setStatus(getLoadManager().getNodeStatusWithReason(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(
@@ -712,209 +649,25 @@ public class NodeManager {
     }
   }
 
-  /** Start the heartbeat service */
-  public void startHeartbeatService() {
-    synchronized (scheduleMonitor) {
-      if (currentHeartbeatFuture == null) {
-        currentHeartbeatFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                heartBeatExecutor,
-                this::heartbeatLoopBody,
-                0,
-                HEARTBEAT_INTERVAL,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("Heartbeat service is started successfully.");
-      }
-    }
-  }
-
-  /** loop body of the heartbeat thread */
-  private void heartbeatLoopBody() {
-    // The consensusManager of configManager may not be fully initialized at this time
-    Optional.ofNullable(getConsensusManager())
-        .ifPresent(
-            consensusManager -> {
-              if (getConsensusManager().isLeader()) {
-                // Generate HeartbeatReq
-                THeartbeatReq heartbeatReq = genHeartbeatReq();
-                // Send heartbeat requests to all the registered DataNodes
-                pingRegisteredDataNodes(heartbeatReq, getRegisteredDataNodes());
-                // Send heartbeat requests to all the registered ConfigNodes
-                pingRegisteredConfigNodes(heartbeatReq, getRegisteredConfigNodes());
-              }
-            });
-  }
-
-  private THeartbeatReq genHeartbeatReq() {
-    /* Generate heartbeat request */
-    THeartbeatReq heartbeatReq = new THeartbeatReq();
-    heartbeatReq.setHeartbeatTimestamp(System.currentTimeMillis());
-    // Always sample RegionGroups' leadership as the Region heartbeat
-    heartbeatReq.setNeedJudgeLeader(true);
-    // We sample DataNode's load in every 10 heartbeat loop
-    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
-
-    /* Update heartbeat counter */
-    heartbeatCounter.getAndUpdate((x) -> (x + 1) % 10);
-    return heartbeatReq;
-  }
-
   /**
-   * Send heartbeat requests to all the Registered DataNodes
+   * Filter ConfigNodes through the specified NodeStatus
    *
-   * @param registeredDataNodes DataNodes that registered in cluster
-   */
-  private void pingRegisteredDataNodes(
-      THeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
-    // Send heartbeat requests
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      DataNodeHeartbeatHandler handler =
-          new DataNodeHeartbeatHandler(
-              dataNodeInfo.getLocation(),
-              (DataNodeHeartbeatCache)
-                  nodeCacheMap.computeIfAbsent(
-                      dataNodeInfo.getLocation().getDataNodeId(),
-                      empty -> new DataNodeHeartbeatCache()),
-              getPartitionManager().getRegionGroupCacheMap(),
-              getLoadManager().getRouteBalancer());
-      AsyncDataNodeHeartbeatClientPool.getInstance()
-          .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-    }
-  }
-
-  /**
-   * Send heartbeat requests to all the Registered ConfigNodes
-   *
-   * @param registeredConfigNodes ConfigNodes that registered in cluster
-   */
-  private void pingRegisteredConfigNodes(
-      THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
-    // Send heartbeat requests
-    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
-        // Skip itself
-        continue;
-      }
-
-      ConfigNodeHeartbeatHandler handler =
-          new ConfigNodeHeartbeatHandler(
-              (ConfigNodeHeartbeatCache)
-                  nodeCacheMap.computeIfAbsent(
-                      configNodeLocation.getConfigNodeId(),
-                      empty -> new ConfigNodeHeartbeatCache(configNodeLocation.getConfigNodeId())));
-      AsyncConfigNodeHeartbeatClientPool.getInstance()
-          .getConfigNodeHeartBeat(
-              configNodeLocation.getInternalEndPoint(),
-              heartbeatReq.getHeartbeatTimestamp(),
-              handler);
-    }
-  }
-
-  /** Stop the heartbeat service */
-  public void stopHeartbeatService() {
-    synchronized (scheduleMonitor) {
-      if (currentHeartbeatFuture != null) {
-        currentHeartbeatFuture.cancel(false);
-        currentHeartbeatFuture = null;
-        nodeCacheMap.clear();
-        LOGGER.info("Heartbeat service is stopped successfully.");
-      }
-    }
-  }
-
-  public Map<Integer, BaseNodeCache> getNodeCacheMap() {
-    return nodeCacheMap;
-  }
-
-  public void removeNodeCache(int nodeId) {
-    nodeCacheMap.remove(nodeId);
-  }
-
-  /**
-   * Safely get the specific Node's current status for showing cluster
-   *
-   * @param nodeId The specific Node's index
-   * @return The specific Node's current status if the nodeCache contains it, Unknown otherwise
-   */
-  private String getNodeStatusWithReason(int nodeId) {
-    BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
-    return nodeCache == null
-        ? NodeStatus.Unknown.getStatus() + "(NoHeartbeat)"
-        : nodeCache.getNodeStatusWithReason();
-  }
-
-  /**
-   * Filter the registered ConfigNodes through the specific NodeStatus
-   *
-   * @param status The specific NodeStatus
-   * @return Filtered ConfigNodes with the specific NodeStatus
+   * @param status The specified NodeStatus
+   * @return Filtered ConfigNodes with the specified NodeStatus
    */
   public List<TConfigNodeLocation> filterConfigNodeThroughStatus(NodeStatus... status) {
-    return getRegisteredConfigNodes().stream()
-        .filter(
-            registeredConfigNode -> {
-              int configNodeId = registeredConfigNode.getConfigNodeId();
-              return nodeCacheMap.containsKey(configNodeId)
-                  && Arrays.stream(status)
-                      .anyMatch(s -> s.equals(nodeCacheMap.get(configNodeId).getNodeStatus()));
-            })
-        .collect(Collectors.toList());
+    return nodeInfo.getRegisteredConfigNodes(
+        getLoadManager().filterConfigNodeThroughStatus(status));
   }
 
   /**
-   * Get NodeStatus by nodeId
+   * Filter DataNodes through the specified NodeStatus
    *
-   * @param nodeId The specific NodeId
-   * @return NodeStatus of the specific node. If node does not exist, return null.
-   */
-  public NodeStatus getNodeStatusByNodeId(int nodeId) {
-    BaseNodeCache baseNodeCache = nodeCacheMap.get(nodeId);
-    return baseNodeCache == null ? null : baseNodeCache.getNodeStatus();
-  }
-
-  /**
-   * Filter the registered DataNodes through the specific NodeStatus
-   *
-   * @param status The specific NodeStatus
-   * @return Filtered DataNodes with the specific NodeStatus
+   * @param status The specified NodeStatus
+   * @return Filtered DataNodes with the specified NodeStatus
    */
   public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
-    return getRegisteredDataNodes().stream()
-        .filter(
-            registeredDataNode -> {
-              int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
-              return nodeCacheMap.containsKey(dataNodeId)
-                  && Arrays.stream(status)
-                      .anyMatch(s -> s.equals(nodeCacheMap.get(dataNodeId).getNodeStatus()));
-            })
-        .collect(Collectors.toList());
-  }
-
-  /**
-   * Get the loadScore of each DataNode
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
-
-    return result;
-  }
-
-  /**
-   * Get the free disk space of the specified DataNode
-   *
-   * @param dataNodeId The index of the specified DataNode
-   * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
-   */
-  public long getFreeDiskSpace(int dataNodeId) {
-    DataNodeHeartbeatCache dataNodeHeartbeatCache =
-        (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
-    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
+    return nodeInfo.getRegisteredDataNodes(getLoadManager().filterDataNodeThroughStatus(status));
   }
 
   /**
@@ -924,15 +677,10 @@ public class NodeManager {
    */
   public Optional<TDataNodeLocation> getLowestLoadDataNode() {
     // TODO get real lowest load data node after scoring algorithm being implemented
-    List<TDataNodeConfiguration> targetDataNodeList =
-        filterDataNodeThroughStatus(NodeStatus.Running);
-
-    if (targetDataNodeList == null || targetDataNodeList.isEmpty()) {
-      return Optional.empty();
-    } else {
-      int index = random.nextInt(targetDataNodeList.size());
-      return Optional.of(targetDataNodeList.get(index).location);
-    }
+    int dataNodeId = getLoadManager().getLowestLoadDataNode();
+    return dataNodeId < 0
+        ? Optional.empty()
+        : Optional.of(getRegisteredDataNode(dataNodeId).getLocation());
   }
 
   /**
@@ -941,52 +689,8 @@ public class NodeManager {
    * @return TDataNodeLocation with the lowest loadScore
    */
   public TDataNodeLocation getLowestLoadDataNode(Set<Integer> nodes) {
-    AtomicInteger result = new AtomicInteger();
-    AtomicLong lowestLoadScore = new AtomicLong(Long.MAX_VALUE);
-
-    nodes.forEach(
-        nodeID -> {
-          BaseNodeCache cache = nodeCacheMap.get(nodeID);
-          long score = (cache == null) ? Long.MAX_VALUE : cache.getLoadScore();
-          if (score < lowestLoadScore.get()) {
-            result.set(nodeID);
-            lowestLoadScore.set(score);
-          }
-        });
-
-    LOGGER.info(
-        "get the lowest load DataNode, NodeID: [{}], LoadScore: [{}]", result, lowestLoadScore);
-    return configManager.getNodeManager().getRegisteredDataNodeLocations().get(result.get());
-  }
-
-  /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched */
-  public void initNodeHeartbeatCache() {
-    final int CURRENT_NODE_ID = ConfigNodeHeartbeatCache.CURRENT_NODE_ID;
-    nodeCacheMap.clear();
-
-    // Init ConfigNodeHeartbeatCache
-    getRegisteredConfigNodes()
-        .forEach(
-            configNodeLocation -> {
-              if (configNodeLocation.getConfigNodeId() != CURRENT_NODE_ID) {
-                nodeCacheMap.put(
-                    configNodeLocation.getConfigNodeId(),
-                    new ConfigNodeHeartbeatCache(configNodeLocation.getConfigNodeId()));
-              }
-            });
-    // Force set itself and never update
-    nodeCacheMap.put(
-        ConfigNodeHeartbeatCache.CURRENT_NODE_ID,
-        new ConfigNodeHeartbeatCache(
-            CURRENT_NODE_ID, ConfigNodeHeartbeatCache.CURRENT_NODE_STATISTICS));
-
-    // Init DataNodeHeartbeatCache
-    getRegisteredDataNodes()
-        .forEach(
-            dataNodeConfiguration ->
-                nodeCacheMap.put(
-                    dataNodeConfiguration.getLocation().getDataNodeId(),
-                    new DataNodeHeartbeatCache()));
+    int dataNodeId = getLoadManager().getLowestLoadDataNode(new ArrayList<>(nodes));
+    return getRegisteredDataNode(dataNodeId).getLocation();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -1007,6 +711,10 @@ public class NodeManager {
 
   private TriggerManager getTriggerManager() {
     return configManager.getTriggerManager();
+  }
+
+  private PipeManager getPipeManager() {
+    return configManager.getPipeManager();
   }
 
   private UDFManager getUDFManager() {

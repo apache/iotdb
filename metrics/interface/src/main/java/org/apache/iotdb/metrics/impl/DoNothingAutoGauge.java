@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.type.AutoGauge;
 
 public class DoNothingAutoGauge implements AutoGauge {
   @Override
-  public long value() {
-    return 0;
+  public double value() {
+    return 0d;
   }
 }

@@ -57,6 +57,9 @@ public class SchemaUtils {
     intSet.add(TSEncoding.ZIGZAG);
     intSet.add(TSEncoding.FREQ);
     intSet.add(TSEncoding.CHIMP);
+    intSet.add(TSEncoding.SPRINTZ);
+    intSet.add(TSEncoding.RLBE);
+
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -68,6 +71,9 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.GORILLA);
     floatSet.add(TSEncoding.FREQ);
     floatSet.add(TSEncoding.CHIMP);
+    floatSet.add(TSEncoding.SPRINTZ);
+    floatSet.add(TSEncoding.RLBE);
+
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -124,6 +130,7 @@ public class SchemaUtils {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.TIME_DURATION:
         return TSDataType.INT64;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -132,6 +139,7 @@ public class SchemaUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.MODE:
       default:
         return null;
     }
@@ -157,6 +165,7 @@ public class SchemaUtils {
       case EXTREME:
       case COUNT:
       case AVG:
+      case TIME_DURATION:
         return true;
       default:
         throw new IllegalArgumentException(
@@ -180,6 +189,8 @@ public class SchemaUtils {
         return Collections.singletonList(TAggregationType.MAX_TIME);
       case AVG:
         return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
+      case TIME_DURATION:
+        return Arrays.asList(TAggregationType.MAX_TIME, TAggregationType.MIN_TIME);
       case SUM:
       case MIN_VALUE:
       case MAX_VALUE:
@@ -188,6 +199,7 @@ public class SchemaUtils {
       case MIN_TIME:
       case MAX_TIME:
       case COUNT_IF:
+      case MODE:
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(

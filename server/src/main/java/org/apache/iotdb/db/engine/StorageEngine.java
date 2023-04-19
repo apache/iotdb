@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -101,6 +102,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval = -1;
@@ -459,6 +461,8 @@ public class StorageEngine implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
+    WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
     dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
@@ -654,6 +658,8 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       region.markDeleted();
+      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -831,6 +837,16 @@ public class StorageEngine implements IService {
         throw new ShutdownException(e);
       }
     }
+  }
+
+  public void getDiskSizeByDataRegion(
+      Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
+    dataRegionMap.forEach(
+        (dataRegionId, dataRegion) -> {
+          if (dataRegionIds.contains(dataRegionId.getId())) {
+            dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
+          }
+        });
   }
 
   static class InstanceHolder {

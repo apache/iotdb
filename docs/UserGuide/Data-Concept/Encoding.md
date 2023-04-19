@@ -56,9 +56,9 @@ DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinali
 
 * FREQ
 
-FREQ encoding is lossy. It transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. It is more suitable for sequence with obvious periodicity.
+FREQ encoding is lossy. Based on the idea of transform coding, it transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. Thus, it greatly improves the space efficiency with little accuracy loss. It is suitable for data with high energy concentration (especially those with obvious periodicity), not suitable for data with uniformly distributed energy (such as white noise).
 
-> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
+> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). There is a mathematical relationship between SNR and NRMSE as $NRMSE = 10^{-SNR/20}$. Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
 
 * ZIGZAG 
   
@@ -70,20 +70,28 @@ CHIMP encoding is lossless. It is the state-of-the-art compression algorithm for
 
 Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using CHIMP to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
+* SPRINTZ
+
+SPRINTZ coding is a type of lossless data compression technique that involves predicting the original time series data, applying Zigzag encoding, bit-packing encoding, and run-length encoding. SPRINTZ encoding is effective for time series data with small absolute differences between values. However, it may not be as effective for time series data with large differences between values, indicating large fluctuation.
+* RLBE
+
+RLBE is a lossless encoding that combines the ideas of differential encoding, bit-packing encoding, run-length encoding, Fibonacci encoding and concatenation. RLBE encoding is suitable for time series data with increasing and small increment value, and is not suitable for time series data with large fluctuation.
+
+
 ## Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. 
 
 The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-| Data Type | Supported Encoding                          |
-|:---------:|:-------------------------------------------:|
-| BOOLEAN   | PLAIN, RLE                                  |
-| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| FLOAT     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| DOUBLE    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| TEXT      | PLAIN, DICTIONARY                           |
+| Data Type |                        Supported Encoding                         |
+|:---------:|:-----------------------------------------------------------------:|
+| BOOLEAN   |                            PLAIN, RLE                             |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| TEXT      |                         PLAIN, DICTIONARY                         |
 
 When the data type specified by the user does not correspond to the encoding method, the system will prompt an error. 
 

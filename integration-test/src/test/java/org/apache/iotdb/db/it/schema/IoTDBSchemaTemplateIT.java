@@ -68,6 +68,19 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // test datatype and encoding check
+      try {
+        statement.execute(
+            "CREATE SCHEMA TEMPLATE str1 (s1 TEXT encoding=GORILLA compressor=SNAPPY, s2 INT32)");
+        Assert.fail();
+      } catch (SQLException e) {
+        System.out.println(e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()
+                + ": create template error -encoding GORILLA does not support TEXT",
+            e.getMessage());
+      }
+
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
@@ -81,6 +94,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d3");
 
       // test drop template which has been set
       try {
@@ -100,6 +114,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // create timeseries of schema template
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d3");
 
       Set<String> expectedResult =
           new HashSet<>(
@@ -107,7 +122,8 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
                   "root.sg1.d1.s1,INT64,RLE,SNAPPY",
                   "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
                   "root.sg1.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY"));
+                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg1.d3.s1,INT64,RLE,SNAPPY"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**"); ) {
         while (resultSet.next()) {
@@ -127,10 +143,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try (ResultSet resultSet = statement.executeQuery("COUNT TIMESERIES root.sg1.**")) {
         resultSet.next();
-        Assert.assertEquals(4, resultSet.getLong(1));
+        Assert.assertEquals(5, resultSet.getLong(1));
       }
 
-      expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
+      expectedResult =
+          new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true", "root.sg1.d3,true"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
         while (resultSet.next()) {
@@ -239,7 +256,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   @Test
   public void testDropAndShowSchemaTemplates() throws SQLException {
     // show schema templates
-    String[] expectedResult = new String[] {"t1", "t2"};
+    String[] expectedResult = new String[] {"t1", "t2", "t3"};
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -254,7 +271,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       // drop schema template
       statement.execute("DROP SCHEMA TEMPLATE t2");
-      expectedResult = new String[] {"t1"};
+      expectedResult = new String[] {"t1", "t3"};
       expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
       try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
         while (resultSet.next()) {
@@ -398,6 +415,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // create schema template
       statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
       statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
     }
   }
 
@@ -463,11 +481,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testSchemaQueryAndFetchWithUnrelatedTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE SCHEMA TEMPLATE t3 (s3 INT64, s4 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t4 (s3 INT64, s4 DOUBLE)");
 
       // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
-      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d2");
+      statement.execute("SET SCHEMA TEMPLATE t4 TO root.sg1.d2");
 
       // set using schema template
       statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");

@@ -31,7 +31,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  win:
+  win-ut:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -68,5 +68,7 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: mvn clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P get-jar-with-dependencies
+        run: |
+          mvn clean install -DskipTests
+          mvn clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P get-jar-with-dependencies
 

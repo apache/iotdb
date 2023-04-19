@@ -38,6 +38,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -90,7 +92,7 @@ public class HorizontallyConcatOperatorTest {
   }
 
   @Test
-  public void batchTest1() {
+  public void batchTest1() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -129,16 +131,18 @@ public class HorizontallyConcatOperatorTest {
               Collections.emptyMap(),
               true)
           .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
               measurementPath1,
-              allSensors,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
-              null,
-              true,
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
@@ -154,12 +158,11 @@ public class HorizontallyConcatOperatorTest {
           new SeriesAggregationScanOperator(
               planNodeId2,
               measurementPath2,
-              allSensors,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(1),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
-              null,
-              true,
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
@@ -181,7 +184,8 @@ public class HorizontallyConcatOperatorTest {
                   TSDataType.INT32));
 
       int count = 0;
-      while (horizontallyConcatOperator.hasNext()) {
+      while (horizontallyConcatOperator.isBlocked().isDone()
+          && horizontallyConcatOperator.hasNext()) {
         TsBlock tsBlock = horizontallyConcatOperator.next();
         assertEquals(6, tsBlock.getValueColumnCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {

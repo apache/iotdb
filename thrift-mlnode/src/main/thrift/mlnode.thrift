@@ -30,7 +30,8 @@ struct TCreateTrainingTaskReq {
 }
 
 struct TDeleteModelReq {
-  1: required string modelPath
+  1: required string modelId
+  2: optional string trialId
 }
 
 struct TForecastReq {

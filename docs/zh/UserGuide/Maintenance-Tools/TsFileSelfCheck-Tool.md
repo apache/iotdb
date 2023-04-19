@@ -19,10 +19,10 @@
 
 -->
 
-# TsFile 自检工具
+## TsFile 自检工具
 IoTDB Server 提供了 TsFile 自检工具，目前该工具可以检查 TsFile 文件中的基本格式、TimeseriesMetadata 的正确性以及 TsFile 中各部分存储的 Statistics 的正确性和一致性。
 
-## 使用
+### 使用
 第一步：创建一个 TsFileSelfCheckTool 类的对象。
 
 ``` java

@@ -46,10 +46,10 @@ public class ThriftConfigNodeSerDeUtilsTest {
     storageGroupSchema0.setDataReplicationFactor(3);
     storageGroupSchema0.setTimePartitionInterval(604800);
 
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroupSchema0, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(storageGroupSchema0, buffer);
     buffer.flip();
     TDatabaseSchema storageGroupSchema1 =
-        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
+        ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
   }
 

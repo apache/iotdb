@@ -20,25 +20,25 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
 // TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
+public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTraverser<R, N> {
 
   protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    return collectEntity(nextMatchedNode.getAsEntityMNode());
+  protected R generateResult(N nextMatchedNode) {
+    return collectEntity(nextMatchedNode.getAsDeviceMNode());
   }
 
-  protected abstract R collectEntity(IEntityMNode node);
+  protected abstract R collectEntity(IDeviceMNode<N> node);
 }

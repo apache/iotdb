@@ -33,13 +33,13 @@ import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplate
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
@@ -91,24 +91,24 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
 
-  // StorageGroup read write lock
-  private final ReentrantReadWriteLock storageGroupReadWriteLock;
+  // Database read write lock
+  private final ReentrantReadWriteLock databaseReadWriteLock;
   private final ConfigMTree mTree;
 
   private static final String SNAPSHOT_FILENAME = "cluster_schema.bin";
 
-  private final String ERROR_NAME = "Error StorageGroup name";
+  private final String ERROR_NAME = "Error Database name";
 
   private final TemplateTable templateTable;
 
   public ClusterSchemaInfo() throws IOException {
-    storageGroupReadWriteLock = new ReentrantReadWriteLock();
+    databaseReadWriteLock = new ReentrantReadWriteLock();
 
     try {
       mTree = new ConfigMTree();
       templateTable = new TemplateTable();
     } catch (MetadataException e) {
-      LOGGER.error("Can't construct StorageGroupInfo", e);
+      LOGGER.error("Can't construct ClusterSchemaInfo", e);
       throw new IOException(e);
     }
   }
@@ -125,24 +125,25 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    */
   public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      // Set StorageGroup
-      TDatabaseSchema storageGroupSchema = plan.getSchema();
-      PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
+      // Set Database
+      TDatabaseSchema databaseSchema = plan.getSchema();
+      PartialPath partialPathName = new PartialPath(databaseSchema.getName());
       mTree.setStorageGroup(partialPathName);
 
-      // Set StorageGroupSchema
+      // Set DatabaseSchema
       mTree
-          .getStorageGroupNodeByStorageGroupPath(partialPathName)
-          .setStorageGroupSchema(storageGroupSchema);
+          .getDatabaseNodeByDatabasePath(partialPathName)
+          .getAsMNode()
+          .setDatabaseSchema(databaseSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
@@ -155,13 +156,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    */
   public TSStatus alterDatabase(DatabaseSchemaPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
       TDatabaseSchema alterSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
       TDatabaseSchema currentSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
         currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
@@ -195,32 +196,33 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
 
       mTree
-          .getStorageGroupNodeByStorageGroupPath(partialPathName)
-          .setStorageGroupSchema(currentSchema);
+          .getDatabaseNodeByDatabasePath(partialPathName)
+          .getAsMNode()
+          .setDatabaseSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   /**
-   * Delete StorageGroup
+   * Delete Database
    *
-   * @param plan DeleteStorageGroupPlan
+   * @param plan DeleteDatabasePlan
    * @return SUCCESS_STATUS
    */
   public TSStatus deleteDatabase(DeleteDatabasePlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      // Delete StorageGroup
+      // Delete Database
       String storageGroup = plan.getName();
       PartialPath partialPathName = new PartialPath(storageGroup);
-      mTree.deleteStorageGroup(partialPathName);
+      mTree.deleteDatabase(partialPathName);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -229,18 +231,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
           .setMessage("Database not exist: " + e.getMessage());
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
-  /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
+  /** @return The number of matched Databases by the specified Database pattern */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
     CountDatabaseResp result = new CountDatabaseResp();
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
-      result.setCount(mTree.getStorageGroupNum(patternPath, false));
+      PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
+      result.setCount(mTree.getDatabaseNum(patternPath, false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -248,23 +250,23 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
               .setMessage(ERROR_NAME + ": " + e.getMessage()));
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return result;
   }
 
-  /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
+  /** @return All DatabaseSchemas that matches to the specified Database pattern */
   public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
     DatabaseSchemaResp result = new DatabaseSchemaResp();
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
-      PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
-      List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
+      PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
+      List<PartialPath> matchedPaths = mTree.getMatchedDatabases(patternPath, false);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
-            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -274,47 +276,45 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
               .setMessage(ERROR_NAME + ": " + e.getMessage()));
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return result;
   }
 
   public TSStatus setTTL(SetTTLPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(plan.getStorageGroupPathPattern());
-      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      PartialPath patternPath = new PartialPath(plan.getDatabasePathPattern());
+      List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
       if (!matchedPaths.isEmpty()) {
         for (PartialPath path : matchedPaths) {
-          mTree
-              .getStorageGroupNodeByStorageGroupPath(path)
-              .getStorageGroupSchema()
-              .setTTL(plan.getTTL());
+          mTree.getDatabaseNodeByDatabasePath(path).setDataTTL(plan.getTTL());
         }
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
-        result.setMessage("StorageGroup does not exist");
+        result.setMessage("Database does not exist");
       }
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      PartialPath path = new PartialPath(plan.getDatabase());
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
-            .getStorageGroupSchema()
+            .getDatabaseNodeByDatabasePath(path)
+            .getAsMNode()
+            .getDatabaseSchema()
             .setSchemaReplicationFactor(plan.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -324,20 +324,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   public TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      PartialPath path = new PartialPath(plan.getDatabase());
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
-            .getStorageGroupSchema()
+            .getDatabaseNodeByDatabasePath(path)
+            .getAsMNode()
+            .getDatabaseSchema()
             .setDataReplicationFactor(plan.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -347,20 +348,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   public TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      PartialPath path = new PartialPath(plan.getDatabase());
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
-            .getStorageGroupSchema()
+            .getDatabaseNodeByDatabasePath(path)
+            .getAsMNode()
+            .getDatabaseSchema()
             .setTimePartitionInterval(plan.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -370,35 +372,35 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
 
   /**
-   * Adjust the maximum RegionGroup count of each StorageGroup
+   * Adjust the maximum RegionGroup count of each Database
    *
    * @param plan AdjustMaxRegionGroupCountPlan
    * @return SUCCESS_STATUS
    */
   public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupNumPlan plan) {
     TSStatus result = new TSStatus();
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try {
       for (Map.Entry<String, Pair<Integer, Integer>> entry :
           plan.getMaxRegionGroupNumMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
-        TDatabaseSchema storageGroupSchema =
-            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
-        storageGroupSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
-        storageGroupSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
+        TDatabaseSchema databaseSchema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        databaseSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
+        databaseSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }
@@ -410,95 +412,83 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @return List<StorageGroupName>, all storageGroups' name
+   * @return List<DatabaseName>, all Databases' name
    */
   public List<String> getDatabaseNames() {
-    List<String> storageGroups = new ArrayList<>();
-    storageGroupReadWriteLock.readLock().lock();
+    List<String> databases = new ArrayList<>();
+    databaseReadWriteLock.readLock().lock();
     try {
-      List<PartialPath> namePaths = mTree.getAllStorageGroupPaths();
+      List<PartialPath> namePaths = mTree.getAllDatabasePaths();
       for (PartialPath path : namePaths) {
-        storageGroups.add(path.getFullPath());
+        databases.add(path.getFullPath());
       }
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
-    return storageGroups;
+    return databases;
   }
 
   /**
-   * Only leader use this interface. Check if the specified Database already exists.
+   * Check if the specified DatabaseName is valid.
    *
-   * @param databaseName The specified Database's name
-   * @throws IllegalPathException If the specified Database's name is illegal
+   * @param databaseName The specified DatabaseName
+   * @throws MetadataException If the DatabaseName invalid i.e. the specified DatabaseName is
+   *     already exist, or it's a prefix of another DatabaseName
    */
-  public boolean isDatabaseExisted(String databaseName) throws IllegalPathException {
-    storageGroupReadWriteLock.readLock().lock();
+  public void isDatabaseNameValid(String databaseName) throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.isStorageGroupAlreadySet(new PartialPath(databaseName));
+      mTree.checkDatabaseAlreadySet(new PartialPath(databaseName));
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
   }
 
   /**
-   * Only leader use this interface. Check if the specific StorageGroup already exists.
+   * Only leader use this interface. Get the specific DatabaseSchema
    *
-   * @param storageName The specific StorageGroup's name
-   * @throws MetadataException If the specific StorageGroup already exists
+   * @param database DatabaseName
+   * @return The specific DatabaseSchema
+   * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
-  public void checkContainsStorageGroup(String storageName) throws MetadataException {
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      mTree.checkStorageGroupAlreadySet(new PartialPath(storageName));
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Only leader use this interface. Get the specific StorageGroupSchema
-   *
-   * @param storageGroup StorageGroupName
-   * @return The specific StorageGroupSchema
-   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
-   */
-  public TDatabaseSchema getMatchedDatabaseSchemaByName(String storageGroup)
+  public TDatabaseSchema getMatchedDatabaseSchemaByName(String database)
       throws DatabaseNotExistsException {
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       return mTree
-          .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
-          .getStorageGroupSchema();
+          .getDatabaseNodeByDatabasePath(new PartialPath(database))
+          .getAsMNode()
+          .getDatabaseSchema();
     } catch (MetadataException e) {
-      throw new DatabaseNotExistsException(storageGroup);
+      throw new DatabaseNotExistsException(database);
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
   }
 
   /**
-   * Only leader use this interface. Get the matched StorageGroupSchemas.
+   * Only leader use this interface. Get the matched DatabaseSchemas.
    *
-   * @param rawPathList StorageGroups' path patterns or full paths
-   * @return All StorageGroupSchemas that matches to the specific StorageGroup patterns
+   * @param rawPathList Databases' path patterns or full paths
+   * @return All DatabaseSchemas that matches to the specific Database patterns
    */
   public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
     Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       for (String rawPath : rawPathList) {
         PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
+        List<PartialPath> matchedPaths = mTree.getMatchedDatabases(patternPath, false);
         for (PartialPath path : matchedPaths) {
           schemaMap.put(
-              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+              path.getFullPath(),
+              mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
         }
       }
     } catch (MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return schemaMap;
   }
@@ -511,11 +501,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
   public int getMinRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       PartialPath path = new PartialPath(database);
       TDatabaseSchema storageGroupSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMinSchemaRegionGroupNum();
@@ -527,7 +517,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
   }
 
@@ -539,11 +529,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
   public int getMaxRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       PartialPath path = new PartialPath(database);
       TDatabaseSchema storageGroupSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMaxSchemaRegionGroupNum();
@@ -555,17 +545,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    processMtreeTakeSnapshot(snapshotDir);
-    return templateTable.processTakeSnapshot(snapshotDir);
+    return processMTreeTakeSnapshot(snapshotDir) && templateTable.processTakeSnapshot(snapshotDir);
   }
 
-  public boolean processMtreeTakeSnapshot(File snapshotDir) throws IOException {
+  public boolean processMTreeTakeSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -576,7 +565,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
           BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
@@ -595,17 +584,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
         }
       }
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    processMtreeLoadSnapshot(snapshotDir);
+    processMTreeLoadSnapshot(snapshotDir);
     templateTable.processLoadSnapshot(snapshotDir);
   }
 
-  public void processMtreeLoadSnapshot(File snapshotDir) throws IOException {
+  public void processMTreeLoadSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
@@ -613,14 +602,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           snapshotFile.getAbsolutePath());
       return;
     }
-    storageGroupReadWriteLock.writeLock().lock();
+    databaseReadWriteLock.writeLock().lock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       // Load snapshot of MTree
       mTree.clear();
       mTree.deserialize(bufferedInputStream);
     } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
+      databaseReadWriteLock.writeLock().unlock();
     }
   }
 
@@ -628,13 +617,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath partialPath, int level) {
     Pair<List<PartialPath>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair(new HashSet<>(), new HashSet<>());
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       matchedPathsInNextLevel = mTree.getNodesListInGivenLevel(partialPath, level, true);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in given level.", e);
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return matchedPathsInNextLevel;
   }
@@ -643,13 +632,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath partialPath) {
     Pair<Set<TSchemaNode>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair<>(new HashSet<>(), new HashSet<>());
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
       matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in next level.", e);
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return matchedPathsInNextLevel;
   }
@@ -869,21 +858,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public Map<String, TDatabaseSchema> getMatchedStorageGroupSchemasByOneName(
-      String[] storageGroupPathPattern) {
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByOneName(
+      String[] databasePathPattern) {
     Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
-    storageGroupReadWriteLock.readLock().lock();
+    databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(storageGroupPathPattern);
-      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      PartialPath patternPath = new PartialPath(databasePathPattern);
+      List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
     } catch (MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
     } finally {
-      storageGroupReadWriteLock.readLock().unlock();
+      databaseReadWriteLock.readLock().unlock();
     }
     return schemaMap;
   }

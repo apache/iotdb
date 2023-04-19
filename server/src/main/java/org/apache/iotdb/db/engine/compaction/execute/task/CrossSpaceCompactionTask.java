@@ -213,10 +213,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
-        if (logFile.exists()) {
-          FileUtils.delete(logFile);
-        }
-
         // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
@@ -245,6 +241,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             costTime,
             (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime,
             summary);
+      }
+      if (logFile.exists()) {
+        FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors

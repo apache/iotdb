@@ -25,18 +25,21 @@ import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.LongSupplier;
 
 public class SyncStatus {
 
   private final IoTConsensusConfig config;
   private final IndexController controller;
+  private final LongSupplier supplier;
   private final LinkedList<Batch> pendingBatches = new LinkedList<>();
   private final IoTConsensusMemoryManager iotConsensusMemoryManager =
       IoTConsensusMemoryManager.getInstance();
 
-  public SyncStatus(IndexController controller, IoTConsensusConfig config) {
+  public SyncStatus(IndexController controller, IoTConsensusConfig config, LongSupplier supplier) {
     this.controller = controller;
     this.config = config;
+    this.supplier = supplier;
   }
 
   /** we may block here if the synchronization pipeline is full. */
@@ -62,7 +65,8 @@ public class SyncStatus {
         Iterator<Batch> iterator = pendingBatches.iterator();
         Batch current = iterator.next();
         while (current.isSynced()) {
-          controller.updateAndGet(current.getEndIndex());
+          controller.updateAndGet(
+              current.getEndIndex(), supplier.getAsLong() == current.getEndIndex());
           iterator.remove();
           iotConsensusMemoryManager.free(current.getSerializedSize(), false);
           if (iterator.hasNext()) {
@@ -83,6 +87,7 @@ public class SyncStatus {
       size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
+    controller.updateAndGet(0L, true);
     iotConsensusMemoryManager.free(size, false);
   }
 

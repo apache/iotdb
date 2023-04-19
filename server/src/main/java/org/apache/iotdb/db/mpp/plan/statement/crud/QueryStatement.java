@@ -77,15 +77,15 @@ public class QueryStatement extends Statement {
   private WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
-  // row limit and offset for result set. The default value is 0, which means no limit
-  private int rowLimit = 0;
+  // row limit for result set. The default value is 0, which means no limit
+  private long rowLimit = 0;
   // row offset for result set. The default value is 0
-  private int rowOffset = 0;
+  private long rowOffset = 0;
 
   // series limit and offset for result set. The default value is 0, which means no limit
-  private int seriesLimit = 0;
+  private long seriesLimit = 0;
   // series offset for result set. The default value is 0
-  private int seriesOffset = 0;
+  private long seriesOffset = 0;
 
   private FillComponent fillComponent;
 
@@ -114,6 +114,11 @@ public class QueryStatement extends Statement {
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return true;
   }
 
   @Override
@@ -168,35 +173,35 @@ public class QueryStatement extends Statement {
     this.havingCondition = havingCondition;
   }
 
-  public int getRowLimit() {
+  public long getRowLimit() {
     return rowLimit;
   }
 
-  public void setRowLimit(int rowLimit) {
+  public void setRowLimit(long rowLimit) {
     this.rowLimit = rowLimit;
   }
 
-  public int getRowOffset() {
+  public long getRowOffset() {
     return rowOffset;
   }
 
-  public void setRowOffset(int rowOffset) {
+  public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
   }
 
-  public int getSeriesLimit() {
+  public long getSeriesLimit() {
     return seriesLimit;
   }
 
-  public void setSeriesLimit(int seriesLimit) {
+  public void setSeriesLimit(long seriesLimit) {
     this.seriesLimit = seriesLimit;
   }
 
-  public int getSeriesOffset() {
+  public long getSeriesOffset() {
     return seriesOffset;
   }
 
-  public void setSeriesOffset(int seriesOffset) {
+  public void setSeriesOffset(long seriesOffset) {
     this.seriesOffset = seriesOffset;
   }
 
@@ -289,15 +294,21 @@ public class QueryStatement extends Statement {
   }
 
   private boolean isGroupByVariation() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
   }
 
-  private boolean isGroupBySeries() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
+  private boolean isGroupByCondition() {
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
+  }
+
+  private boolean isGroupByCount() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
   }
 
   public boolean hasGroupByExpression() {
-    return isGroupByVariation() || isGroupBySeries();
+    return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
 
   public boolean isAlignByTime() {
@@ -373,10 +384,21 @@ public class QueryStatement extends Statement {
     isCqQueryBody = cqQueryBody;
   }
 
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
+  public boolean hasOffset() {
+    return rowOffset > 0;
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+      }
+      if (groupByComponent != null && isGroupByLevel()) {
+        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
@@ -417,7 +439,7 @@ public class QueryStatement extends Statement {
         }
       }
     } else {
-      if (isGroupBy() || isGroupByLevel()) {
+      if (isGroupBy() || isGroupByLevel() || isGroupByTag()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
@@ -486,6 +508,9 @@ public class QueryStatement extends Statement {
       }
       if (isOrderByTime()) {
         throw new SemanticException("Sorting by time is not yet supported in last queries.");
+      }
+      if (seriesLimit != 0 || seriesOffset != 0) {
+        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
       }
     }
 

@@ -33,7 +33,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   private final DatabaseSchemaStatementType subType;
 
-  private PartialPath storageGroupPath;
+  private PartialPath databasePath;
   private Long TTL = null;
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
@@ -51,12 +51,12 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return subType;
   }
 
-  public PartialPath getStorageGroupPath() {
-    return storageGroupPath;
+  public PartialPath getDatabasePath() {
+    return databasePath;
   }
 
-  public void setStorageGroupPath(PartialPath storageGroupPath) {
-    this.storageGroupPath = storageGroupPath;
+  public void setDatabasePath(PartialPath databasePath) {
+    this.databasePath = databasePath;
   }
 
   public Long getTTL() {
@@ -125,16 +125,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   @Override
   public List<PartialPath> getPaths() {
-    return storageGroupPath != null
-        ? Collections.singletonList(storageGroupPath)
-        : Collections.emptyList();
+    return databasePath != null ? Collections.singletonList(databasePath) : Collections.emptyList();
   }
 
   @Override
   public String toString() {
     return "SetStorageGroupStatement{"
         + "storageGroupPath="
-        + storageGroupPath
+        + databasePath
         + ", ttl="
         + TTL
         + ", schemaReplicationFactor="

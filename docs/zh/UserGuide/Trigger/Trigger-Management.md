@@ -21,13 +21,13 @@
 
 
 
-# 管理触发器
+## 管理触发器
 
 您可以通过 SQL 语句注册和卸载一个触发器实例，您也可以通过 SQL 语句查询到所有已经注册的触发器。
 
 **我们建议您在注册触发器时停止写入。**
 
-## 注册触发器
+### 注册触发器
 
 触发器可以注册在任意路径模式上。被注册有触发器的序列将会被触发器侦听，当序列上有数据变动时，触发器中对应的触发方法将会被调用。
 
@@ -103,7 +103,7 @@ WITH (
 - JAR 包的 URI 为 http://jar/ClusterAlertingExample.jar
 - 创建该触发器实例时会传入 name 和 limit 两个参数。
 
-## 卸载触发器
+### 卸载触发器
 
 可以通过指定触发器 ID 的方式卸载触发器，卸载触发器的过程中会且仅会调用一次触发器的 `onDrop` 接口。
 
@@ -124,7 +124,7 @@ DROP TRIGGER triggerTest1
 
 上述语句将会卸载 ID 为 triggerTest1 的触发器。
 
-## 查询触发器
+### 查询触发器
 
 可以通过 SQL 语句查询集群中存在的触发器的信息。SQL 语法如下：
 
@@ -139,7 +139,7 @@ SHOW TRIGGERS
 | triggerTest1 | BEFORE_INSERT / AFTER_INSERT | STATELESS / STATEFUL | INACTIVE / ACTIVE / DROPPING / TRANSFFERING | root.**     | org.apache.iotdb.trigger.TriggerExample | ALL(STATELESS) / DATA_NODE_ID(STATEFUL) |
 
 
-## 触发器状态说明
+### 触发器状态说明
 
 在集群中注册以及卸载触发器的过程中，我们维护了触发器的状态，下面是对这些状态的说明：
 
