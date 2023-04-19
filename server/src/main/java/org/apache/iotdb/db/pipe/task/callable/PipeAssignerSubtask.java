@@ -29,9 +29,4 @@ public class PipeAssignerSubtask extends PipeSubtask {
   protected void executeForAWhile() {
     // do nothing
   }
-
-  @Override
-  public String getPipePluginName() {
-    return null;
-  }
 }
