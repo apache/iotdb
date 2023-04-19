@@ -428,7 +428,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                      .getStorageGroupFullPath();
+                      .getDatabaseFullPath();
               PathPatternTree filteredPatternTree =
                   filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
@@ -460,7 +460,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                  .getStorageGroupFullPath();
+                  .getDatabaseFullPath();
           PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
@@ -500,7 +500,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ISchemaRegion schemaRegion =
             schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
         PathPatternTree filteredPatternTree =
-            filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+            filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
         if (filteredPatternTree.isEmpty()) {
           continue;
         }
@@ -553,7 +553,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           String storageGroup =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                  .getStorageGroupFullPath();
+                  .getDatabaseFullPath();
           PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
@@ -636,7 +636,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           new PartialPath(
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
-                  .getStorageGroupFullPath());
+                  .getDatabaseFullPath());
     } catch (IllegalPathException ignored) {
       // won't reach here
     }
@@ -707,7 +707,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ISchemaRegion schemaRegion =
                     schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
                 PathPatternTree filteredPatternTree =
-                    filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+                    filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
                 if (filteredPatternTree.isEmpty()) {
                   return RpcUtils.SUCCESS_STATUS;
                 }
@@ -743,7 +743,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ISchemaRegion schemaRegion =
                     schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
                 PathPatternTree filteredPatternTree =
-                    filterPathPatternTree(patternTree, schemaRegion.getStorageGroupFullPath());
+                    filterPathPatternTree(patternTree, schemaRegion.getDatabaseFullPath());
                 if (filteredPatternTree.isEmpty()) {
                   return RpcUtils.SUCCESS_STATUS;
                 }
