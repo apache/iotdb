@@ -353,13 +353,21 @@ public class SetTemplateProcedure
             templateName,
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
-        submitTemplateMaintainTask(dataNodeLocationMap.get(entry.getKey()));
+        setFailure(
+            new ProcedureException(
+                new MetadataException(
+                    String.format(
+                        "Failed to set schema template %s on path %s because there's failure on DataNode %s",
+                        templateName, templateSetPath, dataNodeLocationMap.get(entry.getKey())))));
         return;
       }
     }
   }
 
-  private void submitTemplateMaintainTask(TDataNodeLocation dataNodeLocation) {}
+  private void submitTemplateMaintainTask(TDataNodeLocation dataNodeLocation) {
+    // todo implement async retry
+
+  }
 
   @Override
   protected boolean isRollbackSupported(SetTemplateState setTemplateState) {
