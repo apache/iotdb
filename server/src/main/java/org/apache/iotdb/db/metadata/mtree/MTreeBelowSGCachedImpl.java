@@ -890,6 +890,7 @@ public class MTreeBelowSGCachedImpl {
       entityMNode.setSchemaTemplateId(templateId);
 
       store.updateMNode(entityMNode.getAsMNode());
+      regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
     }
