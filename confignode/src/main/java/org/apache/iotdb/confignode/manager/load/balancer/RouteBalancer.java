@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFl
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.GreedyPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.LeaderPriorityBalancer;
+import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -165,15 +166,18 @@ public class RouteBalancer {
   /**
    * Invoking periodically to update the RegionRouteMap
    *
-   * @return True if the RegionRouteMap has changed, false otherwise
+   * @return RouteChangeEvent
    */
-  public boolean updateRegionRouteMap() {
+  public RouteChangeEvent updateRegionRouteMap() {
     synchronized (regionRouteMap) {
-      return updateRegionLeaderMap() | updateRegionPriorityMap();
+      RegionRouteMap preRouteMap = new RegionRouteMap(regionRouteMap);
+      updateRegionLeaderMap();
+      updateRegionPriorityMap();
+      return new RouteChangeEvent(preRouteMap, regionRouteMap);
     }
   }
 
-  private boolean updateRegionLeaderMap() {
+  private void updateRegionLeaderMap() {
     AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
@@ -189,10 +193,10 @@ public class RouteBalancer {
             isLeaderChanged.set(true);
           }
         });
-    return isLeaderChanged.get();
+    isLeaderChanged.get();
   }
 
-  private boolean updateRegionPriorityMap() {
+  private void updateRegionPriorityMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = regionRouteMap.getRegionLeaderMap();
     Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
@@ -211,9 +215,6 @@ public class RouteBalancer {
 
     if (!latestRegionPriorityMap.equals(regionRouteMap.getRegionPriorityMap())) {
       regionRouteMap.setRegionPriorityMap(latestRegionPriorityMap);
-      return true;
-    } else {
-      return false;
     }
   }
 
