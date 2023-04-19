@@ -34,23 +34,23 @@ import java.io.File;
  */
 public class LoadFilesOperator extends Operator {
 
-  private File file;
+  private String filePath;
   private boolean autoCreateSchema;
   private int sgLevel;
   private boolean verifyMetadata;
 
   public LoadFilesOperator(
-      File file, boolean autoCreateSchema, int sgLevel, boolean verifyMetadata) {
+      String filePath, boolean autoCreateSchema, int sgLevel, boolean verifyMetadata) {
     super(SQLConstant.TOK_LOAD_FILES);
-    this.file = file;
+    this.filePath = filePath;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
     this.verifyMetadata = verifyMetadata;
     this.operatorType = OperatorType.LOAD_FILES;
   }
 
-  public File getFile() {
-    return file;
+  public String getFilePath() {
+    return filePath;
   }
 
   public boolean isAutoCreateSchema() {
@@ -77,6 +77,11 @@ public class LoadFilesOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return new OperateFilePlan(
-        file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, verifyMetadata);
+        new File(filePath),
+        OperatorType.LOAD_FILES,
+        autoCreateSchema,
+        sgLevel,
+        verifyMetadata,
+        filePath);
   }
 }

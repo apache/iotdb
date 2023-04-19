@@ -225,6 +225,8 @@ public class IoTDBConfig {
   /** System directory, including version file for each storage group and metadata */
   private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
+  private final String loadTempDirName = "load";
+
   /** Schema directory, including storage set of values. */
   private String schemaDir =
       DEFAULT_BASE_DIR
@@ -1207,6 +1209,10 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getLoadTempDir() {
+    return getSystemDir() + File.separator + loadTempDirName;
   }
 
   public String getSchemaDir() {
