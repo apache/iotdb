@@ -2250,7 +2250,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
     LoadFilesOperator loadFilesOperator =
         new LoadFilesOperator(
-            new File(parseFilePath(ctx.fileName.getText())),
+            parseFilePath(ctx.fileName.getText()),
             true,
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
             true);

@@ -181,12 +181,17 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -201,6 +206,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.audit.AuditLogOperation.DDL;
 import static org.apache.iotdb.db.audit.AuditLogOperation.DML;
@@ -236,7 +242,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
@@ -1464,7 +1469,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
-    File file = plan.getFile();
+    File file = getOrDownloadFile(plan.getFilePath());
     if (!file.exists()) {
       throw new QueryProcessException(
           String.format("File path '%s' doesn't exists.", file.getPath()));
@@ -1479,38 +1484,58 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
-    File[] files = curFile.listFiles();
-    long[] establishTime = new long[files.length];
-    List<Integer> tsfiles = new ArrayList<>();
-    List<String> failedFiles = new ArrayList<>();
+  private File getOrDownloadFile(String filePath) throws QueryProcessException {
+    try {
+      // try to get remote files
+      URL url = new URI(filePath).toURL();
+      String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+      File destFile =
+          new File(
+              IoTDBDescriptor.getInstance().getConfig().getLoadTempDir()
+                  + File.separator
+                  + fileName);
+      FileUtils.copyURLToFile(url, destFile);
+      return destFile;
+    } catch (MalformedURLException | URISyntaxException | IllegalArgumentException e) {
+      // try to get local files
+      File file = new File(filePath);
+      if (!file.exists()) {
+        throw new QueryProcessException(String.format("File path '%s' doesn't exists.", filePath));
+      }
+      return file;
+    } catch (Exception e) {
+      logger.warn(String.format("Can not find loading file %s.", filePath), e);
+      throw new QueryProcessException(
+          String.format("Find loading file %s error, because of %s", filePath, e.getMessage()));
+    }
+  }
 
-    for (int i = 0; i < files.length; i++) {
-      File file = files[i];
-      if (!file.isDirectory()) {
-        String fileName = file.getName();
-        if (fileName.endsWith(TSFILE_SUFFIX)) {
-          establishTime[i] = Long.parseLong(fileName.split(FILE_NAME_SEPARATOR)[0]);
-          tsfiles.add(i);
-        }
-      }
-    }
-    Collections.sort(
-        tsfiles,
+  private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
+    final File[] files = curFile.listFiles();
+    final List<String> failedFiles = new ArrayList<>();
+    final List<File> tsFiles =
+        Arrays.stream(files)
+            .filter(o -> o.getName().endsWith(TSFILE_SUFFIX))
+            .collect(Collectors.toList());
+    tsFiles.sort(
         (o1, o2) -> {
-          if (establishTime[o1] == establishTime[o2]) {
-            return 0;
+          String file1Name = o1.getName();
+          String file2Name = o2.getName();
+          try {
+            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
+          } catch (IOException e) {
+            return file1Name.compareTo(file2Name);
           }
-          return establishTime[o1] < establishTime[o2] ? -1 : 1;
         });
-    for (Integer i : tsfiles) {
-      try {
-        loadFile(files[i], plan);
-      } catch (QueryProcessException e) {
-        logger.error("{}, skip load {}.", e.getMessage(), files[i].getAbsolutePath());
-        failedFiles.add(files[i].getAbsolutePath());
-      }
-    }
+    tsFiles.forEach(
+        f -> {
+          try {
+            loadFile(f, plan);
+          } catch (QueryProcessException e) {
+            logger.error("{}, skip load {}.", e.getMessage(), f.getAbsolutePath());
+            failedFiles.add(f.getAbsolutePath());
+          }
+        });
 
     for (File file : files) {
       if (file.isDirectory()) {
