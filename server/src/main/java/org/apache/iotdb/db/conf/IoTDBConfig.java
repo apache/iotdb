@@ -404,6 +404,13 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  /**
+   * Enable compaction memory control or not. If true and estimated memory size of one compaction
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
+   */
+  private boolean enableCompactionMemControl = true;
+
   private double chunkMetadataMemorySizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
@@ -2821,6 +2828,14 @@ public class IoTDBConfig {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public boolean isEnableCompactionMemControl() {
+    return enableCompactionMemControl;
+  }
+
+  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
+    this.enableCompactionMemControl = enableCompactionMemControl;
   }
 
   public double getChunkMetadataMemorySizeProportion() {

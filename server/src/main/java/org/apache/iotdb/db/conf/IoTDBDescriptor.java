@@ -344,7 +344,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
-
+    conf.setEnableCompactionMemControl(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_mem_control",
+                Boolean.toString(conf.isEnableCompactionMemControl()))));
     conf.setChunkMetadataMemorySizeProportion(
         Double.parseDouble(
             properties.getProperty(
