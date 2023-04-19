@@ -39,6 +39,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
@@ -73,7 +75,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE str1 (s1 TEXT encoding=GORILLA compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         System.out.println(e.getMessage());
         Assert.assertEquals(
@@ -85,7 +87,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
@@ -100,7 +102,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // test drop template which has been set
       try {
         statement.execute("DROP SCHEMA TEMPLATE t1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode()
@@ -164,7 +166,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try {
         statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
@@ -181,7 +183,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
@@ -245,7 +247,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try {
         statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
@@ -573,6 +575,67 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testTemplateSetAndTimeSeriesExistenceCheck() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      // show paths set schema template
+      String[] expectedResult = new String[] {"root.sg1.d1"};
+      Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        String resultRecord;
+        while (resultSet.next()) {
+          resultRecord = resultSet.getString(1);
+          Assert.assertTrue(expectedResultSet.contains(resultRecord));
+          expectedResultSet.remove(resultRecord);
+        }
+      }
+      Assert.assertEquals(0, expectedResultSet.size());
+
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s INT32");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d1.s] since schema template [t1] already set on path [root.sg1.d1].",
+            e.getMessage());
+      }
+
+      // unset schema template
+      statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s INT32");
+
+      try {
+        statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot set schema template [t1] to path [root.sg1.d1] since there's timeseries under path [root.sg1.d1].",
+            e.getMessage());
+      }
+
+      statement.execute("DELETE TIMESERIES root.sg1.d1.s");
+
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      expectedResult = new String[] {"root.sg1.d1"};
+      expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        String resultRecord;
+        while (resultSet.next()) {
+          resultRecord = resultSet.getString(1);
+          Assert.assertTrue(expectedResultSet.contains(resultRecord));
+          expectedResultSet.remove(resultRecord);
+        }
+      }
+      Assert.assertEquals(0, expectedResultSet.size());
     }
   }
 }
