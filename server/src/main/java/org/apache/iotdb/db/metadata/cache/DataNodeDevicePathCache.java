@@ -21,17 +21,21 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
-/** This class is for reducing duplicated Device PartialPath splits in write process. */
+/** This cache is for reducing duplicated DeviceId PartialPath initialization in write process. */
 public class DataNodeDevicePathCache {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Cache<String, PartialPath> devicePathCache;
 
   private DataNodeDevicePathCache() {
-    devicePathCache = Caffeine.newBuilder().maximumSize(1_000_000).build();
+    devicePathCache = Caffeine.newBuilder().maximumSize(config.getDevicePathCacheSize()).build();
   }
 
   public static DataNodeDevicePathCache getInstance() {
