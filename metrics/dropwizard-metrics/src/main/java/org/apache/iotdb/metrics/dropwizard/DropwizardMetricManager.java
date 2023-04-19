@@ -88,7 +88,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
     return new DropwizardTimer(
-        metricRegistry.timer(DropwizardMetricNameTool.toFlatString(metricInfo)));
+        metricRegistry.histogram(DropwizardMetricNameTool.toFlatString(metricInfo)));
   }
 
   @Override

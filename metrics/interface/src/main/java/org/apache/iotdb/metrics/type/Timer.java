@@ -48,6 +48,10 @@ public interface Timer extends IMetric {
   /** It's not safe to use the update interface of this rate. */
   Rate getImmutableRate();
 
+  default long getCount() {
+    return 0;
+  }
+
   @Override
   default void constructValueMap(Map<String, Object> result) {
     takeSnapshot().constructValueMap(result);

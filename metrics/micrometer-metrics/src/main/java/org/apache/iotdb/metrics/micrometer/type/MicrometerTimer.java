@@ -48,6 +48,11 @@ public class MicrometerTimer implements Timer {
   }
 
   @Override
+  public long getCount() {
+    return micrometerRate.getCount();
+  }
+
+  @Override
   public Rate getImmutableRate() {
     return micrometerRate;
   }

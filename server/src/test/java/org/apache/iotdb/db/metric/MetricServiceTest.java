@@ -231,7 +231,7 @@ public class MetricServiceTest {
     metricService.timer(6, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(8, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, timer1.getImmutableRate().getCount());
+    assertEquals(5, timer1.getCount());
     assertEquals(5, timer1.takeSnapshot().size());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(timer1, timer2);

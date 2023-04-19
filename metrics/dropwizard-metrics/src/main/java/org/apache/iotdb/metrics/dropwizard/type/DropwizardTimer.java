@@ -26,24 +26,29 @@ import org.apache.iotdb.metrics.type.Timer;
 import java.util.concurrent.TimeUnit;
 
 public class DropwizardTimer implements Timer {
-  com.codahale.metrics.Timer timer;
+  com.codahale.metrics.Histogram histogram;
 
-  public DropwizardTimer(com.codahale.metrics.Timer timer) {
-    this.timer = timer;
+  public DropwizardTimer(com.codahale.metrics.Histogram histogram) {
+    this.histogram = histogram;
   }
 
   @Override
   public void update(long duration, TimeUnit unit) {
-    timer.update(duration, unit);
+    histogram.update(unit.toNanos(duration));
   }
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new DropwizardHistogramSnapshot(timer.getSnapshot());
+    return new DropwizardHistogramSnapshot(histogram.getSnapshot());
+  }
+
+  @Override
+  public long getCount() {
+    return histogram.getCount();
   }
 
   @Override
   public Rate getImmutableRate() {
-    return new DropwizardRate(timer);
+    return null;
   }
 }
