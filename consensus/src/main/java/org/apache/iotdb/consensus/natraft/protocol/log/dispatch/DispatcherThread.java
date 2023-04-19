@@ -147,12 +147,14 @@ class DispatcherThread implements Runnable {
     } catch (Exception e) {
       logger.error("Unexpected error in log dispatcher", e);
     }
-    logger.info(
-        "Dispatcher exits, idle ratio: {}, running time: {}ms, idle time: {}ms",
-        idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum),
-        runningTimeSum / 1_000_000L,
-        idleTimeSum / 1_000_000L);
-    group.getGroupThreadNum().decrementAndGet();
+    if (runningTimeSum > 0) {
+      logger.info(
+          "Dispatcher exits, idle ratio: {}, running time: {}ms, idle time: {}ms, remaining threads: {}",
+          idleTimeSum * 1.0 / (idleTimeSum + runningTimeSum),
+          runningTimeSum / 1_000_000L,
+          idleTimeSum / 1_000_000L,
+          group.getGroupThreadNum().decrementAndGet());
+    }
   }
 
   protected void serializeEntries() throws InterruptedException {
