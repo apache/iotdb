@@ -212,10 +212,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       throws IOException {
     TsFileNameGenerator.TsFileName unseqFileName =
         TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
-    // we add a hard limit for cross compaction that selected unseqFile should be compacted in inner
+    // we add a hard limit for cross compaction that selected unseqFile should reach a certain size
+    // or be compacted in inner
     // space at least once. This is used to make to improve the priority of inner compaction and
     // avoid too much cross compaction with small files.
-    if (unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
+    if (unseqFile.getTsFileSize() < config.getTargetCompactionFileSize()
+        && unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
       return false;
     }
     // currently, we must allow at least one unseqFile be selected to handle the situation that
