@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
@@ -821,13 +820,6 @@ public class MTreeBelowSGCachedImpl {
         cur = child;
       }
       synchronized (this) {
-        for (String measurement : template.getSchemaMap().keySet()) {
-          if (store.hasChild(cur, measurement)) {
-            throw new TemplateImcompatibeException(
-                activatePath.concatNode(measurement).getFullPath(), template.getName());
-          }
-        }
-
         if (cur.isDevice()) {
           entityMNode = cur.getAsDeviceMNode();
         } else {
