@@ -19,11 +19,21 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+
 public class PipeTaskAgent {
+  private final PipeMetaKeeper pipeMetaKeeper;
+
+  public PipeMeta getPipeMeta(String pipeName) {
+    return pipeMetaKeeper.getPipeMeta(pipeName);
+  }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeTaskAgent() {}
+  private PipeTaskAgent() {
+    pipeMetaKeeper = new PipeMetaKeeper();
+  }
 
   private static class PipeTaskAgentHolder {
     private static PipeTaskAgent instance = null;
