@@ -279,7 +279,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return Collections.emptyList();
       }
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms.",
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {} MB, total selected file size is {} MB, total selected seq file size is {} MB, total selected unseq file size is {} MB, time consumption {}ms.",
           logicalStorageGroupName + "-" + dataRegionId,
           sequenceFileList.size(),
           unsequenceFileList.size(),
@@ -287,7 +287,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size(),
           taskResources.getSeqFiles().size(),
           taskResources.getUnseqFiles().size(),
-          taskResources.getTotalMemoryCost(),
+          (float) (taskResources.getTotalMemoryCost()) / 1024 / 1024,
+          (float) (taskResources.getTotalFileSize()) / 1024 / 1024,
+          taskResources.getTotalSeqFileSize() / 1024 / 1024,
+          taskResources.getTotalUnseqFileSize() / 1024 / 1024,
           System.currentTimeMillis() - startTime);
       hasPrintedLog = false;
       return Collections.singletonList(taskResources);
