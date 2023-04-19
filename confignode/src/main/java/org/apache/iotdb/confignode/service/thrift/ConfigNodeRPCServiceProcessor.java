@@ -74,6 +74,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -905,12 +907,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (req.isSetTimeStamp() && req.getType() != TConsensusGroupType.DataRegion) {
       return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
     }
+    if (req.isSetTimeStamp() && req.getTimeStamp() < 0) {
+      return new TGetRegionIdResp(
+          new TSStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode()));
+    }
     return configManager.getRegionId(req);
   }
 
   @Override
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
     return configManager.getTimeSlotList(req);
+  }
+
+  @Override
+  public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
+    return configManager.countTimeSlotList(req);
   }
 
   @Override

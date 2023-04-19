@@ -50,6 +50,8 @@ import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -630,6 +632,8 @@ public interface IManager {
   TGetRegionIdResp getRegionId(TGetRegionIdReq req);
 
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req);
+
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req);
 
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 

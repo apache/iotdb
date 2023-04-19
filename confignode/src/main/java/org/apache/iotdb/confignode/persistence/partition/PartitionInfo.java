@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegio
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.response.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
@@ -872,6 +874,41 @@ public class PartitionInfo implements SnapshotProcessor {
               .distinct()
               .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
               .collect(Collectors.toList()));
+    }
+  }
+
+  public DataSet countTimeSlotList(CountTimeSlotListPlan plan) {
+    if (plan.getDatabase() != null) {
+      if (!isDatabaseExisted(plan.getDatabase())) {
+        return new CountTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), 0);
+      } else {
+        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        return new CountTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sgPartitionTable
+                .getTimeSlotList(
+                    plan.getSeriesSlotId(),
+                    plan.getRegionId(),
+                    plan.getStartTime(),
+                    plan.getEndTime())
+                .stream()
+                .distinct()
+                .count());
+      }
+    } else {
+      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+      databasePartitionTables.forEach(
+          (database, databasePartitionTable) ->
+              timePartitionSlots.addAll(
+                  databasePartitionTable.getTimeSlotList(
+                      plan.getSeriesSlotId(),
+                      plan.getRegionId(),
+                      plan.getStartTime(),
+                      plan.getEndTime())));
+      return new CountTimeSlotListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          timePartitionSlots.stream().distinct().count());
     }
   }
 

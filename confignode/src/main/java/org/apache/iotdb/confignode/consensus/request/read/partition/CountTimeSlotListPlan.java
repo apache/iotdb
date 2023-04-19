@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
+public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
 
   private String database;
 
@@ -43,11 +43,11 @@ public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
 
   private long endTime;
 
-  public GetTimeSlotListPlan() {
-    super(ConfigPhysicalPlanType.GetTimeSlotList);
+  public CountTimeSlotListPlan() {
+    super(ConfigPhysicalPlanType.CountTimeSlotList);
   }
 
-  public GetTimeSlotListPlan(long startTime, long endTime) {
+  public CountTimeSlotListPlan(long startTime, long endTime) {
     this();
     this.startTime = startTime;
     this.endTime = endTime;
@@ -108,7 +108,7 @@ public class GetTimeSlotListPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetTimeSlotListPlan that = (GetTimeSlotListPlan) o;
+    CountTimeSlotListPlan that = (CountTimeSlotListPlan) o;
     return database.equals(that.database)
         && seriesSlotId.equals(that.seriesSlotId)
         && regionId.equals(that.regionId)

@@ -212,6 +212,8 @@ public class DataPartitionTable {
               timePartitionSlots.addAll(
                   seriesPartitionTable.getTimeSlotList(regionId, startTime, endTime)));
       return timePartitionSlots;
+    } else if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
     } else {
       // query timePartition of specific seriesPartition
       SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);

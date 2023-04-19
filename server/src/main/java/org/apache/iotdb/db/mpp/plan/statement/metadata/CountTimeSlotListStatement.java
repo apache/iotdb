@@ -100,7 +100,7 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
   public List<PartialPath> getPaths() {
     try {
       return Collections.singletonList(new PartialPath(database));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | NullPointerException e) {
       return new ArrayList<>();
     }
   }

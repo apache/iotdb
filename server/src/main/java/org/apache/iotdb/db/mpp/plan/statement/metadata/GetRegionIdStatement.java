@@ -42,7 +42,7 @@ import java.util.List;
  */
 public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
-  private String database;
+  private String database = "root";
 
   private String device;
   private final TConsensusGroupType partitionType;
@@ -94,8 +94,8 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
   @Override
   public List<PartialPath> getPaths() {
     try {
-      return Collections.singletonList(new PartialPath(database == null ? device : database));
-    } catch (IllegalPathException e) {
+      return Collections.singletonList(new PartialPath(database));
+    } catch (IllegalPathException | NullPointerException e) {
       return new ArrayList<>();
     }
   }

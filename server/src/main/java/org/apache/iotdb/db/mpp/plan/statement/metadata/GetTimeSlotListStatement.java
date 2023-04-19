@@ -109,7 +109,7 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
   public List<PartialPath> getPaths() {
     try {
       return Collections.singletonList(new PartialPath(database));
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | NullPointerException e) {
       return new ArrayList<>();
     }
   }

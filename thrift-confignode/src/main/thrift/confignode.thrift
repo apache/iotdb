@@ -266,7 +266,7 @@ struct TCountTimeSlotListReq {
 
 struct TCountTimeSlotListResp {
     1: required common.TSStatus status
-    2: optional i64 count
+    2: required i64 count
 }
 
 struct TGetSeriesSlotListReq {
@@ -1295,6 +1295,8 @@ service IConfigNodeRPCService {
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req)
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)

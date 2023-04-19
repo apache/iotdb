@@ -155,6 +155,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
   }
 
+  public static DatasetHeader getCountTimeSlotListHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
+  }
+
   public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
     return isAlignByDevice
         ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)

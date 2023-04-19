@@ -59,6 +59,8 @@ public enum ConfigPhysicalPlanType {
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
 
+  CountTimeSlotList((short) 310),
+
   /** Partition */
   GetSchemaPartition((short) 400),
   CreateSchemaPartition((short) 401),

@@ -63,7 +63,7 @@ public class CountTimeSlotListTask implements IConfigTask {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeLong(countTimeSlotListResp.getCount());
     builder.declarePosition();
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetTimeSlotListHeader();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getCountTimeSlotListHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

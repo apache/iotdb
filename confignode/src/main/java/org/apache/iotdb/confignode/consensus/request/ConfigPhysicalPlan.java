@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeCo
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -368,6 +369,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTimeSlotList:
           plan = new GetTimeSlotListPlan();
+          break;
+        case CountTimeSlotList:
+          plan = new CountTimeSlotListPlan();
           break;
         case GetSeriesSlotList:
           plan = new GetSeriesSlotListPlan();
