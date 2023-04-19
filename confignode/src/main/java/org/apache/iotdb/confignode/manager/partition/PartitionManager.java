@@ -806,7 +806,8 @@ public class PartitionManager {
     }
     if (req.isSetTimeStamp()) {
       plan.setTimeSlotId(
-          new TTimePartitionSlot(req.getTimeStamp() / CONF.getTimePartitionInterval()));
+          new TTimePartitionSlot(
+              req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval()));
     }
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }

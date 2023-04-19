@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -55,26 +53,16 @@ public class CountTimeSlotListTask implements IConfigTask {
     return configTaskExecutor.countTimeSlotList(countTimeSlotListStatement);
   }
 
-  public static void buildTsBlock(TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot) {
-    builder.getTimeColumnBuilder().writeLong(0L);
-    builder
-        .getColumnBuilder(0)
-        .writeLong(
-            timePartitionSlot.getStartTime()
-                / IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval());
-    builder.declarePosition();
-  }
-
   public static void buildTSBlock(
-      TGetTimeSlotListResp getTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
+      TCountTimeSlotListResp countTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.getTimeSlotListColumnHeaders.stream()
+        ColumnHeaderConstant.countTimeSlotListColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-
-    getTimeSlotListResp.getTimeSlotList().forEach(e -> buildTsBlock(builder, e));
-
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeLong(countTimeSlotListResp.getCount());
+    builder.declarePosition();
     DatasetHeader datasetHeader = DatasetHeaderFactory.getGetTimeSlotListHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }

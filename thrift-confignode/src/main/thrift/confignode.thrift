@@ -256,6 +256,19 @@ struct TGetTimeSlotListResp {
     2: optional list<common.TTimePartitionSlot> timeSlotList
 }
 
+struct TCountTimeSlotListReq {
+    1: optional string database
+    3: optional string device
+    4: optional i64 regionId
+    5: optional i64 startTime
+    6: optional i64 endTime
+}
+
+struct TCountTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional i64 count
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
     2: required common.TConsensusGroupType type

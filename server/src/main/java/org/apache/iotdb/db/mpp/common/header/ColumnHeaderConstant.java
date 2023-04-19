@@ -398,6 +398,9 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
 
+  public static final List<ColumnHeader> countTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COUNT, TSDataType.INT64));
+
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
 

@@ -94,7 +94,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
   @Override
   public List<PartialPath> getPaths() {
     try {
-      return Collections.singletonList(new PartialPath(database));
+      return Collections.singletonList(new PartialPath(database == null ? device : database));
     } catch (IllegalPathException e) {
       return new ArrayList<>();
     }
