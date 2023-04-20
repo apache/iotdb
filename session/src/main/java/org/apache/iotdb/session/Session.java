@@ -297,6 +297,33 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        null,
+        null,
+        null,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version);
+  }
+
   @SuppressWarnings("squid:S107")
   public Session(
       String host,
@@ -445,6 +472,31 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        null,
+        null,
+        null,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version);
   }
 
   public Session(

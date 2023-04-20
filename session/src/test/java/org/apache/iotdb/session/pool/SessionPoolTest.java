@@ -23,8 +23,6 @@ import org.apache.iotdb.isession.util.Version;
 import org.junit.Test;
 
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,9 +31,6 @@ public class SessionPoolTest {
 
   @Test
   public void testBuilder() {
-    List<String> backupList = new ArrayList<>();
-    backupList.add("127.0.0.1:6767");
-    backupList.add("127.0.0.1:6768");
     SessionPool pool =
         new SessionPool.Builder()
             .host("localhost")
@@ -43,9 +38,6 @@ public class SessionPoolTest {
             .maxSize(10)
             .user("abc")
             .password("123")
-            .backupNodeUrls(backupList)
-            .backupPassword("123456")
-            .backupUser("root")
             .fetchSize(1)
             .waitToGetSessionTimeoutInMs(2)
             .enableRedirection(true)

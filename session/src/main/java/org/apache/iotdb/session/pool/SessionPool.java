@@ -415,6 +415,74 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    this(
+        host,
+        port,
+        user,
+        password,
+        null,
+        null,
+        null,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        null,
+        null,
+        null,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize);
+  }
+
   @SuppressWarnings("squid:S107")
   public SessionPool(
       String host,
