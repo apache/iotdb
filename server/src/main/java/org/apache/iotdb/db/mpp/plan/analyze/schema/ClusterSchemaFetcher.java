@@ -304,7 +304,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
     } finally {
       schemaCache.releaseReadLock();
-      templateSchemaCache.releaseWriteLock();
+      templateSchemaCache.releaseReadLock();
     }
   }
 
