@@ -106,4 +106,9 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.EQ;
   }
+
+  @Override
+  public Filter reverse() {
+    return new NotEq<>(value, filterType);
+  }
 }

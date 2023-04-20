@@ -32,14 +32,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** NotFilter necessary. Use InvertExpressionVisitor */
 public class NotFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 584860326604020881L;
   private Filter that;
 
   public static final String CONTAIN_NOT_ERR_MSG =
-      "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? ";
+      "This predicate contains a not! Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
 
   public NotFilter() {}
 
@@ -142,5 +141,10 @@ public class NotFilter implements Filter, Serializable {
       res.add(new TimeRange(list.get(list.size() - 1).getMax() + 1, Long.MAX_VALUE));
     }
     return res;
+  }
+
+  @Override
+  public Filter reverse() {
+    return that;
   }
 }

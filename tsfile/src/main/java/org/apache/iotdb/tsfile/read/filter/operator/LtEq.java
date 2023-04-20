@@ -104,4 +104,9 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.LTEQ;
   }
+
+  @Override
+  public Filter reverse() {
+    return new Gt<>(value, filterType);
+  }
 }

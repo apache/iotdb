@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 import java.util.ArrayList;
@@ -114,5 +115,10 @@ public class AndFilter extends BinaryFilter {
     }
 
     return result;
+  }
+
+  @Override
+  public Filter reverse() {
+    return FilterFactory.or(left.reverse(), right.reverse());
   }
 }

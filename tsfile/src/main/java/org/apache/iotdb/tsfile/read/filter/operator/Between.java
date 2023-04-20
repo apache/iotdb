@@ -160,4 +160,9 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
   public int hashCode() {
     return Objects.hash(value1, value2, not, filterType);
   }
+
+  @Override
+  public Filter reverse() {
+    return new Between<>(value1, value2, filterType, !not);
+  }
 }

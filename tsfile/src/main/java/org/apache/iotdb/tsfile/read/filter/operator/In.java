@@ -141,6 +141,11 @@ public class In<T extends Comparable<T>> implements Filter, Serializable {
     return FilterSerializeId.IN;
   }
 
+  @Override
+  public Filter reverse() {
+    return new In<>(new HashSet<>(values), filterType, !not);
+  }
+
   public Set<T> getValues() {
     return values;
   }

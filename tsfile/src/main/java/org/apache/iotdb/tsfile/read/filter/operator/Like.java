@@ -152,6 +152,11 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
   }
 
   @Override
+  public Filter reverse() {
+    return new Like<>(value, filterType, !not);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (!(o instanceof Like)) {
       return false;

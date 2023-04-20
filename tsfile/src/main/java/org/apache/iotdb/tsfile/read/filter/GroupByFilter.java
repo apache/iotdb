@@ -167,4 +167,9 @@ public class GroupByFilter implements Filter, Serializable {
         ? Collections.emptyList()
         : Collections.singletonList(new TimeRange(startTime, endTime - 1));
   }
+
+  @Override
+  public Filter reverse() {
+    throw new UnsupportedOperationException();
+  }
 }

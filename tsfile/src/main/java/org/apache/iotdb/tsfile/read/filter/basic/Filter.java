@@ -87,4 +87,6 @@ public interface Filter {
   default List<TimeRange> getTimeRanges() {
     return Collections.emptyList();
   }
+
+  Filter reverse();
 }

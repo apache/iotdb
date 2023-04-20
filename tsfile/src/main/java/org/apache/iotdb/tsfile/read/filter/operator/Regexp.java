@@ -133,6 +133,11 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
   }
 
   @Override
+  public Filter reverse() {
+    return new Regexp<>(value, filterType, !not);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (!(o instanceof Regexp)) {
       return false;
