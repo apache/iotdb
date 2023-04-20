@@ -446,21 +446,22 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 #### 展示数据分区所在的 DataRegion
 
 展示一个数据分区（或一个序列槽下的所有数据分区）所在的 DataRegion:
-- `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMEPARTITION=t0)`
+- `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
   
 有如下几点说明：
 
 1. s0、t0均只能为数字。 
    
-2. TimePartition 是 SeriesTimeSlotId 的简称。
+2. TimeSlotId 是 SeriesTimeSlotId 的简称。
 
-2. ”SERIESSLOTID=s0”可以被替换为”DEVICEPATH=xxx.xx.xx“。 这样的话，SQL会自动计算对应该设备路径的序列槽。
+2. ”SERIESSLOTID=s0”可以被替换为”DEVICEID=xxx.xx.xx“。 这样的话，sql会自动计算对应该设备id的序列槽。
 
-3. 同样的，"TIMEPARTITION=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳或者通用时间对应的时间分区，也就是时间段包含该时间的时间分区。
+3. 同样的，"TIMESLOTID=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳对应的时间槽，也就是时间段包含该时间戳的时间槽。
+
 
 示例:
 ```
-IoTDB> show data regionid of root.sg where devicePath=root.sg.m1.d1 and timestamp=604800000
+IoTDB> show data regionid of root.sg where seriesslotid=5286 and timeslotid=0
 +--------+
 |RegionId|
 +--------+
@@ -469,16 +470,7 @@ IoTDB> show data regionid of root.sg where devicePath=root.sg.m1.d1 and timestam
 Total line number = 1
 It costs 0.006s
 
-IoTDB> show data regionid of root.sg where devicePath=root.sg.m1.d1 and timestamp=1970-01-08T00:00:00.000
-+--------+
-|RegionId|
-+--------+
-|       1|
-+--------+
-Total line number = 1
-It costs 0.006s
-
-IoTDB> show data regionid of root.sg where devicePath=root.sg.m1.d1
+IoTDB> show data regionid of root.sg where seriesslotid=5286
 +--------+
 |RegionId|
 +--------+
@@ -494,17 +486,33 @@ It costs 0.006s
 展示一个元数据分区所在的 SchemaRegion：
 - `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
 
-”SERIESSLOTID“是可以被"DEVICEPATH"替换的。
-
+同样的，”SERIESSLOTID“与”TIMESLOTID“依然是可替换的。
 
 示例:
 ```
-IoTDB> show schema regionid of root.sg where devicePath=root.sg.m1.d2
+IoTDB> show schema regionid of root.sg where seriesslotid=5286
 +--------+
 |RegionId|
 +--------+
 |       0|
 +--------+
+Total line number = 1
+It costs 0.007s
+```
+
+#### 展示序列槽下的时间槽
+展示一个序列槽下的所有时间槽：
+- `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
+
+示例:
+```
+IoTDB> show timeslotid of root.sg where seriesslotid=5286
++----------+
+|TimeSlotId|
++----------+
+|         0|
+|      1000|
++----------+
 Total line number = 1
 It costs 0.007s
 ```
@@ -541,80 +549,6 @@ IoTDB> show seriesslotid of root.sg
 +------------+
 Total line number = 1
 It costs 0.006s
-```
-
-#### 展示数据库下的时间分区
-展示一个数据库下的时间分区：
-- `SHOW TIMEPARTITION OF root.sg (WHERE  SERIESLOTID=s0) (AND STARTTIME=t1) (AND ENDTIME=t2)`
-- `SHOW TIMEPARTITION OF root.sg (where REGIONID = r0) (AND STARTTIME=t1) (AND ENDTIME=t2)`
-”SERIESSLOTID“是可以被"DEVICEPATH"替换的。
-
-示例:
-```
-IoTDB> show timePartition of root.sg where devicePath=root.sg.m1.d1
-+-------------------------------------+
-|TimePartition|              StartTime|
-+-------------------------------------+
-|            0|1970-01-01T00:00:00.000|
-+-------------------------------------+
-Total line number = 1
-It costs 0.007s
-
-IoTDB> show timePartition of root.sg where regionId = 1
-+-------------------------------------+
-|TimePartition|              StartTime|
-+-------------------------------------+
-|            0|1970-01-01T00:00:00.000|
-+-------------------------------------+
-Total line number = 1
-It costs 0.007s
-
-IoTDB> show timePartition of root.sg 
-+-------------------------------------+
-|TimePartition|              StartTime|
-+-------------------------------------+
-|            0|1970-01-01T00:00:00.000|
-+-------------------------------------+
-|            1|1970-01-08T00:00:00.000|
-+-------------------------------------+
-Total line number = 2
-It costs 0.007s
-```
-
-#### 统计时间分区的个数
-- `COUNT TIMEPARTITION OF root.sg (WHERE  SERIESLOTID=s0) (AND STARTTIME=t1) (AND ENDTIME=t2)`
-- `COUNT TIMEPARTITION OF root.sg (where REGIONID = r0) (AND STARTTIME=t1) (AND ENDTIME=t2)`
-
-”SERIESSLOTID“是可以被"DEVICEPATH"替换的。
-
-示例:
-```
-IoTDB> count timePartition of root.sg where devicePath=root.sg.m1.d1
-+--------------------+
-|count(timePartition)|
-+--------------------+
-|                   1|
-+--------------------+
-Total line number = 1
-It costs 0.007s
-
-IoTDB> count timePartition of root.sg where regionId = 1
-+--------------------+
-|count(timePartition)|
-+--------------------+
-|                   1|
-+--------------------+
-Total line number = 1
-It costs 0.007s
-
-IoTDB> count timePartition of root.sg 
-+--------------------+
-|count(timePartition)|
-+--------------------+
-|                   2|
-+--------------------+
-Total line number = 1
-It costs 0.007s
 ```
 
 ### 迁移 Region
