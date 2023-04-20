@@ -39,6 +39,10 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
 
   public TemplateExtendInfo() {}
 
+  public TemplateExtendInfo(String templateName) {
+    this.templateName = templateName;
+  }
+
   public TemplateExtendInfo(
       String templateName,
       List<String> measurements,
@@ -70,6 +74,32 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
 
   public List<CompressionType> getCompressors() {
     return compressors;
+  }
+
+  public void addMeasurement(
+      String measurement,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressionType) {
+    if (measurements == null) {
+      measurements = new ArrayList<>();
+    }
+    measurements.add(measurement);
+
+    if (dataTypes == null) {
+      dataTypes = new ArrayList<>();
+    }
+    dataTypes.add(dataType);
+
+    if (encodings == null) {
+      encodings = new ArrayList<>();
+    }
+    encodings.add(encoding);
+
+    if (compressors == null) {
+      compressors = new ArrayList<>();
+    }
+    compressors.add(compressionType);
   }
 
   public void serialize(OutputStream outputStream) throws IOException {

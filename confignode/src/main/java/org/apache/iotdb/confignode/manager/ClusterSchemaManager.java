@@ -731,7 +731,7 @@ public class ClusterSchemaManager {
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
-  public TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+  public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
     Template template =
         clusterSchemaInfo
             .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))

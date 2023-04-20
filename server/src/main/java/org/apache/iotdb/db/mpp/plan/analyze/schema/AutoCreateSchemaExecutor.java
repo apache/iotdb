@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemp
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -143,23 +146,28 @@ class AutoCreateSchemaExecutor {
     List<Integer> indexOfMeasurementsNotInTemplate =
         checkMeasurementsInSchemaTemplate(
             devicePath, indexOfTargetMeasurements, measurements, isAligned, template);
-    if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
-      // there are measurements in schema template
-      internalActivateTemplate(devicePath);
-      for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-        schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(entry.getKey()),
-            (MeasurementSchema) entry.getValue(),
-            null,
-            null,
-            template.isDirectAligned());
+    if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
+      // there are measurements not in schema template, need extension
+      List<String> measurementList = new ArrayList<>(indexOfMeasurementsNotInTemplate.size());
+      List<TSDataType> dataTypeList = new ArrayList<>(indexOfMeasurementsNotInTemplate.size());
+      for (int index : indexOfMeasurementsNotInTemplate) {
+        measurementList.add(measurements[index]);
+        dataTypeList.add(getDataType.apply(index));
       }
+      internalExtendTemplate(template.getName(), measurementList, dataTypeList, null, null);
+      template = templateManager.getTemplate(template.getId());
     }
-    if (indexOfMeasurementsNotInTemplate.isEmpty()) {
-      return;
+
+    internalActivateTemplate(devicePath);
+
+    for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+      schemaTree.appendSingleMeasurement(
+          devicePath.concatNode(entry.getKey()),
+          (MeasurementSchema) entry.getValue(),
+          null,
+          null,
+          template.isDirectAligned());
     }
-    // there are measurements need to be created as normal timeseries
-    indexOfTargetMeasurements = indexOfMeasurementsNotInTemplate;
   }
 
   void autoCreateMissingMeasurements(
@@ -183,6 +191,7 @@ class AutoCreateSchemaExecutor {
     Pair<Template, PartialPath> templateInfo;
     Template template;
     List<Integer> indexOfMeasurementsNotInTemplate;
+    Map<String, TemplateExtendInfo> templateExtendInfoMap = new HashMap<>();
     for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
       deviceIndex = indexOfTargetDevices.get(i);
       devicePath = devicePathList.get(deviceIndex);
@@ -195,22 +204,6 @@ class AutoCreateSchemaExecutor {
 
       if (templateInfo == null) {
         indexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
-      } else {
-        template = templateInfo.left;
-        indexOfMeasurementsNotInTemplate =
-            checkMeasurementsInSchemaTemplate(
-                devicePath,
-                indexOfTargetMeasurements,
-                measurementsList.get(deviceIndex),
-                isAlignedList.get(deviceIndex),
-                template);
-        if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
-          // there are measurements in schema template
-          devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
-        }
-      }
-
-      if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
         // there are measurements need to be created as normal timeseries
         int finalDeviceIndex = deviceIndex;
         List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfMeasurementsNotInTemplate;
@@ -243,6 +236,65 @@ class AutoCreateSchemaExecutor {
               }
               return v;
             });
+      } else {
+        template = templateInfo.left;
+        indexOfMeasurementsNotInTemplate =
+            checkMeasurementsInSchemaTemplate(
+                devicePath,
+                indexOfTargetMeasurements,
+                measurementsList.get(deviceIndex),
+                isAlignedList.get(deviceIndex),
+                template);
+        devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
+
+        if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
+          List<Integer> finalIndexOfMeasurementsNotInTemplate1 = indexOfMeasurementsNotInTemplate;
+          int finalDeviceIndex1 = deviceIndex;
+          templateExtendInfoMap.compute(
+              template.getName(),
+              (k, v) -> {
+                TemplateExtendInfo templateExtendInfo;
+                if (v == null) {
+                  templateExtendInfo = new TemplateExtendInfo(k);
+                } else {
+                  templateExtendInfo = v;
+                }
+
+                String measurement;
+                TSDataType dataType;
+                TSEncoding encoding;
+                CompressionType compressionType;
+                for (int index : finalIndexOfMeasurementsNotInTemplate1) {
+                  measurement = measurementsList.get(finalDeviceIndex1)[index];
+                  dataType = tsDataTypesList.get(finalDeviceIndex1)[index];
+                  if (encodingsList != null && encodingsList.get(finalDeviceIndex1) != null) {
+                    encoding = encodingsList.get(finalDeviceIndex1)[index];
+                  } else {
+                    encoding = getDefaultEncoding(dataType);
+                  }
+                  if (compressionTypesList != null
+                      && compressionTypesList.get(finalDeviceIndex1) != null) {
+                    compressionType = compressionTypesList.get(finalDeviceIndex1)[index];
+                  } else {
+                    compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+                  }
+                  templateExtendInfo.addMeasurement(
+                      measurement, dataType, encoding, compressionType);
+                }
+                return templateExtendInfo;
+              });
+        }
+      }
+    }
+
+    if (!templateExtendInfoMap.isEmpty()) {
+      for (TemplateExtendInfo templateExtendInfo : templateExtendInfoMap.values()) {
+        internalExtendTemplate(
+            templateExtendInfo.getTemplateName(),
+            templateExtendInfo.getMeasurements(),
+            templateExtendInfo.getDataTypes(),
+            templateExtendInfo.getEncodings(),
+            templateExtendInfo.getCompressors());
       }
     }
 
@@ -251,7 +303,8 @@ class AutoCreateSchemaExecutor {
       for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
           devicesNeedActivateTemplate.entrySet()) {
         devicePath = entry.getKey();
-        template = entry.getValue().left;
+        // take the latest template
+        template = templateManager.getTemplate(entry.getValue().left.getId());
         for (Map.Entry<String, IMeasurementSchema> measurementEntry :
             template.getSchemaMap().entrySet()) {
           schemaTree.appendSingleMeasurement(
@@ -440,6 +493,28 @@ class AutoCreateSchemaExecutor {
             null,
             entry.getValue().left);
       }
+    }
+  }
+
+  private void internalExtendTemplate(
+      String templateName,
+      List<String> measurementList,
+      List<TSDataType> dataTypeList,
+      List<TSEncoding> encodingList,
+      List<CompressionType> compressionTypeList) {
+
+    ExecutionResult executionResult =
+        statementExecutor.apply(
+            new AlterSchemaTemplateStatement(
+                templateName,
+                measurementList,
+                dataTypeList,
+                encodingList,
+                compressionTypeList,
+                TemplateAlterOperationType.EXTEND_TEMPLATE));
+    TSStatus status = executionResult.status;
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
     }
   }
 }
