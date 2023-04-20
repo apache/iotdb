@@ -124,14 +124,16 @@ class AutoCreateSchemaExecutor {
           }
         });
 
-    internalCreateTimeSeries(
-        schemaTree,
-        devicePath,
-        missingMeasurements,
-        dataTypesOfMissingMeasurement,
-        encodingsOfMissingMeasurement,
-        compressionTypesOfMissingMeasurement,
-        isAligned);
+    if (!missingMeasurements.isEmpty()) {
+      internalCreateTimeSeries(
+          schemaTree,
+          devicePath,
+          missingMeasurements,
+          dataTypesOfMissingMeasurement,
+          encodingsOfMissingMeasurement,
+          compressionTypesOfMissingMeasurement,
+          isAligned);
+    }
   }
 
   private void autoActivateAndExtendTemplate(

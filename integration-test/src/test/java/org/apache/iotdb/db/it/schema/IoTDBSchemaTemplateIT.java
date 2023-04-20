@@ -322,7 +322,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2.d2");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d2");
-      statement.execute("INSERT INTO root.sg3.d2.verify(time, show) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.sg3.d2.verify(time, show) ALIGNED VALUES (1, 1)");
 
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
         String resultRecord;
@@ -375,7 +375,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertEquals(0, expectedResultSet.size());
 
       ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t2");
-      Assert.assertFalse(resultSet.next());
+      Assert.assertTrue(resultSet.next());
     }
   }
 
