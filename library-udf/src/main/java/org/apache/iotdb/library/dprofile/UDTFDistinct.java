@@ -39,7 +39,10 @@ import org.eclipse.collections.impl.set.mutable.primitive.FloatHashSet;
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
 import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 /** This function counts number of distinct values of input series. */
 public class UDTFDistinct implements UDTF {
@@ -51,6 +54,8 @@ public class UDTFDistinct implements UDTF {
   private BooleanHashSet booleanSet;
   private HashSet<String> stringSet;
   private Type dataType;
+
+  private Map<Object, Long> minTimeMemo;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -86,6 +91,7 @@ public class UDTFDistinct implements UDTF {
       case BOOLEAN:
         booleanSet = new BooleanHashSet();
     }
+    minTimeMemo = new HashMap<>();
   }
 
   @Override
@@ -93,67 +99,119 @@ public class UDTFDistinct implements UDTF {
     switch (dataType) {
       case INT32:
         intSet.add(row.getInt(0));
+        minTimeMemo.compute(
+            row.getInt(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         break;
       case INT64:
         longSet.add(row.getLong(0));
+        minTimeMemo.compute(
+            row.getLong(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         break;
       case FLOAT:
         floatSet.add(row.getFloat(0));
+        minTimeMemo.compute(
+            row.getFloat(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         break;
       case DOUBLE:
         doubleSet.add(row.getDouble(0));
+        minTimeMemo.compute(
+            row.getDouble(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         break;
       case TEXT:
         stringSet.add(row.getString(0));
+        minTimeMemo.compute(
+            row.getString(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         break;
       case BOOLEAN:
         booleanSet.add(row.getBoolean(0));
+        minTimeMemo.compute(
+            row.getBoolean(0),
+            (k, v) -> {
+              try {
+                return v == null ? row.getTime() : Math.min(row.getTime(), v);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
     }
   }
 
   @Override
   public void terminate(PointCollector pc) throws Exception {
-    int i = 0;
     switch (dataType) {
       case INT32:
         MutableIntIterator intIterator = intSet.intIterator();
         while (intIterator.hasNext()) {
-          pc.putInt(i, intIterator.next());
-          i++;
+          int result = intIterator.next();
+          pc.putInt(minTimeMemo.get(result), result);
         }
         break;
       case INT64:
         MutableLongIterator longIterator = longSet.longIterator();
         while (longIterator.hasNext()) {
-          pc.putLong(i, longIterator.next());
-          i++;
+          long result = longIterator.next();
+          pc.putLong(minTimeMemo.get(result), result);
         }
         break;
       case FLOAT:
         MutableFloatIterator floatIterator = floatSet.floatIterator();
         while (floatIterator.hasNext()) {
-          pc.putFloat(i, floatIterator.next());
-          i++;
+          float result = floatIterator.next();
+          pc.putFloat(minTimeMemo.get(result), result);
         }
         break;
       case DOUBLE:
         MutableDoubleIterator doubleIterator = doubleSet.doubleIterator();
         while (doubleIterator.hasNext()) {
-          pc.putDouble(i, doubleIterator.next());
-          i++;
+          double result = doubleIterator.next();
+          pc.putDouble(minTimeMemo.get(result), result);
         }
         break;
       case TEXT:
         for (String s : stringSet) {
-          pc.putString(i, s);
-          i++;
+          pc.putString(minTimeMemo.get(s), s);
         }
         break;
       case BOOLEAN:
         MutableBooleanIterator booleanIterator = booleanSet.booleanIterator();
         while (booleanIterator.hasNext()) {
-          pc.putBoolean(i, booleanIterator.next());
-          i++;
+          boolean result = booleanIterator.next();
+          pc.putBoolean(minTimeMemo.get(result), result);
         }
     }
   }
@@ -179,5 +237,6 @@ public class UDTFDistinct implements UDTF {
       case BOOLEAN:
         booleanSet.clear();
     }
+    minTimeMemo.clear();
   }
 }
