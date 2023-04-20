@@ -122,7 +122,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   private final ConfigPhysicalPlanType type;
 
-  public ConfigPhysicalPlan(ConfigPhysicalPlanType type) {
+  protected ConfigPhysicalPlan(ConfigPhysicalPlanType type) {
     this.type = type;
   }
 

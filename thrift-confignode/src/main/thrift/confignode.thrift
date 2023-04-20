@@ -266,7 +266,7 @@ struct TCountTimeSlotListReq {
 
 struct TCountTimeSlotListResp {
     1: required common.TSStatus status
-    2: required i64 count
+    2: optional i64 count
 }
 
 struct TGetSeriesSlotListReq {

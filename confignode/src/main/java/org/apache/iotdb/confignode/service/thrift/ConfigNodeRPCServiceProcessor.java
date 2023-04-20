@@ -714,7 +714,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) throws TException {
+  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
     return configManager.getPipePluginJar(req);
   }
 
@@ -921,7 +921,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
-    return configManager.countTimeSlotList(req);
+    TCountTimeSlotListResp countTimeSlotListResp = configManager.countTimeSlotList(req);
+    System.out.println("countTimeSlotList: " + countTimeSlotListResp);
+    return countTimeSlotListResp;
   }
 
   @Override
@@ -950,32 +952,32 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createModel(TCreateModelReq req) throws TException {
+  public TSStatus createModel(TCreateModelReq req) {
     return configManager.createModel(req);
   }
 
   @Override
-  public TSStatus dropModel(TDropModelReq req) throws TException {
+  public TSStatus dropModel(TDropModelReq req) {
     return configManager.dropModel(req);
   }
 
   @Override
-  public TShowModelResp showModel(TShowModelReq req) throws TException {
+  public TShowModelResp showModel(TShowModelReq req) {
     return configManager.showModel(req);
   }
 
   @Override
-  public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
+  public TShowTrailResp showTrail(TShowTrailReq req) {
     return configManager.showTrail(req);
   }
 
   @Override
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
     return configManager.updateModelInfo(req);
   }
 
   @Override
-  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+  public TSStatus updateModelState(TUpdateModelStateReq req) {
     return configManager.updateModelState(req);
   }
 
@@ -985,12 +987,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSpaceQuotaResp showSpaceQuota(List<String> databases) throws TException {
+  public TSpaceQuotaResp showSpaceQuota(List<String> databases) {
     return configManager.showSpaceQuota(databases);
   }
 
   @Override
-  public TSpaceQuotaResp getSpaceQuota() throws TException {
+  public TSpaceQuotaResp getSpaceQuota() {
     return configManager.getSpaceQuota();
   }
 
@@ -1000,12 +1002,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) throws TException {
+  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) {
     return configManager.showThrottleQuota(req);
   }
 
   @Override
-  public TThrottleQuotaResp getThrottleQuota() throws TException {
+  public TThrottleQuotaResp getThrottleQuota() {
     return configManager.getThrottleQuota();
   }
 }

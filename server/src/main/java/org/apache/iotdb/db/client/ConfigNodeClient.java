@@ -1920,6 +1920,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TCountTimeSlotListResp resp = client.countTimeSlotList(req);
+        System.out.println(resp);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

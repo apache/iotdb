@@ -3673,9 +3673,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("Limit configuration is not enabled, please enable it first.");
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
-    List<PartialPath> databases = null;
     if (ctx.prefixPath() != null) {
-      databases = new ArrayList<>();
+      List<PartialPath> databases = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         databases.add(parsePrefixPath(prefixPathContext));
       }
