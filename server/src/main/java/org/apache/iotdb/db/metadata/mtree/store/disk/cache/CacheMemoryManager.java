@@ -70,7 +70,7 @@ public class CacheMemoryManager {
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
-  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
+  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 3_000;
   private final Object blockObject = new Object();
 
   /**
