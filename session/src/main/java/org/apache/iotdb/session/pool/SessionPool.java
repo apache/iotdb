@@ -164,6 +164,33 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUser,
+      String slavePassword,
+      int maxSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        slaveNodeUrls,
+        slaveUser,
+        slavePassword,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
       String host, int port, String user, String password, int maxSize, boolean enableCompression) {
     this(
         host,
@@ -194,6 +221,34 @@ public class SessionPool implements ISessionPool {
         null,
         null,
         null,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUser,
+      String slavePassword,
+      int maxSize,
+      boolean enableCompression) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        slaveNodeUrls,
+        slaveUser,
+        slavePassword,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -261,6 +316,35 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUser,
+      String slavePassword,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableRedirection) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        slaveNodeUrls,
+        slaveUser,
+        slavePassword,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableRedirection,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
       String host, int port, String user, String password, int maxSize, ZoneId zoneId) {
     this(
         host,
@@ -291,6 +375,34 @@ public class SessionPool implements ISessionPool {
         null,
         null,
         null,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUser,
+      String slavePassword,
+      int maxSize,
+      ZoneId zoneId) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        slaveNodeUrls,
+        slaveUser,
+        slavePassword,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,

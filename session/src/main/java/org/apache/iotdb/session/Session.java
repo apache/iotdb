@@ -342,6 +342,28 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUsername,
+      String slavePassword) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        slaveNodeUrls,
+        slaveUsername,
+        slavePassword,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
   /**
    * Multiple nodeUrl,If one node down, connect to the next one
    *
@@ -363,6 +385,29 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUsername,
+      String slavePassword,
+      int fetchSize) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        slaveNodeUrls,
+        slaveUsername,
+        slavePassword,
+        fetchSize,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
     this(
         nodeUrls,
@@ -371,6 +416,29 @@ public class Session implements ISession {
         null,
         null,
         null,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        zoneId,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> slaveNodeUrls,
+      String slaveUsername,
+      String slavePassword,
+      ZoneId zoneId) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        slaveNodeUrls,
+        slaveUsername,
+        slavePassword,
         SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,

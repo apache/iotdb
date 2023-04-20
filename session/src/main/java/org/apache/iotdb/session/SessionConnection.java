@@ -99,7 +99,8 @@ public class SessionConnection {
   private boolean enableRedirect = false;
   private List<TEndPoint> slaveEndPointList = new ArrayList<>();
   private ClusterStatus clusterStatus;
-  private ScheduledExecutorService checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
+  private ScheduledExecutorService checkPrimaryClusterExecutorService =
+      Executors.newScheduledThreadPool(1);
   // TestOnly
   public SessionConnection() {}
 
@@ -221,7 +222,8 @@ public class SessionConnection {
       if (transport != null) {
         transport.close();
       }
-      if (null != checkPrimaryClusterExecutorService && !checkPrimaryClusterExecutorService.isShutdown()) {
+      if (null != checkPrimaryClusterExecutorService
+          && !checkPrimaryClusterExecutorService.isShutdown()) {
         checkPrimaryClusterExecutorService.shutdown();
       }
     }
@@ -1012,7 +1014,7 @@ public class SessionConnection {
     checkPrimaryClusterExecutorService.scheduleAtFixedRate(
         this::checkNode,
         CHECK_CONNECT_PRIMARY_CLUSTER_S,
-            CHECK_CONNECT_PRIMARY_CLUSTER_S,
+        CHECK_CONNECT_PRIMARY_CLUSTER_S,
         TimeUnit.SECONDS);
   }
 

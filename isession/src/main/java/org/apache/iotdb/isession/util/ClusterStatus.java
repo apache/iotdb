@@ -9,6 +9,6 @@ public enum ClusterStatus {
   /** primary cluster is down, slave cluster is up */
   SLAVE_CLUSTER_UP,
 
-  /** primary cluster recover, ready to start*/
+  /** primary cluster recover, ready to start */
   PRIMARY_CLUSTER_BE_READY;
 }
