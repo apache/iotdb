@@ -53,8 +53,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
@@ -853,18 +851,24 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  @Deprecated
   public TSStatus createPipeSink(TPipeSinkInfo req) {
-    return configManager.createPipeSink(new CreatePipeSinkPlan(req));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TSStatus dropPipeSink(TDropPipeSinkReq req) {
-    return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    return configManager.getPipeSink(req);
+    // To be deleted
+    return new TGetPipeSinkResp();
   }
 
   @Override
@@ -893,11 +897,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  @Deprecated
   public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
   }
 
   @Override
+  @Deprecated
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
     return configManager.recordPipeMessage(req);
   }

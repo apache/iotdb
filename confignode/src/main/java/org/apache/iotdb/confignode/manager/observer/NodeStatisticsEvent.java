@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.observer;
 
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;

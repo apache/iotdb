@@ -493,6 +493,17 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
+   * Check if the specified RegionGroup exists.
+   *
+   * @param regionGroupId The specified RegionGroup
+   */
+  public boolean isRegionGroupExisted(TConsensusGroupId regionGroupId) {
+    return databasePartitionTables.values().stream()
+        .anyMatch(
+            databasePartitionTable -> databasePartitionTable.containRegionGroup(regionGroupId));
+  }
+
+  /**
    * Update the location info of given regionId
    *
    * @param req UpdateRegionLocationReq
@@ -504,9 +515,10 @@ public class PartitionInfo implements SnapshotProcessor {
     TDataNodeLocation oldNode = req.getOldNode();
     TDataNodeLocation newNode = req.getNewNode();
     databasePartitionTables.values().stream()
-        .filter(sgPartitionTable -> sgPartitionTable.containRegion(regionId))
+        .filter(databasePartitionTable -> databasePartitionTable.containRegionGroup(regionId))
         .forEach(
-            sgPartitionTable -> sgPartitionTable.updateRegionLocation(regionId, oldNode, newNode));
+            databasePartitionTable ->
+                databasePartitionTable.updateRegionLocation(regionId, oldNode, newNode));
 
     return status;
   }
@@ -520,7 +532,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
     Optional<DatabasePartitionTable> sgPartitionTableOptional =
         databasePartitionTables.values().stream()
-            .filter(s -> s.containRegion(regionId))
+            .filter(s -> s.containRegionGroup(regionId))
             .findFirst();
     return sgPartitionTableOptional.map(DatabasePartitionTable::getDatabaseName).orElse(null);
   }
@@ -618,6 +630,38 @@ public class PartitionInfo implements SnapshotProcessor {
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getAllReplicaSets();
+    } else {
+      return new ArrayList<>();
+    }
+  }
+
+  /**
+   * Get all RegionGroups currently owned by the specified Database.
+   *
+   * @param dataNodeId The specified dataNodeId
+   * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(int dataNodeId) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+    databasePartitionTables
+        .values()
+        .forEach(
+            databasePartitionTable ->
+                result.addAll(databasePartitionTable.getAllReplicaSets(dataNodeId)));
+    return result;
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param regionGroupIds The specified RegionGroupIds
+   * @return All Regions' RegionReplicaSet of the specified Database
+   */
+  public List<TRegionReplicaSet> getReplicaSets(
+      String database, List<TConsensusGroupId> regionGroupIds) {
+    if (databasePartitionTables.containsKey(database)) {
+      return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
     } else {
       return new ArrayList<>();
     }

@@ -50,7 +50,6 @@ public class TemplateTable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemplateTable.class);
 
-  // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
 
   private final AtomicInteger templateIdGenerator;

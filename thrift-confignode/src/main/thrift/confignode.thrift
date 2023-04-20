@@ -582,8 +582,9 @@ struct TGetTemplateResp {
 }
 
 struct TSetSchemaTemplateReq {
-  1: required string name
-  2: required string path
+  1: required string queryId
+  2: required string name
+  3: required string path
 }
 
 struct TGetPathsSetTemplatesResp {

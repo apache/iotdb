@@ -28,9 +28,14 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
@@ -102,10 +107,25 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
         break;
+      case CREATE_PIPE_PROCEDURE_V2:
+        procedure = new CreatePipeProcedureV2();
+        break;
+      case START_PIPE_PROCEDURE_V2:
+        procedure = new StartPipeProcedureV2();
+        break;
+      case STOP_PIPE_PROCEDURE_V2:
+        procedure = new StopPipeProcedureV2();
+        break;
+      case DROP_PIPE_PROCEDURE_V2:
+        procedure = new DropPipeProcedureV2();
+        break;
       case CREATE_CQ_PROCEDURE:
         procedure =
             new CreateCQProcedure(
                 ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
+        break;
+      case SET_TEMPLATE_PROCEDURE:
+        procedure = new SetTemplateProcedure();
         break;
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
@@ -162,6 +182,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_PIPE_PROCEDURE;
     } else if (procedure instanceof CreateCQProcedure) {
       return ProcedureType.CREATE_CQ_PROCEDURE;
+    } else if (procedure instanceof SetTemplateProcedure) {
+      return ProcedureType.SET_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof DeactivateTemplateProcedure) {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {

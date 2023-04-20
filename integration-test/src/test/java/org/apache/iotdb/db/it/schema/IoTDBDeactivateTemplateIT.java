@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -35,7 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
 
   public IoTDBDeactivateTemplateIT(SchemaTestMode schemaTestMode) {

@@ -196,8 +196,7 @@ export const enSidebar = {
         { text: 'Data Quality', link: 'Data-Quality' },
         { text: 'Data Repairing', link: 'Data-Repairing' },
         { text: 'Series Discovery', link: 'Series-Discovery' },
-        { text: 'String Processing', link: 'String-Processing' },
-        { text: 'M4', link: 'M4' },
+        { text: 'String Processing', link: 'String-Processing' }
       ],
     },
     {

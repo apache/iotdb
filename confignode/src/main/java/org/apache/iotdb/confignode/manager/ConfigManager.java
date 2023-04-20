@@ -39,7 +39,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -64,8 +63,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
@@ -83,10 +80,10 @@ import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachi
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
@@ -102,7 +99,6 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -134,8 +130,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -232,8 +226,6 @@ public class ConfigManager implements IManager {
 
   /** Manage Trigger. */
   private final TriggerManager triggerManager;
-  /** Sync. */
-  private final SyncManager syncManager;
 
   /** CQ. */
   private final CQManager cqManager;
@@ -262,7 +254,6 @@ public class ConfigManager implements IManager {
     ProcedureInfo procedureInfo = new ProcedureInfo();
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
-    ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
     ModelInfo modelInfo = new ModelInfo();
     PipeInfo pipeInfo = new PipeInfo();
@@ -278,7 +269,6 @@ public class ConfigManager implements IManager {
             procedureInfo,
             udfInfo,
             triggerInfo,
-            syncInfo,
             cqInfo,
             modelInfo,
             pipeInfo,
@@ -293,7 +283,6 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
-    this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
     this.loadManager = new LoadManager(this);
     this.modelManager = new ModelManager(this, modelInfo);
@@ -400,10 +389,11 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Force updating the target DataNode's status to Unknown
-      getNodeManager()
-          .getNodeCacheMap()
-          .get(dataNodeLocation.getDataNodeId())
-          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      getLoadManager()
+          .forceUpdateNodeCache(
+              NodeType.DataNode,
+              dataNodeLocation.getDataNodeId(),
+              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
@@ -444,12 +434,7 @@ public class ConfigManager implements IManager {
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatus = new HashMap<>();
-      getNodeManager()
-          .getNodeCacheMap()
-          .forEach(
-              (nodeId, heartbeatCache) ->
-                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatusWithReason()));
+      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
       return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
@@ -933,10 +918,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public SyncManager getSyncManager() {
-    return syncManager;
-  }
-
   public ModelManager getModelManager() {
     return modelManager;
   }
@@ -1148,10 +1129,11 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Force updating the target ConfigNode's status to Unknown
-      getNodeManager()
-          .getNodeCacheMap()
-          .get(configNodeLocation.getConfigNodeId())
-          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      getLoadManager()
+          .forceUpdateNodeCache(
+              NodeType.ConfigNode,
+              configNodeLocation.getConfigNodeId(),
+              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());
@@ -1462,10 +1444,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setSchemaTemplate(req.getName(), req.getPath());
+      return procedureManager.setSchemaTemplate(req.getQueryId(), req.getName(), req.getPath());
     } else {
       return status;
     }
@@ -1532,7 +1514,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
+  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -1572,82 +1554,35 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus createPipeSink(CreatePipeSinkPlan plan) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.createPipeSink(plan);
-    } else {
-      return status;
-    }
-  }
-
-  @Override
-  public TSStatus dropPipeSink(DropPipeSinkPlan plan) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.dropPipeSink(plan);
-    } else {
-      return status;
-    }
-  }
-
-  @Override
-  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    TSStatus status = confirmLeader();
-    TGetPipeSinkResp resp = new TGetPipeSinkResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.getPipeSink(req.getPipeSinkName());
-    } else {
-      return resp.setStatus(status);
-    }
-  }
-
-  @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     TSStatus status = confirmLeader();
-    LOGGER.info("createPipe: {}", req);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return status;
-    } else {
-      return status;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().createPipe(req)
+        : status;
   }
 
   @Override
   public TSStatus startPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    LOGGER.info("startPipe: {}", pipeName);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return status;
-    } else {
-      return status;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().startPipe(pipeName)
+        : status;
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    LOGGER.info("stopPipe: {}", pipeName);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return status;
-    } else {
-      return status;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().stopPipe(pipeName)
+        : status;
   }
 
   @Override
   public TSStatus dropPipe(String pipeName) {
     TSStatus status = confirmLeader();
-    LOGGER.info("dropPipe: {}", pipeName);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return status;
-    } else {
-      return status;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().dropPipe(pipeName)
+        : status;
   }
 
   @Override
@@ -1666,22 +1601,17 @@ public class ConfigManager implements IManager {
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.getAllPipeInfo();
-    } else {
-      return new TGetAllPipeInfoResp().setStatus(status);
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().showPipes()
+        : new TGetAllPipeInfoResp().setStatus(status);
   }
 
   @Override
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.recordPipeMessage(
-          req.getPipeName(), PipeMessage.deserialize(ByteBuffer.wrap(req.getMessage())));
-    } else {
-      return status;
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().recordPipeMessage(req)
+        : status;
   }
 
   @Override
