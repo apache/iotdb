@@ -203,13 +203,17 @@ public class TimeFilter {
 
     @Override
     public List<TimeRange> getTimeRanges() {
-      return values.stream()
-          .map(
-              l -> {
-                long time = l;
-                return new TimeRange(time, time);
-              })
-          .collect(Collectors.toList());
+      if (not) {
+        return Collections.emptyList();
+      } else {
+        return values.stream()
+            .map(
+                l -> {
+                  long time = l;
+                  return new TimeRange(time, time);
+                })
+            .collect(Collectors.toList());
+      }
     }
   }
 
