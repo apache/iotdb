@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class PipePluginMetaKeeper {
@@ -48,5 +49,26 @@ public abstract class PipePluginMetaKeeper {
 
   public boolean containsPipePlugin(String pluginName) {
     return pipeNameToPipeMetaMap.containsKey(pluginName.toUpperCase());
+  }
+
+  public void clear() {
+    pipeNameToPipeMetaMap.clear();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipePluginMetaKeeper that = (PipePluginMetaKeeper) o;
+    return pipeNameToPipeMetaMap.equals(that.pipeNameToPipeMetaMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeNameToPipeMetaMap);
   }
 }

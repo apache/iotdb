@@ -614,8 +614,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return this.getFullPath().compareTo(partialPath.getFullPath());
   }
 
-  public boolean startsWith(String[] otherNodes) {
-    for (int i = 0; i < otherNodes.length; i++) {
+  public boolean startsWithOrPrefixOf(String[] otherNodes) {
+    for (int i = 0; i < otherNodes.length && i < nodes.length; i++) {
       if (!nodes[i].equals(otherNodes[i])) {
         return false;
       }

@@ -33,6 +33,11 @@ public class SchemaSourceFactory {
   private SchemaSourceFactory() {};
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
+      PartialPath pathPattern) {
+    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null, false, null);
+  }
+
+  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
       String key,

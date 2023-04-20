@@ -440,6 +440,13 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  /**
+   * Enable compaction memory control or not. If true and estimated memory size of one compaction
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
+   */
+  private boolean enableCompactionMemControl = true;
+
   private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
@@ -1177,7 +1184,7 @@ public class IoTDBConfig {
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
-    pipeTemporaryLibDir = addDataHomeDir(pipeDir);
+    pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     mqttDir = addDataHomeDir(mqttDir);
 
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -2781,6 +2788,14 @@ public class IoTDBConfig {
 
   public void setCompactionPriority(CompactionPriority compactionPriority) {
     this.compactionPriority = compactionPriority;
+  }
+
+  public boolean isEnableCompactionMemControl() {
+    return enableCompactionMemControl;
+  }
+
+  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
+    this.enableCompactionMemControl = enableCompactionMemControl;
   }
 
   public long getTargetCompactionFileSize() {

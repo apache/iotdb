@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -43,7 +41,7 @@ public class UDTFKSigma implements UDTF {
   private int windowSize = 0;
   private CircularQueue<Object> v;
   private LongCircularQueue t;
-  private TSDataType dataType;
+  private Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -67,7 +65,7 @@ public class UDTFKSigma implements UDTF {
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(udfParameters.getDataType(0));
     this.multipleK = udfParameters.getDoubleOrDefault("k", 3);
-    this.dataType = UDFDataTypeTransformer.transformToTsDataType(udfParameters.getDataType(0));
+    this.dataType = udfParameters.getDataType(0);
     this.windowSize = udfParameters.getIntOrDefault("window", 10000);
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);

@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
@@ -138,7 +139,7 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.queryId,
             localFragmentInstanceId.fragmentId,
             localFragmentInstanceId.instanceId);
-    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.bufferRetainedSizeInBytes = 0;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     localMemoryManager
         .getQueryPool()
@@ -149,6 +150,11 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized ListenableFuture<?> isFull() {
     checkState();
+    // blocked could be null if this channel is closed before it is opened by ShuffleSinkHandle
+    // return immediateVoidFuture() to avoid NPE
+    if (closed) {
+      return immediateVoidFuture();
+    }
     return nonCancellationPropagating(blocked);
   }
 
@@ -385,6 +391,7 @@ public class SinkChannel implements ISinkChannel {
             // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
             // at first this SinkChannel has not reserved memory.
             .left;
+    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
