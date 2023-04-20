@@ -168,6 +168,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
+import org.apache.iotdb.db.metadata.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1544,7 +1546,19 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) {
-    return null;
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ByteBuffer buffer = ByteBuffer.wrap(req.getTemplateAlterInfo());
+      TemplateAlterOperationType operationType =
+          TemplateAlterOperationUtil.parseOperationType(buffer);
+      if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+        return clusterSchemaManager.extendSchemaTemplate(
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+      }
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    } else {
+      return status;
+    }
   }
 
   @Override

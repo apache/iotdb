@@ -147,6 +147,14 @@ public class Template implements Serializable {
     }
   }
 
+  public void addMeasurement(
+      String measurement,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressionType) {
+    schemaMap.put(measurement, constructSchema(measurement, dataType, encoding, compressionType));
+  }
+
   // endregion
 
   public void serialize(ByteBuffer buffer) {

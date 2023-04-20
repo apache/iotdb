@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -724,6 +726,19 @@ public class ClusterSchemaManager {
 
     // execute drop template
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+  }
+
+  public TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+    ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
+        new ExtendSchemaTemplatePlan(templateExtendInfo);
+    TSStatus status = getConsensusManager().write(extendSchemaTemplatePlan).getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+
+
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   /**
