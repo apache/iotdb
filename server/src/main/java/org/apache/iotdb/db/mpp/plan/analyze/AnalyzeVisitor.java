@@ -1125,19 +1125,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
     analysis.setDeviceViewSpecialProcess(
-        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement));
+        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
   private boolean analyzeDeviceViewSpecialProcess(
-      Set<Expression> deviceViewOutputExpressions, QueryStatement queryStatement) {
+      Set<Expression> deviceViewOutputExpressions,
+      QueryStatement queryStatement,
+      Analysis analysis) {
     if (queryStatement.isAggregationQuery()
         || queryStatement.hasWhere()
             && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
-                queryStatement.getWhereCondition().getPredicate())) {
+                queryStatement.getWhereCondition().getPredicate(), analysis)) {
       return true;
     }
     for (Expression expression : deviceViewOutputExpressions) {
-      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression)) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression, analysis)) {
         return true;
       }
     }

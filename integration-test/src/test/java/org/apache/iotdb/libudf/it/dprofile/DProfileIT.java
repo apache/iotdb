@@ -35,6 +35,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -99,6 +101,10 @@ public class DProfileIT {
                 x + Math.random() * y % (y - x + 1),
                 x + Math.random() * y % (y - x + 1))));
       }
+
+      statement.execute("insert into root.test.db(time,s1) values (1,1)");
+      statement.execute("insert into root.test.db(time,s1) values (2,2)");
+      statement.execute("insert into root.test.db(time,s1) values (10000000000,1)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -407,6 +413,17 @@ public class DProfileIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testDistinct2() {
+    String sqlStr = "select distinct(s1) from root.test.db align by device";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", "distinct(s1)"};
+    String[] retArray =
+        new String[] {
+          "0,root.test.db,1.0,", "1,root.test.db,2.0,",
+        };
+    resultSetEqualTest(sqlStr, expectedHeader, retArray);
   }
 
   @Test
