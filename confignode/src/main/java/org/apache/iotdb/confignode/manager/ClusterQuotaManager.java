@@ -335,10 +335,10 @@ public class ClusterQuotaManager {
       // diskSize Unit : M
       diskSizeAllocated =
           quotaInfo.getSpaceQuotaLimit().values().stream().mapToLong(TSpaceQuota::getDiskSize).sum()
-              / 1024;
+              / IoTDBConstant.KB;
       diskSizeUsed =
           quotaInfo.getSpaceQuotaUsage().values().stream().mapToLong(TSpaceQuota::getDiskSize).sum()
-              / 1024;
+              / IoTDBConstant.KB;
     }
 
     // device num
@@ -367,8 +367,8 @@ public class ClusterQuotaManager {
     // Disk Size
     resource = new HashMap<>();
     // totalSpace, freeSpace Unit : B
-    totalSpace = totalSpace / 1024 / 1024 / 1024;
-    freeSpace = freeSpace / 1024 / 1024 / 1024;
+    totalSpace = totalSpace / IoTDBConstant.KB / IoTDBConstant.KB / IoTDBConstant.KB;
+    freeSpace = freeSpace / IoTDBConstant.KB / IoTDBConstant.KB / IoTDBConstant.KB;
     resource.put(IoTDBConstant.TOTAL, totalSpace);
     resource.put(IoTDBConstant.NON_USED, totalSpace - freeSpace - diskSizeUsed);
     resource.put(IoTDBConstant.ALLOCATED, diskSizeAllocated);
