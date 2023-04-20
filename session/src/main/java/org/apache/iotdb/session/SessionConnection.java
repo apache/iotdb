@@ -97,7 +97,7 @@ public class SessionConnection {
   private TEndPoint endPoint;
   private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
-  private List<TEndPoint> slaveEndPointList = new ArrayList<>();
+  private List<TEndPoint> backupEndPointList = new ArrayList<>();
   private ClusterStatus clusterStatus;
   private ScheduledExecutorService checkPrimaryClusterExecutorService =
       Executors.newScheduledThreadPool(1);
@@ -109,10 +109,10 @@ public class SessionConnection {
     this.session = session;
     this.endPoint = endPoint;
     endPointList.add(endPoint);
-    this.slaveEndPointList =
-        null == session.slaveNodeUrls
-            ? slaveEndPointList
-            : SessionUtils.parseSeedNodeUrls(session.slaveNodeUrls);
+    this.backupEndPointList =
+        null == session.backupNodeUrls
+            ? backupEndPointList
+            : SessionUtils.parseSeedNodeUrls(session.backupNodeUrls);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     try {
       init(endPoint);
@@ -126,10 +126,10 @@ public class SessionConnection {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
-    this.slaveEndPointList =
-        null == session.slaveNodeUrls
-            ? slaveEndPointList
-            : SessionUtils.parseSeedNodeUrls(session.slaveNodeUrls);
+    this.backupEndPointList =
+        null == session.backupNodeUrls
+            ? backupEndPointList
+            : SessionUtils.parseSeedNodeUrls(session.backupNodeUrls);
     initClusterConn();
   }
 
@@ -947,7 +947,7 @@ public class SessionConnection {
   }
 
   private boolean reconnect() {
-    return reconnectPrimary(endPointList) || reconnectSlave(slaveEndPointList);
+    return reconnectPrimary(endPointList) || reconnectBackup(backupEndPointList);
   }
 
   private boolean reconnectPrimary(List<TEndPoint> endPointList) {
@@ -958,14 +958,14 @@ public class SessionConnection {
     return connectedSuccess;
   }
 
-  private boolean reconnectSlave(List<TEndPoint> endPointList) {
+  private boolean reconnectBackup(List<TEndPoint> endPointList) {
     if (endPointList.isEmpty()) {
       return false;
     }
     boolean connectedSuccess =
-        reconnectCluster(endPointList, session.slaveUsername, session.slavePassword);
-    if (connectedSuccess && !ClusterStatus.SLAVE_CLUSTER_UP.equals(clusterStatus)) {
-      clusterStatus = ClusterStatus.SLAVE_CLUSTER_UP;
+        reconnectCluster(endPointList, session.backupUsername, session.backupPassword);
+    if (connectedSuccess && !ClusterStatus.BACKUP_CLUSTER_UP.equals(clusterStatus)) {
+      clusterStatus = ClusterStatus.BACKUP_CLUSTER_UP;
       checkPrimaryClusterStatus();
     }
     return connectedSuccess;
@@ -1030,7 +1030,7 @@ public class SessionConnection {
         if (!transport.isOpen()) {
           transport.open();
         }
-        if (ClusterStatus.SLAVE_CLUSTER_UP.equals(clusterStatus)) {
+        if (ClusterStatus.BACKUP_CLUSTER_UP.equals(clusterStatus)) {
           clusterStatus = ClusterStatus.PRIMARY_CLUSTER_BE_READY;
         }
         checkPrimaryClusterExecutorService.shutdown();

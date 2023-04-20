@@ -70,9 +70,9 @@ public class SessionExample {
             .port(6667)
             .username("root")
             .password("root")
-            .slaveNodeUrls(slaveList)
-            .slaveUsername("root")
-            .slavePassword("123456")
+            .backupNodeUrls(slaveList)
+            .backupUsername("root")
+            .backupPassword("123456")
             .version(Version.V_1_0)
             .build();
     session.open(false);

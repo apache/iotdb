@@ -75,9 +75,9 @@ public class SessionPoolExample {
             .nodeUrls(nodeUrls)
             .user("root")
             .password("root")
-            .slaveNodeUrls(slaveList)
-            .slaveUser("root")
-            .slavePassword("123456")
+            .backupNodeUrls(slaveList)
+            .backupUser("root")
+            .backupPassword("123456")
             .maxSize(3)
             .build();
   }
