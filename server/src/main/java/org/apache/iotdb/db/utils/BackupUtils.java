@@ -181,6 +181,22 @@ public class BackupUtils {
     return sonFiles;
   }
 
+  public static List<File> getAllFilesWithSuffixInOneDir(String path, String suffix) {
+    List<File> sonFiles = new ArrayList<>();
+    File[] sonFileAndDirs = new File(path).listFiles();
+    if (sonFileAndDirs == null) {
+      return sonFiles;
+    }
+    for (File sonFile : sonFileAndDirs) {
+      if (sonFile.isFile() && sonFile.getName().endsWith(suffix)) {
+        sonFiles.add(sonFile);
+      } else {
+        sonFiles.addAll(getAllFilesWithSuffixInOneDir(sonFile.getAbsolutePath(), suffix));
+      }
+    }
+    return sonFiles;
+  }
+
   public static boolean deleteBackupTmpDir() {
     boolean success = true;
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
@@ -197,9 +213,7 @@ public class BackupUtils {
     return success && deleteFileOrDirRecursively(systemTmpDir);
   }
 
-  /**
-   * Will return true when the file is deleted successfully or when it does not exist.
-   */
+  /** Will return true when the file is deleted successfully or when it does not exist. */
   public static boolean deleteFileOrDirRecursively(File file) {
     if (file == null || !file.exists()) return true;
     if (!file.isFile()) {
