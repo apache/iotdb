@@ -3,12 +3,12 @@ package org.apache.iotdb.isession.util;
 /** Status of current cluster */
 public enum ClusterStatus {
 
-  /** cluster is up */
+  /** primary cluster is up */
   PRIMARY_CLUSTER_UP,
 
-  /** cluster is down, slave is up */
+  /** primary cluster is down, slave cluster is up */
   SLAVE_CLUSTER_UP,
 
-  /** cluster is down to up, slave is up to down */
+  /** primary cluster recover, ready to start*/
   PRIMARY_CLUSTER_BE_READY;
 }

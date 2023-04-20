@@ -87,7 +87,7 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
-  private static final long CHECK_CONNECT_PRIMARY_NODE_S = 10;
+  private static final long CHECK_CONNECT_PRIMARY_CLUSTER_S = 60;
   private Session session;
   private TTransport transport;
   private IClientRPCService.Iface client;
@@ -99,7 +99,7 @@ public class SessionConnection {
   private boolean enableRedirect = false;
   private List<TEndPoint> slaveEndPointList = new ArrayList<>();
   private ClusterStatus clusterStatus;
-  private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+  private ScheduledExecutorService checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
   // TestOnly
   public SessionConnection() {}
 
@@ -221,8 +221,8 @@ public class SessionConnection {
       if (transport != null) {
         transport.close();
       }
-      if (null != executorService && !executorService.isShutdown()) {
-        executorService.shutdown();
+      if (null != checkPrimaryClusterExecutorService && !checkPrimaryClusterExecutorService.isShutdown()) {
+        checkPrimaryClusterExecutorService.shutdown();
       }
     }
   }
@@ -230,7 +230,6 @@ public class SessionConnection {
   protected void checkPrimaryClusterBeReady() {
     if (ClusterStatus.PRIMARY_CLUSTER_BE_READY.equals(clusterStatus)) {
       reconnect();
-      logger.info("primary cluster restart");
     }
   }
 
@@ -946,9 +945,7 @@ public class SessionConnection {
   }
 
   private boolean reconnect() {
-    return reconnectPrimary(endPointList)
-        ? reconnectPrimary(endPointList)
-        : reconnectSlave(slaveEndPointList);
+    return reconnectPrimary(endPointList) || reconnectSlave(slaveEndPointList);
   }
 
   private boolean reconnectPrimary(List<TEndPoint> endPointList) {
@@ -966,7 +963,6 @@ public class SessionConnection {
     boolean connectedSuccess =
         reconnectCluster(endPointList, session.slaveUsername, session.slavePassword);
     if (connectedSuccess && !ClusterStatus.SLAVE_CLUSTER_UP.equals(clusterStatus)) {
-      //      System.out.println(clusterStatus);
       clusterStatus = ClusterStatus.SLAVE_CLUSTER_UP;
       checkPrimaryClusterStatus();
     }
@@ -1010,13 +1006,13 @@ public class SessionConnection {
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void checkPrimaryClusterStatus() {
-    if (executorService.isShutdown()) {
-      executorService = Executors.newScheduledThreadPool(1);
+    if (checkPrimaryClusterExecutorService.isShutdown()) {
+      checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
     }
-    executorService.scheduleAtFixedRate(
+    checkPrimaryClusterExecutorService.scheduleAtFixedRate(
         this::checkNode,
-        CHECK_CONNECT_PRIMARY_NODE_S,
-        CHECK_CONNECT_PRIMARY_NODE_S,
+        CHECK_CONNECT_PRIMARY_CLUSTER_S,
+            CHECK_CONNECT_PRIMARY_CLUSTER_S,
         TimeUnit.SECONDS);
   }
 
@@ -1032,10 +1028,10 @@ public class SessionConnection {
         if (!transport.isOpen()) {
           transport.open();
         }
-        if (ClusterStatus.SLAVE_CLUSTER_UP == clusterStatus) {
+        if (ClusterStatus.SLAVE_CLUSTER_UP.equals(clusterStatus)) {
           clusterStatus = ClusterStatus.PRIMARY_CLUSTER_BE_READY;
         }
-        executorService.shutdown();
+        checkPrimaryClusterExecutorService.shutdown();
         logger.info("primary cluster is ready");
         break;
       } catch (TTransportException e) {
