@@ -21,20 +21,20 @@ package org.apache.iotdb.confignode.manager.partition;
 public enum RegionGroupStatus {
 
   /** All Regions in RegionGroup are in the Running status */
-  Running("Running"),
+  Running("Running", 1),
 
   /**
    * All Regions in RegionGroup are in the Running or Unknown status, and the number of Regions in
    * the Unknown status is less than half
    */
-  Available("Available"),
+  Available("Available", 2),
 
   /**
    * All Regions in RegionGroup are in the Running, Unknown or ReadOnly status, and at least 1 node
    * is in ReadOnly status, the number of Regions in the Unknown or ReadOnly status is less than
    * half
    */
-  Discouraged("Discouraged"),
+  Discouraged("Discouraged", 3),
 
   /**
    * The following cases will lead to Disabled RegionGroup:
@@ -43,12 +43,14 @@ public enum RegionGroupStatus {
    *
    * <p>2. More than half of the Regions are in Unknown or ReadOnly status
    */
-  Disabled("Disabled");
+  Disabled("Disabled", 4);
 
   private final String status;
+  private final int weight;
 
-  RegionGroupStatus(String status) {
+  RegionGroupStatus(String status, int weight) {
     this.status = status;
+    this.weight = weight;
   }
 
   public String getStatus() {
@@ -62,5 +64,14 @@ public enum RegionGroupStatus {
       }
     }
     throw new RuntimeException(String.format("RegionGroupStatus %s doesn't exist.", status));
+  }
+
+  /**
+   * Compare the weight of two RegionGroupStatus.
+   *
+   * <p>Running > Available > Discouraged > Disabled
+   */
+  public int compare(RegionGroupStatus other) {
+    return Integer.compare(this.weight, other.weight);
   }
 }

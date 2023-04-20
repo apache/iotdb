@@ -22,7 +22,7 @@ from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from iotdb.mlnode.config import config
+from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.handler import MLNodeRPCServiceHandler
 from iotdb.mlnode.log import logger
 from iotdb.thrift.mlnode import IMLNodeRPCService
@@ -32,7 +32,8 @@ class RPCService(threading.Thread):
     def __init__(self):
         super().__init__()
         processor = IMLNodeRPCService.Processor(handler=MLNodeRPCServiceHandler())
-        transport = TSocket.TServerSocket(host=config.get_mn_rpc_address(), port=config.get_mn_rpc_port())
+        transport = TSocket.TServerSocket(host=descriptor.get_config().get_mn_rpc_address(),
+                                          port=descriptor.get_config().get_mn_rpc_port())
         transport_factory = TTransport.TFramedTransportFactory()
         protocol_factory = TCompactProtocol.TCompactProtocolFactory()
 
@@ -45,6 +46,7 @@ class RPCService(threading.Thread):
 
 class MLNode(object):
     def __init__(self):
+        descriptor.load_config_from_file()
         self.__rpc_service = RPCService()
 
     def start(self) -> None:

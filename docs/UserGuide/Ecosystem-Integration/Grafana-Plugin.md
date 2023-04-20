@@ -302,62 +302,48 @@ Tip: If the query field contains Boolean data, the result value will be converte
 
 This plugin supports Grafana alert function.
 
-1. In the Grafana sidebar, hover over the `Alerting` icon and click `Notification channels`.
+1. In the Grafana panel, click the `alerting` button, as shown in the following figure:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alerting1.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert1.png?raw=true">
 
-2. Click Add Channel.
+2. Click `Create alert rule from this panel`, as shown in the figure below:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alerting2.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert2.png?raw=true">
 
-3. Fill in the fields described below or select options. There are many types of Type, including DingDing, Email, Slack, WebHook, Prometheus Alertmanager, etc.
-   This sample Type uses `Prometheus Alertmanager`. Prometheus Alertmanager needs to be installed in advance. For more detailed configuration and parameter introduction, please refer to the official documentation: https://grafana.com/docs/grafana/v8.0/alerting/old- alerting/notifications/.
+3. Set query and alarm conditions in step 1. Conditions represent query conditions, and multiple combined query conditions can be configured. As shown below:
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.jpg?raw=true">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alerting3.png?raw=true">
+The query condition in the figure: `min() OF A IS BELOW 0`, means that the condition will be triggered when the minimum value in the A tab is 0, click this function to change it to another function.
 
-4. Click the `Test` button, the `Test notification sent` appears, click the `Save` button to save
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alerting4.png?raw=true">
-
-5. After creating a new Panel, enter the query parameters and click Save, then select `Alert` and click `Create Alert`, as shown in the following figure:
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertpanle1.png?raw=true">
-
-6、Fill out the fields described below or select an option， `Name`- Enter a descriptive name. The name will be displayed in the Alert Rules list. This field supports templating.
-`Evaluate every` - Specify how often the scheduler should evaluate the alert rule. This is referred to as the evaluation interval.
-`For` - Specify how long the query needs to violate the configured thresholds before the alert notification triggers.。`Conditions`- Represents query criteria. Multiple combined query criteria can be configured.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertpanle2.jpg?raw=true">
-
-Query conditions in the figure：avg() OF query(A,5m,now) IS ABOVE -1
-
-avg() Controls how the values for each series should be reduced to a value that can be compared against the threshold. Click on the function to change it to another aggregation function
-query(A, 15m, now) The letter defines what query to execute from the Metrics tab. The second two parameters define the time range, 15m, now means 15 minutes ago to now. You can also do 10m
-IS ABOVE -1 Defines the type of threshold and the threshold value. You can click on  IS ABOVE to change the type of threshold
-
-Tips:The query used in an alert rule cannot contain any template variables. Currently we only support AND and OR operators between conditions and they are executed serially. 
-
-For example, we have 3 conditions in the following order: condition:A(evaluates to: TRUE) OR condition:B(evaluates to: FALSE) AND condition:C(evaluates to: TRUE) so the result will be calculated as ((TRUE OR FALSE) AND TRUE) = TRUE.
-
-More details can be found in the official documents:https://grafana.com/docs/grafana/latest/alerting/old-alerting/create-alerts/
+Tip: Queries used in alert rules cannot contain any template variables. Currently we only support AND and OR operators between conditions, which are executed serially.
+For example, we have 3 conditions in the following order: Condition: B (Evaluates to: TRUE) OR Condition: C (Evaluates to: FALSE) and Condition: D (Evaluates to: TRUE) So the result will evaluate to ((True or False ) and right) = right.
 
 
-7、Click the `Test rule` button and the `firing: true` appears, the configuration is successful, click the `save` button
+4. After selecting indicators and alarm rules, click the `Preview` button to preview the data as shown in the figure below:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertpanel3.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert4.png?raw=true">
 
-8、The following figure shows the alarm displayed in the grafana panel
+5. In step 2, specify the alert evaluation interval, and for `Evaluate every`, specify the evaluation frequency. Must be a multiple of 10 seconds. For example, 1m, 30s.
+   For `Evaluate for`, specify the duration before the alert fires. As shown below:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertpanel4.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert5.png?raw=true">
 
-9、View alert rules
+6. In step 3, add the storage location, rule group, and other metadata associated with the rule. Where `Rule name` specifies the name of the rule. Rule names must be unique.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertPanel5.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert6.png?raw=true">
 
-10、View alert records in promehthus alertmanager
+7. In step 4, add a custom label. Add a custom label by selecting an existing key-value pair from the drop-down list, or add a new label by entering a new key or value. As shown below:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/alertpanel6.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert7.png?raw=true">
 
+8. Click `Save` to save the rule or click `Save and Exit` to save the rule and return to the alerts page.
+
+9. Commonly used alarm states include `Normal`, `Pending`, `Firing` and other states, as shown in the figure below:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert8.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert9.png?raw=true">
+
+10. We can also configure `Contact points` for alarms to receive alarm notifications. For more detailed operations, please refer to the official document (https://grafana.com/docs/grafana/latest/alerting/manage-notifications/create-contact-point/).
 
 ### More Details about Grafana
 

@@ -276,7 +276,6 @@ export const zhSidebar = {
         { text: '分布式部署', link: 'Cluster-Setup' },
         { text: '分布式运维命令', link: 'Cluster-Maintenance' },
         { text: '部署推荐', link: 'Deployment-Recommendation' },
-        { text: '集群部署工具', link: 'IoTDB-Deploy' },
       ],
     },
     {

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -749,33 +750,37 @@ public class ExpressionAnalyzer {
     return new BindTypeForTimeSeriesOperandVisitor().process(predicate, columnHeaders);
   }
 
-  public static boolean isDeviceViewNeedSpecialProcess(Expression expression) {
+  public static boolean isDeviceViewNeedSpecialProcess(Expression expression, Analysis analysis) {
     if (expression instanceof TernaryExpression) {
       TernaryExpression ternaryExpression = (TernaryExpression) expression;
-      return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression())
-          || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression())
-          || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression());
+      return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression(), analysis)
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression(), analysis)
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression(), analysis);
     } else if (expression instanceof BinaryExpression) {
       BinaryExpression binaryExpression = (BinaryExpression) expression;
-      return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression())
-          || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression());
+      return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression(), analysis)
+          || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression(), analysis);
     } else if (expression instanceof UnaryExpression) {
-      return isDeviceViewNeedSpecialProcess(((UnaryExpression) expression).getExpression());
+      return isDeviceViewNeedSpecialProcess(
+          ((UnaryExpression) expression).getExpression(), analysis);
     } else if (expression instanceof FunctionExpression) {
-      if (((FunctionExpression) expression).isBuiltInScalarFunction()
-          && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
-              ((FunctionExpression) expression).getFunctionName().toLowerCase())) {
+      String functionName = ((FunctionExpression) expression).getFunctionName().toLowerCase();
+      if (!expression.isMappable(analysis.getExpressionTypes())
+          || BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(functionName)
+          || BuiltinTimeSeriesGeneratingFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              functionName)) {
         return true;
       }
+
       for (Expression child : expression.getExpressions()) {
-        if (isDeviceViewNeedSpecialProcess(child)) {
+        if (isDeviceViewNeedSpecialProcess(child, analysis)) {
           return true;
         }
       }
       return false;
     } else if (expression instanceof CaseWhenThenExpression) {
       for (Expression subexpression : expression.getExpressions()) {
-        if (isDeviceViewNeedSpecialProcess(subexpression)) {
+        if (isDeviceViewNeedSpecialProcess(subexpression, analysis)) {
           return true;
         }
       }

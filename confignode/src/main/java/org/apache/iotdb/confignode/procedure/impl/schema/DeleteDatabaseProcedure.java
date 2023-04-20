@@ -120,7 +120,7 @@ public class DeleteDatabaseProcedure
               regionReplicaSet -> {
                 // Clear heartbeat cache along the way
                 env.getConfigManager()
-                    .getPartitionManager()
+                    .getLoadManager()
                     .removeRegionGroupCache(regionReplicaSet.getRegionId());
                 env.getConfigManager()
                     .getLoadManager()
