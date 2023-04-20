@@ -52,6 +52,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class DatabasePartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePartitionTable.class);
