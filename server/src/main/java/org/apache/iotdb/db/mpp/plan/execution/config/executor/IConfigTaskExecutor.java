@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -146,6 +147,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> alterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 

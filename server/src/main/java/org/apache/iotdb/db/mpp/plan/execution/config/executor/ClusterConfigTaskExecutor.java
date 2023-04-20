@@ -150,6 +150,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -1369,6 +1370,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
+    return null;
   }
 
   private ByteBuffer serializePatternListToByteBuffer(List<PartialPath> patternList) {

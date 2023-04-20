@@ -116,6 +116,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -358,6 +359,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, TaskContext context) {
     return new DropSchemaTemplateTask(dropSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement, TaskContext context) {
+    return super.visitAlterSchemaTemplate(alterSchemaTemplateStatement, context);
   }
 
   @Override
