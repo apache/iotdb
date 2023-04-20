@@ -905,11 +905,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     if (req.isSetTimeStamp() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
-    }
-    if (req.isSetTimeStamp() && req.getTimeStamp() < 0) {
-      return new TGetRegionIdResp(
-          new TSStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode()));
+      TSStatus status = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+      status.setMessage("Only data region can set time");
+      return new TGetRegionIdResp(status);
     }
     return configManager.getRegionId(req);
   }
@@ -921,9 +919,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
-    TCountTimeSlotListResp countTimeSlotListResp = configManager.countTimeSlotList(req);
-    System.out.println("countTimeSlotList: " + countTimeSlotListResp);
-    return countTimeSlotListResp;
+    return configManager.countTimeSlotList(req);
   }
 
   @Override

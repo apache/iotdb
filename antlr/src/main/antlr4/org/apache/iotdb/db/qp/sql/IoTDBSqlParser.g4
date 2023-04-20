@@ -457,8 +457,8 @@ getTimeSlotList
     : SHOW (TIMESLOTID|TIMEPARTITION) WHERE ((DEVICE|DEVICEID) operator_eq device=prefixPath
         | REGIONID operator_eq regionId=INTEGER_LITERAL
         | DATABASE operator_eq database=prefixPath )
-        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
-        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+        (OPERATOR_AND STARTTIME operator_eq startTime=timeValue)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=timeValue)?
     ;
 
 // ---- Count Time Slot List

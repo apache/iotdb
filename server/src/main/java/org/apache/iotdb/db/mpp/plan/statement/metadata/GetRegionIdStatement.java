@@ -42,7 +42,7 @@ import java.util.List;
  */
 public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
-  private String database = "root";
+  private String database;
 
   private String device;
   private final TConsensusGroupType partitionType;

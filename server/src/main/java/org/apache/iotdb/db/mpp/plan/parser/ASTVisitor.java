@@ -3383,7 +3383,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
     if (ctx.time != null) {
-      getRegionIdStatement.setTimeStamp(parseTimeValue(ctx.time, DateTimeUtils.currentTime()));
+      long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getRegionIdStatement.setTimeStamp(timestamp);
+      }
     }
     return getRegionIdStatement;
   }
@@ -3406,10 +3411,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
     }
     if (ctx.startTime != null) {
-      getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+      long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setStartTime(timestamp);
+      }
     }
     if (ctx.endTime != null) {
-      getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+      long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setEndTime(timestamp);
+      }
     }
     return getTimeSlotListStatement;
   }

@@ -1657,7 +1657,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
-      if (getRegionIdStatement.getTimeStamp() != -1) {
+      if (getRegionIdStatement.getTimeStamp() >= 0) {
         tGetRegionIdReq.setTimeStamp(getRegionIdStatement.getTimeStamp());
       }
       resp = configNodeClient.getRegionId(tGetRegionIdReq);

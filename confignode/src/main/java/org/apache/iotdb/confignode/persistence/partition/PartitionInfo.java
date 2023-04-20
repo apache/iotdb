@@ -799,7 +799,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return GetRegionIdResp with STATUS and List<TConsensusGroupId>.
    */
   public DataSet getRegionId(GetRegionIdPlan plan) {
-    if (plan.getDatabase() != null) {
+    if (!plan.getDatabase().equals("")) {
       // get regionId of specific database.
       if (!isDatabaseExisted(plan.getDatabase())) {
         return new GetRegionIdResp(
@@ -839,7 +839,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return GetRegionIdResp with STATUS and List<TTimePartitionSlot>.
    */
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
-    if (plan.getDatabase() != null) {
+    if (!plan.getDatabase().equals("")) {
       if (!isDatabaseExisted(plan.getDatabase())) {
         return new GetTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
@@ -878,7 +878,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public DataSet countTimeSlotList(CountTimeSlotListPlan plan) {
-    if (plan.getDatabase() != null) {
+    if (!plan.getDatabase().equals("")) {
       if (!isDatabaseExisted(plan.getDatabase())) {
         return new CountTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), 0);

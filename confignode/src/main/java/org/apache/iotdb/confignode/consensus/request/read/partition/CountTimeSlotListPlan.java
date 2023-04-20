@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -51,6 +52,9 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
     this();
     this.startTime = startTime;
     this.endTime = endTime;
+    this.database = "";
+    this.seriesSlotId = new TSeriesPartitionSlot(-1);
+    this.regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
   }
 
   public void setDatabase(String database) {

@@ -146,7 +146,7 @@ public class SeriesPartitionTable {
    * @return the timePartition's corresponding dataRegionIds
    */
   List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
-    if (timeSlotId != null) {
+    if (timeSlotId.getStartTime() != -1) {
       if (!seriesPartitionMap.containsKey(timeSlotId)) {
         return new ArrayList<>();
       }
@@ -160,7 +160,7 @@ public class SeriesPartitionTable {
 
   List<TTimePartitionSlot> getTimeSlotList(
       TConsensusGroupId regionId, long startTime, long endTime) {
-    if (regionId == null) {
+    if (regionId.getId() == -1) {
       return seriesPartitionMap.keySet().stream()
           .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
           .collect(Collectors.toList());

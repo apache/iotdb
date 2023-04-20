@@ -49,6 +49,9 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
   public GetRegionIdPlan(TConsensusGroupType partitionType) {
     this();
     this.partitionType = partitionType;
+    this.database = "";
+    this.seriesSlotId = new TSeriesPartitionSlot(-1);
+    this.timeSlotId = new TTimePartitionSlot(-1);
   }
 
   public String getDatabase() {
@@ -82,16 +85,16 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(database, stream);
     stream.writeInt(partitionType.ordinal());
+    ReadWriteIOUtils.write(database, stream);
     ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
     ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
     this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
+    this.database = ReadWriteIOUtils.readString(buffer);
     this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
     this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
   }
@@ -110,8 +113,8 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
   @Override
   public int hashCode() {
     int hashcode = 1;
-    hashcode = hashcode * 31 + Objects.hash(database);
     hashcode = hashcode * 31 + Objects.hash(partitionType.ordinal());
+    hashcode = hashcode * 31 + Objects.hash(database);
     hashcode = hashcode * 31 + seriesSlotId.hashCode();
     hashcode = hashcode * 31 + timeSlotId.hashCode();
     return hashcode;

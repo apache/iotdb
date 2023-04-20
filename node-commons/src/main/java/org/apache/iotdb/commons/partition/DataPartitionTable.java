@@ -173,13 +173,13 @@ public class DataPartitionTable {
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param timeSlotId TimePartitionSlot
-   * @return the timePartition's corresponding dataRegionIds, if seriesSlotId==null, then return all
-   *     seriesPartitionTable's dataRegionIds; if timeSlotId == null, then return all the
-   *     seriesSlot's dataRegionIds.
+   * @return the timePartition's corresponding dataRegionIds, if seriesSlotId==-1, then return all
+   *     seriesPartitionTable's dataRegionIds; if timeSlotId == -1, then return all the seriesSlot's
+   *     dataRegionIds.
    */
   public List<TConsensusGroupId> getRegionId(
       TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
-    if (seriesSlotId == null) {
+    if (seriesSlotId.getSlotId() == -1) {
       List<TConsensusGroupId> regionIds = new ArrayList<>();
       dataPartitionMap.forEach(
           (seriesPartitionSlot, seriesPartitionTable) ->
@@ -199,12 +199,12 @@ public class DataPartitionTable {
    * @param seriesSlotId SeriesPartitionSlot
    * @param regionId TConsensusGroupId
    * @param startTime startTime
-   * @return the timePartition if seriesSlotId==null&&regionId == -1, then return all timePartition;
+   * @return the timePartition if seriesSlotId==-1&&regionId == -1, then return all timePartition;
    *     if timeSlotId == -1, then return all the seriesSlot's dataRegionIds.
    */
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
-    if (seriesSlotId == null) {
+    if (seriesSlotId.getSlotId() == -1) {
       // query timePartition of specific database or region
       List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
       dataPartitionMap.forEach(

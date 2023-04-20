@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -27,6 +28,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -49,7 +58,9 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
@@ -322,177 +333,135 @@ public class IoTDBPartitionGetterIT {
     }
   }
 
-  //  @Test
+  @Test
+  public void testGetSlots() throws Exception {
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
 
-  //  public void testGetSlots() throws Exception {
-  //    final String sg0 = "root.sg0";
-  //    final String sg1 = "root.sg1";
-  //
-  //    final String d00 = sg0 + ".d0.s";
-  //    final String d01 = sg0 + ".d1.s";
-  //    final String d10 = sg1 + ".d0.s";
-  //    final String d11 = sg1 + ".d1.s";
-  //
-  //    try (SyncConfigNodeIServiceClient client =
-  //        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-  //
-  //      /* Test getRegionId */
-  //      TGetRegionIdReq getRegionIdReq;
-  //      TGetRegionIdResp getRegionIdResp;
-  //      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(0);
-  //      TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(0L);
-  //
-  //      // Get RegionIds of specified PartitionSlot
-  //      getRegionIdReq = new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion);
-  //      getRegionIdReq.setSeriesSlotId(seriesPartitionSlot);
-  //      getRegionIdReq.setTimeSlotId(timePartitionSlot);
-  //      getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-  //      Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
-  //
-  //      // Get RegionId with wrong PartitionSlot
-  //      getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
-  //      getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
-  //
-  //      // Get RegionId with wrong RegionType
-  //      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
-  //      getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
-  //
-  //      // Get all RegionIds within one SeriesSlot
-  //      for (int i = 0; i < storageGroupNum; i++) {
-  //        String curSg = sg + i;
-  //
-  //        getRegionIdReq = new TGetRegionIdReq(curSg, TConsensusGroupType.DataRegion);
-  //        getRegionIdReq.setSeriesSlotId(seriesPartitionSlot);
-  //        getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //        Assert.assertEquals(
-  //            TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-  //        Set<TConsensusGroupId> idSet = new HashSet<>(getRegionIdResp.getDataRegionIdList());
-  //
-  //        Set<TConsensusGroupId> subSets = new HashSet<>();
-  //        for (long j = 0; j < testTimePartitionSlotsNum; j++) {
-  //          TGetRegionIdReq subReq = new TGetRegionIdReq(curSg, TConsensusGroupType.DataRegion);
-  //          subReq.setSeriesSlotId(seriesPartitionSlot);
-  //          subReq.setTimeSlotId(new TTimePartitionSlot(j * testTimePartitionInterval));
-  //          TGetRegionIdResp subResp = client.getRegionId(subReq);
-  //          Assert.assertEquals(
-  //              TSStatusCode.SUCCESS_STATUS.getStatusCode(), subResp.getStatus().getCode());
-  //          subSets.addAll(subResp.getDataRegionIdList());
-  //        }
-  //
-  //        Assert.assertEquals(idSet, subSets);
-  //      }
-  //
-  //      // Get RegionId of SchemaPartition
-  //      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
-  //      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
-  //      TSchemaPartitionTableResp schemaPartitionTableResp =
-  //          client.getSchemaPartitionTable(schemaPartitionReq);
-  //      getRegionIdReq.setDatabase(sg0);
-  //      getRegionIdReq.setSeriesSlotId(
-  //          new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
-  //              .get(0));
-  //      getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
-  //      getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-  //      Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
-  //
-  //      getRegionIdReq.setType(TConsensusGroupType.ConfigRegion);
-  //      getRegionIdResp = client.getRegionId(getRegionIdReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-  //      Assert.assertEquals(0, getRegionIdResp.getDataRegionIdListSize());
-  //
-  //      // Test GetTimeSlotList api
-  //      TGetTimeSlotListReq getTimeSlotListReq;
-  //      TGetTimeSlotListResp getTimeSlotListResp;
-  //
-  //      seriesPartitionSlot.setSlotId(0);
-  //
-  //      getTimeSlotListReq = new TGetTimeSlotListReq(sg0, seriesPartitionSlot);
-  //      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-  //      Assert.assertEquals(timePartitionBatchSize, getTimeSlotListResp.getTimeSlotListSize());
-  //
-  //      long startTime = 5;
-  //      getTimeSlotListReq.setStartTime(startTime * testTimePartitionInterval);
-  //
-  //      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-  //      Assert.assertEquals(
-  //          timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
-  //
-  //      long endTime = 6;
-  //      getTimeSlotListReq.setEndTime(endTime * testTimePartitionInterval);
-  //
-  //      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
-  //      Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
-  //
-  //      // Test GetSeriesSlotList api
-  //      TGetSeriesSlotListReq getSeriesSlotListReq;
-  //      TGetSeriesSlotListResp getSeriesSlotListResp;
-  //
-  //      getSeriesSlotListReq = new TGetSeriesSlotListReq(sg0);
-  //      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-  //      Assert.assertEquals(
-  //          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
-  //
-  //      getSeriesSlotListReq.setType(TConsensusGroupType.ConfigRegion);
-  //
-  //      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-  //      Assert.assertEquals(
-  //          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
-  //
-  //      getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
-  //
-  //      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-  //      Assert.assertEquals(2, getSeriesSlotListResp.getSeriesSlotListSize());
-  //
-  //      getSeriesSlotListReq.setType(TConsensusGroupType.DataRegion);
-  //
-  //      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-  //      Assert.assertEquals(
-  //          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
-  //    }
-  //  }
-  //
-  //  @Test
-  //  public void testGetSchemaNodeManagementPartition() throws Exception {
-  //
-  //    TSchemaNodeManagementReq nodeManagementReq;
-  //    TSchemaNodeManagementResp nodeManagementResp;
-  //
-  //    try (SyncConfigNodeIServiceClient client =
-  //        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-  //
-  //      ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
-  //      nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
-  //      nodeManagementReq.setLevel(-1);
-  //      nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
-  //      Assert.assertEquals(
-  //          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-  // nodeManagementResp.getStatus().getCode());
-  //      Assert.assertEquals(storageGroupNum, nodeManagementResp.getMatchedNodeSize());
-  //      Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
-  //      Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());
-  //    }
-  //  }
+    final String d00 = sg0 + ".d0.s";
+    final String d01 = sg0 + ".d1.s";
+    final String d10 = sg1 + ".d0.s";
+    final String d11 = sg1 + ".d1.s";
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      /* Test getRegionId */
+      TGetRegionIdReq getRegionIdReq;
+      TGetRegionIdResp getRegionIdResp;
+
+      // Get RegionIds of specified database and timestamp
+      getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
+      getRegionIdReq.setDatabase(sg0);
+      getRegionIdReq.setTimeStamp(0);
+      getRegionIdResp = client.getRegionId(getRegionIdReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+
+      //           Get RegionId with wrong PartitionSlot
+      getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
+      getRegionIdResp = client.getRegionId(getRegionIdReq);
+      Assert.assertEquals(
+          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
+
+      // Get all RegionIds within database
+      for (int i = 0; i < storageGroupNum; i++) {
+        String curSg = sg + i;
+        getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
+        getRegionIdReq.setDatabase(curSg);
+        getRegionIdResp = client.getRegionId(getRegionIdReq);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+        Set<TConsensusGroupId> idSet = new HashSet<>(getRegionIdResp.getDataRegionIdList());
+        Set<TConsensusGroupId> subSets = new HashSet<>();
+        for (long j = 0; j < testTimePartitionSlotsNum; j++) {
+          TGetRegionIdReq subReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
+          subReq.setDatabase(curSg);
+          subReq.setTimeStamp(j * testTimePartitionInterval);
+          TGetRegionIdResp subResp = client.getRegionId(subReq);
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), subResp.getStatus().getCode());
+          subSets.addAll(subResp.getDataRegionIdList());
+        }
+
+        Assert.assertEquals(idSet, subSets);
+      }
+
+      // Get RegionId of SchemaPartition
+      ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
+      TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
+      TSchemaPartitionTableResp schemaPartitionTableResp =
+          client.getSchemaPartitionTable(schemaPartitionReq);
+      getRegionIdReq.setDatabase(sg0);
+      getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
+      getRegionIdResp = client.getRegionId(getRegionIdReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+
+      // Test GetTimeSlotList api
+      TGetTimeSlotListReq getTimeSlotListReq;
+      TGetTimeSlotListResp getTimeSlotListResp;
+      getTimeSlotListReq = new TGetTimeSlotListReq();
+      getTimeSlotListReq.setDatabase(sg0);
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(timePartitionBatchSize, getTimeSlotListResp.getTimeSlotListSize());
+
+      long startTime = 5;
+      getTimeSlotListReq.setStartTime(startTime * testTimePartitionInterval);
+
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(
+          timePartitionBatchSize - startTime, getTimeSlotListResp.getTimeSlotListSize());
+
+      long endTime = 6;
+      getTimeSlotListReq.setEndTime(endTime * testTimePartitionInterval);
+
+      getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
+      Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
+
+      // Test GetSeriesSlotList api
+      TGetSeriesSlotListReq getSeriesSlotListReq;
+      TGetSeriesSlotListResp getSeriesSlotListResp;
+
+      getSeriesSlotListReq = new TGetSeriesSlotListReq(sg0, TConsensusGroupType.DataRegion);
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
+
+      getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
+      getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
+      Assert.assertEquals(2, getSeriesSlotListResp.getSeriesSlotListSize());
+    }
+  }
+
+  @Test
+  public void testGetSchemaNodeManagementPartition() throws Exception {
+
+    TSchemaNodeManagementReq nodeManagementReq;
+    TSchemaNodeManagementResp nodeManagementResp;
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      ByteBuffer byteBuffer = generatePatternTreeBuffer(new String[] {"root"});
+      nodeManagementReq = new TSchemaNodeManagementReq(byteBuffer);
+      nodeManagementReq.setLevel(-1);
+      nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
+      Assert.assertEquals(storageGroupNum, nodeManagementResp.getMatchedNodeSize());
+      Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
+      Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());
+    }
+  }
 }
