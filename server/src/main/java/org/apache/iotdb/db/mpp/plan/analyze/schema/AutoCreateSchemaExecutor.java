@@ -77,30 +77,28 @@ class AutoCreateSchemaExecutor {
       boolean isAligned) {
     // check whether there is template should be activated
     Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
-    if (templateInfo != null) {
-      Template template = templateInfo.left;
-      List<Integer> indexOfMeasurementsNotInTemplate =
-          checkMeasurementsInSchemaTemplate(
-              devicePath, indexOfTargetMeasurements, measurements, isAligned, template);
-      if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
-        // there are measurements in schema template
-        internalActivateTemplate(devicePath);
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-          schemaTree.appendSingleMeasurement(
-              devicePath.concatNode(entry.getKey()),
-              (MeasurementSchema) entry.getValue(),
-              null,
-              null,
-              template.isDirectAligned());
-        }
-      }
-      if (indexOfMeasurementsNotInTemplate.isEmpty()) {
-        return;
-      }
-      // there are measurements need to be created as normal timeseries
-      indexOfTargetMeasurements = indexOfMeasurementsNotInTemplate;
+    if (templateInfo == null) {
+      autoCreateTimeSeries(
+          schemaTree, devicePath, indexOfTargetMeasurements, measurements, getDataType, isAligned);
+    } else {
+      autoActivateAndExtendTemplate(
+          schemaTree,
+          devicePath,
+          indexOfTargetMeasurements,
+          measurements,
+          getDataType,
+          isAligned,
+          templateInfo);
     }
+  }
 
+  private void autoCreateTimeSeries(
+      ClusterSchemaTree schemaTree,
+      PartialPath devicePath,
+      List<Integer> indexOfTargetMeasurements,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean isAligned) {
     // auto create the rest missing timeseries
     List<String> missingMeasurements = new ArrayList<>(indexOfTargetMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
@@ -123,16 +121,45 @@ class AutoCreateSchemaExecutor {
           }
         });
 
-    if (!missingMeasurements.isEmpty()) {
-      internalCreateTimeSeries(
-          schemaTree,
-          devicePath,
-          missingMeasurements,
-          dataTypesOfMissingMeasurement,
-          encodingsOfMissingMeasurement,
-          compressionTypesOfMissingMeasurement,
-          isAligned);
+    internalCreateTimeSeries(
+        schemaTree,
+        devicePath,
+        missingMeasurements,
+        dataTypesOfMissingMeasurement,
+        encodingsOfMissingMeasurement,
+        compressionTypesOfMissingMeasurement,
+        isAligned);
+  }
+
+  private void autoActivateAndExtendTemplate(
+      ClusterSchemaTree schemaTree,
+      PartialPath devicePath,
+      List<Integer> indexOfTargetMeasurements,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean isAligned,
+      Pair<Template, PartialPath> templateInfo) {
+    Template template = templateInfo.left;
+    List<Integer> indexOfMeasurementsNotInTemplate =
+        checkMeasurementsInSchemaTemplate(
+            devicePath, indexOfTargetMeasurements, measurements, isAligned, template);
+    if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
+      // there are measurements in schema template
+      internalActivateTemplate(devicePath);
+      for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+        schemaTree.appendSingleMeasurement(
+            devicePath.concatNode(entry.getKey()),
+            (MeasurementSchema) entry.getValue(),
+            null,
+            null,
+            template.isDirectAligned());
+      }
     }
+    if (indexOfMeasurementsNotInTemplate.isEmpty()) {
+      return;
+    }
+    // there are measurements need to be created as normal timeseries
+    indexOfTargetMeasurements = indexOfMeasurementsNotInTemplate;
   }
 
   void autoCreateMissingMeasurements(
