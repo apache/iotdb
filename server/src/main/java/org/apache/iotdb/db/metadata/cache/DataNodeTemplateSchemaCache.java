@@ -77,21 +77,16 @@ public class DataNodeTemplateSchemaCache {
   }
 
   public Integer get(PartialPath path) {
-    readWriteLock.readLock().lock();
+    takeReadLock();
     try {
       return cache.getIfPresent(path);
     } finally {
-      readWriteLock.readLock().unlock();
+      releaseReadLock();
     }
   }
 
   public void put(PartialPath path, Integer id) {
-    readWriteLock.writeLock().lock();
-    try {
-      cache.put(path, id);
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    cache.put(path, id);
   }
 
   public void invalidateCache() {
