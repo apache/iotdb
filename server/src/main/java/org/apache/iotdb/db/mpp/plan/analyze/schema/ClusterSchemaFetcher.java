@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -163,57 +161,68 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   /**
-   * CONFORM indicates that the provided devicePath had been cached as a template activated path, ensuring that
-   * the alignment of the device, as well as the name and schema of every measurement are consistent with the cache.
+   * CONFORM indicates that the provided devicePath had been cached as a template activated path,
+   * ensuring that the alignment of the device, as well as the name and schema of every measurement
+   * are consistent with the cache.
+   *
    * @param computation
    * @param devicePath derives from computation
    * @param measurements derives from computation
    * @return true if conform to template cache, which means no need to fetch or create anymore
    */
-  private boolean conformsToTemplateCache(ISchemaComputationWithAutoCreation computation,
-                                          PartialPath devicePath, String[] measurements) {
+  private boolean conformsToTemplateCache(
+      ISchemaComputationWithAutoCreation computation,
+      PartialPath devicePath,
+      String[] measurements) {
     if (templateSchemaCache.get(devicePath) == null) {
       return false;
     }
 
-    computation.computeDevice(templateManager.getTemplate(templateSchemaCache.get(devicePath)).isDirectAligned());
-    Map<String, IMeasurementSchema> templateSchema = templateManager
-        .getTemplate(templateSchemaCache.get(devicePath)).getSchemaMap();
+    computation.computeDevice(
+        templateManager.getTemplate(templateSchemaCache.get(devicePath)).isDirectAligned());
+    Map<String, IMeasurementSchema> templateSchema =
+        templateManager.getTemplate(templateSchemaCache.get(devicePath)).getSchemaMap();
     for (int i = 0; i < measurements.length; i++) {
       if (!templateSchema.containsKey(measurements[i])) {
         return false;
       }
       IMeasurementSchema schema = templateSchema.get(measurements[i]);
-      computation.computeMeasurement(i, new IMeasurementSchemaInfo() {
-        @Override
-        public String getName() {
-          return schema.getMeasurementId();
-        }
+      computation.computeMeasurement(
+          i,
+          new IMeasurementSchemaInfo() {
+            @Override
+            public String getName() {
+              return schema.getMeasurementId();
+            }
 
-        @Override
-        public MeasurementSchema getSchema() {
-          return new MeasurementSchema(schema.getMeasurementId(),
-              schema.getType(), schema.getTimeTSEncoding(), schema.getCompressor());
-        }
+            @Override
+            public MeasurementSchema getSchema() {
+              return new MeasurementSchema(
+                  schema.getMeasurementId(),
+                  schema.getType(),
+                  schema.getTimeTSEncoding(),
+                  schema.getCompressor());
+            }
 
-        @Override
-        public String getAlias() {
-          return null;
-        }
-      });
+            @Override
+            public String getAlias() {
+              return null;
+            }
+          });
     }
     return true;
   }
 
   /**
-   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its associated device.
+   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
+   * associated device.
    */
   public void cacheUpdater(ClusterSchemaTree tree) {
     Optional<Pair<Template, ?>> templateInfo;
     PartialPath devicePath;
     Set<PartialPath> templateDevice = new HashSet<>();
     Set<PartialPath> commonDevice = new HashSet<>();
-    for (MeasurementPath path: tree.getAllMeasurement()) {
+    for (MeasurementPath path : tree.getAllMeasurement()) {
       devicePath = path.getDevicePath();
       if (templateDevice.contains(devicePath)) {
         continue;
