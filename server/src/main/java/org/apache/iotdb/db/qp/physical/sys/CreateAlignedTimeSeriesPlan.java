@@ -161,7 +161,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
 
     // alias
-    if (aliasList != null) {
+    if (aliasList != null && !aliasList.isEmpty()) {
       stream.write(1);
       for (String alias : aliasList) {
         ReadWriteIOUtils.write(alias, stream);
@@ -194,7 +194,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
 
     // alias
-    if (aliasList != null) {
+    if (aliasList != null && !aliasList.isEmpty()) {
       buffer.put((byte) 1);
       for (String alias : aliasList) {
         ReadWriteIOUtils.write(alias, buffer);

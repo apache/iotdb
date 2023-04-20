@@ -394,6 +394,12 @@ public interface ISessionPool {
   ISessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  ISessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  ISessionDataSetWrapper executeLastDataQuery(List<String> path)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   boolean operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException;
 

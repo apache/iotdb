@@ -23,13 +23,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,13 +39,10 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
   // task
   private long maxCostOfReadingSeqFile;
 
-  // left is the max chunk num in chunkgroup of unseq file, right is the total chunk num of unseq
-  // file.
-  private Pair<Integer, Integer> maxUnseqChunkNumInDevice;
+  // the max cost of writing target file
+  private long maxCostOfWritingTargetFile;
 
-  // it stores all chunk info of seq files. Left is the max chunk num in chunkgroup of seq file,
-  // right is the total chunk num of seq file.
-  private final List<Pair<Integer, Integer>> maxSeqChunkNumInDeviceList;
+  private int maxConcurrentSeriesNum = 1;
 
   // the number of timeseries being compacted at the same time
   private final int subCompactionTaskNum =
@@ -55,7 +50,7 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
 
   public RewriteCrossCompactionEstimator() {
     this.maxCostOfReadingSeqFile = 0;
-    this.maxSeqChunkNumInDeviceList = new ArrayList<>();
+    this.maxCostOfWritingTargetFile = 0;
   }
 
   @Override
@@ -65,7 +60,6 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
     cost += calculateReadingUnseqFile(unseqResource);
     cost += calculateReadingSeqFiles(seqResources);
     cost += calculatingWritingTargetFiles(seqResources, unseqResource);
-    maxSeqChunkNumInDeviceList.clear();
     return cost;
   }
 
@@ -75,25 +69,28 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
    */
   private long calculateReadingUnseqFile(TsFileResource unseqResource) throws IOException {
     TsFileSequenceReader reader = getFileReader(unseqResource);
-    int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
+    FileInfo fileInfo = getSeriesAndDeviceChunkNum(reader);
     // it is max aligned series num of one device when tsfile contains aligned series,
     // else is sub compaction task num.
-    int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
-    maxUnseqChunkNumInDevice = new Pair<>(fileInfo[3], fileInfo[0]);
-    // it means the max size of a timeseries in this file when reading all of its chunk into memory.
-    // Not only reading chunk into chunk cache, but also need to deserialize data point into merge
-    // reader, so we have to double the cost here.
-    if (fileInfo[0] == 0) { // If totalChunkNum ==0, i.e. this unSeq tsFile has no chunk.
+    int concurrentSeriesNum =
+        fileInfo.maxAlignedSeriesNumInDevice == -1
+            ? subCompactionTaskNum
+            : fileInfo.maxAlignedSeriesNumInDevice;
+    maxConcurrentSeriesNum = Math.max(maxConcurrentSeriesNum, concurrentSeriesNum);
+    if (fileInfo.totalChunkNum == 0) { // If totalChunkNum ==0, i.e. this unSeq tsFile has no chunk.
       logger.warn(
           "calculateReadingUnseqFile(), find 1 empty unSeq tsFile: {}.",
           unseqResource.getTsFilePath());
       return 0;
     }
-    return 2 * concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
+    // it means the max size of a timeseries in this file when reading all of its chunk into memory.
+    return compressionRatio
+        * concurrentSeriesNum
+        * (unseqResource.getTsFileSize() * fileInfo.maxSeriesChunkNum / fileInfo.totalChunkNum);
   }
 
   /**
-   * Calculate memory cost of reading source seq files in the cross space compaction. Double the
+   * Calculate memory cost of reading source seq files in the cross space compaction. Select the
    * maximun size of the timeseries to be compacted at the same time in one seq file, because only
    * one seq file will be queried at the same time.
    */
@@ -101,38 +98,41 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
     long cost = 0;
     for (TsFileResource seqResource : seqResources) {
       TsFileSequenceReader reader = getFileReader(seqResource);
-      int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
+      FileInfo fileInfo = getSeriesAndDeviceChunkNum(reader);
       // it is max aligned series num of one device when tsfile contains aligned series,
       // else is sub compaction task num.
-      int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
-      long seqFileCost = 0;
-      if (fileInfo[0] == 0) { // If totalChunkNum ==0, i.e. this seq tsFile has no chunk.
+      int concurrentSeriesNum =
+          fileInfo.maxAlignedSeriesNumInDevice == -1
+              ? subCompactionTaskNum
+              : fileInfo.maxAlignedSeriesNumInDevice;
+      maxConcurrentSeriesNum = Math.max(maxConcurrentSeriesNum, concurrentSeriesNum);
+      long seqFileCost;
+      if (fileInfo.totalChunkNum == 0) { // If totalChunkNum ==0, i.e. this seq tsFile has no chunk.
         logger.warn(
             "calculateReadingSeqFiles(), find 1 empty seq tsFile: {}.",
             seqResource.getTsFilePath());
         seqFileCost = 0;
       } else {
-        seqFileCost =
-            concurrentSeriesNum * (seqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
+        // We need to multiply the compression ratio here.
+        seqFileCost = compressionRatio * concurrentSeriesNum * config.getTargetChunkSize();
       }
 
       if (seqFileCost > maxCostOfReadingSeqFile) {
         // Only one seq file will be read at the same time.
         // not only reading chunk into chunk cache, but also need to deserialize data point into
-        // merge reader, so we have to double the cost here.
-        cost -= 2 * maxCostOfReadingSeqFile;
-        cost += 2 * seqFileCost;
+        // merge reader. We have to add the cost in merge reader here and the cost of chunk cache is
+        // unnecessary.
+        cost -= maxCostOfReadingSeqFile;
+        cost += seqFileCost;
         maxCostOfReadingSeqFile = seqFileCost;
       }
-      maxSeqChunkNumInDeviceList.add(new Pair<>(fileInfo[3], fileInfo[0]));
     }
     return cost;
   }
 
   /**
    * Calculate memory cost of writing target files in the cross space compaction. Including metadata
-   * size of all seq files, max chunk group size of each seq file and max chunk group size of
-   * corresponding overlapped unseq file.
+   * size of all source files and size of concurrent target chunks.
    */
   private long calculatingWritingTargetFiles(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
@@ -141,17 +141,16 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
       TsFileSequenceReader reader = getFileReader(seqResource);
       // add seq file metadata size
       cost += reader.getFileMetadataSize();
-      // add max chunk group size of this seq tsfile
-      int totalSeqChunkNum = maxSeqChunkNumInDeviceList.get(0).right;
-      if (totalSeqChunkNum > 0) {
-        cost +=
-            seqResource.getTsFileSize() * maxSeqChunkNumInDeviceList.get(0).left / totalSeqChunkNum;
-      }
     }
-    // add max chunk group size of overlapped unseq tsfile
-    int totalUnSeqChunkNum = maxUnseqChunkNumInDevice.right;
-    if (totalUnSeqChunkNum > 0) {
-      cost += unseqResource.getTsFileSize() * maxUnseqChunkNumInDevice.left / totalUnSeqChunkNum;
+    // add unseq file metadata size
+    cost += getFileReader(unseqResource).getFileMetadataSize();
+
+    // concurrent series chunk size
+    long writingTargetCost = maxConcurrentSeriesNum * config.getTargetChunkSize();
+    if (writingTargetCost > maxCostOfWritingTargetFile) {
+      cost -= maxCostOfWritingTargetFile;
+      cost += writingTargetCost;
+      maxCostOfWritingTargetFile = writingTargetCost;
     }
 
     return cost;
@@ -169,7 +168,7 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
    *
    * <p>max chunk num of one device in this tsfile
    */
-  private int[] getSeriesAndDeviceChunkNum(TsFileSequenceReader reader) throws IOException {
+  private FileInfo getSeriesAndDeviceChunkNum(TsFileSequenceReader reader) throws IOException {
     int totalChunkNum = 0;
     int maxChunkNum = 0;
     int maxAlignedSeriesNumInDevice = -1;
@@ -190,6 +189,29 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
       }
       maxDeviceChunkNum = Math.max(maxDeviceChunkNum, deviceChunkNum);
     }
-    return new int[] {totalChunkNum, maxChunkNum, maxAlignedSeriesNumInDevice, maxDeviceChunkNum};
+    return new FileInfo(totalChunkNum, maxChunkNum, maxAlignedSeriesNumInDevice, maxDeviceChunkNum);
+  }
+
+  private class FileInfo {
+    // total chunk num in this tsfile
+    public int totalChunkNum = 0;
+    // max chunk num of one timeseries in this tsfile
+    public int maxSeriesChunkNum = 0;
+    // max aligned series num in one device. If there is no aligned series in this file, then it
+    // turns to be -1.
+    public int maxAlignedSeriesNumInDevice = -1;
+    // max chunk num of one device in this tsfile
+    public int maxDeviceChunkNum = 0;
+
+    public FileInfo(
+        int totalChunkNum,
+        int maxSeriesChunkNum,
+        int maxAlignedSeriesNumInDevice,
+        int maxDeviceChunkNum) {
+      this.totalChunkNum = totalChunkNum;
+      this.maxSeriesChunkNum = maxSeriesChunkNum;
+      this.maxAlignedSeriesNumInDevice = maxAlignedSeriesNumInDevice;
+      this.maxDeviceChunkNum = maxDeviceChunkNum;
+    }
   }
 }

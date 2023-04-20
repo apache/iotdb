@@ -94,7 +94,7 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 
 The existing data in the TsFile are:
 
-<img width="519" alt="ST 1" src="https://user-images.githubusercontent.com/69114052/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
+<img width="519" alt="ST 1" src="https://alioss.timecho.com/docs/img/github/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
 
 The corresponding SparkSQL table is:
 
@@ -239,7 +239,7 @@ The way to display TsFile is related to TsFile Schema. Take the following TsFile
 
 The existing data in the file are:
 
-<img width="817" alt="ST 2" src="https://user-images.githubusercontent.com/69114052/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
+<img width="817" alt="ST 2" src="https://alioss.timecho.com/docs/img/github/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
 
 A set of time-series data
 

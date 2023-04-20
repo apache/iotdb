@@ -181,7 +181,7 @@ It costs 0.004s
 
 Then the Metadata Tree will be as below:
 
-<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
+<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
 
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
 
@@ -241,7 +241,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
 
-> IoTDB also supports [using AS function](../Reference/DML-Data-Manipulation-Language.md) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
+> IoTDB also supports [using AS function](../Query-Data/Select-Expression.html#use-alias) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
 
 > Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
 

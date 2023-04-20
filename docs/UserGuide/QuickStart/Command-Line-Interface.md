@@ -44,9 +44,9 @@ After installation, there is a default user in IoTDB: `root`, and the
 default password is `root`. Users can use this username to try IoTDB Cli/Shell tool. The cli startup script is the `start-cli` file under the \$IOTDB\_HOME/bin folder. When starting the script, you need to specify the IP and PORT. (Make sure the IoTDB server is running properly when you use Cli/Shell tool to connect it.)
 
 Here is an example where the server is started locally and the user has not changed the running port. The default rpc port is
-6667 </br>
+6667 <br>
 If you need to connect to the remote server or changes
-the rpc port number of the server running, set the specific IP and RPC PORT at -h and -p.</br>
+the rpc port number of the server running, set the specific IP and RPC PORT at -h and -p.<br>
 You also can set your own environment variable at the front of the start script ("/sbin/start-cli.sh" for linux and "/sbin/start-cli.bat" for windows)
 
 The Linux and MacOS system startup commands are as follows:
@@ -127,48 +127,48 @@ Shell >cd bin
 Shell >./standalone.sh
 ```
 2、use url(https://ip:port/auth) login keycloack, the first login needs to create a user
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
 
 3、Click administration console
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/Administration%20Console.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/AdministrationConsole.png?raw=true)
 
 4、In the master menu on the left, click Add realm and enter name to create a new realm
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_1.png?raw=true)
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_2.png?raw=true)
 
 
 5、Click the menu clients on the left to create clients
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
 
 6、Click user on the left menu to create user
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
 
 7、Click the newly created user ID, click the credentials navigation, enter the password and close the temporary option. The configuration of keycloud is completed
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
 
 8、To create a role, click Roles on the left menu and then click the Add Role button to add a role
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
 9、 Enter `iotdb_admin` in the Role Name and click the save button. Tip: `iotdb_admin` here cannot be any other name, otherwise even after successful login, you will not have permission to use iotdb's query, insert, create storage group, add users, roles and other functions
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
 10、Click the User menu on the left and click the Edit button in the user list to add the `iotdb_admin` role we just created for this user
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
 
 11、 Select Role Mappings, select the `iotdb_admin` role in Available Role and click the Add selected button to add the role
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
 
 12. If the `iotdb_admin` role is in Assigned Roles and the `Success Role mappings updated` prompt appears, it proves that the role was added successfully
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
 
 
 Tip: If the user role is adjusted, you need to regenerate the token and log in to iotdb again to take effect

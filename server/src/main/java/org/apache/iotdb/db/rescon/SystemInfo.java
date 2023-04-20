@@ -278,6 +278,9 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
+    if (!config.isEnableCompactionMemControl()) {
+      return;
+    }
     long originSize = this.compactionMemoryCost.get();
     while (originSize + memoryCost > memorySizeForCompaction
         || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {

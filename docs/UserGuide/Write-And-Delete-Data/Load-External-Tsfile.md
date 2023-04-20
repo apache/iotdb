@@ -71,6 +71,19 @@ Examples:
 * `load '/Users/Desktop/data' autoregister=true,sglevel=1`
 * `load '/Users/Desktop/data' autoregister=false,sglevel=1,verify=true`
 
+#### Remote Load TsFile
+
+Normally, the file path must be the local file path of the machine where the IoTDB instance is located. In IoTDB 0.13.5 and later, the file path supports for HTTP-style URIs that allow individual files to be loaded remotely via the HTTP protocol. The format is `load 'http://host:port/filePath'`.
+
+For example, if your IoTDB instance is running on machine A with IP address 168.121.0.1 and you want to load the file `/root/data/1-1-0-0.tsfile` from machine B with IP address 168.121.0.2 into your IoTDB instance, you need to follow these steps
+
+1. Start the HTTP service on Machine B. For example, you can use the python command `python -m http.server` to start a simple HTTP service.
+2. Use the Cli.sh to connect to the IoTDB instance on Machine A.
+3. Enter the SQL command `load 'http://168.121.0.2:8000/root/data/1-1-0-0.tsfile'` 
+4. Wait for the load to complete
+
+**Please note**: In the case of remote loading, only a single file is supported, i.e. the path parameter must be a single TsFile file path. It is also not recommended to use remote loading if your TsFile has undergone a delete operation (i.e., the TsFile file has an attached .mods file), which will result in data that should have been deleted not being deleted after the load.
+
 ### remove a tsfile
 
 The command to delete a tsfile is: `remove '<path>'`.

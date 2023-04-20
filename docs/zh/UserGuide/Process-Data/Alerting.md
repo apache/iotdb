@@ -371,4 +371,4 @@ INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (5, 120);
 会抑制 `severity` 为 `warning` 的告警，我们收到的告警邮件中只包含写入
 `(5, 120)` 后触发的告警。                    
 
-<img  alt="alerting" src="https://user-images.githubusercontent.com/34649843/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
+<img  alt="alerting" src="https://alioss.timecho.com/docs/img/github/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">

@@ -23,7 +23,7 @@
 
 ## Overview
 
-![TSDB Comparison](https://user-images.githubusercontent.com/33376433/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
+![TSDB Comparison](https://alioss.timecho.com/docs/img/github/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
 
 
 
@@ -323,7 +323,7 @@ IoTDB uses batch insertion API and the batch size is distributed from 0 to 6000 
 
 The write throughput (points/second) is:
 
-![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
+![Batch Size with Write Throughput (points/second)](https://alioss.timecho.com/docs/img/github/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
 <span id = "exp1"> <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center></span>
 
 * client num:
@@ -333,24 +333,24 @@ IoTDB uses batch insertion API and the batch size is 100 (write 100 data points 
 
 The write throughput (points/second) is:
 
-![Client Num with Write Throughput (points/second) (ms)](https://user-images.githubusercontent.com/24886743/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
+![Client Num with Write Throughput (points/second) (ms)](https://alioss.timecho.com/docs/img/github/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
 <center>Figure 3. Client Num with Write Throughput (points/second) IoTDB v0.11.1</center>
 
 **Query performance**
 
-![Raw data query 1 col](https://user-images.githubusercontent.com/24886743/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
+![Raw data query 1 col](https://alioss.timecho.com/docs/img/github/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
 <center>Figure 4. Raw data query 1 col time cost(ms) IoTDB v0.11.1</center>
 
-![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
+![Aggregation query](https://alioss.timecho.com/docs/img/github/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
 <center>Figure 5. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
-![Downsampling query](https://user-images.githubusercontent.com/24886743/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
+![Downsampling query](https://alioss.timecho.com/docs/img/github/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
 <center>Figure 6. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
-![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
+![Latest query](https://alioss.timecho.com/docs/img/github/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
 <center>Figure 7. Latest query time cost(ms) IoTDB v0.11.1</center>
 
-![Data compression](https://user-images.githubusercontent.com/24886743/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
+![Data compression](https://alioss.timecho.com/docs/img/github/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
 <center>Figure 8. Data compression IoTDB v0.11.1</center>
 
 We can see that IoTDB outperforms others.

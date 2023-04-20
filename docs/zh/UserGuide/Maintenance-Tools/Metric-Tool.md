@@ -320,7 +320,7 @@ mem{name="mtree",} 1328.0
 
 IoTDB、Prometheus、Grafana三者的关系如下图所示:
 
-![iotdb_prometheus_grafana](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/iotdb_prometheus_grafana.png)
+![iotdb_prometheus_grafana](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Metrics/iotdb_prometheus_grafana.png)
 
 1. IoTDB在运行过程中持续收集监控指标数据。
 2. Prometheus以固定的间隔（可配置）从IoTDB的HTTP接口拉取监控指标数据。
@@ -358,7 +358,7 @@ static_configs:
 ### 1.4.3. Apache IoTDB Dashboard
 我们提供了Apache IoTDB Dashboard，在Grafana中显示的效果图如下所示：
 
-![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
+![Apache IoTDB Dashboard](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Metrics/dashboard.png)
 
 Apache IoTDB Dashboard的获取方式：
 
@@ -374,7 +374,7 @@ Apache IoTDB Dashboard的获取方式：
 通过使用 JConsole 工具并与 JMX 连接，您可以查看一些系统统计信息和参数。
 本节描述如何使用 JConsole 的 "Mbean" 选项卡来监视 IoTDB 的一些系统配置、写入数据统计等等。 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
 # 4. 性能监控
 
@@ -382,7 +382,7 @@ Apache IoTDB Dashboard的获取方式：
 
 性能监控模块用来监控 IOTDB 每一个操作的耗时，以便用户更好的了解数据库的整体性能。此模块会统计每一种操作的平均耗时，以及耗时在一定时间区间内（1ms，4ms，16ms，64ms，256ms，1024ms，以上）的操作的比例。输出文件在 log_measure.log 中。输出样例如下：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
 
 ## 4.2. 配置参数
 
@@ -403,4 +403,4 @@ Apache IoTDB Dashboard的获取方式：
 1. 通过端口 31999 连接 jconsole，并在上方菜单项中选择‘MBean’. 
 2. 展开侧边框并选择 'org.apache.iotdb.db.service'. 将会得到如下图所示结果：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">

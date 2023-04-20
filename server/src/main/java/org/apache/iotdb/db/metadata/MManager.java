@@ -695,6 +695,11 @@ public class MManager {
     }
     int seriesCount = plan.getMeasurements().size();
 
+    List<String> aliasList = plan.getAliasList();
+    if (aliasList != null && !aliasList.isEmpty() && aliasList.size() != seriesCount) {
+      throw new MetadataException("The size of alias list must equals num of measurements.");
+    }
+
     if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
       throw new SeriesNumberOverflowException();
     }

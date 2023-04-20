@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore.DeviceInfo;
@@ -48,12 +49,16 @@ import java.util.Map;
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   CrossSpaceCompactionResource resource;
 
   long totalCost;
+
+  private long totalUnseqFileSize;
+  private long totalSeqFileSize;
   private long memoryBudget;
   private long maxSeqFileCost;
   private int maxCrossCompactionFileNum;
@@ -143,11 +148,14 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     }
     if (logger.isInfoEnabled()) {
       logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {} MB, total file size is {} MB, total seq file size is {} MB, total unseq file size is {} MB, "
               + "time consumption {}ms",
           selectedSeqFiles.size(),
           selectedUnseqFiles.size(),
-          totalCost,
+          (float) totalCost / 1024 / 1024,
+          (float) (totalUnseqFileSize + totalSeqFileSize) / 1024 / 1024,
+          (float) totalSeqFileSize / 1024 / 1024,
+          (float) totalUnseqFileSize / 1024 / 1024,
           System.currentTimeMillis() - startTime);
     }
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
@@ -189,6 +197,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
+      if (tmpSelectedSeqFiles.isEmpty() && !tryToSelectLatestSealedSeqFile(unseqFile)) {
+        break;
+      }
       boolean isSeqFilesValid = checkIsSeqFilesValid();
       if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
@@ -225,8 +236,28 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     for (int i = 0; i < seqSelected.length; i++) {
       if (seqSelected[i]) {
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
+        totalSeqFileSize += resource.getSeqFiles().get(i).getTsFileSize();
       }
     }
+  }
+
+  /**
+   * If the unseq file does not overlap with any seq files, then select the latest sealed seq file
+   * for it to compact with. Notice: If the data is deleted and then start an inner space
+   * compaction, it may cause unseqStartTime > seqEndTime or partial devices are in the unseq files
+   * but not in seq files, which will cause the unseq file not overlap with any seq files
+   */
+  private boolean tryToSelectLatestSealedSeqFile(TsFileResource unseqFile) {
+    logger.info("Unseq file {} does not overlap with seq files.", unseqFile);
+    List<TsFileResource> seqResources = resource.getSeqFiles();
+    for (int i = seqResources.size() - 1; i >= 0; i--) {
+      if (seqResources.get(i).isClosed()) {
+        logger.info("Select the latest closed seq file {} for it to compact.", seqResources.get(i));
+        tmpSelectedSeqFiles.add(i);
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
@@ -236,6 +267,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
             && totalSize <= maxCrossCompactionFileSize
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
+      totalUnseqFileSize += unseqFile.getTsFileSize();
       maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {

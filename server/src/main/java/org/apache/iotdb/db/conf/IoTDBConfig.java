@@ -225,6 +225,8 @@ public class IoTDBConfig {
   /** System directory, including version file for each storage group and metadata */
   private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
+  private final String loadTempDirName = "load";
+
   /** Schema directory, including storage set of values. */
   private String schemaDir =
       DEFAULT_BASE_DIR
@@ -277,12 +279,12 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 16;
+  private int concurrentQueryThread = 0;
 
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
-  private int concurrentSubRawQueryThread = 8;
+  private int concurrentSubRawQueryThread = 0;
 
   /** Blocking queue size for read task in raw data query. */
   private int rawQueryBlockingQueueCapacity = 5;
@@ -403,6 +405,13 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+
+  /**
+   * Enable compaction memory control or not. If true and estimated memory size of one compaction
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
+   */
+  private boolean enableCompactionMemControl = true;
 
   private double chunkMetadataMemorySizeProportion = 0.1;
 
@@ -1203,6 +1212,10 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getLoadTempDir() {
+    return getSystemDir() + File.separator + loadTempDirName;
   }
 
   public String getSchemaDir() {
@@ -2828,6 +2841,14 @@ public class IoTDBConfig {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public boolean isEnableCompactionMemControl() {
+    return enableCompactionMemControl;
+  }
+
+  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
+    this.enableCompactionMemControl = enableCompactionMemControl;
   }
 
   public double getChunkMetadataMemorySizeProportion() {

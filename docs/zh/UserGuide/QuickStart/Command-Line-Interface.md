@@ -36,7 +36,7 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 ### 运行
 
 #### Cli 运行方式
-安装后的 IoTDB 中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行 IoTDB 客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/sbin 文件夹下的`start-cli`脚本。启动脚本时需要指定运行 IP 和 RPC PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为 6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h 和-p 项处使用服务器的 IP 和 RPC PORT。</br>
+安装后的 IoTDB 中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行 IoTDB 客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/sbin 文件夹下的`start-cli`脚本。启动脚本时需要指定运行 IP 和 RPC PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为 6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h 和-p 项处使用服务器的 IP 和 RPC PORT。<br>
 用户也可以在启动脚本的最前方设置自己的环境变量，如 JAVA_HOME 等 （对于 linux 用户，脚本路径为："/sbin/start-cli.sh"； 对于 windows 用户，脚本路径为："/sbin/start-cli.bat")
 
 Linux 系统与 MacOS 系统启动命令如下：
@@ -116,49 +116,49 @@ Shell >./standalone.sh
 ```
 2、使用 https://ip:port/auth 登陆 keycloack, 首次登陆需要创建用户
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
 
 3、点击 Administration Console 进入管理端
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/Administration%20Console.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/AdministrationConsole.png?raw=true)
 
 4、在左侧的 Master 菜单点击 add Realm, 输入 Name 创建一个新的 Realm
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_1.png?raw=true)
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_2.png?raw=true)
 
 5、点击左侧菜单 Clients，创建 client
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
 
 6、点击左侧菜单 User，创建 user
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
 
 7、点击新创建的用户 id，点击 Credentials 导航输入密码和关闭 Temporary 选项，至此 keyclork 配置完成
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
 
 8、创建角色，点击左侧菜单的 Roles然后点击Add Role 按钮添加角色
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
 9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建存储组、添加用户、角色等功能
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
 10、点击左侧的User 菜单然后点击用户列表中的Edit的按钮为该用户添加我们刚创建的`iotdb_admin`角色
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
 
 11、选择Role Mappings ，在Available Role选择`iotdb_admin`角色然后点Add selected 按钮添加角色
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
 
 12、如果`iotdb_admin`角色在Assigned Roles中并且出现`Success Role mappings updated`提示，证明角色添加成功
 
-![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
 
 提示：如果用户角色有调整需要重新生成token并且重新登陆iotdb才会生效
 

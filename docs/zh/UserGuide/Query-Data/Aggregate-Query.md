@@ -178,7 +178,7 @@ GROUP BY 语句为用户提供三类指定参数：
 
 三类参数的实际含义已经在下图中指出，这三类参数里，第三个参数是可选的。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
 接下来，我们将给出三种典型的降频聚合查询的例子：
 
