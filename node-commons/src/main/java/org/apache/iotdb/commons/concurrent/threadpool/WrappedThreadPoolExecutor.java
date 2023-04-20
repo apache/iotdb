@@ -104,7 +104,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
         Thread.currentThread().interrupt();
       }
     }
-    if (t != null) {
+    if (t != null && !(t instanceof CancellationException)) {
       logger.error("Exception in thread pool {}", mbeanName, t);
     }
   }

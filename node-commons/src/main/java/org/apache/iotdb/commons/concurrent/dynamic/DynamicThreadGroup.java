@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.concurrent.dynamic;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -27,6 +30,7 @@ import java.util.function.Supplier;
 
 public class DynamicThreadGroup {
 
+  private static final Logger logger = LoggerFactory.getLogger(DynamicThreadGroup.class);
   private Function<Runnable, Future<?>> poolSubmitter;
   private String name;
   private Supplier<DynamicThread> threadFactory;
@@ -46,9 +50,14 @@ public class DynamicThreadGroup {
     this.threadFactory = threadFactory;
     this.minThreadCnt = Math.max(1, minThreadCnt);
     this.maxThreadCnt = Math.max(this.minThreadCnt, maxThreadCnt);
-    for (int i = 0; i < this.minThreadCnt; i++) {
+    for (int i = 0; i < this.maxThreadCnt; i++) {
       addThread();
     }
+    logger.info(
+        "A new dynamic thread group: {}, thread number range:[{}, {}]",
+        name,
+        this.minThreadCnt,
+        this.maxThreadCnt);
   }
 
   /** Add a thread to this group if the number of threads does not reach the maximum. */
@@ -79,6 +88,7 @@ public class DynamicThreadGroup {
   public void onThreadExit(DynamicThread dynamicThread) {
     threadCnt.decrementAndGet();
     threadFutureMap.remove(dynamicThread);
+    logger.info("A dynamic thread exits: {}", dynamicThread);
   }
 
   public void cancelAll() {

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.concurrent.dynamic;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * DynamicThread record the idle time and running time of the thread and trigger addThread() or
  * onThreadExit() in DynamicThreadGroup to change the number of threads in a thread group
@@ -26,14 +29,16 @@ package org.apache.iotdb.commons.concurrent.dynamic;
  */
 public abstract class DynamicThread implements Runnable {
 
+  private static final Logger logger = LoggerFactory.getLogger(DynamicThread.class);
   private DynamicThreadGroup threadGroup;
   private long idleStart;
   private long runningStart;
   private long idleTimeSum;
   private long runningTimeSum;
-  // TODO: add configuration for the two values
+  // TODO: add configuration for the values
   private double maximumIdleRatio = 0.5;
   private double minimumIdleRatio = 0.1;
+  private long minimumRunningTime = 10_000_000_000L;
 
   public DynamicThread(DynamicThreadGroup threadGroup) {
     this.threadGroup = threadGroup;
@@ -74,18 +79,20 @@ public abstract class DynamicThread implements Runnable {
     }
 
     double idleRatio = idleRatio();
-    if (idleRatio < minimumIdleRatio) {
+    if (idleRatio < minimumIdleRatio && runningTimeSum > minimumRunningTime) {
       // Thread too busy, try adding a new thread
+      logger.info("Thread too busy (idle ratio={}), try adding a new thread", idleRatio);
       threadGroup.addThread();
       return false;
-    } else if (idleRatio > maximumIdleRatio) {
+    } else if (idleRatio > maximumIdleRatio && runningTimeSum > minimumRunningTime) {
       // Thread too idle, exit if there is still enough threads
       int afterCnt = threadGroup.getThreadCnt().decrementAndGet();
       if (afterCnt >= threadGroup.getMinThreadCnt()) {
         // notice that onThreadExit() will also decrease the counter, so we add it back here to
-        // avoid
-        // the counter being decreased twice
+        // avoid the counter being decreased twice
         threadGroup.getThreadCnt().incrementAndGet();
+        logger.info(
+            "Thread too idle (idle ratio={}), exiting, remaining thread: {}", idleRatio, afterCnt);
         return true;
       } else {
         threadGroup.getThreadCnt().incrementAndGet();

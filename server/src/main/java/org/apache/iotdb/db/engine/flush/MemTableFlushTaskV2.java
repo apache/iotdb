@@ -162,7 +162,6 @@ public class MemTableFlushTaskV2 {
     deviceIDList.removeIf(
         d -> memTableMap.get(d).count() == 0 || memTableMap.get(d).getMemChunkMap().isEmpty());
 
-    allContext = new FlushContext();
     allContext.setDeviceContexts(new ArrayList<>());
 
     for (IDeviceID deviceID : deviceIDList) {
@@ -305,6 +304,10 @@ public class MemTableFlushTaskV2 {
             output.put(nextTask);
           }
           runningToIdle();
+
+          if (shouldExit()) {
+            break;
+          }
         } catch (InterruptedException e1) {
           Thread.currentThread().interrupt();
           break;
