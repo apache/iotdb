@@ -217,26 +217,27 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
    * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
    * associated device.
    */
-  public void cacheUpdater(ClusterSchemaTree tree) {
+  private void cacheUpdater(ClusterSchemaTree tree) {
     Optional<Pair<Template, ?>> templateInfo;
     PartialPath devicePath;
-    Set<PartialPath> templateDevice = new HashSet<>();
-    Set<PartialPath> commonDevice = new HashSet<>();
+    Set<PartialPath> templateDevices = new HashSet<>();
+    Set<PartialPath> commonDevices = new HashSet<>();
     for (MeasurementPath path : tree.getAllMeasurement()) {
       devicePath = path.getDevicePath();
-      if (templateDevice.contains(devicePath)) {
+      if (templateDevices.contains(devicePath)) {
         continue;
       }
 
-      if (commonDevice.contains(devicePath)) {
+      if (commonDevices.contains(devicePath)) {
         schemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
       }
 
       templateInfo = Optional.ofNullable(templateManager.checkTemplateSetInfo(devicePath));
       if (templateInfo.isPresent()) {
         templateSchemaCache.put(devicePath, templateInfo.get().left.getId());
+        templateDevices.add(devicePath);
       } else {
-        commonDevice.add(devicePath);
+        commonDevices.add(devicePath);
       }
     }
   }
