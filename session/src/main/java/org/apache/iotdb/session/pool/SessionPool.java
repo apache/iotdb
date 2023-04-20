@@ -119,7 +119,7 @@ public class SessionPool implements ISessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
   private List<String> slaveNodeUrls;
-  private String slaveUsername;
+  private String slaveUser;
   private String slavePassword;
 
   public SessionPool(String host, int port, String user, String password, int maxSize) {
@@ -422,7 +422,7 @@ public class SessionPool implements ISessionPool {
       String user,
       String password,
       List<String> slaveNodeUrls,
-      String slaveUsername,
+      String slaveUser,
       String slavePassword,
       int maxSize,
       int fetchSize,
@@ -438,7 +438,7 @@ public class SessionPool implements ISessionPool {
     this.host = host;
     this.port = port;
     this.slaveNodeUrls = slaveNodeUrls;
-    this.slaveUsername = slaveUsername;
+    this.slaveUser = slaveUser;
     this.slavePassword = slavePassword;
     this.nodeUrls = null;
     this.user = user;
@@ -462,7 +462,7 @@ public class SessionPool implements ISessionPool {
       String user,
       String password,
       List<String> slaveNodeUrls,
-      String slaveUsername,
+      String slaveUser,
       String slavePassword,
       int maxSize,
       int fetchSize,
@@ -481,7 +481,7 @@ public class SessionPool implements ISessionPool {
     this.user = user;
     this.password = password;
     this.slaveNodeUrls = slaveNodeUrls;
-    this.slaveUsername = slaveUsername;
+    this.slaveUser = slaveUser;
     this.slavePassword = slavePassword;
     this.fetchSize = fetchSize;
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
@@ -508,7 +508,7 @@ public class SessionPool implements ISessionPool {
               .username(user)
               .password(password)
               .slaveNodeUrls(slaveNodeUrls)
-              .slaveUsername(slaveUsername)
+              .slaveUsername(slaveUser)
               .slavePassword(slavePassword)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
@@ -525,7 +525,7 @@ public class SessionPool implements ISessionPool {
               .username(user)
               .password(password)
               .slaveNodeUrls(slaveNodeUrls)
-              .slaveUsername(slaveUsername)
+              .slaveUsername(slaveUser)
               .slavePassword(slavePassword)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
@@ -3054,7 +3054,7 @@ public class SessionPool implements ISessionPool {
     private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
-    private String slaveUsername = SessionConfig.DEFAULT_USER;
+    private String slaveUser = SessionConfig.DEFAULT_USER;
     private String slavePassword = SessionConfig.DEFAULT_PASSWORD;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
@@ -3102,8 +3102,8 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder slaveUsername(String slaveUsername) {
-      this.slaveUsername = slaveUsername;
+    public Builder slaveUsername(String slaveUser) {
+      this.slaveUser = slaveUser;
       return this;
     }
 
@@ -3170,7 +3170,7 @@ public class SessionPool implements ISessionPool {
             user,
             password,
             slaveNodeUrls,
-            slaveUsername,
+                slaveUser,
             slavePassword,
             maxSize,
             fetchSize,
@@ -3188,7 +3188,7 @@ public class SessionPool implements ISessionPool {
             user,
             password,
             slaveNodeUrls,
-            slaveUsername,
+            slaveUser,
             slavePassword,
             maxSize,
             fetchSize,

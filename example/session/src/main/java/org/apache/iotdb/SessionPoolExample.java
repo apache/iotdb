@@ -85,7 +85,7 @@ public class SessionPoolExample {
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use
-    constructRedirectSessionPool();
+    slaveSessionPool();
 
     service = Executors.newFixedThreadPool(10);
     insertRecord();
