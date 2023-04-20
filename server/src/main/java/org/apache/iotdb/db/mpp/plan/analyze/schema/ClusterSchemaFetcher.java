@@ -230,6 +230,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (commonDevices.contains(devicePath)) {
         schemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
+        continue;
       }
 
       templateInfo = Optional.ofNullable(templateManager.checkTemplateSetInfo(devicePath));
@@ -237,6 +238,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         templateSchemaCache.put(devicePath, templateInfo.get().left.getId());
         templateDevices.add(devicePath);
       } else {
+        schemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
         commonDevices.add(devicePath);
       }
     }
