@@ -344,7 +344,7 @@ public class MemTableFlushTaskV2 {
   private void cleanSortThread() {
     metricFlush();
     LOGGER.info(
-        "Database {}, flushing memtable {} into disk: Sort data cost " + "{} ms.",
+        "Database {}, flushing memtable {} into disk: Sort data cost " + "{} ms. (total thread time)",
         storageGroup,
         allContext.getWriter().getFile().getName(),
         allContext.getSortTime().get());
@@ -355,7 +355,7 @@ public class MemTableFlushTaskV2 {
   private void cleanEncodingThread() {
     metricFlush();
     LOGGER.info(
-        "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
+        "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms. (total thread time)",
         storageGroup,
         allContext.getWriter().getFile().getName(),
         allContext.getEncodingTime().get());
@@ -366,7 +366,7 @@ public class MemTableFlushTaskV2 {
   private void cleanIOThread() {
     metricFlush();
     LOGGER.info(
-        "Database {}, flushing memtable {} into disk: IO cost " + "{} ms.",
+        "Database {}, flushing memtable {} into disk: IO cost " + "{} ms. (total thread time)",
         storageGroup,
         allContext.getWriter().getFile().getName(),
         allContext.getIoTime().get());
