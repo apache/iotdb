@@ -1505,9 +1505,10 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     resultSet =
         statement.executeQuery(
-            "select s1, substring(s1, 3, 7) " + "from root.testStringFunctions.d1 align by device");
+            "select s1, substr(s1, \"start\"=\"3\", \"end\"=\"7\") "
+                + "from root.testStringFunctions.d1 align by device");
     while (resultSet.next()) {
-      assertEquals(resultSet.getString(3).substring(2, 9), resultSet.getString(4));
+      assertEquals(resultSet.getString(3).substring(3, 7), resultSet.getString(4));
     }
   }
 
