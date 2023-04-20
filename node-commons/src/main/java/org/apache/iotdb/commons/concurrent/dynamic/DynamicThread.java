@@ -35,6 +35,10 @@ public abstract class DynamicThread implements Runnable {
   private double maximumIdleRatio = 0.5;
   private double minimumIdleRatio = 0.1;
 
+  public DynamicThread(DynamicThreadGroup threadGroup) {
+    this.threadGroup = threadGroup;
+  }
+
   /**
    * The implementation must call idleToRunning() and runningToIdle() properly. E.g., {
    * {@code {while(! Thread.interrupted ()) { Object obj = blockingQueue.poll(); idleToRunning();
@@ -65,6 +69,10 @@ public abstract class DynamicThread implements Runnable {
   }
 
   protected boolean shouldExit() {
+    if (threadGroup == null) {
+      return false;
+    }
+
     double idleRatio = idleRatio();
     if (idleRatio < minimumIdleRatio) {
       // Thread too busy, try adding a new thread
@@ -91,7 +99,9 @@ public abstract class DynamicThread implements Runnable {
     try {
       runInternal();
     } finally {
-      threadGroup.onThreadExit(this);
+      if (threadGroup != null) {
+        threadGroup.onThreadExit(this);
+      }
     }
   }
 }

@@ -23,11 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class DynamicThreadGroup {
 
-  private ExecutorService hostingPool;
+  private Function<Runnable, Future<?>> poolSubmitter;
   private String name;
   private Supplier<DynamicThread> threadFactory;
   private AtomicInteger threadCnt = new AtomicInteger();
@@ -35,13 +36,16 @@ public class DynamicThreadGroup {
   private int maxThreadCnt = 8;
   private Map<DynamicThread, Future<?>> threadFutureMap = new ConcurrentHashMap<>();
 
-  public DynamicThreadGroup(String name, ExecutorService hostingPool,
+  public DynamicThreadGroup(String name, Function<Runnable, Future<?>> poolSubmitter,
       Supplier<DynamicThread> threadFactory, int minThreadCnt, int maxThreadCnt) {
     this.name = name;
-    this.hostingPool = hostingPool;
+    this.poolSubmitter = poolSubmitter;
     this.threadFactory = threadFactory;
     this.minThreadCnt = Math.max(1, minThreadCnt);
     this.maxThreadCnt = Math.max(this.minThreadCnt, maxThreadCnt);
+    for (int i = 0; i < this.minThreadCnt; i++) {
+      addThread();
+    }
   }
 
   /**
@@ -51,7 +55,7 @@ public class DynamicThreadGroup {
     int afterCnt = threadCnt.incrementAndGet();
     if (afterCnt <= maxThreadCnt) {
       DynamicThread dynamicThread = threadFactory.get();
-      Future<?> submit = hostingPool.submit(dynamicThread);
+      Future<?> submit = poolSubmitter.apply(dynamicThread);
       threadFutureMap.put(dynamicThread, submit);
     } else {
       threadCnt.decrementAndGet();
@@ -73,5 +77,11 @@ public class DynamicThreadGroup {
   public void onThreadExit(DynamicThread dynamicThread) {
     threadCnt.decrementAndGet();
     threadFutureMap.remove(dynamicThread);
+  }
+
+  public void cancelAll() {
+    threadFutureMap.forEach((t,f) -> f.cancel(true));
+    threadFutureMap.clear();
+    threadCnt.set(0);
   }
 }
