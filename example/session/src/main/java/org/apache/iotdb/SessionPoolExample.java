@@ -76,7 +76,7 @@ public class SessionPoolExample {
             .user("root")
             .password("root")
             .slaveNodeUrls(slaveList)
-            .slaveUsername("root")
+            .slaveUser("root")
             .slavePassword("123456")
             .maxSize(3)
             .build();

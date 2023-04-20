@@ -45,7 +45,7 @@ public class SessionPoolTest {
             .password("123")
             .slaveNodeUrls(slaveList)
             .slavePassword("123456")
-            .slaveUsername("root")
+            .slaveUser("root")
             .fetchSize(1)
             .waitToGetSessionTimeoutInMs(2)
             .enableRedirection(true)

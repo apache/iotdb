@@ -3102,7 +3102,7 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder slaveUsername(String slaveUser) {
+    public Builder slaveUser(String slaveUser) {
       this.slaveUser = slaveUser;
       return this;
     }
@@ -3170,7 +3170,7 @@ public class SessionPool implements ISessionPool {
             user,
             password,
             slaveNodeUrls,
-                slaveUser,
+            slaveUser,
             slavePassword,
             maxSize,
             fetchSize,
