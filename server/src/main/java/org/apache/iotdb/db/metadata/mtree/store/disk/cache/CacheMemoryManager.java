@@ -205,7 +205,7 @@ public class CacheMemoryManager {
                     store ->
                         CompletableFuture.runAsync(
                             () -> {
-                              store.getLock().threadReadLock(true);
+                              store.getLock().threadReadLock();
                               try {
                                 executeMemoryRelease(store);
                               } finally {
