@@ -1078,7 +1078,7 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
-  /** multi-tenancy */
+  /** Resource control */
   private boolean quotaEnable = false;
 
   /**
