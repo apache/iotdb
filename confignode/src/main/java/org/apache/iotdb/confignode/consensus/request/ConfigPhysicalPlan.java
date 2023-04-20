@@ -96,8 +96,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -317,6 +319,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetSchemaTemplate:
           plan = new SetSchemaTemplatePlan();
+          break;
+        case PreSetSchemaTemplate:
+          plan = new PreSetSchemaTemplatePlan();
+          break;
+        case CommitSetSchemaTemplate:
+          plan = new CommitSetSchemaTemplatePlan();
           break;
         case GetTemplateSetInfo:
           plan = new GetTemplateSetInfoPlan();

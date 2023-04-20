@@ -21,20 +21,26 @@
 package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TemplateImcompatibeException extends MetadataException {
 
-  public TemplateImcompatibeException(String path, String templateName) {
+  public TemplateImcompatibeException(
+      String path, String templateName, PartialPath templateSetPath) {
     super(
-        String.format("Path [%s] already exists in [%s]", path, templateName),
+        String.format(
+            "Cannot create timeseries [%s] since schema template [%s] already set on path [%s].",
+            path, templateName, templateSetPath),
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
 
-  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
+  public TemplateImcompatibeException(String templateName, PartialPath templateSetPath) {
     super(
-        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
+        String.format(
+            "Cannot set schema template [%s] to path [%s] since there's timeseries under path [%s].",
+            templateName, templateSetPath, templateSetPath),
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
