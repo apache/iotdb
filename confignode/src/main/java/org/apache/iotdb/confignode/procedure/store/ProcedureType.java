@@ -44,7 +44,7 @@ public enum ProcedureType {
   CREATE_TRIGGER_PROCEDURE((short) 400),
   DROP_TRIGGER_PROCEDURE((short) 401),
 
-  /** Sync */
+  /** Old sync */
   CREATE_PIPE_PROCEDURE((short) 500),
   START_PIPE_PROCEDURE((short) 501),
   STOP_PIPE_PROCEDURE((short) 502),
@@ -56,6 +56,7 @@ public enum ProcedureType {
   /** Template */
   DEACTIVATE_TEMPLATE_PROCEDURE((short) 700),
   UNSET_TEMPLATE_PROCEDURE((short) 701),
+  SET_TEMPLATE_PROCEDURE((short) 702),
 
   /** Ml Model */
   CREATE_MODEL_PROCEDURE((short) 800),
@@ -63,7 +64,13 @@ public enum ProcedureType {
 
   /** Pipe Plugin */
   CREATE_PIPE_PLUGIN_PROCEDURE((short) 900),
-  DROP_PIPE_PLUGIN_PROCEDURE((short) 901);
+  DROP_PIPE_PLUGIN_PROCEDURE((short) 901),
+
+  /** Pipe Task */
+  CREATE_PIPE_PROCEDURE_V2((short) 1001),
+  START_PIPE_PROCEDURE_V2((short) 1002),
+  STOP_PIPE_PROCEDURE_V2((short) 1003),
+  DROP_PIPE_PROCEDURE_V2((short) 1004);
 
   private final short typeCode;
 

@@ -1267,17 +1267,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setSchemaTemplate(
-      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+      String queryId, SetSchemaTemplateStatement setSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     String templateName = setSchemaTemplateStatement.getTemplateName();
     PartialPath path = setSchemaTemplateStatement.getPath();
     try {
       // Send request to some API server
-      ClusterTemplateManager.getInstance().setSchemaTemplate(templateName, path);
+      ClusterTemplateManager.getInstance().setSchemaTemplate(queryId, templateName, path);
       // build TSBlock
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Exception e) {
-      future.setException(e.getCause());
+    } catch (Throwable e) {
+      if (e.getCause() instanceof IoTDBException) {
+        future.setException(e.getCause());
+      } else {
+        future.setException(e);
+      }
     }
     return future;
   }

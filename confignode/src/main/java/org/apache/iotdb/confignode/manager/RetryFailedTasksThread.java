@@ -23,37 +23,30 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Sync, Template
- * and CQ
+ * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Template and
+ * CQ
  */
 public class RetryFailedTasksThread {
+
+  // TODO: Replace this class by cluster events
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RetryFailedTasksThread.class);
 
@@ -61,6 +54,7 @@ public class RetryFailedTasksThread {
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private final IManager configManager;
   private final NodeManager nodeManager;
+  private final LoadManager loadManager;
   private final ScheduledExecutorService retryFailTasksExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailedTasks-Service");
   private final Object scheduleMonitor = new Object();
@@ -69,13 +63,10 @@ public class RetryFailedTasksThread {
   /** Trigger */
   private final Set<TDataNodeLocation> oldUnknownNodes;
 
-  /** Sync */
-  private final Map<Integer, Queue<TOperatePipeOnDataNodeReq>> messageMap =
-      new ConcurrentHashMap<>();
-
   public RetryFailedTasksThread(IManager configManager) {
     this.configManager = configManager;
     this.nodeManager = configManager.getNodeManager();
+    this.loadManager = configManager.getLoadManager();
     this.oldUnknownNodes = new HashSet<>();
   }
 
@@ -108,9 +99,6 @@ public class RetryFailedTasksThread {
   private void retryFailedTasks() {
     // trigger
     triggerDetectTask();
-
-    // sync
-    syncDetectTask();
   }
 
   /**
@@ -129,15 +117,12 @@ public class RetryFailedTasksThread {
         .forEach(
             DataNodeConfiguration -> {
               TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
-              BaseNodeCache newestNodeInformation =
-                  nodeManager.getNodeCacheMap().get(dataNodeLocation.dataNodeId);
-              if (newestNodeInformation != null) {
-                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
-                  oldUnknownNodes.remove(dataNodeLocation);
-                } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
-                  newUnknownNodes.add(dataNodeLocation);
-                }
+              NodeStatus nodeStatus = loadManager.getNodeStatus(dataNodeLocation.getDataNodeId());
+              if (nodeStatus == NodeStatus.Running) {
+                oldUnknownNodes.remove(dataNodeLocation);
+              } else if (!oldUnknownNodes.contains(dataNodeLocation)
+                  && nodeStatus == NodeStatus.Unknown) {
+                newUnknownNodes.add(dataNodeLocation);
               }
             });
 
@@ -145,50 +130,6 @@ public class RetryFailedTasksThread {
       TSStatus transferResult = configManager.transfer(newUnknownNodes);
       if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         oldUnknownNodes.addAll(newUnknownNodes);
-      }
-    }
-  }
-
-  public void retryRollbackReq(List<Integer> dataNodeIds, TOperatePipeOnDataNodeReq req) {
-    for (int id : dataNodeIds) {
-      messageMap.computeIfAbsent(id, i -> new LinkedList<>()).add(req);
-    }
-  }
-
-  /**
-   * The syncDetectTask executed periodically to roll back the failed requests in operating pipe.
-   */
-  private void syncDetectTask() {
-    for (Map.Entry<Integer, Queue<TOperatePipeOnDataNodeReq>> entry : messageMap.entrySet()) {
-      int dataNodeId = entry.getKey();
-      if (NodeStatus.Running.equals(nodeManager.getNodeStatusByNodeId(dataNodeId))) {
-        final Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-        dataNodeLocationMap.put(
-            dataNodeId, nodeManager.getRegisteredDataNodeLocations().get(dataNodeId));
-        TOperatePipeOnDataNodeReq request;
-        while ((request = entry.getValue().peek()) != null) {
-          AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-              new AsyncClientHandler<>(
-                  DataNodeRequestType.ROLLBACK_OPERATE_PIPE, request, dataNodeLocationMap);
-          AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-          TSStatus tsStatus = clientHandler.getResponseList().get(0);
-          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            entry.getValue().poll();
-          } else if (tsStatus.getCode() == TSStatusCode.PIPE_ERROR.getStatusCode()) {
-            // skip
-            LOGGER.warn(
-                String.format(
-                    "Roll back failed because %s. Skip this roll back request [%s].",
-                    tsStatus.getMessage(), request));
-          } else {
-            // connection failure, keep and retry.
-            LOGGER.error(
-                String.format(
-                    "Roll back failed because %s. This roll back request [%s] will be retried later.",
-                    tsStatus.getMessage(), request));
-            break;
-          }
-        }
       }
     }
   }
