@@ -186,14 +186,14 @@ public class QueryTimePartitionTest {
   public void testBetweenTimeFilter() {
 
     // time between 10 and 20
-    TimeFilter.TimeBetween filter = TimeFilter.between(10, 20, false);
+    TimeFilter.TimeBetween filter = TimeFilter.between(10, 20);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
     assertEquals(20, timeRangeList.get(0).getMax());
 
     // time not between 10 and 20
-    filter = TimeFilter.between(10, 20, true);
+    filter = TimeFilter.notBetween(10, 20);
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -202,14 +202,14 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time not between 10 and Long.MAX_VALUE
-    filter = TimeFilter.between(10, Long.MAX_VALUE, true);
+    filter = TimeFilter.notBetween(10, Long.MAX_VALUE);
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
     assertEquals(9, timeRangeList.get(0).getMax());
 
     // time not between Long.MIN_VALUE and 20
-    filter = TimeFilter.between(Long.MIN_VALUE, 20, true);
+    filter = TimeFilter.between(Long.MIN_VALUE, 20);
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(21, timeRangeList.get(0).getMin());
@@ -441,8 +441,7 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             TimeFilter.between(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1,
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval(),
-                false));
+                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
@@ -481,8 +480,7 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             TimeFilter.between(
                 IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval(),
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1,
-                false));
+                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1));
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
