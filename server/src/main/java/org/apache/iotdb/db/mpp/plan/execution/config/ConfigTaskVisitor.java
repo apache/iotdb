@@ -335,7 +335,7 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TaskContext context) {
-    return new SetSchemaTemplateTask(setSchemaTemplateStatement);
+    return new SetSchemaTemplateTask(context.getQueryId(), setSchemaTemplateStatement);
   }
 
   @Override

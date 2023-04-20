@@ -60,13 +60,13 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
 
+  public static final String ML_METRICS_PATH_PREFIX = "root.__system.ml.exp";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(MLNodeRPCServiceImpl.class);
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-
-  private static final String ML_METRICS_STORAGE_GROUP = "root.__system.ml.exp";
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -88,7 +88,7 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
   public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
     boolean finished = false;
     TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
-
+    Throwable t = null;
     try {
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req, session.getZoneId());
@@ -131,11 +131,15 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
       }
     } catch (Exception e) {
       finished = true;
+      t = e;
       resp.setStatus(onQueryException(e, OperationType.EXECUTE_STATEMENT));
       return resp;
+    } catch (Error error) {
+      t = error;
+      throw error;
     } finally {
       if (finished) {
-        COORDINATOR.cleanupQueryExecution(resp.queryId);
+        COORDINATOR.cleanupQueryExecution(resp.queryId, t);
       }
     }
   }
@@ -144,6 +148,7 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
   public TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req) throws TException {
     TFetchMoreDataResp resp = new TFetchMoreDataResp();
     boolean finished = false;
+    Throwable t = null;
     try {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -164,11 +169,15 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
       }
     } catch (Exception e) {
       finished = true;
+      t = e;
       resp.setStatus(onQueryException(e, OperationType.FETCH_RESULTS));
       return resp;
+    } catch (Error error) {
+      t = error;
+      throw error;
     } finally {
       if (finished) {
-        COORDINATOR.cleanupQueryExecution(req.queryId);
+        COORDINATOR.cleanupQueryExecution(req.queryId, t);
       }
     }
   }
@@ -176,8 +185,7 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
   @Override
   public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
     try {
-      InsertRowStatement insertRowStatement =
-          StatementGenerator.createStatement(req, ML_METRICS_STORAGE_GROUP);
+      InsertRowStatement insertRowStatement = StatementGenerator.createStatement(req);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

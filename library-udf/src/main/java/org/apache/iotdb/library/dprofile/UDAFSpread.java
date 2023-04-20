@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.NoNumberException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -41,7 +39,7 @@ public class UDAFSpread implements UDTF {
   long longMin = Long.MAX_VALUE, longMax = Long.MIN_VALUE;
   float floatMin = Float.MAX_VALUE, floatMax = -Float.MAX_VALUE;
   double doubleMin = Double.MAX_VALUE, doubleMax = -Double.MAX_VALUE;
-  TSDataType dataType;
+  Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -53,10 +51,8 @@ public class UDAFSpread implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
+    dataType = parameters.getDataType(0);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
   }
 
   @Override

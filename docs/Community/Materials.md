@@ -24,12 +24,12 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 (所有的中文材料都在 slidestalk.com 和 bilibili上.)
 
 ## Meetups and Talks
-* 2023.3.2, 2023 IoTDB Core Technology Meetup 2: Joint Meetup of IoTDB and SeaTunnel. 2023 IoTDB 核心技术 Meetup 2：IoTDB + SeaTunnel 联合 Meetup. Online. 
+* 2023.03.02, 2023 IoTDB Core Technology Meetup 2: Joint Meetup of IoTDB and SeaTunnel. 2023 IoTDB 核心技术 Meetup 2：IoTDB + SeaTunnel 联合 Meetup. Online. 
   * (English 英文) [How does Apache IoTDB improve storage efficiency](#ccxl1). Reporter: Haonan Hou. 
-* 2023,2.25-26, The Global AI Developer Conference. 全球人工智能开发者先锋大会. On-Site Conference. 
-* 2023.2.25, 2023 IoTDB Core Technology Meetup 1：Discussion on Cloud Native Open Source Project Application Practice. 2023 IoTDB 核心技术 Meetup 1：论道原生·云原生开源项目应用实践专场北京站. Online.
+* 2023,02.25-26, The Global AI Developer Conference. 全球人工智能开发者先锋大会. On-Site Conference. 
+* 2023.02.25, 2023 IoTDB Core Technology Meetup 1：Discussion on Cloud Native Open Source Project Application Practice. 2023 IoTDB 核心技术 Meetup 1：论道原生·云原生开源项目应用实践专场北京站. Online.
   * (Chinese 中文) [Apache IoTDB 及云上部署实践](#LDYS1). Reporter: Jinrui Zhang.
-* 2022.12.3-4, 2022 Apache IoTDB IoT Summit. 2022 Apache IoTDB 物联网生态大会. Online. 
+* 2022.12.03-4, 2022 Apache IoTDB IoT Summit. 2022 Apache IoTDB 物联网生态大会. Online. 
   * (Chinese 中文) Time Series Databases in the Era of Internet of Things.  [万物互联时代的时序数据库](#TimeSeriesDatabasesintheEraoftheInternetofThings). Reporter: Jiong Zhou
   * (Chinese 中文) [ Designed for IIoT Industry - Newest Version, Apache IoTDB V1.0.  ](#ApacheIoTDB1.0).为工业物联网而生 — Apache IoTDB 1.0 全新版本. Reporter: XiangDong Huang.
   * (Chinese 中文) Application and Practice of Apache IoTDB in CNNC for Time Series Data Management.[工业时序数据库 Apache IoTDB 在核电的应用实践](#inNuclearPowerIndustry).  Reporter: XuJia Liu. 
@@ -56,20 +56,20 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 * 2022.10.15, 2022 IoTDB Core Technology Meetup 2: Building an Open-Source Data Management Plan with IoTDB X SeaTunnel. 2022 IoTDB 核心技术 Meetup 2：IoTDB X SeaTunnel 共建开源数据生态. Online.
   * (Chinese 中文) Apache IoTDB, a Time-Series Database Capable of Handling Tens of Millions of Writing Per Second. [千万吞吐时序数据库 Apache loTDB ](#2209536). Reporter: GaoFei Cao.
   * (Chinese 中文) Integration Practice of IoTDB with Spring Ecosystem. [loTDB 与 Spring 生态集成实践](#2209538). Reporter: ZhiJia Cao. 
-* 2022.9.20, data2day. data2day 大数据峰会. Karlsruhe, Germany. 
-* 2022.8.13, 2022 IoTDB Core Technology Meetup 1: IoTDB X EMQ IoT Data Infrastructure Practice. 2022 IoTDB 核心技术 Meetup 1：IoTDB X EMQ 物联网数据基础架构实践. HangZhou, China.
+* 2022.09.20, data2day. data2day 大数据峰会. Karlsruhe, Germany. 
+* 2022.08.13, 2022 IoTDB Core Technology Meetup 1: IoTDB X EMQ IoT Data Infrastructure Practice. 2022 IoTDB 核心技术 Meetup 1：IoTDB X EMQ 物联网数据基础架构实践. HangZhou, China.
   * (Chinese 中文) Multi-Scenario Modeling Method of IoTDB. [IoTDB 多场景建模方法](#985206). Reporter: Yuan Tian.
   * (Chinese 中文) EMQ x IoTDB's Case Study with Shennan circuit.  [EMQ x loTDB 的深南电路客户案例](#985208). Reporter: ZhiFei Feng. 
-* 2022.7.29-31, ApacheCon Asia 2022 IOT/IIOT. Online.
+* 2022.07.29-31, ApacheCon Asia 2022 IOT/IIOT. Online.
   * Producer of Internet of Things (IoT) / Industrial Internet of Things (IIoT) Forum: Jialin Qiao. 物联网（IOT）/工业物联网（IIOT）专题出品人：乔嘉林.
-* 2022.7.29,  2022 Lixia Xingdong Conference. 砺夏行动 2022 会议 Online. 
+* 2022.07.29,  2022 Lixia Xingdong Conference. 砺夏行动 2022 会议 Online. 
   * Open Source Roundtable: Why Are Companies Heavily Investing in the Open Source Track? 开源圆桌：为何重仓开源赛道. Reporter: XiangDong Huang.
-* 2022.7.3, 2022 Open Source Technology Lecture Series 3: Open Source from the Perspectives of Interviewers and Job Seekers. 2022 开源技术讲座系列 3：从面试官和求职者的角度看开源. Online. 
+* 2022.07.03, 2022 Open Source Technology Lecture Series 3: Open Source from the Perspectives of Interviewers and Job Seekers. 2022 开源技术讲座系列 3：从面试官和求职者的角度看开源. Online. 
   * (Chinese 中文) What's the Benefit of Open-Source Experience in Interviews with Top-Tier Companies. 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian. Videos: [PART1](#tianyuan1)  [PART2](#tianyuan2)  [PART3](#tianyuan3) [PART4](#tianyuan4)
   *  (Chinese 中文) Why Open-Source Project Experience Forms the Best Resumes for Job Seekers. 开源项目，求职者的最佳简历. Reporter: JinRui Zhang. Videos: [PART1](#zhangjinrui1) [PART2](#zhangjinrui2) [PART3](#zhangjinrui3) [PART4](#zhangjinrui4) [PART5](#zhangjinrui5) 
-* 2022.5.11, Building IoT 2022. 德国工业物联网技术峰会. Germany. 
-* 2022.4.14, 2022 Open Source Technology Lecture Series 2: Tsinghua Open Source Lecture Series Episode 3. 2022 开源技术讲座系列 2：清华开源大讲堂第三期. Beijing, China.
-* 2022.2.19, 2022 Open Source Technology Lecture Series 1: Core Technologies and Applications of Time-Series Database, Apache IoTDB. 2022 开源技术讲座系列 1：时序数据库 Apache IoTDB 的核心技术及应用. Online. 
+* 2022.05.11, Building IoT 2022. 德国工业物联网技术峰会. Germany. 
+* 2022.04.14, 2022 Open Source Technology Lecture Series 2: Tsinghua Open Source Lecture Series Episode 3. 2022 开源技术讲座系列 2：清华开源大讲堂第三期. Beijing, China.
+* 2022.02.19, 2022 Open Source Technology Lecture Series 1: Core Technologies and Applications of Time-Series Database, Apache IoTDB. 2022 开源技术讲座系列 1：时序数据库 Apache IoTDB 的核心技术及应用. Online. 
   * (Chinese 中文) [Time Series Database Based on Open Data File Format](#qiaojialin1) . 基于开放数据文件格式的时序数据库. Reporter: JiaLin Qiao.  
   * (Chinese 中文) [Application of IoTDB in 360 Security Technology](#(#dashuju)). IoTDB 在 360 的落地实践. Reporter: Jianyun Cheng. 
 * 2021.08.11, Open Source Big Data Online Conference. 开源大数据技术线上 MeetUp. Online. 
@@ -126,10 +126,10 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 ### English
 
-* <span id = "ccxl1"> How does Apache IoTDB improve storage efficiency. Reporter: Haonan Hou. </span>
+* <span id = "ccxl1"> 2023.03, How does Apache IoTDB improve storage efficiency. Reporter: Haonan Hou. </span>
 <iframe src="//player.bilibili.com/player.html?aid=908521419&bvid=BV1yM4y1r79b&cid=1056046521&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "APAMDS"> Application and Practice of Apache IoTDB in Multi-Level Data Synchronization on German Automotive Production Lines. Reporter: Julian Feinaeur.</span>
+* <span id = "APAMDS"> 2022.12, Application and Practice of Apache IoTDB in Multi-Level Data Synchronization on German Automotive Production Lines. Reporter: Julian Feinaeur.</span>
 
 <iframe src="//player.bilibili.com/player.html?aid=861829740&bvid=BV18V4y1F7do&cid=939097210&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
@@ -158,146 +158,146 @@ All Chinese Slides and videos are on slidestalk.com and bilibili.
 
 ### Chinese 中文
 
-*<span id = "LDYS1"> Apache IoTDB 及云上部署实践. Reporter: Jinrui Zhang. </span>
+*<span id = "LDYS1"> 2023.02, Apache IoTDB 及云上部署实践. Reporter: Jinrui Zhang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=738582641&bvid=BV19k4y1b71E&cid=1057099588&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TimeSeriesDatabasesintheEraoftheInternetofThings"> 万物互联时代的时序数据库. Reporter: Jiong Zhou. </span>
+*<span id = "TimeSeriesDatabasesintheEraoftheInternetofThings"> 2022.12, 万物互联时代的时序数据库. Reporter: Jiong Zhou. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=606841263&bvid=BV1z84y1x74Y&cid=939097311&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "ApacheIoTDB1.0"> 为物联网工业而生—Apache IoTDB 1.0 全新版本. Reporter:XiangDong Huang. </span>
+*<span id = "ApacheIoTDB1.0"> 2022.12, 为物联网工业而生—Apache IoTDB 1.0 全新版本. Reporter:XiangDong Huang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=306789635&bvid=BV1UA411D7bG&cid=939097145&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "inNuclearPowerIndustry"> 工业时序数据库 Apache IoTDB 在核电的应用实践. Reporter: XuJia Liu. </span>
+*<span id = "inNuclearPowerIndustry"> 2022.12, 工业时序数据库 Apache IoTDB 在核电的应用实践. Reporter: XuJia Liu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=606825136&bvid=BV1W84y1x7RH&cid=939097231&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "StateGridCorporationofChina"> Apache IoTDB 在国家电网的应用案例. Reporter: Ke Xie. </span>
+*<span id = "StateGridCorporationofChina"> 2022.12, Apache IoTDB 在国家电网的应用案例. Reporter: Ke Xie. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=434269138&bvid=BV1R3411Q718&cid=939097224&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "ECCANS"> 端边云协同：Apache IoTDB 全新单机分布式架构. Reporter: JiaLin Qiao. </span>
+*<span id = "ECCANS"> 2022.12, 端边云协同：Apache IoTDB 全新单机分布式架构. Reporter: JiaLin Qiao. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=777277146&bvid=BV1314y1g7yT&cid=950790593&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "ASSCPS"> Apache IoTDB 秒级扩容能力与存算分离实践. Reporter: GaoFei Cao. </span>
+*<span id = "ASSCPS">2022.12,  Apache IoTDB 秒级扩容能力与存算分离实践. Reporter: GaoFei Cao. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=734779093&bvid=BV1BD4y1L7iq&cid=950790637&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "CPTSDO"> 为物联网场景优化的时序数据库共识协议. Reporter: JinRui Zhang. </span>
+*<span id = "CPTSDO"> 2022.12, 为物联网场景优化的时序数据库共识协议. Reporter: JinRui Zhang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=477351147&bvid=BV1mK411275q&cid=950790658&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "LSPP"> 大规模并行处理与边缘计算在 Apache IoTDB 中的实践.Reporter: Yuan Tian. </span>
+*<span id = "LSPP"> 2022.12, 大规模并行处理与边缘计算在 Apache IoTDB 中的实践.Reporter: Yuan Tian. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=649841437&bvid=BV1Xe4y1V7VS&cid=950790474&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "PTSOD"> Apache IoTDB 首创时序顺乱序分离存储引擎 IoTLSM. Reporter: HaoNan Hou. </span>
+*<span id = "PTSOD"> 2022.12, Apache IoTDB 首创时序顺乱序分离存储引擎 IoTLSM. Reporter: HaoNan Hou. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=649778759&bvid=BV1ee4y1V73w&cid=950790591&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TWOF"> Apache IoTDB 在京东万物互联场景中的应用. Reporter: Gang Liu. </span>
+*<span id = "TWOF"> 2022.12, Apache IoTDB 在京东万物互联场景中的应用. Reporter: Gang Liu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=395646814&bvid=BV1Ao4y167tJ&cid=1045771160&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TWOS"> Apache IoTDB 在中航机载智能云制造系统的应用解决方案. Reporter: Chaung Wang. </span>
+*<span id = "TWOS"> 2022.12, Apache IoTDB 在中航机载智能云制造系统的应用解决方案. Reporter: Chaung Wang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=738152860&bvid=BV11D4y1M7bL&cid=1045771164&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TWOT"> Apache IoTDB 在长安智能汽车数据平台的实践. Reporter: Li Huang. </span>
+*<span id = "TWOT"> 2022.12, Apache IoTDB 在长安智能汽车数据平台的实践. Reporter: Li Huang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=438147422&bvid=BV1Hj411u7R6&cid=1045770798&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TWOFO">Apache IoTDB 在宝武装备远程智能运维平台中的使用案例. Reporter: ShaoFeng Xu. </span>
+*<span id = "TWOFO"> 2022.12, Apache IoTDB 在宝武装备远程智能运维平台中的使用案例. Reporter: ShaoFeng Xu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=525696785&bvid=BV1sM411s7VZ&cid=1045771173&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "TWOFI"> 中冶赛迪工业互联网平台与 CISDigital-TimeS (基于 Apache IoTDB) 在流程制造业的探索与实践. Reporter: Qiang Zheng. </span>
+*<span id = "TWOFI"> 2022.12, 中冶赛迪工业互联网平台与 CISDigital-TimeS (基于 Apache IoTDB) 在流程制造业的探索与实践. Reporter: Qiang Zheng. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=780723599&bvid=BV1324y1g77m&cid=1045771276&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "OCCCP"> Timecho：孵化于 Apache IoTDB 的开源商业化公司及其核心产品. Reporter:Hai Liu. </span>
+*<span id = "OCCCP"> 2022.12, Timecho：孵化于 Apache IoTDB 的开源商业化公司及其核心产品. Reporter:Hai Liu. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=267639233&bvid=BV1iY411C7LZ&cid=1029203532&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "NA"> 用友在 Apache IoTDB 应用与生态建设方面的探索与实践. Reporter: GuanFei Peng. </span>
+*<span id = "NA"> 2022.12, 用友在 Apache IoTDB 应用与生态建设方面的探索与实践. Reporter: GuanFei Peng. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=780156150&bvid=BV1m24y1G7mf&cid=1029205593&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "CAAC"> Apache IoTDB 在东方国信的商业化及应用 . Reporter:Chao Wang. </span>
+*<span id = "CAAC"> 2022.12, Apache IoTDB 在东方国信的商业化及应用 . Reporter:Chao Wang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=737747206&bvid=BV1aD4y1u7eU&cid=1029199496&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "PACT"> Apache IoTDB 在华为云的实践. Reporter:Chao Wang. </span>
+*<span id = "PACT"> 2022.12, Apache IoTDB 在华为云的实践. Reporter:Chao Wang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=395156229&bvid=BV1uo4y1a7HS&cid=1029201797&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "ASBBDCP"> 迈向物联网时代的大数据计算平台 —— MaxCompute 基于 Apache IoTDB 构建的解决方案. Reporter:Jian Bai. </span>
+*<span id = "ASBBDCP"> 2022.12, 迈向物联网时代的大数据计算平台 —— MaxCompute 基于 Apache IoTDB 构建的解决方案. Reporter:Jian Bai. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=525160086&bvid=BV1jM411j7R3&cid=1029191327&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "2209536"> 千万吞吐时序数据库 Apache loTDB . Reporter:曹高飞 GaoFei Cao</span>.
+*<span id = "2209536"> 2022.10, 千万吞吐时序数据库 Apache loTDB . Reporter:曹高飞 GaoFei Cao</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=474432410&bvid=BV16K411D7xJ&cid=871615152&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "2209538"> loTDB 与 Spring 生态的集成实践. Reporter:曹志佳 ZhiJia Cao</span>.
+*<span id = "2209538"> 2022.10, loTDB 与 Spring 生态的集成实践. Reporter:曹志佳 ZhiJia Cao</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=516892349&bvid=BV1Pg411h7Cw&cid=871616959&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "985206"> IoTDB多场景建模方法. Reporter:田原 Yuan Tian</span>.
+*<span id = "985206"> 2022.08, IoTDB多场景建模方法. Reporter:田原 Yuan Tian</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=645665461&bvid=BV1fY4y1P7LP&cid=838348809&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "985208">  EMQ ✖ IoTDB 的深南电路客户案例. Reporter:丰志飞 ZhiFei Feng</span>.
+*<span id = "985208">  2022.08, EMQ ✖ IoTDB 的深南电路客户案例. Reporter:丰志飞 ZhiFei Feng</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=560637203&bvid=BV1me4y187Jg&cid=838353399&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 
 
 
-* <span id = "tianyuan1">大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian. </span>
+* <span id = "tianyuan1"> 2022.07, 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=687574393&bvid=BV1JU4y1r7BP&cid=818794410&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "tianyuan2"> 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian</span>.
+* <span id = "tianyuan2"> 2022.07, 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=687574393&bvid=BV1JU4y1r7BP&cid=818834886&page=2" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "tianyuan3">大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian</span>.
+* <span id = "tianyuan3"> 2022.07, 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian</span>.
 
 <iframe src="//player.bilibili.com/player.html?aid=687574393&bvid=BV1JU4y1r7BP&cid=818835926&page=3" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "tianyuan4">大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian. </span>
+* <span id = "tianyuan4"> 2022.07, 大厂各轮面试中开源经验有什么用.  Reporter: Yuan Tian. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=687574393&bvid=BV1JU4y1r7BP&cid=818836547&page=4" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "zhangjinrui1">开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
+* <span id = "zhangjinrui1"> 2022.07, 开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
 
 <iframe src="//player.bilibili.com/player.html?aid=645089288&bvid=BV19Y4y1u7za&cid=818754757&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "zhangjinrui2">开源项目，求职者的最佳简历. Reporter: JinRui Zhang. </span>
+* <span id = "zhangjinrui2"> 2022.07, 开源项目，求职者的最佳简历. Reporter: JinRui Zhang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=645089288&bvid=BV19Y4y1u7za&cid=818811870&page=2" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "zhangjinrui3">开源项目，求职者的最佳简历. Reporter: JinRui Zhang. </span>
+* <span id = "zhangjinrui3"> 2022.07, 开源项目，求职者的最佳简历. Reporter: JinRui Zhang. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=645089288&bvid=BV19Y4y1u7za&cid=818813230&page=3" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "zhangjinrui4">开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
+* <span id = "zhangjinrui4"> 2022.07, 开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
 
 <iframe src="//player.bilibili.com/player.html?aid=645089288&bvid=BV19Y4y1u7za&cid=818828769&page=4" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "zhangjinrui5">开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
+* <span id = "zhangjinrui5"> 2022.07, 开源项目，求职者的最佳简历. Reporter: JinRui Zhang.</span>
 
 <iframe src="//player.bilibili.com/player.html?aid=645089288&bvid=BV19Y4y1u7za&cid=818829181&page=5" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-* <span id = "qiaojialin1"> 基于开放数据文件格式的时序数据库. Reporter: JiaLin Qiao. </span>
+* <span id = "qiaojialin1"> 2022.02, 基于开放数据文件格式的时序数据库. Reporter: JiaLin Qiao. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=551809671&bvid=BV1yi4y127js&cid=515894957&page=1" scrolling="no" border="0" width="640" height="480" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
-*<span id = "dashuju"> IoTDB 在 360 的落地实践. Reporter: Jianyun Cheng. </span>
+*<span id = "dashuju"> 2022.02, IoTDB 在 360 的落地实践. Reporter: Jianyun Cheng. </span>
 
 <iframe src="//player.bilibili.com/player.html?aid=594383405&bvid=BV1Pq4y147z4&cid=700109523&page=1" width="640" height="480" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 

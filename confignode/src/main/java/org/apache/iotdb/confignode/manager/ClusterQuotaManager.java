@@ -81,6 +81,7 @@ public class ClusterQuotaManager {
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
           "The used quota exceeds the preset quota. Please set a larger value.");
     }
+    // TODO: Datanode failed to receive rpc
     ConsensusWriteResponse response =
         configManager
             .getConsensusManager()
@@ -112,9 +113,19 @@ public class ClusterQuotaManager {
     for (String database : req.getDatabase()) {
       if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
         TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
-        if (spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()
-            || spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()
-            || spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
+        if (req.getSpaceLimit().getDeviceNum() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getDeviceNum() != IoTDBConstant.DEFAULT_VALUE
+            && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
+          return false;
+        }
+        if (req.getSpaceLimit().getTimeserieNum() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getTimeserieNum() != IoTDBConstant.DEFAULT_VALUE
+            && spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()) {
+          return false;
+        }
+        if (req.getSpaceLimit().getDiskSize() != IoTDBConstant.UNLIMITED_VALUE
+            && req.getSpaceLimit().getDiskSize() != IoTDBConstant.DEFAULT_VALUE
+            && spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
           return false;
         }
       }

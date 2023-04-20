@@ -172,7 +172,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 

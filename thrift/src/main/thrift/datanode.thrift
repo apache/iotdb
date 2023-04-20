@@ -144,6 +144,7 @@ struct TFragmentInstanceInfoResp {
 struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
+  3: required bool hasThrowable
 }
 
 struct TCancelPlanFragmentReq {
@@ -354,15 +355,24 @@ struct TCountPathsUsingTemplateResp{
   2: optional i64 count
 }
 
+struct TCheckTimeSeriesExistenceReq{
+  1: required binary patternTree
+  2: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCheckTimeSeriesExistenceResp{
+  1: required common.TSStatus status
+  2: optional bool exists
+}
+
 struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeInfo
+  1: required binary pipeMeta
 }
 
 struct TOperatePipeOnDataNodeReq {
     1: required string pipeName
     // ordinal of {@linkplain SyncOperation}
     2: required i8 operation
-    3: optional i64 createTime
 }
 
 // ====================================================
@@ -747,6 +757,8 @@ service IDataNodeRPCService {
 
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
+  TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
+
  /**
   * Create PIPE on DataNode
   */
@@ -756,11 +768,6 @@ service IDataNodeRPCService {
   * Start, stop or drop PIPE on DataNode
   */
   common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
-
- /**
-  * Start, stop or drop PIPE on DataNode for rollback
-  */
-  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
 
  /**
   * Execute CQ on DataNode
@@ -821,4 +828,3 @@ service IMLNodeInternalRPCService{
   */
   common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
 }
-
