@@ -53,6 +53,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.CreateModelT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.DropModelTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowTrailsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DropSchemaTemplateTask;
@@ -364,7 +365,7 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitAlterSchemaTemplate(
       AlterSchemaTemplateStatement alterSchemaTemplateStatement, TaskContext context) {
-    return super.visitAlterSchemaTemplate(alterSchemaTemplateStatement, context);
+    return new AlterSchemaTemplateTask(alterSchemaTemplateStatement, context.getQueryId());
   }
 
   @Override

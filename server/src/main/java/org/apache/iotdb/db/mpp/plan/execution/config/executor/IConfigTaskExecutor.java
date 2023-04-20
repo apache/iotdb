@@ -149,7 +149,7 @@ public interface IConfigTaskExecutor {
       DropSchemaTemplateStatement dropSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> alterSchemaTemplate(
-      AlterSchemaTemplateStatement alterSchemaTemplateStatement);
+      String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 

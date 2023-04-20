@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
+import org.apache.iotdb.db.metadata.template.alter.TemplateAlterInfo;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -34,11 +36,7 @@ import java.util.List;
 
 public class AlterSchemaTemplateStatement extends Statement implements IConfigStatement {
 
-  private String templateName;
-  private List<String> measurements;
-  private List<TSDataType> dataTypes;
-  private List<TSEncoding> encodings;
-  private List<CompressionType> compressors;
+  private TemplateAlterInfo templateAlterInfo;
 
   private TemplateAlterOperationType operationType;
 
@@ -55,32 +53,15 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
       List<CompressionType> compressors,
       TemplateAlterOperationType operationType) {
     this();
-    this.templateName = templateName;
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
-    this.encodings = encodings;
-    this.compressors = compressors;
+    if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+      this.templateAlterInfo =
+          new TemplateExtendInfo(templateName, measurements, dataTypes, encodings, compressors);
+    }
     this.operationType = operationType;
   }
 
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public List<String> getMeasurements() {
-    return measurements;
-  }
-
-  public List<TSEncoding> getEncodings() {
-    return encodings;
-  }
-
-  public List<TSDataType> getDataTypes() {
-    return dataTypes;
-  }
-
-  public List<CompressionType> getCompressors() {
-    return compressors;
+  public TemplateAlterInfo getTemplateAlterInfo() {
+    return templateAlterInfo;
   }
 
   public TemplateAlterOperationType getOperationType() {

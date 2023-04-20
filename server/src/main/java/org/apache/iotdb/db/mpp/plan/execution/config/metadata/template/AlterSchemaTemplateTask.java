@@ -30,13 +30,16 @@ public class AlterSchemaTemplateTask implements IConfigTask {
 
   private final AlterSchemaTemplateStatement statement;
 
-  public AlterSchemaTemplateTask(AlterSchemaTemplateStatement statement) {
+  private final String queryId;
+
+  public AlterSchemaTemplateTask(AlterSchemaTemplateStatement statement, String queryId) {
     this.statement = statement;
+    this.queryId = queryId;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.alterSchemaTemplate(statement);
+    return configTaskExecutor.alterSchemaTemplate(queryId, statement);
   }
 }
