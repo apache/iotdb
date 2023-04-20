@@ -71,7 +71,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -729,6 +732,23 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+    Template template =
+        clusterSchemaInfo
+            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
+            .getTemplateList()
+            .get(0);
+    boolean needExtend = false;
+    for (String measurement : templateExtendInfo.getMeasurements()) {
+      if (!template.hasSchema(measurement)) {
+        needExtend = true;
+        break;
+      }
+    }
+
+    if (!needExtend) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
     ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
         new ExtendSchemaTemplatePlan(templateExtendInfo);
     TSStatus status = getConsensusManager().write(extendSchemaTemplatePlan).getStatus();
@@ -736,8 +756,38 @@ public class ClusterSchemaManager {
       return status;
     }
 
+    template =
+        clusterSchemaInfo
+            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
+            .getTemplateList()
+            .get(0);
 
+    TUpdateTemplateReq updateTemplateReq = new TUpdateTemplateReq();
+    updateTemplateReq.setType(TemplateInternalRPCUpdateType.UPDATE_TEMPLATE_INFO.toByte());
+    updateTemplateReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateUpdateTemplateInfoBytes(template));
 
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to sync template {} extension info to DataNode {}",
+            template.getName(),
+            dataNodeLocationMap.get(entry.getKey()));
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            String.format(
+                "Failed to sync template %s extension info to DataNode %s",
+                template.getName(), dataNodeLocationMap.get(entry.getKey())));
+      }
+    }
     return RpcUtils.SUCCESS_STATUS;
   }
 
