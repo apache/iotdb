@@ -158,7 +158,10 @@ class AutoCreateSchemaExecutor {
       template = templateManager.getTemplate(template.getId());
     }
 
-    internalActivateTemplate(devicePath);
+    if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
+      // template not activate
+      internalActivateTemplate(devicePath);
+    }
 
     for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
       schemaTree.appendSingleMeasurement(
@@ -245,7 +248,10 @@ class AutoCreateSchemaExecutor {
                 measurementsList.get(deviceIndex),
                 isAlignedList.get(deviceIndex),
                 template);
-        devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
+        if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
+          // not activated yet
+          devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
+        }
 
         if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
           List<Integer> finalIndexOfMeasurementsNotInTemplate1 = indexOfMeasurementsNotInTemplate;
