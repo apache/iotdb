@@ -33,9 +33,9 @@ public class SessionPoolTest {
 
   @Test
   public void testBuilder() {
-    List<String> slaveList = new ArrayList<>();
-    slaveList.add("127.0.0.1:6767");
-    slaveList.add("127.0.0.1:6768");
+    List<String> backupList = new ArrayList<>();
+    backupList.add("127.0.0.1:6767");
+    backupList.add("127.0.0.1:6768");
     SessionPool pool =
         new SessionPool.Builder()
             .host("localhost")
@@ -43,7 +43,7 @@ public class SessionPoolTest {
             .maxSize(10)
             .user("abc")
             .password("123")
-            .backupNodeUrls(slaveList)
+            .backupNodeUrls(backupList)
             .backupPassword("123456")
             .backupUser("root")
             .fetchSize(1)

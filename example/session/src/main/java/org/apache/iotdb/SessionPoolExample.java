@@ -67,15 +67,15 @@ public class SessionPoolExample {
     nodeUrls.add("127.0.0.1:6667");
     nodeUrls.add("127.0.0.1:6668");
     nodeUrls.add("127.0.0.1:6669");
-    List<String> slaveList = new ArrayList<>();
-    slaveList.add("127.0.0.1:6767");
-    slaveList.add("127.0.0.1:6768");
+    List<String> backupList = new ArrayList<>();
+    backupList.add("127.0.0.1:6767");
+    backupList.add("127.0.0.1:6768");
     sessionPool =
         new SessionPool.Builder()
             .nodeUrls(nodeUrls)
             .user("root")
             .password("root")
-            .backupNodeUrls(slaveList)
+            .backupNodeUrls(backupList)
             .backupUser("root")
             .backupPassword("123456")
             .maxSize(3)
