@@ -110,9 +110,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN)
-        && key == null
-        && schemaRegion.getSchemaRegionStatistics().getTemplateActivatedNumber() == 0;
+    return pathPattern.equals(ALL_MATCH_PATTERN) && key == null;
   }
 
   @Override
