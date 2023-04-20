@@ -103,12 +103,12 @@ public class OperatorTest {
 
   @Test
   public void testNot() {
-    Filter timeLt = TimeFilter.not(TimeFilter.lt(TESTED_TIMESTAMP));
+    Filter timeLt = FilterFactory.not(TimeFilter.lt(TESTED_TIMESTAMP));
     Assert.assertFalse(timeLt.satisfy(TESTED_TIMESTAMP - 1, 100));
     Assert.assertTrue(timeLt.satisfy(TESTED_TIMESTAMP, 100));
     Assert.assertTrue(timeLt.satisfy(TESTED_TIMESTAMP + 1, 100));
 
-    Filter valueLt = ValueFilter.not(ValueFilter.lt(100L));
+    Filter valueLt = FilterFactory.not(ValueFilter.lt(100L));
     Assert.assertFalse(valueLt.satisfy(TESTED_TIMESTAMP, 99L));
     Assert.assertTrue(valueLt.satisfy(TESTED_TIMESTAMP, 100L));
     Assert.assertTrue(valueLt.satisfy(TESTED_TIMESTAMP, 101L));

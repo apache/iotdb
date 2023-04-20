@@ -29,6 +29,9 @@ import org.junit.Test;
 
 import java.io.Serializable;
 
+import static org.apache.iotdb.tsfile.read.filter.operator.NotFilter.CONTAIN_NOT_ERR_MSG;
+import static org.junit.Assert.fail;
+
 public class StatisticsFilterTest {
 
   private final Statistics<? extends Serializable> statistics1 =
@@ -152,24 +155,38 @@ public class StatisticsFilterTest {
 
   @Test
   public void testNot() {
-    Filter timeNotEq = TimeFilter.not(TimeFilter.eq(10L));
-    Assert.assertTrue(timeNotEq.satisfy(statistics1));
-    Assert.assertTrue(timeNotEq.satisfy(statistics2));
-    Assert.assertFalse(timeNotEq.allSatisfy(statistics1));
-    Assert.assertTrue(timeNotEq.allSatisfy(statistics2));
-    Assert.assertFalse(timeNotEq.allSatisfy(statistics3));
+    Filter timeNotEq = FilterFactory.not(TimeFilter.eq(10L));
+    try {
+      timeNotEq.satisfy(statistics1);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
+    try {
+      timeNotEq.allSatisfy(statistics1);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
 
-    Filter valueNotEq = ValueFilter.not(ValueFilter.eq(101L));
-    Assert.assertTrue(valueNotEq.satisfy(statistics1));
-    Assert.assertTrue(valueNotEq.satisfy(statistics2));
-    Assert.assertTrue(valueNotEq.allSatisfy(statistics1));
-    Assert.assertFalse(valueNotEq.allSatisfy(statistics2));
-    Assert.assertTrue(valueNotEq.allSatisfy(statistics3));
+    Filter valueNotEq = FilterFactory.not(ValueFilter.eq(101L));
+    try {
+      valueNotEq.satisfy(statistics1);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
+    try {
+      valueNotEq.allSatisfy(statistics1);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
   }
 
   @Test
   public void testBetweenAnd() {
-    Filter timeBetweenAnd = TimeFilter.between(0, 20, false);
+    Filter timeBetweenAnd = TimeFilter.between(0, 20);
     Assert.assertTrue(timeBetweenAnd.satisfy(statistics1));
     Assert.assertFalse(timeBetweenAnd.satisfy(statistics2));
     Assert.assertTrue(timeBetweenAnd.satisfy(statistics3));
@@ -177,7 +194,7 @@ public class StatisticsFilterTest {
     Assert.assertFalse(timeBetweenAnd.allSatisfy(statistics2));
     Assert.assertTrue(timeBetweenAnd.allSatisfy(statistics3));
 
-    Filter timeNotBetweenAnd = TimeFilter.between(0, 20, true);
+    Filter timeNotBetweenAnd = TimeFilter.notBetween(0, 20);
     Assert.assertTrue(timeNotBetweenAnd.satisfy(statistics1));
     Assert.assertTrue(timeNotBetweenAnd.satisfy(statistics2));
     Assert.assertFalse(timeNotBetweenAnd.satisfy(statistics3));

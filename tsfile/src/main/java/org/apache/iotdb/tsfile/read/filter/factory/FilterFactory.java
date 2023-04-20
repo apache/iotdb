@@ -30,11 +30,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Like;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
-import org.apache.iotdb.tsfile.read.filter.operator.NotBetween;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.NotLike;
-import org.apache.iotdb.tsfile.read.filter.operator.NotRegexp;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
@@ -103,15 +100,6 @@ public class FilterFactory {
         break;
       case BETWEEN:
         filter = new Between<>();
-        break;
-      case NOT_REGEXP:
-        filter = new NotRegexp<>();
-        break;
-      case NOT_LIKE:
-        filter = new NotLike<>();
-        break;
-      case NOT_BETWEEN:
-        filter = new NotBetween<>();
         break;
       default:
         throw new UnsupportedOperationException("Unknown filter type " + id);

@@ -43,8 +43,7 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return !(((Long) value) == statistics.getStartTime()
-          && (Long) value == statistics.getEndTime());
+      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
@@ -57,7 +56,7 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean allSatisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) < statistics.getStartTime() || ((Long) value) > statistics.getEndTime();
+      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
@@ -89,13 +88,13 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
       long time = (Long) value;
       return time < startTime || time > endTime;
     } else {
-      return true;
+      return false;
     }
   }
 
   @Override
   public Filter copy() {
-    return new NotEq(value, filterType);
+    return new NotEq<>(value, filterType);
   }
 
   @Override

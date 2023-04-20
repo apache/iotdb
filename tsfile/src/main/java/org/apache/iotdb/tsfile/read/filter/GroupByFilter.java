@@ -106,7 +106,8 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public String toString() {
-    return "GroupByFilter{}";
+    return String.format(
+        "GroupByFilter{[%d, %d], %d, %d}", startTime, endTime, interval, slidingStep);
   }
 
   @Override

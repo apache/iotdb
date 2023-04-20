@@ -30,6 +30,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class Between<T extends Comparable<T>> implements Filter, Serializable {
 
@@ -39,14 +40,77 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
 
   protected T value2;
 
+  protected boolean not;
+
   protected FilterType filterType;
 
   public Between() {}
 
-  public Between(T value1, T value2, FilterType filterType) {
+  public Between(T value1, T value2, FilterType filterType, boolean not) {
     this.value1 = value1;
     this.value2 = value2;
     this.filterType = filterType;
+    this.not = not;
+  }
+
+  @Override
+  public boolean satisfy(Statistics statistics) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return true;
+      }
+      return not
+          ? (((T) statistics.getMinValue()).compareTo(value1) < 0
+              || ((T) statistics.getMaxValue()).compareTo(value2) > 0)
+          : (((T) statistics.getMaxValue()).compareTo(value1) >= 0
+              && ((T) statistics.getMinValue()).compareTo(value2) <= 0);
+    }
+  }
+
+  @Override
+  public boolean allSatisfy(Statistics statistics) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return not
+          ? (((T) statistics.getMinValue()).compareTo(value2) > 0
+              || ((T) statistics.getMaxValue()).compareTo(value1) < 0)
+          : (((T) statistics.getMinValue()).compareTo(value1) >= 0
+              && ((T) statistics.getMaxValue()).compareTo(value2) <= 0);
+    }
+  }
+
+  @Override
+  public boolean satisfy(long time, Object value) {
+    Object v = filterType == FilterType.TIME_FILTER ? time : value;
+    return (value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0) ^ not;
+  }
+
+  @Override
+  public boolean satisfyStartEndTime(long startTime, long endTime) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return not
+          ? (startTime < (Long) value1 || endTime > (Long) value2)
+          : (endTime >= (Long) value1 && startTime <= (Long) value2);
+    } else {
+      return true;
+    }
+  }
+
+  @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return not
+          ? (startTime > (Long) value2 || endTime < (Long) value1)
+          : (startTime >= (Long) value1 && endTime <= (Long) value2);
+    } else {
+      return false;
+    }
   }
 
   @Override
@@ -54,6 +118,7 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
     try {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
+      ReadWriteIOUtils.write(not, outputStream);
       ReadWriteIOUtils.writeObject(value1, outputStream);
       ReadWriteIOUtils.writeObject(value2, outputStream);
     } catch (IOException ignored) {
@@ -64,6 +129,7 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
   @Override
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
+    not = ReadWriteIOUtils.readBool(buffer);
     value1 = (T) ReadWriteIOUtils.readObject(buffer);
     value2 = (T) ReadWriteIOUtils.readObject(buffer);
   }
@@ -74,57 +140,24 @@ public class Between<T extends Comparable<T>> implements Filter, Serializable {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
-    if (filterType == FilterType.TIME_FILTER) {
-      return statistics.getEndTime() >= (Long) value1 && statistics.getStartTime() <= (Long) value2;
-    } else {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
-      }
-      return ((T) statistics.getMaxValue()).compareTo(value1) >= 0
-          && ((T) statistics.getMinValue()).compareTo(value2) <= 0;
-    }
-  }
-
-  @Override
-  public boolean allSatisfy(Statistics statistics) {
-    if (filterType == FilterType.TIME_FILTER) {
-      return statistics.getStartTime() >= (Long) value1 && statistics.getEndTime() <= (Long) value2;
-    } else {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
-      }
-      return ((T) statistics.getMinValue()).compareTo(value1) >= 0
-          && ((T) statistics.getMaxValue()).compareTo(value2) <= 0;
-    }
-  }
-
-  @Override
-  public boolean satisfy(long time, Object value) {
-    Object v = filterType == FilterType.TIME_FILTER ? time : value;
-    return value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0;
-  }
-
-  @Override
-  public boolean satisfyStartEndTime(long startTime, long endTime) {
-    if (filterType == FilterType.TIME_FILTER) {
-      return endTime >= (Long) value1 && startTime <= (Long) value2;
-    } else {
-      return true;
-    }
-  }
-
-  @Override
-  public boolean containStartEndTime(long startTime, long endTime) {
-    if (filterType == FilterType.TIME_FILTER) {
-      return startTime >= (Long) value1 && endTime <= (Long) value2;
-    } else {
-      return true;
-    }
-  }
-
-  @Override
   public Filter copy() {
-    return new Between(value1, value2, filterType);
+    return new Between<>(value1, value2, filterType, not);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof Between)) {
+      return false;
+    }
+    Between<?> between = (Between<?>) o;
+    return not == between.not
+        && value1.equals(between.value1)
+        && value2.equals(between.value2)
+        && filterType == between.filterType;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value1, value2, not, filterType);
   }
 }

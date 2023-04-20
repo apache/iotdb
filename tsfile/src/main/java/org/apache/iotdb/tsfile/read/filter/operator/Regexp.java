@@ -48,11 +48,14 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   protected Pattern pattern;
 
+  protected boolean not;
+
   public Regexp() {}
 
-  public Regexp(String value, FilterType filterType) {
+  public Regexp(String value, FilterType filterType, boolean not) {
     this.value = value;
     this.filterType = filterType;
+    this.not = not;
     try {
       this.pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {
@@ -62,17 +65,11 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public boolean satisfy(Statistics statistics) {
-    if (filterType != FilterType.VALUE_FILTER) {
-      throw new UnsupportedOperationException("");
-    }
     return true;
   }
 
   @Override
   public boolean allSatisfy(Statistics statistics) {
-    if (filterType != FilterType.VALUE_FILTER) {
-      throw new UnsupportedOperationException("");
-    }
     return false;
   }
 
@@ -81,22 +78,22 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
     if (filterType != FilterType.VALUE_FILTER) {
       throw new UnsupportedOperationException("");
     }
-    return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
+    return not != pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException("");
+    return true;
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException("");
+    return false;
   }
 
   @Override
   public Filter copy() {
-    return new Regexp(value, filterType);
+    return new Regexp<>(value, filterType, not);
   }
 
   @Override
@@ -105,6 +102,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.write(value, outputStream);
+      ReadWriteIOUtils.write(not, outputStream);
     } catch (IOException ignored) {
       // ignore
     }
@@ -114,6 +112,7 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
+    not = ReadWriteIOUtils.readBool(buffer);
     if (value != null) {
       try {
         this.pattern = Pattern.compile(value);
@@ -125,19 +124,26 @@ public class Regexp<T extends Comparable<T>> implements Filter, Serializable {
 
   @Override
   public String toString() {
-    return filterType + " match " + value;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof Regexp
-        && Objects.equals(((Regexp<?>) o).value, value)
-        && ((Regexp<?>) o).filterType == filterType;
+    return filterType + (not ? " not match " : " match ") + value;
   }
 
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.REGEXP;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof Regexp)) {
+      return false;
+    }
+    Regexp<?> regexp = (Regexp<?>) o;
+    return not == regexp.not && value.equals(regexp.value) && filterType == regexp.filterType;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value, filterType, not);
   }
 
   public static class AccessCount {

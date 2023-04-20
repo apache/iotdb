@@ -26,11 +26,13 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -38,7 +40,7 @@ import java.util.Set;
  *
  * @param <T> comparable data type
  */
-public class In<T extends Comparable<T>> implements Filter {
+public class In<T extends Comparable<T>> implements Filter, Serializable {
 
   private static final long serialVersionUID = 8572705136773595399L;
 
@@ -79,12 +81,12 @@ public class In<T extends Comparable<T>> implements Filter {
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return true;
+    return false;
   }
 
   @Override
   public Filter copy() {
-    return new In(new HashSet(values), filterType, not);
+    return new In<>(new HashSet<>(values), filterType, not);
   }
 
   @Override
@@ -115,17 +117,23 @@ public class In<T extends Comparable<T>> implements Filter {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof In
-        && ((In<?>) o).filterType == filterType
-        && ((In<?>) o).values.equals(values)
-        && ((In<?>) o).not == not;
+    if (!(o instanceof In)) {
+      return false;
+    }
+    In<?> in = (In<?>) o;
+    return in.filterType == filterType && in.values.equals(values) && in.not == not;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(values, not, filterType);
   }
 
   @Override
   public String toString() {
     List<T> valueList = new ArrayList<>(values);
     Collections.sort(valueList);
-    return filterType + " < " + "reverse: " + not + ", " + valueList;
+    return filterType + (not ? " not in " : " in ") + valueList;
   }
 
   @Override

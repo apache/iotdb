@@ -43,7 +43,7 @@ public class Gt<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) < statistics.getEndTime();
+      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
@@ -55,7 +55,7 @@ public class Gt<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean allSatisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) < statistics.getStartTime();
+      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
@@ -86,13 +86,13 @@ public class Gt<T extends Comparable<T>> extends UnaryFilter<T> {
       long time = (Long) value;
       return startTime > time;
     } else {
-      return true;
+      return false;
     }
   }
 
   @Override
   public Filter copy() {
-    return new Gt(value, filterType);
+    return new Gt<>(value, filterType);
   }
 
   @Override

@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
-import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,10 +40,6 @@ import java.util.stream.Collectors;
 public class TimeFilter {
 
   private TimeFilter() {}
-
-  public static TimeEq eq(long value) {
-    return new TimeEq(value);
-  }
 
   public static TimeGt gt(long value) {
     return new TimeGt(value);
@@ -62,23 +57,121 @@ public class TimeFilter {
     return new TimeLtEq(value);
   }
 
-  public static TimeNotFilter not(Filter filter) {
-    return new TimeNotFilter(filter);
+  public static TimeEq eq(long value) {
+    return new TimeEq(value);
   }
 
   public static TimeNotEq notEq(long value) {
     return new TimeNotEq(value);
   }
 
-  public static TimeIn in(Set<Long> values, boolean not) {
-    return new TimeIn(values, not);
+  public static TimeBetween between(long value1, long value2) {
+    return new TimeBetween(value1, value2, false);
   }
 
-  public static TimeBetween between(long value1, long value2, boolean not) {
-    return new TimeBetween(value1, value2, not);
+  public static TimeBetween notBetween(long value1, long value2) {
+    return new TimeBetween(value1, value2, true);
   }
 
-  public static class TimeBetween extends Between {
+  public static TimeIn in(Set<Long> values) {
+    return new TimeIn(values, false);
+  }
+
+  public static TimeIn notIn(Set<Long> values) {
+    return new TimeIn(values, true);
+  }
+
+  public static class TimeGt extends Gt<Long> {
+
+    private TimeGt(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      long left = value;
+      if (left != Long.MAX_VALUE) {
+        return Collections.singletonList(new TimeRange(left + 1, Long.MAX_VALUE));
+      } else {
+        return Collections.emptyList();
+      }
+    }
+  }
+
+  public static class TimeGtEq extends GtEq<Long> {
+
+    private TimeGtEq(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      return Collections.singletonList(new TimeRange(value, Long.MAX_VALUE));
+    }
+  }
+
+  public static class TimeLt extends Lt<Long> {
+
+    private TimeLt(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      long right = value;
+      if (right != Long.MIN_VALUE) {
+        return Collections.singletonList(new TimeRange(Long.MIN_VALUE, right - 1));
+      } else {
+        return Collections.emptyList();
+      }
+    }
+  }
+
+  public static class TimeLtEq extends LtEq<Long> {
+
+    private TimeLtEq(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      return Collections.singletonList(new TimeRange(Long.MIN_VALUE, value));
+    }
+  }
+
+  public static class TimeEq extends Eq<Long> {
+
+    private TimeEq(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      return Collections.singletonList(new TimeRange(value, value));
+    }
+  }
+
+  public static class TimeNotEq extends NotEq<Long> {
+
+    private TimeNotEq(long value) {
+      super(value, FilterType.TIME_FILTER);
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      long time = value;
+      if (time == Long.MIN_VALUE) {
+        return Collections.singletonList(new TimeRange(time + 1, Long.MAX_VALUE));
+      } else if (time == Long.MAX_VALUE) {
+        return Collections.singletonList(new TimeRange(Long.MIN_VALUE, time - 1));
+      } else {
+        return Arrays.asList(
+            new TimeRange(Long.MIN_VALUE, time - 1), new TimeRange(time + 1, Long.MAX_VALUE));
+      }
+    }
+  }
+
+  public static class TimeBetween extends Between<Long> {
 
     private TimeBetween(long value1, long value2, boolean not) {
       super(value1, value2, FilterType.TIME_FILTER, not);
@@ -86,8 +179,7 @@ public class TimeFilter {
 
     @Override
     public List<TimeRange> getTimeRanges() {
-      long left = (long) value1;
-      long right = (long) value2;
+      long left = value1, right = value2;
       if (not) {
         List<TimeRange> res = new ArrayList<>();
         if (left != Long.MIN_VALUE) {
@@ -103,7 +195,7 @@ public class TimeFilter {
     }
   }
 
-  public static class TimeIn extends In {
+  public static class TimeIn extends In<Long> {
 
     private TimeIn(Set<Long> values, boolean not) {
       super(values, FilterType.TIME_FILTER, not);
@@ -111,111 +203,13 @@ public class TimeFilter {
 
     @Override
     public List<TimeRange> getTimeRanges() {
-      return ((Set<Long>) values)
-          .stream()
-              .map(
-                  l -> {
-                    long time = l;
-                    return new TimeRange(time, time);
-                  })
-              .collect(Collectors.toList());
-    }
-  }
-
-  public static class TimeEq extends Eq {
-
-    private TimeEq(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      return Collections.singletonList(new TimeRange((long) value, (long) value));
-    }
-  }
-
-  public static class TimeNotEq extends NotEq {
-
-    private TimeNotEq(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      long time = (long) value;
-      if (time == Long.MIN_VALUE) {
-        return Collections.singletonList(new TimeRange(time + 1, Long.MAX_VALUE));
-      } else if (time == Long.MAX_VALUE) {
-        return Collections.singletonList(new TimeRange(Long.MIN_VALUE, time - 1));
-      } else {
-        return Arrays.asList(
-            new TimeRange(Long.MIN_VALUE, time - 1), new TimeRange(time + 1, Long.MAX_VALUE));
-      }
-    }
-  }
-
-  public static class TimeGt extends Gt {
-
-    private TimeGt(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      long left = (long) value;
-      if (left != Long.MAX_VALUE) {
-        return Collections.singletonList(new TimeRange(left + 1, Long.MAX_VALUE));
-      } else {
-        return Collections.emptyList();
-      }
-    }
-  }
-
-  public static class TimeGtEq extends GtEq {
-
-    private TimeGtEq(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      return Collections.singletonList(new TimeRange((long) value, Long.MAX_VALUE));
-    }
-  }
-
-  public static class TimeLt extends Lt {
-
-    private TimeLt(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      long right = (long) value;
-      if (right != Long.MIN_VALUE) {
-        return Collections.singletonList(new TimeRange(Long.MIN_VALUE, right - 1));
-      } else {
-        return Collections.emptyList();
-      }
-    }
-  }
-
-  public static class TimeLtEq extends LtEq {
-
-    private TimeLtEq(long value) {
-      super(value, FilterType.TIME_FILTER);
-    }
-
-    @Override
-    public List<TimeRange> getTimeRanges() {
-      return Collections.singletonList(new TimeRange(Long.MIN_VALUE, (long) value));
-    }
-  }
-
-  public static class TimeNotFilter extends NotFilter {
-
-    private TimeNotFilter(Filter filter) {
-      super(filter);
+      return values.stream()
+          .map(
+              l -> {
+                long time = l;
+                return new TimeRange(time, time);
+              })
+          .collect(Collectors.toList());
     }
   }
 
