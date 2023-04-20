@@ -18,8 +18,8 @@
 package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +38,8 @@ public class StatementConstructionHandler {
       throws IllegalPathException, WriteProcessRejectException {
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(new PartialPath(insertTabletRequest.getDevice()));
+    insertStatement.setDevicePath(
+        DataNodeDevicePathCache.getInstance().getPartialPath(insertTabletRequest.getDevice()));
     insertStatement.setMeasurements(insertTabletRequest.getMeasurements().toArray(new String[0]));
     List<List<Object>> rawData = insertTabletRequest.getValues();
     List<String> rawDataType = insertTabletRequest.getDataTypes();
