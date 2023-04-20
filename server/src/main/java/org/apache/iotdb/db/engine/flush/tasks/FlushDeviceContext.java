@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.engine.flush.tasks;
 
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 public class FlushDeviceContext {
   private IDeviceID deviceID;
@@ -30,7 +31,6 @@ public class FlushDeviceContext {
   private IChunkWriter[] chunkWriters;
   private AtomicInteger encodedCounter = new AtomicInteger();
   private Map<String, Integer> seriesIndexMap;
-
 
   public AtomicInteger getEncodedCounter() {
     return encodedCounter;

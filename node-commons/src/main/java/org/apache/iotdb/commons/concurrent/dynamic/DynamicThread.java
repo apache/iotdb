@@ -82,7 +82,8 @@ public abstract class DynamicThread implements Runnable {
       // Thread too idle, exit if there is still enough threads
       int afterCnt = threadGroup.getThreadCnt().decrementAndGet();
       if (afterCnt >= threadGroup.getMinThreadCnt()) {
-        // notice that onThreadExit() will also decrease the counter, so we add it back here to avoid
+        // notice that onThreadExit() will also decrease the counter, so we add it back here to
+        // avoid
         // the counter being decreased twice
         threadGroup.getThreadCnt().incrementAndGet();
         return true;

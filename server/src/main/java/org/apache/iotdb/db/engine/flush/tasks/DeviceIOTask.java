@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.engine.flush.tasks;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
+import java.io.IOException;
 
 public class DeviceIOTask implements Task {
   private FlushContext flushContext;

@@ -31,7 +31,10 @@ public class EncodeSeriesTask implements Task {
   private IWritableMemChunk series;
   private IChunkWriter chunkWriter;
 
-  public EncodeSeriesTask(IDeviceID deviceId, String seriesId, FlushDeviceContext deviceContext,
+  public EncodeSeriesTask(
+      IDeviceID deviceId,
+      String seriesId,
+      FlushDeviceContext deviceContext,
       FlushContext allContext,
       IWritableMemChunk series) {
     this.deviceId = deviceId;
@@ -63,7 +66,9 @@ public class EncodeSeriesTask implements Task {
     chunkWriter.clearPageWriter();
 
     long subTaskTime = System.currentTimeMillis() - starTime;
-    allContext.getWritingMetrics().recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
+    allContext
+        .getWritingMetrics()
+        .recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
     allContext.getEncodingTime().addAndGet(subTaskTime);
   }
 

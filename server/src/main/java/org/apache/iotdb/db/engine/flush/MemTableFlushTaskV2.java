@@ -18,17 +18,6 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -52,8 +41,21 @@ import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
@@ -84,9 +86,8 @@ public class MemTableFlushTaskV2 {
   private FlushContext allContext;
 
   /**
-   * @param memTable     the memTable to flush
-   * @param writer       the writer where memTable will be flushed to (current tsfile writer or vm
-   *                     writer)
+   * @param memTable the memTable to flush
+   * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
    * @param storageGroup current database
    */
   public MemTableFlushTaskV2(
@@ -101,10 +102,20 @@ public class MemTableFlushTaskV2 {
     this.allContext.setWriter(writer);
     this.allContext.setMemTable(memTable);
 
-    this.sortTasks = new DynamicThreadGroup(storageGroup + "-" + dataRegionId + "-" + memTable,
-        SUB_TASK_POOL_MANAGER::submit, this::newSortThread, 1, 8);
-    this.encodingTasks = new DynamicThreadGroup(storageGroup + "-" + dataRegionId + "-" + memTable,
-        SUB_TASK_POOL_MANAGER::submit, this::newEncodingThread, 1, 8);
+    this.sortTasks =
+        new DynamicThreadGroup(
+            storageGroup + "-" + dataRegionId + "-" + memTable,
+            SUB_TASK_POOL_MANAGER::submit,
+            this::newSortThread,
+            1,
+            8);
+    this.encodingTasks =
+        new DynamicThreadGroup(
+            storageGroup + "-" + dataRegionId + "-" + memTable,
+            SUB_TASK_POOL_MANAGER::submit,
+            this::newEncodingThread,
+            1,
+            8);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(newIOThread());
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
@@ -112,10 +123,7 @@ public class MemTableFlushTaskV2 {
         allContext.getWriter().getFile().getName());
   }
 
-
-  /**
-   * the function for flushing memtable.
-   */
+  /** the function for flushing memtable. */
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long avgSeriesPointsNum =
         memTable.getSeriesNumber() == 0
@@ -151,8 +159,8 @@ public class MemTableFlushTaskV2 {
     List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
     // sort the IDeviceID in lexicographical order
     deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
-    deviceIDList.removeIf(d -> memTableMap.get(d).count() == 0 ||
-        memTableMap.get(d).getMemChunkMap().isEmpty());
+    deviceIDList.removeIf(
+        d -> memTableMap.get(d).count() == 0 || memTableMap.get(d).getMemChunkMap().isEmpty());
 
     allContext = new FlushContext();
     allContext.setDeviceContexts(new ArrayList<>());
@@ -215,8 +223,9 @@ public class MemTableFlushTaskV2 {
       if (estimatedTemporaryMemSize != 0) {
         SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
       }
-      SystemInfo.getInstance().setEncodingFasterThanIo(
-          allContext.getIoTime().get() >= allContext.getEncodingTime().get());
+      SystemInfo.getInstance()
+          .setEncodingFasterThanIo(
+              allContext.getIoTime().get() >= allContext.getEncodingTime().get());
     }
 
     MetricService.getInstance()
@@ -255,7 +264,6 @@ public class MemTableFlushTaskV2 {
     }
   }
 
-
   protected class TaskRunner extends DynamicThread {
 
     private static final String TASK_NAME_SORT = "sort data";
@@ -266,8 +274,12 @@ public class MemTableFlushTaskV2 {
     private BlockingQueue<Task> input;
     private BlockingQueue<Task> output;
 
-    public TaskRunner(DynamicThreadGroup threadGroup, Runnable cleanUp, String taskName,
-        BlockingQueue<Task> input, BlockingQueue<Task> output) {
+    public TaskRunner(
+        DynamicThreadGroup threadGroup,
+        Runnable cleanUp,
+        String taskName,
+        BlockingQueue<Task> input,
+        BlockingQueue<Task> output) {
       super(threadGroup);
       this.cleanUp = cleanUp;
       this.taskName = taskName;
@@ -304,20 +316,27 @@ public class MemTableFlushTaskV2 {
   }
 
   private DynamicThread newSortThread() {
-    return new TaskRunner(sortTasks, this::cleanSortThread, TaskRunner.TASK_NAME_SORT,
-        sortTaskQueue, encodingTaskQueue);
+    return new TaskRunner(
+        sortTasks,
+        this::cleanSortThread,
+        TaskRunner.TASK_NAME_SORT,
+        sortTaskQueue,
+        encodingTaskQueue);
   }
 
   private DynamicThread newEncodingThread() {
-    return new TaskRunner(encodingTasks, this::cleanEncodingThread, TaskRunner.TASK_NAME_ENCODING,
-        encodingTaskQueue, ioTaskQueue);
+    return new TaskRunner(
+        encodingTasks,
+        this::cleanEncodingThread,
+        TaskRunner.TASK_NAME_ENCODING,
+        encodingTaskQueue,
+        ioTaskQueue);
   }
 
   private DynamicThread newIOThread() {
-    return new TaskRunner(null, this::cleanIOThread, TaskRunner.TASK_NAME_IO,
-        ioTaskQueue, ioTaskQueue);
+    return new TaskRunner(
+        null, this::cleanIOThread, TaskRunner.TASK_NAME_IO, ioTaskQueue, ioTaskQueue);
   }
-
 
   private void cleanSortThread() {
     metricFlush();
@@ -326,8 +345,8 @@ public class MemTableFlushTaskV2 {
         storageGroup,
         allContext.getWriter().getFile().getName(),
         allContext.getSortTime().get());
-    WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_SORT,
-        allContext.getSortTime().get());
+    WRITING_METRICS.recordFlushCost(
+        WritingMetrics.FLUSH_STAGE_SORT, allContext.getSortTime().get());
   }
 
   private void cleanEncodingThread() {
@@ -337,9 +356,10 @@ public class MemTableFlushTaskV2 {
         storageGroup,
         allContext.getWriter().getFile().getName(),
         allContext.getEncodingTime().get());
-    WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING,
-        allContext.getEncodingTime().get());
+    WRITING_METRICS.recordFlushCost(
+        WritingMetrics.FLUSH_STAGE_ENCODING, allContext.getEncodingTime().get());
   }
+
   private void cleanIOThread() {
     metricFlush();
     LOGGER.info(
@@ -348,8 +368,6 @@ public class MemTableFlushTaskV2 {
         allContext.getWriter().getFile().getName(),
         allContext.getIoTime().get());
     WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, allContext.getIoTime().get());
-    WRITING_METRICS.recordFlushTsFileSize(storageGroup,
-        allContext.getWriter().getFile().length());
+    WRITING_METRICS.recordFlushTsFileSize(storageGroup, allContext.getWriter().getFile().length());
   }
-
 }

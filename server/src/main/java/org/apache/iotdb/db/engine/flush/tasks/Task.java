@@ -20,5 +20,6 @@ package org.apache.iotdb.db.engine.flush.tasks;
 
 public interface Task {
   void run();
+
   Task nextTask();
 }

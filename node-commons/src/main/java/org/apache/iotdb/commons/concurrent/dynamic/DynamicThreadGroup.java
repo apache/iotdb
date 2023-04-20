@@ -20,7 +20,6 @@ package org.apache.iotdb.commons.concurrent.dynamic;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -36,8 +35,12 @@ public class DynamicThreadGroup {
   private int maxThreadCnt = 8;
   private Map<DynamicThread, Future<?>> threadFutureMap = new ConcurrentHashMap<>();
 
-  public DynamicThreadGroup(String name, Function<Runnable, Future<?>> poolSubmitter,
-      Supplier<DynamicThread> threadFactory, int minThreadCnt, int maxThreadCnt) {
+  public DynamicThreadGroup(
+      String name,
+      Function<Runnable, Future<?>> poolSubmitter,
+      Supplier<DynamicThread> threadFactory,
+      int minThreadCnt,
+      int maxThreadCnt) {
     this.name = name;
     this.poolSubmitter = poolSubmitter;
     this.threadFactory = threadFactory;
@@ -48,9 +51,7 @@ public class DynamicThreadGroup {
     }
   }
 
-  /**
-   * Add a thread to this group if the number of threads does not reach the maximum.
-   */
+  /** Add a thread to this group if the number of threads does not reach the maximum. */
   public void addThread() {
     int afterCnt = threadCnt.incrementAndGet();
     if (afterCnt <= maxThreadCnt) {
@@ -72,6 +73,7 @@ public class DynamicThreadGroup {
 
   /**
    * Remove a thread from the group when it exits.
+   *
    * @param dynamicThread exiting thread
    */
   public void onThreadExit(DynamicThread dynamicThread) {
@@ -80,7 +82,7 @@ public class DynamicThreadGroup {
   }
 
   public void cancelAll() {
-    threadFutureMap.forEach((t,f) -> f.cancel(true));
+    threadFutureMap.forEach((t, f) -> f.cancel(true));
     threadFutureMap.clear();
     threadCnt.set(0);
   }
