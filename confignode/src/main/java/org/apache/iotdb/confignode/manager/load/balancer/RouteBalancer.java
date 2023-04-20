@@ -58,7 +58,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -178,7 +177,6 @@ public class RouteBalancer {
   }
 
   private void updateRegionLeaderMap() {
-    AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
           if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
@@ -190,10 +188,8 @@ public class RouteBalancer {
           if (leadershipSample.getRight() != regionRouteMap.getLeader(regionGroupId)) {
             // Update leader
             regionRouteMap.setLeader(regionGroupId, leadershipSample.getRight());
-            isLeaderChanged.set(true);
           }
         });
-    isLeaderChanged.get();
   }
 
   private void updateRegionPriorityMap() {
