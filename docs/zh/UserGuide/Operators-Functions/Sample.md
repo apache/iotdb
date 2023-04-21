@@ -263,7 +263,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 
 | 函数名 | 可接收的输入序列类型           | 属性参数                                                     | 输出序列类型                   | 功能类型                                                     |
 | ------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
-| M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`displayWindowBegin`和`displayWindowEnd`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
+| M4     | INT32 / INT64 / FLOAT / DOUBLE | 包含固定点数的窗口和滑动时间窗口使用不同的属性参数。包含固定点数的窗口使用属性`windowSize`和`slidingStep`。滑动时间窗口使用属性`timeInterval`、`slidingStep`、`startTime`和`endTime`。更多细节见下文。 | INT32 / INT64 / FLOAT / DOUBLE | 返回每个窗口内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。在一个窗口内的聚合点输出之前，M4会将它们按照时间戳递增排序并且去重。 |
 
 ###  属性参数
 
@@ -272,16 +272,16 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 + `windowSize`: 一个窗口内的点数。Int数据类型。必需的属性参数。
 + `slidingStep`: 按照设定的点数来滑动窗口。Int数据类型。可选的属性参数；如果没有设置，默认取值和`windowSize`一样。
 
-<img src="https://alioss.timecho.com/docs/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+<img src="https://alioss.timecho.com/docs/img/mmexport1682085777092.png" alt="image" style="zoom: 50%;" />
 
 **(2) 滑动时间窗口（SlidingTimeWindowAccessStrategy）使用的属性参数:**
 
 + `timeInterval`: 一个窗口的时间长度。Long数据类型。必需的属性参数。
 + `slidingStep`: 按照设定的时长来滑动窗口。Long数据类型。可选的属性参数；如果没有设置，默认取值和`timeInterval`一样。
-+ `displayWindowBegin`: 窗口滑动的起始时间戳位置（包含在内）。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MIN_VALUE，意为使用输入的时间序列的第一个点的时间戳作为窗口滑动的起始时间戳位置。
-+ `displayWindowEnd`: 结束时间限制（不包含在内；本质上和`WHERE time < displayWindowEnd`起的效果是一样的)。Long数据类型。可选的属性参数；如果没有设置，默认取值为Long.MAX_VALUE，意为除了输入的时间序列自身数据读取完毕之外没有增加额外的结束时间过滤条件限制。
++ `startTime`: 窗口滑动的起始时间戳位置（包含在内）。Long数据类型。可选的属性参数；如果没有设置，意为使用输入的时间序列的第一个点的时间戳作为窗口滑动的起始时间戳位置。
++ `endTime`: 结束时间限制（不包含在内；本质上和`WHERE time < endTime`起的效果是一样的)。Long数据类型。可选的属性参数；如果没有设置，意为除了输入的时间序列自身数据读取完毕之外没有增加额外的结束时间过滤条件限制。
 
-<img src="https://alioss.timecho.com/docs/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+<img src="https://alioss.timecho.com/docs/img/mmexport1682085778481.png" alt="groupBy window" style="zoom: 67%;" />
 
 ###  示例
 
@@ -312,14 +312,14 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 查询语句1：
 
 ```sql
-select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1
+select M4(s1,'timeInterval'='25','startTime'='0','endTime'='100') from root.vehicle.d1
 ```
 
 输出结果1：
 
 ```sql
 +-----------------------------+-----------------------------------------------------------------------------------------------+
-|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "displayWindowBegin"="0", "displayWindowEnd"="100")|
+|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "startTime"="0", "endTime"="100")|
 +-----------------------------+-----------------------------------------------------------------------------------------------+
 |1970-01-01T08:00:00.001+08:00|                                                                                            5.0|
 |1970-01-01T08:00:00.010+08:00|                                                                                           30.0|
@@ -366,7 +366,7 @@ Total line number = 7
 
 参考论文["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf)，作为大规模时间序列可视化的降采样方法，M4可以做到双色折线图的零变形。
 
-假设屏幕画布的像素宽乘高是`w*h`，假设时间序列要可视化的时间范围是`[tqs,tqe)`，并且(tqe-tqs)是w的整数倍，那么落在第i个时间跨度`Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` 内的点将会被画在第i个像素列中，i=1,2,...,w。于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。降采样时间序列的结果点数不会超过`4*w`个，与此同时，使用这些聚合点画出来的二色折线图与使用原始数据画出来的在像素级别上是完全一致的。
+假设屏幕画布的像素宽乘高是`w*h`，假设时间序列要可视化的时间范围是`[tqs,tqe)`，并且(tqe-tqs)是w的整数倍，那么落在第i个时间跨度`Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` 内的点将会被画在第i个像素列中，i=1,2,...,w。于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'timeInterval'='(tqe-tqs)/w','startTime'='tqs','endTime'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。降采样时间序列的结果点数不会超过`4*w`个，与此同时，使用这些聚合点画出来的二色折线图与使用原始数据画出来的在像素级别上是完全一致的。
 
 为了免除参数值硬编码的麻烦，当Grafana用于可视化时，我们推荐使用Grafana的[模板变量](https://grafana.com/docs/grafana/latest/dashboards/variables/add-template-variables/#global-variables)`$ __interval_ms`，如下所示：
 
@@ -382,7 +382,7 @@ select M4(s1,'timeInterval'='$__interval_ms') from root.sg1.d1
 | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 1. 带有Group By子句的内置聚合函数                 | 不支持，缺少`BOTTOM_TIME`和`TOP_TIME`，即缺少最小值点和最大值点的时间戳。 | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
 | 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (内置UDF)          | 支持*                                                        | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
-| **3. M4 (内置UDF)**                               | 支持*                                                        | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | 本文档                                                       |
+| **3. M4 (内置UDF)**                               | 支持*                                                        | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','startTime'='0','endTime'='100') from root.vehicle.d1` | 本文档                                                       |
 | 4. 扩展带有Group By子句的内置聚合函数来支持M4聚合 | 未实施                                                       | 未实施                                            | 未实施                                                       | 未实施                                                       |
 
 进一步比较`EQUAL_SIZE_BUCKET_M4_SAMPLE`和`M4`：

@@ -260,7 +260,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 
 | Function Name | Allowed Input Series Data Types | Attributes                                                   | Output Series Data Type        | Series Data Type  Description                                |
 | ------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
-| M4            | INT32 / INT64 / FLOAT / DOUBLE  | Different attributes used by the size window and the time window. The size window uses attributes `windowSize` and `slidingStep`. The time window uses attributes `timeInterval`, `slidingStep`, `displayWindowBegin`, and `displayWindowEnd`. More details see below. | INT32 / INT64 / FLOAT / DOUBLE | Returns the `first, last, bottom, top` points in each sliding window. M4 sorts and deduplicates the aggregated points within the window before outputting them. |
+| M4            | INT32 / INT64 / FLOAT / DOUBLE  | Different attributes used by the size window and the time window. The size window uses attributes `windowSize` and `slidingStep`. The time window uses attributes `timeInterval`, `slidingStep`, `startTime`, and `endTime`. More details see below. | INT32 / INT64 / FLOAT / DOUBLE | Returns the `first, last, bottom, top` points in each sliding window. M4 sorts and deduplicates the aggregated points within the window before outputting them. |
 
 ### Attributes
 
@@ -269,16 +269,16 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 + `windowSize`: The number of points in a window. Int data type. **Required**.
 + `slidingStep`: Slide a window by the number of points. Int data type. Optional. If not set, default to the same as `windowSize`.
 
-<img src="https://alioss.timecho.com/docs/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+<img src="https://alioss.timecho.com/docs/img/mmexport1682085777092.png" alt="image" style="zoom: 50%;" />
 
 **(2) Attributes for the time window:**
 
 + `timeInterval`: The time interval length of a window. Long data type. **Required**.
 + `slidingStep`: Slide a window by the time length. Long data type. Optional. If not set, default to the same as `timeInterval`.
-+ `displayWindowBegin`: The starting position of the window (included). Long data type. Optional. If not set, default to Long.MIN_VALUE, meaning using the time of the first data point of the input time series as the starting position of the window.
-+ `displayWindowEnd`: End time limit (excluded, essentially playing the same role as `WHERE time < displayWindowEnd`). Long data type. Optional. If not set, default to Long.MAX_VALUE, meaning there is no additional end time limit other than the end of the input time series itself.
++ `startTime`: The starting time position of the window (included). Long data type. Optional. If not set, the starting time position of the window will be set to the same as the minimum timestamp of the input time series.
++ `endTime`: End time limit (excluded, essentially playing the same role as `WHERE time < endTime`). Long data type. Optional. If not set, meaning there is no additional end time limit other than the end of the input time series itself.
 
-<img src="https://alioss.timecho.com/docs/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+<img src="https://alioss.timecho.com/docs/img/mmexport1682085778481.png" alt="groupBy window" style="zoom: 67%;" />
 
 ### Examples
 
@@ -309,14 +309,14 @@ Input series:
 SQL for query1:
 
 ```sql
-select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1
+select M4(s1,'timeInterval'='25','startTime'='0','endTime'='100') from root.vehicle.d1
 ```
 
 Output1:
 
 ```sql
 +-----------------------------+-----------------------------------------------------------------------------------------------+
-|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "displayWindowBegin"="0", "displayWindowEnd"="100")|
+|                         Time|M4(root.vehicle.d1.s1, "timeInterval"="25", "startTime"="0", "endTime"="100")|
 +-----------------------------+-----------------------------------------------------------------------------------------------+
 |1970-01-01T08:00:00.001+08:00|                                                                                            5.0|
 |1970-01-01T08:00:00.010+08:00|                                                                                           30.0|
@@ -363,7 +363,7 @@ As M4 aggregation selects the `first, last, bottom, top` points for each window,
 
 Referring to paper ["M4: A Visualization-Oriented Time Series Data Aggregation"](http://www.vldb.org/pvldb/vol7/p797-jugel.pdf), M4 is a downsampling method to facilitate large-scale time series visualization without deforming the shape in terms of a two-color line chart.
 
-Given a chart of `w*h` pixels, suppose that the visualization time range of the time series is `[tqs,tqe)` and (tqe-tqs) is divisible by w, the points that fall within the  `i`-th time span `Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` will be drawn on the `i`-th pixel column, i=1,2,...,w. Therefore, from a visualization-driven perspective, use the sql: `"select M4(s1,'timeInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"` to sample the `first, last, bottom, top` points for each time span. The resulting downsampled time series has no more than `4*w` points, a big reduction compared to the original large-scale time series. Meanwhile, the two-color line chart drawn from the reduced data is identical that to that drawn from the original data (pixel-level consistency).
+Given a chart of `w*h` pixels, suppose that the visualization time range of the time series is `[tqs,tqe)` and (tqe-tqs) is divisible by w, the points that fall within the  `i`-th time span `Ii=[tqs+(tqe-tqs)/w*(i-1),tqs+(tqe-tqs)/w*i)` will be drawn on the `i`-th pixel column, i=1,2,...,w. Therefore, from a visualization-driven perspective, use the sql: `"select M4(s1,'timeInterval'='(tqe-tqs)/w','startTime'='tqs','endTime'='tqe') from root.vehicle.d1"` to sample the `first, last, bottom, top` points for each time span. The resulting downsampled time series has no more than `4*w` points, a big reduction compared to the original large-scale time series. Meanwhile, the two-color line chart drawn from the reduced data is identical that to that drawn from the original data (pixel-level consistency).
 
 To eliminate the hassle of hardcoding parameters, we recommend the following usage of Grafana's [template variable](https://grafana.com/docs/grafana/latest/dashboards/variables/add-template-variables/#global-variables) `$__interval_ms` when Grafana is used for visualization:
 
@@ -379,7 +379,7 @@ where `timeInterval` is set as `(tqe-tqs)/w` automatically. Note that the time p
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 1. native built-in aggregate functions with Group By clause  | No. Lack `BOTTOM_TIME` and `TOP_TIME`, which are respectively the time of the points that have the mininum and maximum value. | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
 | 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (built-in UDF)                | Yes*                                                         | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
-| **3. M4 (built-in UDF)**                                     | Yes*                                                         | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | refer to this doc                                            |
+| **3. M4 (built-in UDF)**                                     | Yes*                                                         | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'timeInterval'='25','startTime'='0','endTime'='100') from root.vehicle.d1` | refer to this doc                                            |
 | 4. extend native built-in aggregate functions with Group By clause to support M4 aggregation | not implemented                                              | not implemented                                   | not implemented                                              | not implemented                                              |
 
 Further compare `EQUAL_SIZE_BUCKET_M4_SAMPLE` and `M4`:

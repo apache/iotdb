@@ -47,9 +47,8 @@ import java.io.IOException;
  * root.vehicle.d1" (windowSize is required, slidingStep is optional.)
  *
  * <p>SlidingTimeWindow usage Example: "select
- * M4(s1,'timeInterval'='25','slidingStep'='25','displayWindowBegin'='0','displayWindowEnd'='100')
- * from root.vehicle.d1" (timeInterval is required, slidingStep/displayWindowBegin/displayWindowEnd
- * are optional.)
+ * M4(s1,'timeInterval'='25','slidingStep'='25','startTime'='0','endTime'='100') from
+ * root.vehicle.d1" (timeInterval is required, slidingStep/startTime/endTime are optional.)
  */
 public class UDTFM4 implements UDTF {
 
@@ -64,8 +63,8 @@ public class UDTFM4 implements UDTF {
   public static final String WINDOW_SIZE_KEY = "windowSize";
   public static final String TIME_INTERVAL_KEY = "timeInterval";
   public static final String SLIDING_STEP_KEY = "slidingStep";
-  public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
-  public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
+  public static final String START_TIME_KEY = "startTime";
+  public static final String END_TIME_KEY = "endTime";
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -111,13 +110,11 @@ public class UDTFM4 implements UDTF {
           new SlidingSizeWindowAccessStrategy(windowSize, slidingStep));
     } else {
       long timeInterval = parameters.getLong(TIME_INTERVAL_KEY);
-      long displayWindowBegin =
-          parameters.getLongOrDefault(DISPLAY_WINDOW_BEGIN_KEY, Long.MIN_VALUE);
-      long displayWindowEnd = parameters.getLongOrDefault(DISPLAY_WINDOW_END_KEY, Long.MAX_VALUE);
+      long startTime = parameters.getLongOrDefault(START_TIME_KEY, Long.MIN_VALUE);
+      long endTime = parameters.getLongOrDefault(END_TIME_KEY, Long.MAX_VALUE);
       long slidingStep = parameters.getLongOrDefault(SLIDING_STEP_KEY, timeInterval);
       configurations.setAccessStrategy(
-          new SlidingTimeWindowAccessStrategy(
-              timeInterval, slidingStep, displayWindowBegin, displayWindowEnd));
+          new SlidingTimeWindowAccessStrategy(timeInterval, slidingStep, startTime, endTime));
     }
   }
 

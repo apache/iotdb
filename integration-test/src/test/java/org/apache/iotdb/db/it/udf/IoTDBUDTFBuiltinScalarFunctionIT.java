@@ -37,15 +37,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import static org.apache.iotdb.commons.udf.builtin.UDTFM4.DISPLAY_WINDOW_BEGIN_KEY;
-import static org.apache.iotdb.commons.udf.builtin.UDTFM4.DISPLAY_WINDOW_END_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.END_TIME_KEY;
 import static org.apache.iotdb.commons.udf.builtin.UDTFM4.SLIDING_STEP_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.START_TIME_KEY;
 import static org.apache.iotdb.commons.udf.builtin.UDTFM4.TIME_INTERVAL_KEY;
 import static org.apache.iotdb.commons.udf.builtin.UDTFM4.WINDOW_SIZE_KEY;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -1248,14 +1247,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     String sql =
         String.format(
             "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
-            TIME_INTERVAL_KEY,
-            25,
-            SLIDING_STEP_KEY,
-            25,
-            DISPLAY_WINDOW_BEGIN_KEY,
-            75,
-            DISPLAY_WINDOW_END_KEY,
-            150);
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 75, END_TIME_KEY, 150);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -1282,14 +1274,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     String sql =
         String.format(
             "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
-            TIME_INTERVAL_KEY,
-            25,
-            SLIDING_STEP_KEY,
-            25,
-            DISPLAY_WINDOW_BEGIN_KEY,
-            0,
-            DISPLAY_WINDOW_END_KEY,
-            150);
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 0, END_TIME_KEY, 150);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -1334,14 +1319,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     String sql =
         String.format(
             "select M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
-            TIME_INTERVAL_KEY,
-            25,
-            SLIDING_STEP_KEY,
-            25,
-            DISPLAY_WINDOW_BEGIN_KEY,
-            0,
-            DISPLAY_WINDOW_END_KEY,
-            100);
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 0, END_TIME_KEY, 100);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
