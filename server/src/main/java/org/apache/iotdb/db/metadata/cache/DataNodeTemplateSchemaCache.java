@@ -150,7 +150,7 @@ public class DataNodeTemplateSchemaCache {
               return new MeasurementSchema(
                   schema.getMeasurementId(),
                   schema.getType(),
-                  schema.getTimeTSEncoding(),
+                  schema.getEncodingType(),
                   schema.getCompressor());
             }
 
