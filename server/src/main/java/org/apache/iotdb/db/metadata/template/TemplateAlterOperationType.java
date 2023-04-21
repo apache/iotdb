@@ -25,16 +25,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public enum TemplateInternalRPCUpdateType {
-  ADD_TEMPLATE_SET_INFO((byte) 0),
-  INVALIDATE_TEMPLATE_SET_INFO((byte) 1),
-  ADD_TEMPLATE_PRE_SET_INFO((byte) 2),
-  COMMIT_TEMPLATE_SET_INFO((byte) 3),
-  UPDATE_TEMPLATE_INFO((byte) 4);
+public enum TemplateAlterOperationType {
+  EXTEND_TEMPLATE((byte) 0);
 
   private final byte operationType;
 
-  TemplateInternalRPCUpdateType(byte operationType) {
+  TemplateAlterOperationType(byte operationType) {
     this.operationType = operationType;
   }
 
@@ -46,23 +42,15 @@ public enum TemplateInternalRPCUpdateType {
     ReadWriteIOUtils.write(operationType, stream);
   }
 
-  public static TemplateInternalRPCUpdateType deserialize(ByteBuffer buffer) {
+  public static TemplateAlterOperationType deserialize(ByteBuffer buffer) {
     byte type = ReadWriteIOUtils.readByte(buffer);
     return getType(type);
   }
 
-  public static TemplateInternalRPCUpdateType getType(byte type) {
+  public static TemplateAlterOperationType getType(byte type) {
     switch (type) {
       case 0:
-        return ADD_TEMPLATE_SET_INFO;
-      case 1:
-        return INVALIDATE_TEMPLATE_SET_INFO;
-      case 2:
-        return ADD_TEMPLATE_PRE_SET_INFO;
-      case 3:
-        return COMMIT_TEMPLATE_SET_INFO;
-      case 4:
-        return UPDATE_TEMPLATE_INFO;
+        return EXTEND_TEMPLATE;
       default:
         throw new IllegalArgumentException("Unknown template update operation type" + type);
     }
