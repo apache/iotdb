@@ -118,21 +118,21 @@ public class SessionExample {
     session.close();
   }
 
-  private static void backupSession(){
+  private static void backupSession() {
     List<String> backupList = new ArrayList<>();
     backupList.add("127.0.0.1:6767");
     backupList.add("127.0.0.1:6768");
     session =
-            new Session.Builder()
-                    .host(LOCAL_HOST)
-                    .port(6667)
-                    .username("root")
-                    .password("root")
-                    .backupNodeUrls(backupList)
-                    .backupUsername("root")
-                    .backupPassword("123456")
-                    .version(Version.V_1_0)
-                    .build();
+        new Session.Builder()
+            .host(LOCAL_HOST)
+            .port(6667)
+            .username("root")
+            .password("root")
+            .backupNodeUrls(backupList)
+            .backupUsername("root")
+            .backupPassword("123456")
+            .version(Version.V_1_0)
+            .build();
   }
 
   private static void createAndDropContinuousQueries()
