@@ -79,8 +79,8 @@ public class PredicateRemoveNotRewriterTest {
         new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, false),
         new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, true).reverse());
     Assert.assertEquals(
-        FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)),
-        new Gt<>(1, FilterType.TIME_FILTER).reverse());
+        new Gt<>(1, FilterType.TIME_FILTER),
+        FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)).reverse());
     Assert.assertEquals(
         FilterFactory.and(
             new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
@@ -98,23 +98,22 @@ public class PredicateRemoveNotRewriterTest {
   public void testRemoveNot() {
     Assert.assertEquals(
         new LtEq<>(1, FilterType.TIME_FILTER),
-        PredicateRemoveNotRewriter.rewriter(
-            FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER))));
+        PredicateRemoveNotRewriter.rewrite(FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER))));
     Assert.assertEquals(
         new Like<>("s*", FilterType.TIME_FILTER, false),
-        PredicateRemoveNotRewriter.rewriter(
+        PredicateRemoveNotRewriter.rewrite(
             FilterFactory.not(new Like<>("s*", FilterType.TIME_FILTER, true))));
     Assert.assertEquals(
         FilterFactory.or(
             new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
-        PredicateRemoveNotRewriter.rewriter(
+        PredicateRemoveNotRewriter.rewrite(
             FilterFactory.or(
                 FilterFactory.not(new LtEq<>(1, FilterType.TIME_FILTER)),
                 FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)))));
     Assert.assertEquals(
         FilterFactory.and(
             new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
-        PredicateRemoveNotRewriter.rewriter(
+        PredicateRemoveNotRewriter.rewrite(
             FilterFactory.and(
                 FilterFactory.not(new LtEq<>(1, FilterType.TIME_FILTER)),
                 FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)))));

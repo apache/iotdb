@@ -377,7 +377,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
       globalTimeFilter = resultPair.left;
       if (globalTimeFilter != null) {
-        globalTimeFilter = PredicateRemoveNotRewriter.rewriter(globalTimeFilter);
+        globalTimeFilter = PredicateRemoveNotRewriter.rewrite(globalTimeFilter);
       }
       hasValueFilter = resultPair.right;
 

@@ -204,7 +204,7 @@ public class TimeFilter {
     @Override
     public List<TimeRange> getTimeRanges() {
       if (not) {
-        return Collections.emptyList();
+        return Collections.singletonList(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
       } else {
         return values.stream()
             .map(
