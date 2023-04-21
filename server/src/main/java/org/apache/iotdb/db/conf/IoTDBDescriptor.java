@@ -1026,6 +1026,22 @@ public class IoTDBDescriptor {
                 "flush_max_sub_thread_num",
                 Integer.toString(conf.getFlushMemTableMaxSubThread()))));
 
+    conf.setDynamicThreadMinIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_min_idle_ratio",
+                Double.toString(conf.getDynamicThreadMinIdleRatio()))));
+    conf.setDynamicThreadMaxIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_max_idle_ratio",
+                Double.toString(conf.getDynamicThreadMaxIdleRatio()))));
+    conf.setDynamicThreadMinRunningTimeNS(
+        Long.parseLong(
+            properties.getProperty(
+                "dynamic_min_running_time_ns",
+                Long.toString(conf.getDynamicThreadMinRunningTimeNS()))));
+
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
