@@ -62,7 +62,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MemTableFlushTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTaskV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
