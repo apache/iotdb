@@ -26,6 +26,9 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +44,8 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
   private long startTime = -1;
 
   private long endTime = -1;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CountTimeSlotListStatement.class);
 
   public CountTimeSlotListStatement() {
     super();
@@ -98,9 +103,13 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
 
   @Override
   public List<PartialPath> getPaths() {
+    if (database == null) {
+      return new ArrayList<>();
+    }
     try {
       return Collections.singletonList(new PartialPath(database));
-    } catch (IllegalPathException | NullPointerException e) {
+    } catch (IllegalPathException e) {
+      LOGGER.warn("illegal path: {}", database);
       return new ArrayList<>();
     }
   }

@@ -601,12 +601,35 @@ public interface IManager {
    */
   TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
+  /**
+   * Get RegionId。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetRegionIdResp.
+   */
   TGetRegionIdResp getRegionId(TGetRegionIdReq req);
 
+  /**
+   * Get timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetTimeSlotListResp.
+   */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req);
-
+  /**
+   * Count timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TCountTimeSlotListResp.
+   */
   TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req);
 
+  /**
+   * Get seriesSlot。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetSeriesSlotListResp.
+   */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);

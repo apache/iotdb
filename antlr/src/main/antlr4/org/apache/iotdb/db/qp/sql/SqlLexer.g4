@@ -226,10 +226,6 @@ DEVICE
     : D E V I C E
     ;
 
-DEVICEID
-    : D E V I C E I D
-    ;
-
 DEVICES
     : D E V I C E S
     ;

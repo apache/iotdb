@@ -448,13 +448,13 @@ showConfigNodes
 // ---- Get Region Id
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
-        |(DEVICE|DEVICEID) operator_eq device=prefixPath)
+        |DEVICE operator_eq device=prefixPath)
         (OPERATOR_AND (TIMESTAMP|TIME) operator_eq time = timeValue)?
     ;
 
 // ---- Get Time Slot List
 getTimeSlotList
-    : SHOW (TIMESLOTID|TIMEPARTITION) WHERE ((DEVICE|DEVICEID) operator_eq device=prefixPath
+    : SHOW (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
         | REGIONID operator_eq regionId=INTEGER_LITERAL
         | DATABASE operator_eq database=prefixPath )
         (OPERATOR_AND STARTTIME operator_eq startTime=timeValue)?
@@ -463,7 +463,7 @@ getTimeSlotList
 
 // ---- Count Time Slot List
 countTimeSlotList
-    : COUNT (TIMESLOTID|TIMEPARTITION) WHERE ((DEVICE|DEVICEID) operator_eq device=prefixPath
+    : COUNT (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
         | REGIONID operator_eq regionId=INTEGER_LITERAL
         | DATABASE operator_eq database=prefixPath )
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
