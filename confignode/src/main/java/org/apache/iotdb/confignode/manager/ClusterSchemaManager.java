@@ -74,6 +74,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -732,6 +733,17 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+    if (templateExtendInfo.getEncodings() != null) {
+      for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
+        try {
+          SchemaUtils.checkDataTypeWithEncoding(
+              templateExtendInfo.getDataTypes().get(i), templateExtendInfo.getEncodings().get(i));
+        } catch (MetadataException e) {
+          return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        }
+      }
+    }
+
     Template template =
         clusterSchemaInfo
             .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
