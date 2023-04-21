@@ -161,17 +161,17 @@ public class MemTableFlushTaskV2 {
     deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
     deviceIDList.removeIf(
         d -> memTableMap.get(d).count() == 0 || memTableMap.get(d).getMemChunkMap().isEmpty());
-
     allContext.setDeviceContexts(new ArrayList<>());
 
     for (IDeviceID deviceID : deviceIDList) {
       FlushDeviceContext flushDeviceContext = new FlushDeviceContext();
-      allContext.getDeviceContexts().add(flushDeviceContext);
       flushDeviceContext.setDeviceID(deviceID);
-      final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
-      List<String> seriesInOrder = new ArrayList<>(value.keySet());
+      allContext.getDeviceContexts().add(flushDeviceContext);
+
+      final Map<String, IWritableMemChunk> memChunkMap = memTableMap.get(deviceID).getMemChunkMap();
+      List<String> seriesInOrder = new ArrayList<>(memChunkMap.keySet());
       // skip the empty device/chunk group
-      seriesInOrder.removeIf(s -> value.get(s).count() == 0);
+      seriesInOrder.removeIf(s -> memChunkMap.get(s).count() == 0);
       seriesInOrder.sort((String::compareTo));
       flushDeviceContext.setMeasurementIds(seriesInOrder);
       flushDeviceContext.setChunkWriters(new IChunkWriter[seriesInOrder.size()]);
@@ -181,7 +181,7 @@ public class MemTableFlushTaskV2 {
         // starting from sorting each series
         String seriesId = seriesInOrder.get(j);
         flushDeviceContext.getSeriesIndexMap().put(seriesId, j);
-        IWritableMemChunk series = value.get(seriesId);
+        IWritableMemChunk series = memChunkMap.get(seriesId);
 
         SortSeriesTask sortSeriesTask = new SortSeriesTask();
         sortSeriesTask.setSeriesId(seriesId);
