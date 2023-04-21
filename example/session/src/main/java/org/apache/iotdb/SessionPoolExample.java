@@ -61,8 +61,8 @@ public class SessionPoolExample {
             .build();
   }
 
-  /** Build a slave SessionPool for this example */
-  private static void slaveSessionPool() {
+  /** Build a backup SessionPool for this example */
+  private static void backupSessionPool() {
     List<String> nodeUrls = new ArrayList<>();
     nodeUrls.add("127.0.0.1:6667");
     nodeUrls.add("127.0.0.1:6668");
@@ -85,7 +85,7 @@ public class SessionPoolExample {
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use
-    slaveSessionPool();
+    constructRedirectSessionPool();
 
     service = Executors.newFixedThreadPool(10);
     insertRecord();
