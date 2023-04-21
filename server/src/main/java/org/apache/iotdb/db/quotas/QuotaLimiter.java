@@ -43,7 +43,7 @@ public class QuotaLimiter {
   private RateLimiter readReqsLimiter = null;
   private RateLimiter readSizeLimiter = null;
 
-  private QuotaLimiter() {
+  public QuotaLimiter() {
     if (RateLimiterType.FixedIntervalRateLimiter.name().equals(config.getRateLimiterType())) {
       reqsLimiter = new FixedIntervalRateLimiter();
       reqSizeLimiter = new FixedIntervalRateLimiter();
@@ -61,8 +61,8 @@ public class QuotaLimiter {
     }
   }
 
-  public static QuotaLimiter fromThrottle(Map<ThrottleType, TTimedQuota> throttleLimit) {
-    QuotaLimiter limiter = new QuotaLimiter();
+  public static QuotaLimiter fromThrottle(
+      Map<ThrottleType, TTimedQuota> throttleLimit, QuotaLimiter limiter) {
     TTimedQuota timedQuota;
     if (throttleLimit.containsKey(ThrottleType.REQUEST_NUMBER)) {
       timedQuota = throttleLimit.get(ThrottleType.REQUEST_NUMBER);

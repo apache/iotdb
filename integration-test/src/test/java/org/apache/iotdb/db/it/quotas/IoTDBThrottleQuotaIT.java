@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.quotas;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -47,13 +46,13 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBThrottleQuotaIT {
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setQuotaEnable(true);
+    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setQuotaEnable(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setQuotaEnable(false);
+    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setQuotaEnable(false);
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -272,6 +271,26 @@ public class IoTDBThrottleQuotaIT {
         Assert.fail(throwables.getMessage());
       }
     }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER user4 'user4'");
+      adminStmt.execute("grant user user4 privileges all");
+      adminStmt.execute("set throttle quota request='4req/hour' on user4;");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user4", "user4");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(1,true)");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(2,true)");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(3,true)");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(4,true)");
+      }
+    } catch (SQLException throwables) {
+      if (!throwables.getMessage().contains("1701: number of requests exceeded - wait")) {
+        Assert.fail(throwables.getMessage());
+      }
+    }
   }
 
   @Test
@@ -289,6 +308,68 @@ public class IoTDBThrottleQuotaIT {
       }
     } catch (SQLException | InterruptedException throwables) {
       Assert.fail(throwables.getMessage());
+    }
+  }
+
+  @Test
+  public void setThrottleQuotaTest4() {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER user1 'user1'");
+      adminStmt.execute("grant user user1 privileges all");
+      adminStmt.execute("set throttle quota request='2req/hour' on user1;");
+      adminStmt.execute("set throttle quota request='2req/min',type='write' on user1;");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "user1");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(1,true)");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        // userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(2,true)");
+      }
+    } catch (SQLException throwables) {
+      if (!throwables.getMessage().contains("1701: number of requests exceeded - wait")) {
+        Assert.fail(throwables.getMessage());
+      }
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER user2 'user2'");
+      adminStmt.execute("grant user user2 privileges all");
+      adminStmt.execute("set throttle quota request='5req/hour' on user2;");
+      adminStmt.execute("set throttle quota request='3req/min',type='write' on user2;");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user2", "user2");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(1,true)");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(2,true)");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(3,true)");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(4,true)");
+      }
+    } catch (SQLException throwables) {
+      if (!throwables.getMessage().contains("1704: number of write requests exceeded - wait")) {
+        Assert.fail(throwables.getMessage());
+      }
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER user3 'user3'");
+      adminStmt.execute("grant user user3 privileges all");
+      adminStmt.execute("set throttle quota request='5req/hour' on user3;");
+      adminStmt.execute("set throttle quota request='4req/min',type='write' on user3;");
+      adminStmt.execute("set throttle quota request='2req/min',type='read' on user3;");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("user3", "user3");
+          Statement userStmt = userCon.createStatement()) {
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(1,true)");
+        userStmt.execute("insert into root.ln.wf02.wt02(timestamp,status) values(2,true)");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+        userStmt.executeQuery("select status from root.ln.wf02.wt02");
+      }
+    } catch (SQLException throwables) {
+      if (!throwables.getMessage().contains("1703: number of read requests exceeded - wait")) {
+        Assert.fail(throwables.getMessage());
+      }
     }
   }
 
