@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -34,7 +35,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.END_TIME_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.SLIDING_STEP_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.START_TIME_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.TIME_INTERVAL_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.WINDOW_SIZE_KEY;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
@@ -908,6 +915,167 @@ public class IoTDBUDTFBuiltinFunctionIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testM4Function() {
+    // create timeseries
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.m4");
+      statement.execute("CREATE TIMESERIES root.m4.d1.s1 with datatype=double,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.m4.d1.s2 with datatype=INT32,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // insert data
+    String insertTemplate = "INSERT INTO root.m4.d1(timestamp,%s)" + " VALUES(%d,%d)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // "root.m4.d1.s1" data illustration:
+      // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 1, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 2, 15));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 20, 1));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 25, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 54, 3));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 120, 8));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 5, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 8, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 10, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 20, 20));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 27, 20));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 30, 40));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 35, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 40, 20));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 33, 9));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 45, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 52, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 54, 18));
+      statement.execute("FLUSH");
+
+      // "root.m4.d1.s2" data: constant value 1
+      for (int i = 0; i < 100; i++) {
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s2", i, 1));
+      }
+      statement.execute("FLUSH");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    // query tests
+    test_M4_firstWindowEmpty();
+    test_M4_slidingTimeWindow();
+    test_M4_slidingSizeWindow();
+    test_M4_constantTimeSeries();
+  }
+
+  private void test_M4_firstWindowEmpty() {
+    String[] res = new String[] {"120,8.0"};
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 75, END_TIME_KEY, 150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingTimeWindow() {
+    String[] res =
+        new String[] {
+          "1,5.0", "10,30.0", "20,20.0", "25,8.0", "30,40.0", "45,30.0", "52,8.0", "54,18.0",
+          "120,8.0"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 0, END_TIME_KEY, 150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingSizeWindow() {
+    String[] res = new String[] {"1,5.0", "30,40.0", "33,9.0", "35,10.0", "45,30.0", "120,8.0"};
+
+    String sql =
+        String.format(
+            "select M4(s1,'%s'='%s','%s'='%s') from root.m4.d1",
+            WINDOW_SIZE_KEY, 10, SLIDING_STEP_KEY, 10);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_constantTimeSeries() {
+    /* Result: 0,1 24,1 25,1 49,1 50,1 74,1 75,1 99,1 */
+    String sql =
+        String.format(
+            "select M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY, 25, SLIDING_STEP_KEY, 25, START_TIME_KEY, 0, END_TIME_KEY, 100);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String expStr;
+        if (count % 2 == 0) {
+          expStr = 25 * (count / 2) + ",1";
+        } else {
+          expStr = 25 * (count / 2) + 24 + ",1";
+        }
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(expStr, str);
+        count++;
+      }
+      Assert.assertEquals(8, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
   }
 

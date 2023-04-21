@@ -318,7 +318,6 @@ const config = {
                 ['UDF-Library/Data-Repairing', 'Data Repairing'],
                 ['UDF-Library/Series-Discovery', 'Series Discovery'],
                 ['UDF-Library/String-Processing', 'String Processing'],
-                ['UDF-Library/M4', 'M4'],
               ],
             },
             {
@@ -1034,7 +1033,6 @@ const config = {
                 ['UDF-Library/Data-Repairing', '数据修复'],
                 ['UDF-Library/Series-Discovery', '序列发现'],
                 ['UDF-Library/String-Processing', '字符串处理'],
-                ['UDF-Library/M4', 'M4'],
               ],
             },
             {
