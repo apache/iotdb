@@ -186,6 +186,7 @@ public class ClusterQuotaManager {
   }
 
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
+    // TODO: Datanode failed to receive rpc
     ConsensusWriteResponse response =
         configManager
             .getConsensusManager()
