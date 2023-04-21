@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.db.engine.flush.tasks;
 
+import org.apache.iotdb.commons.concurrent.pipeline.Task;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
+/**
+ * EncodeSeriesTask encodes a timeseries to its byte form. If all timeseries of the device are
+ * encoded, a DeviceIOTask will be generated. Otherwise, no new task will be generated.
+ */
 public class EncodeSeriesTask implements Task {
+
   private IDeviceID deviceId;
   private String seriesId;
   private FlushDeviceContext deviceContext;

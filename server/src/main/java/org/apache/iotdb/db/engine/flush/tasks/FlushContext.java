@@ -83,4 +83,8 @@ public class FlushContext {
   public void setMemTable(IMemTable memTable) {
     this.memTable = memTable;
   }
+
+  public boolean allFlushed() {
+    return cursor.get() == deviceContexts.size();
+  }
 }

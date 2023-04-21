@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.engine.flush.tasks;
 
+import org.apache.iotdb.commons.concurrent.pipeline.Task;
+
+/**
+ * FinalTask ends the current TaskRunner by interruption.
+ */
 public class FinalTask implements Task {
 
   @Override

@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.flush;
 
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
+import org.apache.iotdb.commons.concurrent.pipeline.Task;
+import org.apache.iotdb.commons.concurrent.pipeline.TaskRunner;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -29,7 +31,6 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.tasks.FlushContext;
 import org.apache.iotdb.db.engine.flush.tasks.FlushDeviceContext;
 import org.apache.iotdb.db.engine.flush.tasks.SortSeriesTask;
-import org.apache.iotdb.db.engine.flush.tasks.Task;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
@@ -51,9 +52,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -70,7 +69,7 @@ public class MemTableFlushTaskV2 {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final DynamicThreadGroup sortTasks;
   private final DynamicThreadGroup encodingTasks;
-  private final Future<?> ioTaskFuture;
+  private final DynamicThreadGroup ioTask;
 
   private final LinkedBlockingQueue<Task> sortTaskQueue = new LinkedBlockingQueue<>();
   private final LinkedBlockingQueue<Task> encodingTaskQueue = new LinkedBlockingQueue<>();
@@ -116,7 +115,12 @@ public class MemTableFlushTaskV2 {
             this::newEncodingThread,
             config.getFlushMemTableMinSubThread(),
             config.getFlushMemTableMaxSubThread());
-    this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(newIOThread());
+    this.ioTask = new DynamicThreadGroup(
+        storageGroup + "-" + dataRegionId + "-" + memTable,
+        SUB_TASK_POOL_MANAGER::submit,
+        this::newIOThread,
+        1,
+        1);
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -164,6 +168,7 @@ public class MemTableFlushTaskV2 {
     allContext.setDeviceContexts(new ArrayList<>());
 
     for (IDeviceID deviceID : deviceIDList) {
+      // create a context for each device
       FlushDeviceContext flushDeviceContext = new FlushDeviceContext();
       flushDeviceContext.setDeviceID(deviceID);
       allContext.getDeviceContexts().add(flushDeviceContext);
@@ -173,6 +178,7 @@ public class MemTableFlushTaskV2 {
       // skip the empty device/chunk group
       seriesInOrder.removeIf(s -> memChunkMap.get(s).count() == 0);
       seriesInOrder.sort((String::compareTo));
+      // record the series order in the device context
       flushDeviceContext.setMeasurementIds(seriesInOrder);
       flushDeviceContext.setChunkWriters(new IChunkWriter[seriesInOrder.size()]);
       flushDeviceContext.setSeriesIndexMap(new HashMap<>());
@@ -195,9 +201,9 @@ public class MemTableFlushTaskV2 {
     }
 
     try {
-      ioTaskFuture.get();
+      ioTask.join();
     } catch (InterruptedException | ExecutionException e) {
-      ioTaskFuture.cancel(true);
+      ioTask.cancelAll();
       encodingTasks.cancelAll();
       sortTasks.cancelAll();
       if (e instanceof InterruptedException) {
@@ -263,82 +269,16 @@ public class MemTableFlushTaskV2 {
     }
   }
 
-  protected class TaskRunner extends DynamicThread {
-
-    private static final String TASK_NAME_SORT = "sort data";
-    private static final String TASK_NAME_ENCODING = "encode data";
-    private static final String TASK_NAME_IO = "write file";
-    private Runnable cleanUp;
-    private String taskName;
-    private BlockingQueue<Task> input;
-    private BlockingQueue<Task> output;
-
-    public TaskRunner(
-        DynamicThreadGroup threadGroup,
-        Runnable cleanUp,
-        String taskName,
-        BlockingQueue<Task> input,
-        BlockingQueue<Task> output) {
-      super(threadGroup);
-      this.cleanUp = cleanUp;
-      this.taskName = taskName;
-      this.input = input;
-      this.output = output;
-    }
-
-    @Override
-    public void runInternal() {
-      LOGGER.debug(
-          "Database {} memtable flushing to file {} starts to {}.",
-          storageGroup,
-          allContext.getWriter().getFile().getName(),
-          taskName);
-      while (!Thread.interrupted()) {
-        Task task;
-        try {
-          task = input.take();
-          idleToRunning();
-          task.run();
-          Task nextTask = task.nextTask();
-          if (nextTask != null) {
-            output.put(nextTask);
-          }
-          runningToIdle();
-
-          if (shouldExit()) {
-            break;
-          }
-        } catch (InterruptedException e1) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-
-      cleanUp.run();
-    }
-  }
-
   private DynamicThread newSortThread() {
-    return new TaskRunner(
-        sortTasks,
-        this::cleanSortThread,
-        TaskRunner.TASK_NAME_SORT,
-        sortTaskQueue,
-        encodingTaskQueue);
+    return new TaskRunner(sortTasks, this::cleanSortThread, sortTaskQueue, encodingTaskQueue);
   }
 
   private DynamicThread newEncodingThread() {
-    return new TaskRunner(
-        encodingTasks,
-        this::cleanEncodingThread,
-        TaskRunner.TASK_NAME_ENCODING,
-        encodingTaskQueue,
-        ioTaskQueue);
+    return new TaskRunner(encodingTasks, this::cleanEncodingThread, encodingTaskQueue, ioTaskQueue);
   }
 
   private DynamicThread newIOThread() {
-    return new TaskRunner(
-        null, this::cleanIOThread, TaskRunner.TASK_NAME_IO, ioTaskQueue, ioTaskQueue);
+    return new TaskRunner(null, this::cleanIOThread, ioTaskQueue, ioTaskQueue);
   }
 
   private void cleanSortThread() {

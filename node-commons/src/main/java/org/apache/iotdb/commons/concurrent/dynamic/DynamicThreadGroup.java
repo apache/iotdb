@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.concurrent.dynamic;
 
+import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,5 +98,11 @@ public class DynamicThreadGroup {
     threadFutureMap.forEach((t, f) -> f.cancel(true));
     threadFutureMap.clear();
     threadCnt.set(0);
+  }
+
+  public void join() throws ExecutionException, InterruptedException {
+    for (Future<?> future : threadFutureMap.values()) {
+      future.get();
+    }
   }
 }

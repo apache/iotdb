@@ -16,10 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.flush.tasks;
+package org.apache.iotdb.commons.concurrent.pipeline;
 
+/**
+ * A pipeline task that will generate the next task that should be sent to the next stage in the
+ * pipeline after being run.
+ */
 public interface Task {
+
+  /** Run the task. Must be called before nextTask(). */
   void run();
 
+  /**
+   * Generate the next task (if any). Must be called after run().
+   *
+   * @return the task for the next stage or null if there is no further tasks.
+   */
   Task nextTask();
 }
