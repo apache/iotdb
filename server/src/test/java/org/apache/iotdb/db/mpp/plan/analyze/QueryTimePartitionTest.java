@@ -209,7 +209,7 @@ public class QueryTimePartitionTest {
     assertEquals(9, timeRangeList.get(0).getMax());
 
     // time not between Long.MIN_VALUE and 20
-    filter = TimeFilter.between(Long.MIN_VALUE, 20);
+    filter = TimeFilter.notBetween(Long.MIN_VALUE, 20);
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(21, timeRangeList.get(0).getMin());
