@@ -33,12 +33,12 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 
@@ -211,7 +211,12 @@ public class LastQueryMergeOperatorTest {
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
             driverContext.getOperatorContexts().get(0),
-            ImmutableList.of(operator1, operator2),
+            new ArrayList<Operator>() {
+              {
+                add(operator1);
+                add(operator2);
+              }
+            },
             Comparator.reverseOrder());
 
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
@@ -412,7 +417,12 @@ public class LastQueryMergeOperatorTest {
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
             driverContext.getOperatorContexts().get(0),
-            ImmutableList.of(operator1, operator2),
+            new ArrayList<Operator>() {
+              {
+                add(operator1);
+                add(operator2);
+              }
+            },
             Comparator.naturalOrder());
 
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};

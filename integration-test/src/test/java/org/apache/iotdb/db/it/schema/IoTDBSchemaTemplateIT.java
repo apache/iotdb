@@ -68,6 +68,19 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // test datatype and encoding check
+      try {
+        statement.execute(
+            "CREATE SCHEMA TEMPLATE str1 (s1 TEXT encoding=GORILLA compressor=SNAPPY, s2 INT32)");
+        Assert.fail();
+      } catch (SQLException e) {
+        System.out.println(e.getMessage());
+        Assert.assertEquals(
+            TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()
+                + ": create template error -encoding GORILLA does not support TEXT",
+            e.getMessage());
+      }
+
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");

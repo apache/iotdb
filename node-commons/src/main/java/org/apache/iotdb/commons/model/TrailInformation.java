@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 
 public class TrailInformation {
@@ -68,8 +69,12 @@ public class TrailInformation {
     PublicBAOS buffer = new PublicBAOS();
     DataOutputStream stream = new DataOutputStream(buffer);
     ReadWriteIOUtils.write(trailId, stream);
-    ReadWriteIOUtils.write(modelHyperparameter.toString(), stream);
     ReadWriteIOUtils.write(modelPath, stream);
+    List<String> modelHyperparameterList = modelHyperparameter.toStringList();
+    ReadWriteIOUtils.write(modelHyperparameterList.size(), stream);
+    for (String hyperparameter : modelHyperparameterList) {
+      ReadWriteIOUtils.write(hyperparameter, stream);
+    }
     return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
   }
 

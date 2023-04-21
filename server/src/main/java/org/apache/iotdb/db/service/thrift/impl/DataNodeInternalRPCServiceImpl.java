@@ -25,7 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -102,10 +104,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.clientsession.InternalClientSession;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
+import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -144,10 +149,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesResp;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
@@ -162,7 +163,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -201,6 +201,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -229,6 +230,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
+
+  private final DataNodeSpaceQuotaManager spaceQuotaManager =
+      DataNodeSpaceQuotaManager.getInstance();
+
+  private final DataNodeThrottleQuotaManager throttleQuotaManager =
+      DataNodeThrottleQuotaManager.getInstance();
 
   public DataNodeInternalRPCServiceImpl() {
     super();
@@ -323,7 +330,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .map(FragmentInstanceId::fromThrift)
               .collect(Collectors.toList());
       for (FragmentInstanceId taskId : taskIds) {
-        FragmentInstanceManager.getInstance().cancelTask(taskId);
+        FragmentInstanceManager.getInstance().cancelTask(taskId, req.hasThrowable);
       }
       return new TCancelResp(true);
     }
@@ -875,26 +882,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    IClientSession session = new InternalClientSession(req.getModelId());
+    SESSION_MANAGER.registerSession(session);
+    SESSION_MANAGER.supplySession(
+        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
+
+    try {
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
+
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.execute(
+              deleteTimeSeriesStatement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+      return result.status;
+    } catch (Exception e) {
+      return onQueryException(e, OperationType.DELETE_TIMESERIES);
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   @Override
-  public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    return spaceQuotaManager.setSpaceQuota(req);
   }
 
   @Override
-  public TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
-  }
-
-  @Override
-  public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
+    return throttleQuotaManager.setThrottleQuota(req);
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
@@ -952,6 +973,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
       resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
+    }
+    if (req.getSchemaRegionIds() != null) {
+      spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
+      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+      resp.setTimeSeriesNum(
+          schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
+    }
+    if (req.getDataRegionIds() != null) {
+      spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
+      resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     return resp;
   }

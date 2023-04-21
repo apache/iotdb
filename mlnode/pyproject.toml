@@ -49,6 +49,7 @@ packages = [
 python = "^3.7"
 thrift = "^0.13.0"
 dynaconf = "^3.1.11"
+pylru = "^1.2.1"
 
 [tool.poetry.scripts]
 mlnode = "iotdb.mlnode.script:main"

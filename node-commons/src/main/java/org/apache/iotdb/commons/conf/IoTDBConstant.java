@@ -71,6 +71,14 @@ public class IoTDBConstant {
 
   public static final String CLUSTER_NAME = "cluster_name";
   public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
+  public static final String LOGO =
+      ""
+          + " _____       _________  ______   ______    \n"
+          + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+          + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+          + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+          + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+          + "|_____|'.__.' |_____|  |______.'|_______/  ";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -269,6 +277,18 @@ public class IoTDBConstant {
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
+
+  // quota
+  public static final String SPACE_QUOTA_DISK = "disk";
+  public static final String QUOTA_UNLIMITED = "unlimited";
+  public static final String REQUEST_NUM_PER_UNIT_TIME = "request";
+  public static final String REQUEST_SIZE_PER_UNIT_TIME = "size";
+  public static final String MEMORY_SIZE_PER_READ = "mem";
+  public static final String CPU_NUMBER_PER_READ = "cpu";
+  public static final String REQUEST_TYPE = "type";
+  public static final String REQUEST_TYPE_READ = "read";
+  public static final String REQUEST_TYPE_WRITE = "write";
+  public static final String REQ_UNIT = "req";
 
   // client version number
   public enum ClientVersion {

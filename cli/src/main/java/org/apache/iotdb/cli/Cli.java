@@ -170,7 +170,7 @@ public class Cli extends AbstractCli {
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
-      displayLogo(properties.getVersion(), properties.getBuildInfo());
+      displayLogo(properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
       println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
         try {

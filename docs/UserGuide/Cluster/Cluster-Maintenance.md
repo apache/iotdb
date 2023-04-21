@@ -125,7 +125,7 @@ It costs 0.006s
 
 ### DataNode status definition
 The state machine of DataNode is shown in the figure below:
-<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Cluster/DataNode-StateMachine-EN.jpg?raw=true">
+<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Cluster/DataNode-StateMachine-EN.jpg?raw=true">
 
 The DataNode statuses are defined as follows:
 

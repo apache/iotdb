@@ -359,19 +359,19 @@ Output series:
 +-----------------------------+--------------+--------------+-----------------------------------------------------------------------------------------------+
 ```
 
-## Substr
+## substring
 
 ### Usage
 
-The function is used to get the substring `start` to `end - 1`. 
+Extracts a substring of a string, starting with the first specified character and stopping after the specified number of characters.The index start at 1 .The value range of from and for is an INT32.
 
-**Name:** SUBSTR
+**Name:** SUBSTRING
 
 **Input Series:** Only support a single input series. The data type is TEXT.
 
 **Parameter:**
-+ `start`: Indicates the start position of substring.
-+ `end`: Indicates the end position of substring.
++ `from`: Indicates the start position of substring.
++ `for`: Indicates how many characters to stop after of substring.
 
 **Output Series:** Output a single series. The type is TEXT.
 
@@ -393,18 +393,66 @@ Input series:
 SQL for query:
 
 ```sql
-select s1, substr(s1, "start"="0", "end"="2") from root.sg1.d1
+select s1, substring(s1 from 1 for 2) from root.sg1.d1
 ```
 
 Output series:
 
 ```
-+-----------------------------+--------------+----------------------------------------------+
-|                         Time|root.sg1.d1.s1|substr(root.sg1.d1.s1, "start"="0", "end"="2")|
-+-----------------------------+--------------+----------------------------------------------+
-|1970-01-01T08:00:00.001+08:00|        1test1|                                            1t|
-|1970-01-01T08:00:00.002+08:00|      22test22|                                            22|
-+-----------------------------+--------------+----------------------------------------------+
++-----------------------------+--------------+--------------------------------------+
+|                         Time|root.sg1.d1.s1|SUBSTRING(root.sg1.d1.s1 FROM 1 FOR 2)|
++-----------------------------+--------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                    1t|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                    22|
++-----------------------------+--------------+--------------------------------------+
+```
+
+## replace
+
+### Usage
+
+Replace a substring in the input sequence with the target substring.
+
+**Name:** REPLACE
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
++ first parameter: The target substring to be replaced.
++ second parameter: The substring to replace with.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, replace(s1, 'es', 'tt') from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+-----------------------------------+
+|                         Time|root.sg1.d1.s1|REPLACE(root.sg1.d1.s1, 'es', 'tt')|
++-----------------------------+--------------+-----------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                             1tttt1|
+|1970-01-01T08:00:00.002+08:00|      22test22|                           22tttt22|
++-----------------------------+--------------+-----------------------------------+
 ```
 
 ## Upper

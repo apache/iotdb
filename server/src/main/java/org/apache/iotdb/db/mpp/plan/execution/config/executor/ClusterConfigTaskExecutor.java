@@ -21,7 +21,11 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -40,6 +44,7 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -50,6 +55,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
@@ -72,12 +78,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -89,6 +102,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
@@ -107,11 +121,16 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowTrailsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -130,6 +149,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -144,6 +164,10 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
@@ -1800,6 +1824,226 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
 
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSpaceQuota(
+      SetSpaceQuotaStatement setSpaceQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    TSetSpaceQuotaReq req = new TSetSpaceQuotaReq();
+    req.setDatabase(setSpaceQuotaStatement.getPrefixPathList());
+    TSpaceQuota spaceQuota = new TSpaceQuota();
+    spaceQuota.setDeviceNum(setSpaceQuotaStatement.getDeviceNum());
+    spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
+    spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
+    req.setSpaceLimit(spaceQuota);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      tsStatus = client.setSpaceQuota(req);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement) {
+    createModelStatement.semanticCheck();
+
+    Analyzer analyzer = Analyzer.getAnalyzer();
+    Analysis analysis = analyzer.analyze(createModelStatement.getQueryStatement());
+
+    List<String> queryExpressions = new ArrayList<>();
+    for (Expression expression : analysis.getSelectExpressions()) {
+      queryExpressions.add(expression.toString());
+    }
+    Expression whereExpression = analysis.getWhereExpression();
+    String queryFilter = whereExpression == null ? null : whereExpression.toString();
+
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TCreateModelReq createModelReq = new TCreateModelReq();
+      createModelReq.setModelId(createModelStatement.getModelId());
+      createModelReq.setModelTask(createModelStatement.getModelTask());
+      createModelReq.setModelType(createModelStatement.getModelType());
+      createModelReq.setIsAuto(createModelStatement.isAuto());
+      createModelReq.setQueryExpressions(queryExpressions);
+      createModelReq.setQueryFilter(queryFilter);
+      createModelReq.setModelConfigs(createModelStatement.getAttributes());
+      final TSStatus executionStatus = client.createModel(createModelReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn(
+            "[{}] Failed to create model {}. TSStatus is {}",
+            executionStatus,
+            createModelStatement.getModelId(),
+            executionStatus.message);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showSpaceQuota(
+      ShowSpaceQuotaStatement showSpaceQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      List<String> databases = new ArrayList<>();
+      if (showSpaceQuotaStatement.getDatabases() != null) {
+        showSpaceQuotaStatement
+            .getDatabases()
+            .forEach(database -> databases.add(database.toString()));
+      }
+      // Send request to some API server
+      TSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(databases);
+      // build TSBlock
+      ShowSpaceQuotaTask.buildTSBlock(showSpaceQuotaResp, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setThrottleQuota(
+      SetThrottleQuotaStatement setThrottleQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    TSetThrottleQuotaReq req = new TSetThrottleQuotaReq();
+    req.setUserName(setThrottleQuotaStatement.getUserName());
+    TThrottleQuota throttleQuota = new TThrottleQuota();
+    throttleQuota.setThrottleLimit(setThrottleQuotaStatement.getThrottleLimit());
+    throttleQuota.setMemLimit(setThrottleQuotaStatement.getMemLimit());
+    throttleQuota.setCpuLimit(setThrottleQuotaStatement.getCpuLimit());
+    req.setThrottleQuota(throttleQuota);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      tsStatus = client.setThrottleQuota(req);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showThrottleQuota(
+      ShowThrottleQuotaStatement showThrottleQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TShowThrottleReq req = new TShowThrottleReq();
+      req.setUserName(showThrottleQuotaStatement.getUserName());
+      TThrottleQuotaResp throttleQuotaResp = configNodeClient.showThrottleQuota(req);
+      // build TSBlock
+      ShowThrottleQuotaTask.buildTSBlock(throttleQuotaResp, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public TThrottleQuotaResp getThrottleQuota() {
+    TThrottleQuotaResp throttleQuotaResp = new TThrottleQuotaResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      throttleQuotaResp = configNodeClient.getThrottleQuota();
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage());
+    }
+    return throttleQuotaResp;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropModel(String modelId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelId);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showModels() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowModelResp showModelResp = client.showModel(new TShowModelReq());
+      if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
+        return future;
+      }
+      // convert model info list and buildTsBlock
+      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSpaceQuotaResp spaceQuotaResp = new TSpaceQuotaResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      spaceQuotaResp = configNodeClient.getSpaceQuota();
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage());
+    }
+    return spaceQuotaResp;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTrails(String modelId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowTrailResp showTrailResp = client.showTrail(new TShowTrailReq(modelId));
+      if (showTrailResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showTrailResp.getStatus().message, showTrailResp.getStatus().code));
+        return future;
+      }
+      // convert trail info list and buildTsBlock
+      ShowTrailsTask.buildTsBlock(showTrailResp.getTrailInfoList(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
     return future;
   }
 }

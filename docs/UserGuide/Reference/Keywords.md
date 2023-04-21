@@ -86,6 +86,7 @@ Common Keywords:
 - DESC
 - DESCRIBE
 - DEVICE
+- DEVICEID
 - DEVICES
 - DISABLE
 - DISCARD

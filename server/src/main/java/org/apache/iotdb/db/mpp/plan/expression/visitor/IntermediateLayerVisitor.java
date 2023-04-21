@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -289,6 +290,12 @@ public class IntermediateLayerVisitor
     }
 
     return context.expressionIntermediateLayerMap.get(constantOperand);
+  }
+
+  @Override
+  public IntermediateLayer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
+    throw new UnsupportedOperationException("CASE expression cannot be used with non-mappable UDF");
   }
 
   private Transformer getConcreteUnaryTransformer(

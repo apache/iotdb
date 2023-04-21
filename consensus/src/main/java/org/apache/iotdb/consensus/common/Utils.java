@@ -74,36 +74,4 @@ public class Utils {
     }
     return allFiles;
   }
-
-  public static class MemorizedFileSizeCalc {
-    private List<Path> memorized;
-    private final File rootDir;
-    private long totalSize;
-
-    public MemorizedFileSizeCalc(File rootDir) {
-      this.memorized = Collections.emptyList();
-      this.rootDir = rootDir;
-      this.totalSize = 0;
-    }
-
-    public synchronized long getTotalFolderSize() {
-      final List<Path> latest = listAllRegularFilesRecursively(rootDir);
-
-      final long incremental =
-          latest.stream()
-              .filter(p -> !memorized.contains(p))
-              .mapToLong(p -> p.toFile().length())
-              .sum();
-      final long decremental =
-          memorized.stream()
-              .filter(p -> !latest.contains(p))
-              .mapToLong(p -> p.toFile().length())
-              .sum();
-
-      totalSize = totalSize + incremental - decremental;
-
-      memorized = latest;
-      return totalSize;
-    }
-  }
 }

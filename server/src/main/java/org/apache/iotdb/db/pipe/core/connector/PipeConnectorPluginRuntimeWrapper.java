@@ -20,12 +20,54 @@
 package org.apache.iotdb.db.pipe.core.connector;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Queue;
 
 public class PipeConnectorPluginRuntimeWrapper {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeConnectorPluginRuntimeWrapper.class);
+
+  private final Queue<Event> inputEventQueue;
   private final PipeConnector pipeConnector;
 
-  public PipeConnectorPluginRuntimeWrapper(PipeConnector pipeConnector) {
+  public PipeConnectorPluginRuntimeWrapper(
+      Queue<Event> inputEventQueue, PipeConnector pipeConnector) {
+    this.inputEventQueue = inputEventQueue;
     this.pipeConnector = pipeConnector;
+  }
+
+  // TODO: for a while
+  public void executeForAWhile() {
+    if (inputEventQueue.isEmpty()) {
+      return;
+    }
+
+    final Event event = inputEventQueue.poll();
+
+    try {
+      if (event instanceof TabletInsertionEvent) {
+        pipeConnector.transfer((TabletInsertionEvent) event);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeConnector.transfer((TsFileInsertionEvent) event);
+      } else if (event instanceof DeletionEvent) {
+        pipeConnector.transfer((DeletionEvent) event);
+      } else {
+        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new PipeException(
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          e);
+    }
   }
 }

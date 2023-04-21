@@ -371,8 +371,9 @@ struct ServerProperties {
   7: optional i32 watermarkParamMarkRate;
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
-  10:optional bool isReadOnly;
-  11:optional string buildInfo;
+  10: optional bool isReadOnly;
+  11: optional string buildInfo;
+  12: optional string logo;
 }
 
 struct TSSetSchemaTemplateReq {
@@ -429,7 +430,7 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
-struct TCreateTimeseriesOfSchemaTemplateReq{
+struct TCreateTimeseriesUsingSchemaTemplateReq{
   1: required i64 sessionId
   2: required list<string> devicePathList
 }
@@ -583,7 +584,7 @@ service IClientRPCService {
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
-  common.TSStatus createTimeseriesOfSchemaTemplate(1:TCreateTimeseriesOfSchemaTemplateReq req);
+  common.TSStatus createTimeseriesUsingSchemaTemplate(1:TCreateTimeseriesUsingSchemaTemplateReq req);
 
   common.TSStatus handshake(TSyncIdentityInfo info);
 

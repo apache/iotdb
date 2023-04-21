@@ -151,8 +151,10 @@ public class LastQuerySortOperator implements ProcessOperator {
           if (previousTsBlock == null) {
             return null;
           }
+        } else {
+          children.get(currentIndex).close();
+          children.set(currentIndex, null);
         }
-
         currentIndex++;
       }
       if (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
@@ -180,7 +182,9 @@ public class LastQuerySortOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
     cachedTsBlock = null;
   }

@@ -318,35 +318,35 @@ public abstract class AbstractMetricService {
   }
 
   /** Count with internal report. */
-  public void countWithInternalReport(
+  public void countWithInternalReportAsync(
       long delta, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.count(delta, metric, metricLevel, tags), metric, tags);
   }
 
   /** Gauge value with internal report */
-  public void gaugeWithInternalReport(
+  public void gaugeWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Rate with internal report. */
-  public void rateWithInternalReport(
+  public void rateWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.rate(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Histogram with internal report. */
-  public void histogramWithInternalReport(
+  public void histogramWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Timer with internal report. */
-  public void timerWithInternalReport(
+  public void timerWithInternalReportAsync(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);

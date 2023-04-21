@@ -18,4 +18,11 @@
 
 -r requirements.txt
 # Pytest to run tests
-pytest==7.2.0
+
+pandas>=1.3.5,<2
+numpy>=1.21.4
+torch
+pylru
+pytest
+thrift
+dynaconf

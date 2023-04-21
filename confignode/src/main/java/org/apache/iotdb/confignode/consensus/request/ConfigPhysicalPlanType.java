@@ -154,7 +154,11 @@ public enum ConfigPhysicalPlanType {
   CreatePipePlugin((short) 1300),
   DropPipePlugin((short) 1301),
   GetPipePluginTable((short) 1302),
-  GetPipePluginJar((short) 1303);
+  GetPipePluginJar((short) 1303),
+
+  /** Quota */
+  setSpaceQuota((short) 1400),
+  setThrottleQuota((short) 1401);
 
   private final short planType;
 

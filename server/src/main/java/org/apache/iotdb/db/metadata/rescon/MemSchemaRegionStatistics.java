@@ -31,6 +31,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong seriesNumber = new AtomicLong(0);
+  private final AtomicLong devicesNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
   private long mLogLength = 0;
@@ -68,6 +69,19 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   public void deleteTimeseries(long deletedNum) {
     seriesNumber.addAndGet(-deletedNum);
     schemaEngineStatistics.deleteTimeseries(deletedNum);
+  }
+
+  @Override
+  public long getDevicesNumber() {
+    return devicesNumber.get();
+  }
+
+  public void addDevice() {
+    devicesNumber.incrementAndGet();
+  }
+
+  public void deleteDevice() {
+    devicesNumber.decrementAndGet();
   }
 
   @Override
@@ -130,6 +144,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     schemaEngineStatistics.deleteTimeseries(seriesNumber.get());
     memoryUsage.getAndSet(0);
     seriesNumber.getAndSet(0);
+    devicesNumber.getAndSet(0);
     templateUsage.forEach(
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();

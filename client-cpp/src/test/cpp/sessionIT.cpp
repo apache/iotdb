@@ -86,7 +86,7 @@ TEST_CASE("Test insertRecord by string", "[testInsertRecord]") {
     session->executeNonQueryStatement("insert into root.test.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     int count = 0;
     while (sessionDataSet->hasNext()) {
         long index = 1;
@@ -131,7 +131,7 @@ TEST_CASE("Test insertRecords ", "[testInsertRecords]") {
     }
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     int count = 0;
     while (sessionDataSet->hasNext()) {
         long index = 1;
@@ -149,7 +149,7 @@ TEST_CASE("Test insertRecord with types ", "[testTypedInsertRecord]") {
     vector<string> timeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3"};
     vector<TSDataType::TSDataType> types = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64};
 
-    for (int i = 0; i < timeseries.size(); i++) {
+    for (size_t i = 0; i < timeseries.size(); i++) {
         if (session->checkTimeseriesExists(timeseries[i])) {
             session->deleteTimeseries(timeseries[i]);
         }
@@ -167,7 +167,7 @@ TEST_CASE("Test insertRecord with types ", "[testTypedInsertRecord]") {
     }
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     long count = 0;
     while (sessionDataSet->hasNext()) {
         sessionDataSet->next();
@@ -181,7 +181,7 @@ TEST_CASE("Test insertRecords with types ", "[testTypedInsertRecords]") {
     vector<string> timeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3"};
     vector<TSDataType::TSDataType> types = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64};
 
-    for (int i = 0; i < timeseries.size(); i++) {
+    for (size_t i = 0; i < timeseries.size(); i++) {
         if (session->checkTimeseriesExists(timeseries[i])) {
             session->deleteTimeseries(timeseries[i]);
         }
@@ -210,7 +210,7 @@ TEST_CASE("Test insertRecords with types ", "[testTypedInsertRecords]") {
     session->insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     int count = 0;
     while (sessionDataSet->hasNext()) {
         sessionDataSet->next();
@@ -224,7 +224,7 @@ TEST_CASE("Test insertRecordsOfOneDevice", "[testInsertRecordsOfOneDevice]") {
     vector<string> timeseries = {"root.test.d1.s1", "root.test.d1.s2", "root.test.d1.s3"};
     vector<TSDataType::TSDataType> types = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64};
 
-    for (int i = 0; i < timeseries.size(); i++) {
+    for (size_t i = 0; i < timeseries.size(); i++) {
         if (session->checkTimeseriesExists(timeseries[i])) {
             session->deleteTimeseries(timeseries[i]);
         }
@@ -251,7 +251,7 @@ TEST_CASE("Test insertRecordsOfOneDevice", "[testInsertRecordsOfOneDevice]") {
     session->insertRecordsOfOneDevice(deviceId, timestamps, measurementsList, typesList, valuesList);
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     int count = 0;
     while (sessionDataSet->hasNext()) {
         sessionDataSet->next();
@@ -287,7 +287,7 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
         tablet.reset();
     }
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     int count = 0;
     while (sessionDataSet->hasNext()) {
         long index = 0;
@@ -314,7 +314,7 @@ TEST_CASE("Test Last query ", "[testLastQuery]") {
     vector<string> measurementValues = {"1", "2", "3"};
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement(
             "select last s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     long index = 0;
     while (sessionDataSet->hasNext()) {
         vector<Field> fields = sessionDataSet->next()->fields;
@@ -348,7 +348,7 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
     }
 
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
-    sessionDataSet->setBatchSize(1024);
+    sessionDataSet->setFetchSize(1024);
     RowRecord* rowRecord;
     int count = 0;
     print_count = 0;
@@ -369,4 +369,200 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
     }
 
     REQUIRE(count == total_count);
+}
+
+
+TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
+    CaseReporter cr("executeRawDataQuery");
+    prepareTimeseries();
+
+    string deviceId = "root.test.d1";
+    vector<string> measurements = {"s1", "s2", "s3"};
+    vector<TSDataType::TSDataType> types = {TSDataType::INT64, TSDataType::INT64, TSDataType::INT64};
+
+    long total_count = 5000;
+    vector<char*> values;
+    int64_t valueArray[3];
+    for (long time = -total_count; time < total_count; time++) {
+        valueArray[0] = time;
+        valueArray[1] = time * 2;
+        valueArray[2] = time * 3;
+        values.clear();
+        values.push_back((char*)&valueArray[0]);
+        values.push_back((char*)&valueArray[1]);
+        values.push_back((char*)&valueArray[2]);
+        session->insertRecord(deviceId, time, measurements, types, values);
+        if (time == 100) {   //insert 1 big timestamp data for generate un-seq data.
+            valueArray[0] = 9;
+            valueArray[2] = 999;
+            values.clear();
+            values.push_back((char*)&valueArray[0]);
+            values.push_back((char*)&valueArray[2]);
+            vector<string> measurements2 = {"s1", "s3"};
+            vector<TSDataType::TSDataType> types2 = {TSDataType::INT64, TSDataType::INT64};
+            session->insertRecord(deviceId, 99999, measurements2, types2, values);
+        }
+    }
+
+    vector<string> paths;
+    paths.push_back("root.test.d1.s1");
+    paths.push_back("root.test.d1.s2");
+    paths.push_back("root.test.d1.s3");
+
+    //== Test executeRawDataQuery() with negative timestamp
+    int startTs = -total_count, endTs = total_count;
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeRawDataQuery(paths, startTs, endTs);
+    sessionDataSet->setFetchSize(10);
+    vector<string> columns = sessionDataSet->getColumnNames();
+    columns = sessionDataSet->getColumnNames();
+    for (const string &column : columns) {
+        cout << column << " " ;
+    }
+    cout << endl;
+    REQUIRE(columns[0] == "Time");
+    REQUIRE(columns[1] == paths[0]);
+    REQUIRE(columns[2] == paths[1]);
+    REQUIRE(columns[3] == paths[2]);
+
+    int ts = startTs;
+    while (sessionDataSet->hasNext()) {
+        RowRecord *rowRecordPtr = sessionDataSet->next();
+        //cout << rowRecordPtr->toString();
+
+        vector<Field> fields = rowRecordPtr->fields;
+        REQUIRE(rowRecordPtr->timestamp == ts);
+        REQUIRE(fields[0].dataType == TSDataType::INT64);
+        REQUIRE(fields[0].longV == ts);
+        REQUIRE(fields[1].dataType == TSDataType::INT64);
+        REQUIRE(fields[1].longV == ts * 2);
+        REQUIRE(fields[2].dataType == TSDataType::INT64);
+        REQUIRE(fields[2].longV == ts *3);
+        ts++;
+    }
+
+
+    //== Test executeRawDataQuery() with null field
+    startTs = 99999;
+    endTs = 99999 + 10;
+    sessionDataSet = session->executeRawDataQuery(paths, startTs, endTs);
+
+    sessionDataSet->setFetchSize(10);
+    columns = sessionDataSet->getColumnNames();
+    for (const string &column : columns) {
+        cout << column << " " ;
+    }
+    cout << endl;
+    REQUIRE(columns[0] == "Time");
+    REQUIRE(columns[1] == paths[0]);
+    REQUIRE(columns[2] == paths[1]);
+    REQUIRE(columns[3] == paths[2]);
+    ts = startTs;
+    while (sessionDataSet->hasNext()) {
+        RowRecord *rowRecordPtr = sessionDataSet->next();
+        cout << rowRecordPtr->toString();
+
+        vector<Field> fields = rowRecordPtr->fields;
+        REQUIRE(rowRecordPtr->timestamp == ts);
+        REQUIRE(fields[0].dataType == TSDataType::INT64);
+        REQUIRE(fields[0].longV == 9);
+        REQUIRE(fields[1].dataType == TSDataType::NULLTYPE);
+        REQUIRE(fields[2].dataType == TSDataType::INT64);
+        REQUIRE(fields[2].longV == 999);
+    }
+
+    //== Test executeRawDataQuery() with empty data
+    sessionDataSet = session->executeRawDataQuery(paths, 100000, 110000);
+    sessionDataSet->setFetchSize(1);
+    REQUIRE(sessionDataSet->hasNext() == false);
+}
+
+TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
+    CaseReporter cr("testExecuteLastDataQuery");
+    prepareTimeseries();
+
+    string deviceId = "root.test.d1";
+    vector<string> measurements = {"s1", "s2", "s3"};
+    vector<TSDataType::TSDataType> types = {TSDataType::INT64, TSDataType::INT64, TSDataType::INT64};
+
+    long total_count = 5000;
+    vector<char*> values;
+    int64_t valueArray[3];
+    for (long time = -total_count; time < total_count; time++) {
+        valueArray[0] = time;
+        valueArray[1] = time * 2;
+        valueArray[2] = time * 3;
+        values.clear();
+        values.push_back((char*)&valueArray[0]);
+        values.push_back((char*)&valueArray[1]);
+        values.push_back((char*)&valueArray[2]);
+        session->insertRecord(deviceId, time, measurements, types, values);
+        if (time == 100) {    //insert 1 big timestamp data for gen unseq data.
+            valueArray[0] = 9;
+            valueArray[2] = 999;
+            values.clear();
+            values.push_back((char*)&valueArray[0]);
+            values.push_back((char*)&valueArray[2]);
+            vector<string> measurements2 = {"s1", "s3"};
+            vector<TSDataType::TSDataType> types2 = {TSDataType::INT64, TSDataType::INT64};
+            session->insertRecord(deviceId, 99999, measurements2, types2, values);
+        }
+    }
+
+    int64_t tsCheck[3] = {99999, 4999, 99999};
+    std::vector<std::string> valueCheck = {"9", "9998", "999"};
+
+    vector<string> paths;
+    paths.push_back("root.test.d1.s1");
+    paths.push_back("root.test.d1.s2");
+    paths.push_back("root.test.d1.s3");
+
+    //== Test executeLastDataQuery() without lastTime
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeLastDataQuery(paths);
+    sessionDataSet->setFetchSize(1);
+
+    vector<string> columns = sessionDataSet->getColumnNames();
+    for (const string &column : columns) {
+        cout << column << " " ;
+    }
+    cout << endl;
+
+    int index = 0;
+    while (sessionDataSet->hasNext()) {
+        RowRecord *rowRecordPtr = sessionDataSet->next();
+        cout << rowRecordPtr->toString();
+
+        vector<Field> fields = rowRecordPtr->fields;
+        REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
+        REQUIRE(fields[0].stringV == paths[index]);
+        REQUIRE(fields[1].stringV == valueCheck[index]);
+        REQUIRE(fields[2].stringV == "INT64");
+        index++;
+    }
+
+    //== Test executeLastDataQuery() with negative lastTime
+    sessionDataSet = session->executeLastDataQuery(paths, -200);
+    sessionDataSet->setFetchSize(1);
+    columns = sessionDataSet->getColumnNames();
+    for (const string &column : columns) {
+        cout << column << " " ;
+    }
+    cout << endl;
+
+    index = 0;
+    while (sessionDataSet->hasNext()) {
+        RowRecord *rowRecordPtr = sessionDataSet->next();
+        cout << rowRecordPtr->toString();
+
+        vector<Field> fields = rowRecordPtr->fields;
+        REQUIRE(rowRecordPtr->timestamp == tsCheck[index]);
+        REQUIRE(fields[0].stringV == paths[index]);
+        REQUIRE(fields[1].stringV == valueCheck[index]);
+        REQUIRE(fields[2].stringV == "INT64");
+        index++;
+    }
+
+    //== Test executeLastDataQuery() with the lastTime that is > largest timestamp.
+    sessionDataSet = session->executeLastDataQuery(paths, 100000);
+    sessionDataSet->setFetchSize(1024);
+    REQUIRE(sessionDataSet->hasNext() == false);
 }

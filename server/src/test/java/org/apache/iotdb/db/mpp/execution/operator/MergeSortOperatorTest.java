@@ -1567,7 +1567,12 @@ public class MergeSortOperatorTest {
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),
-              ImmutableList.of(sortOperator1, sortOperator2),
+              new ArrayList<Operator>() {
+                {
+                  add(sortOperator1);
+                  add(sortOperator2);
+                }
+              },
               dataTypes,
               comparator);
       root.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -1651,10 +1656,13 @@ public class MergeSortOperatorTest {
     public void start() {}
 
     @Override
-    public void stop() {}
+    public void stop(Throwable t) {}
 
     @Override
     public void stopAndCleanup() {}
+
+    @Override
+    public void stopAndCleanup(Throwable t) {}
 
     @Override
     public void cancel() {}

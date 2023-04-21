@@ -512,19 +512,19 @@ thread information, class information, and the server's CPU usage.
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.metrics" through the "MBeans" tab, and you can
 view the specific values of all monitoring metrics in the sidebar.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://alioss.timecho.com/docs/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
 #### 5.1.2. Get other relevant data
 
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.service" through the "MBeans" tab, as shown in
 the image below, to understand the basic status of the service
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
 In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can use MXBean and expand
 the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ### 5.2. Prometheus
 
@@ -574,7 +574,7 @@ can be used to collect and store monitoring indicators, and Grafana can be used 
 
 The following picture describes the relationships among IoTDB, Prometheus and Grafana
 
-![iotdb_prometheus_grafana](/img/UserGuide/System-Tools/Metrics/iotdb_prometheus_grafana.png)
+![iotdb_prometheus_grafana](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Metrics/iotdb_prometheus_grafana.png)
 
 1. Along with running, IoTDB will collect its metrics continuously.
 2. Prometheus scrapes metrics from IoTDB at a constant interval (can be configured).
@@ -614,199 +614,9 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
-![Apache IoTDB Dashboard](/img/UserGuide/System-Tools/Metrics/dashboard.png)
+![Apache IoTDB Dashboard](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Metrics/dashboard.png)
 
-##### 5.2.4.1. How to get Apache IoTDB Dashboard
-
-1. You can obtain the json files of Dashboards by GitHub:
-    1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">
-       Apache IoTDB ConfigNode Dashboard</a>
-    2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">
-       Apache IoTDB DataNode Dashboard</a>
-2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search
-   for `Apache IoTDB Dashboard` and use
-
-When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target
-data source for Apache IoTDB Dashboard.
-
-##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard Instructions
-
-> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring
-> framework at the Important levels.
-
-- `Overview`: system overview
-    - `Registered Node`: The number of registered ConfigNode/DataNode
-    - `DataNode`(Only visible in the leader of ConfigNode): The status of the cluster DataNode, including Online and
-      Unknown.
-    - `ConfigNode`(Only visible in the leader of ConfigNode): The status of the cluster ConfigNode, including Online and
-      Unknown.
-    - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
-- `Region`: Region overview
-    - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of
-      SchemaRegions.
-    - `Leadership distribution`: Cluster leader distribution, which refers to the number of Leaders corresponding to the
-      Region on each node.
-    - `Total Region in Node`: The total number of Regions of different Nodes.
-    - `Region in Node`: the number of SchemaRegions/DataRegions of different Nodes.
-    - `Region in Database` (Normal level): the number of Regions in different Databases, including SchemaRegion and
-      DataRegion.
-    - `Slot in Database` (Normal level): The number of Slots in different Databases, including the number of DataSlots
-      and SchemaSlots.
-- `System`: system
-    - `CPU Core`: the number of CPU cores in the system.
-    - `CPU Load`: system CPU load, progress CPU load.
-    - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause
-      this value to exceed 1 minute.
-    - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the
-      memory size submitted by the virtual machine.
-    - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
-    - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process,
-      and the memory size used by the IoTDB process.
-    - `The Number of GC Per Minute`: The average number of GC per minute.
-    - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
-    - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
-    - `Heap Memory`: the heap memory of the IoTDB process
-    - `Off Heap Memory`: the off-heap memory of the IoTDB process
-    - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
-    - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
-    - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
-
-##### 5.2.4.3. Apache IoTDB DataNode Dashboard Instructions
-
-> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring
-> framework at the Important levels.
-
-- `Overview`: system overview
-    - `The Number Of Entity`: the number of entities, including time series, etc.
-    - `Write Point Per Minute`: the average number of system write points per minute
-    - `Database Used Memory`: the memory size used by each Database
-- `Interface`: interface
-    - `The Time Consumed Of Operation(50%)`: Median time spent by different client operations
-    - `The Time Consumed Of Operation(99%)`: The P99 of the time consumed by different client operations
-    - `The Time Consumed Of Operation(99.9%)`: The P999 time spent by different client operations
-    - `The OPS of Interface`: system interface visits per second
-    - `The Time Consumed Of Interface`: the average time consumed by the system interface
-    - `Cache Hit Rate`: cache hit rate
-    - `Thrift Connection`: the number of Thrift connections established
-    - `Thrift Active Thread`: The number of active Thrift connections established
-- `Query Engine`: query engine
-    - `The time consumed of query plan stages(avg\50%\99%\99.9%)`: The average\median\P99\P999 value of the query plan stages time consumption
-    - `The time consumed of plan dispatch stages(avg\50%\99%\99.9%)`: The average\median\P99\P999 value of query plan dispatch stages time consumption
-    - `The time consumed of query execution stages(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the query execution stages time consumption
-    - `The time consumed of operator execution stages(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of operator exection time consumption
-    - `The time consumed of query aggregation(avg\50%\99%\99.9%)`: The average\median\P99\P999 value of query aggregation time consumption
-    - `The time consumed of query scan(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of query file/memory time consumption
-    - `The usage of query resource(avg\50%\99%\99.9%)`: the average\median\P99\P999 of the number of accesses to different resources
-    - `The time consumed of query data exchange(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of query data exchange time consumption
-    - `The count of data exchange(avg)`: the average number of query data exchange
-    - `The count of data exchange`: the distribution of the number of query data exchange (minimum, lower quartile, median, upper quartile, maximum)
-    - `The number of query queue`: the size of different query queues
-    - `The time consumed of query schedule time(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of query task scheduling time
-- `Query Interface`: Query files/time-consuming specific time-consuming conditions
-    - `The time consumed of load timesereis metadata(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query spent loading timeseries metadata from different sources
-    - `The time consumed of read timeseries metadata(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of time query spent reading time seriesmetadata from different sources value
-    - `The time consumed of timeseries metadata modification(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to modify different types of timeseries metadata
-    - `The time consumed of load chunk metadata list(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query spent loading different types of chunk metadata
-    - `The time consumed of chunk metadata modification(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to modify different types of chunk metadata
-    - `The time consumed of chunk metadata filter(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query spent to filter different types of chunk metadata
-    - `The time consumed of construct chunk reader(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query spent on constructing different types of chunk readers
-    - `The time consumed of read chunk(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to read different types of Chunk
-    - `The time consumed of init chunk reader(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to initialize different types of chunk readers
-    - `The time consumed of build tsblock from page reader(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to construct TsBlock from Page Reader
-    - `The time consumed of build tsblock from merge reader(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query consumed to construct TsBlock from Merge Reader
-- `Query Data Exchange`: Query the specific time-consuming situation of data transmission
-    - `The time consumed of source handle get tsblock(avg\50%\99%\99.9%)`: the average\median\P99\P999
-      value of the time query consumed to obtain TsBlock from different sources
-    - `The time consumed of source handle deserialize tsblock(avg\50%\99%\99.9%)`: the average\median\P99\P999 of the time query consumed to deserialize TsBlock from different sources value
-    - `The time consumed of sink handle send tsblock(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of the time query spent sending TsBlock to different places
-    - `The time consumed of on acknowledge data block event task(avg\50%\99%\99.9%)`: the average\median\P99\P999 value of time query consumed to acknowlege data block event from different places
-    - `The time consumed of get data block event task(avg\50%\99%\99.9%)`: query the average\median\P99\P999 value of time query consumed to get data block from different places
-- `Engine`:
-    - `Task Number`: the number of tasks in different states in the system
-    - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system
-    - `Compaction Read And Write Per Minute`: the average amount of combined read and write data per minute
-    - `Compaction R/W Ratio Per Minute`: The average ratio of combined read and write data per minute
-    - `Compaction Number Per Minute`: the average number of different types of consolidation tasks per minute
-- `IoTConsensus`：
-    - `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
-    - `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
-    - `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
-    - `The time consumed of different stages(50%)`：The median of the time consumed of different stages
-    - `The time consumed of different stages(99%)`：The P99 of the time consumed of different stages
-    - `The time consumed of different stages(99.9%)`：The P999 of the time consumed of different stages
-    - `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
-    - `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
-    - `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
-    - `Sync Lag`：The sync lag of region
-    - `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of
-      LogDispatcher
-    - `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min
-      currentSyncIndex of LogDispatcher
-- `System`: system
-    - `CPU Core`: the number of CPU cores in the system.
-    - `CPU Load`: system CPU load, progress CPU load.
-    - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause
-      this value to exceed 1 minute.
-    - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the
-      memory size submitted by the virtual machine.
-    - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
-    - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process,
-      and the memory size used by the IoTDB process.
-    - `The Size Of File`: IoTDB system-related file size, including the total file size under wal, the total size of
-      tsfile files under seq, and the total size of tsfile files under unseq
-    - `The Number Of File`: the number of files related to the IoTDB system, including the number of files under wal,
-      the number of tsfile files under seq, and the number of tsfile files under unseq
-    - `The Space Of Disk`: the total size and remaining size of the disk mounted in the current data directory
-    - `The Number of GC Per Minute`: The average number of GC per minute.
-    - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
-    - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
-    - `Heap Memory`: the heap memory of the IoTDB process
-    - `Off Heap Memory`: the off-heap memory of the IoTDB process
-    - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
-    - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
-    - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
-
-##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
-
-> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring
-> framework at the Core levels.
-
-- `Overview`: system overview
-     - `CPU Core`: the number of CPU cores in the system.
-     - `Total Disk Space`: The total size of the disk mounted in the system data directory
-     - `System Memory`: total system memory size
-     - `Swap Memory`: System swap area memory size
-     - `Total Timeseries`: the total number of current time series in the system
-     - `Total File Number`: total number of system files
-     - `CPU Load`: System CPU load rate in %
-     - `Disk`: the proportion of the system Disk, in %
-     - `Process Memory`: Process memory usage in %
-     - `System Memory`: System memory usage in %
-     - `Write Point Per Second`: the number of points written by the system per second
-- `Performance`: system performance
-     - `OPS`: system interface and RPC visits per second
-     - `OPS Of Stage`: the number of executions per second of each part of the Stage
-     - `OPS Of Schedule`: the number of executions per second for each part of the Schedule
-     - `Time Consumed Of Operation`: the time consumption of different operations
-     - `P99 Time Consumed of Interface`: P99 time consumption of different interfaces
-     - `Average Time Consumed of Interface`: the average time consumption of different interfaces
-     - `P99 Time Consumed of Stage`: P99 time consumption in different stages
-     - `Average Time Consumed of Stage`: the average time consumption of different stages
-     - `P99 Time Consumed of Schedule Stage`: P99 time consumption in different Schedule stages
-     - `Average Time Consumed of Schedule Stage`: The average time spent in different Schedule stages
-     - `Task Number`: the number of tasks
-     - `P99 Time Consumed of Task`: P99 time consumption of the task
-     - `Average Time Consumed of Task`: The average time consumption of the task
-- `System`: system
-     - `CPU Load`: CPU load changes
-     - `CPU Time Per Minute`: The average CPU time spent per minute
-     - `GC Time Per Minute`: GC average time spent per minute
-     - `Heap Memory`: the heap memory of the IoTDB process
-     - `Off Heap Memory`: the off-heap memory of the IoTDB process
-     - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
-     - `File Count`: Changes in the number of files
-     - `File Size`: file size changes
-     - `Log Number Per Minute`: Log changes per minute
+You can obtain the json files of Dashboards in enterprise version.
 
 ### 5.3. IoTDB
 

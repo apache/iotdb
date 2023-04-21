@@ -142,6 +142,10 @@ public class SourceHandle implements ISourceHandle {
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
+    localMemoryManager
+        .getQueryPool()
+        .registerPlanNodeIdToQueryMemoryMap(
+            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
   }
 
   @Override
@@ -332,10 +336,6 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
-      localMemoryManager
-          .getQueryPool()
-          .clearMemoryReservationMap(
-              localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
       aborted = true;
       sourceHandleListener.onAborted(this);
     }
@@ -369,10 +369,6 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
-      localMemoryManager
-          .getQueryPool()
-          .clearMemoryReservationMap(
-              localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
       closed = true;
       executorService.submit(new SendCloseSinkChannelEventTask());
       currSequenceId = lastSequenceId + 1;

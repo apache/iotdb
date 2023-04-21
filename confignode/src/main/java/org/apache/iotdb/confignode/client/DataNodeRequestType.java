@@ -95,5 +95,9 @@ public enum DataNodeRequestType {
   KILL_QUERY_INSTANCE,
 
   /** ML Model */
-  DELETE_MODEL_METRICS
+  DELETE_MODEL_METRICS,
+
+  /** Quota */
+  SET_SPACE_QUOTA,
+  SET_THROTTLE_QUOTA,
 }

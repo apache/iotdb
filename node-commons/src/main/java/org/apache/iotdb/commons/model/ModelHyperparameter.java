@@ -26,6 +26,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ModelHyperparameter {
@@ -51,6 +53,14 @@ public class ModelHyperparameter {
           .append('\n');
     }
     return stringBuilder.toString();
+  }
+
+  public List<String> toStringList() {
+    List<String> resultList = new ArrayList<>();
+    for (Map.Entry<String, String> keyValuePair : keyValueMap.entrySet()) {
+      resultList.add(keyValuePair.getKey() + "=" + keyValuePair.getValue());
+    }
+    return resultList;
   }
 
   public void serialize(DataOutputStream stream) throws IOException {

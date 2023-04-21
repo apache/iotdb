@@ -154,6 +154,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       TsFileResource unseqFile = split.unseqFile.resource;
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
+
+      if (!split.hasOverlap) {
+        LOGGER.info("Unseq file {} does not overlap with any seq files.", unseqFile);
+        TsFileResource latestSealedSeqFile =
+            getLatestSealedSeqFile(candidate.getSeqFileCandidates());
+        if (latestSealedSeqFile == null) {
+          break;
+        }
+        targetSeqFiles.add(latestSealedSeqFile);
+      }
+
       long memoryCost =
           compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
@@ -169,6 +180,25 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
     taskResource.sortSeqFiles(candidate.getSeqFiles());
     return taskResource;
+  }
+
+  private TsFileResource getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
+    for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
+      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
+      if (seqResourceCandidate.resource.isClosed()) {
+        // We must select the latest sealed and valid seq file to compact with, in order to avoid
+        // overlapping of the new compacted files with the subsequent seq files.
+        if (seqResourceCandidate.isValidCandidate) {
+          LOGGER.info(
+              "Select one valid seq file {} for unseq file to compact with.",
+              seqResourceCandidate.resource);
+          return seqResourceCandidate.resource;
+        }
+        break;
+      }
+    }
+    return null;
   }
 
   // TODO: (xingtanzjr) need to confirm whether we should strictly guarantee the conditions
