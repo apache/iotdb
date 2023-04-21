@@ -414,9 +414,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
-    DataNodeSchemaCache.getInstance().invalidateAll();
-    DataNodeTemplateSchemaCache.getInstance().invalidateCache();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    DataNodeTemplateSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().invalidateAll();
+      DataNodeTemplateSchemaCache.getInstance().invalidateCache();
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+      DataNodeTemplateSchemaCache.getInstance().releaseWriteLock();
+    }
   }
 
   @Override
