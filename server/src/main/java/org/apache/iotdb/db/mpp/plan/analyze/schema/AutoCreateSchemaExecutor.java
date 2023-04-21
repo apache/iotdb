@@ -71,31 +71,7 @@ class AutoCreateSchemaExecutor {
   }
 
   // auto create the missing measurements and merge them into given schemaTree
-  void autoCreateMissingMeasurements(
-      ClusterSchemaTree schemaTree,
-      PartialPath devicePath,
-      List<Integer> indexOfTargetMeasurements,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean isAligned) {
-    // check whether there is template should be activated
-    Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
-    if (templateInfo == null) {
-      autoCreateTimeSeries(
-          schemaTree, devicePath, indexOfTargetMeasurements, measurements, getDataType, isAligned);
-    } else {
-      autoActivateAndExtendTemplate(
-          schemaTree,
-          devicePath,
-          indexOfTargetMeasurements,
-          measurements,
-          getDataType,
-          isAligned,
-          templateInfo);
-    }
-  }
-
-  private void autoCreateTimeSeries(
+  void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
       List<Integer> indexOfTargetMeasurements,
@@ -136,35 +112,77 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  private void autoActivateAndExtendTemplate(
+  void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
-      PartialPath devicePath,
-      List<Integer> indexOfTargetMeasurements,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean isAligned,
-      Pair<Template, PartialPath> templateInfo) {
-    Template template = templateInfo.left;
-    List<Integer> indexOfMeasurementsNotInTemplate =
-        checkMeasurementsInSchemaTemplate(
-            devicePath, indexOfTargetMeasurements, measurements, isAligned, template);
-    if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
-      // there are measurements not in schema template, need extension
-      List<String> measurementList = new ArrayList<>(indexOfMeasurementsNotInTemplate.size());
-      List<TSDataType> dataTypeList = new ArrayList<>(indexOfMeasurementsNotInTemplate.size());
-      for (int index : indexOfMeasurementsNotInTemplate) {
-        measurementList.add(measurements[index]);
-        dataTypeList.add(getDataType.apply(index));
-      }
-      internalExtendTemplate(template.getName(), measurementList, dataTypeList, null, null);
-      template = templateManager.getTemplate(template.getId());
+      List<PartialPath> devicePathList,
+      List<Integer> indexOfTargetDevices,
+      List<List<Integer>> indexOfTargetMeasurementsList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+    // check whether there is template should be activated
+    Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
+        new HashMap<>();
+    int deviceIndex;
+    PartialPath devicePath;
+    List<Integer> indexOfTargetMeasurements;
+    for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
+      deviceIndex = indexOfTargetDevices.get(i);
+      devicePath = devicePathList.get(deviceIndex);
+      indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
+
+      // there are measurements need to be created as normal timeseries
+      int finalDeviceIndex = deviceIndex;
+      List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
+      devicesNeedAutoCreateTimeSeries.compute(
+          devicePath,
+          (k, v) -> {
+            if (v == null) {
+              v = new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup());
+            }
+            MeasurementGroup measurementGroup = v.right;
+            String[] measurements = measurementsList.get(finalDeviceIndex);
+            TSDataType[] tsDataTypes = tsDataTypesList.get(finalDeviceIndex);
+            for (int measurementIndex : finalIndexOfMeasurementsNotInTemplate) {
+              if (tsDataTypes[measurementIndex] == null) {
+                continue;
+              }
+              measurementGroup.addMeasurement(
+                  measurements[measurementIndex],
+                  tsDataTypes[measurementIndex],
+                  getDefaultEncoding(tsDataTypes[measurementIndex]),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+            }
+            return v;
+          });
     }
 
-    if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
-      // template not activate
-      internalActivateTemplate(devicePath);
+    if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries);
     }
+  }
 
+  void autoExtendTemplate(
+      String templateName, List<String> measurementList, List<TSDataType> dataTypeList) {
+    internalExtendTemplate(templateName, measurementList, dataTypeList, null, null);
+  }
+
+  void autoExtendTemplate(Map<String, TemplateExtendInfo> templateExtendInfoMap) {
+    TemplateExtendInfo templateExtendInfo;
+    for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
+      templateExtendInfo = entry.getValue();
+      internalExtendTemplate(
+          entry.getKey(),
+          templateExtendInfo.getMeasurements(),
+          templateExtendInfo.getDataTypes(),
+          templateExtendInfo.getEncodings(),
+          templateExtendInfo.getCompressors());
+    }
+  }
+
+  void autoActivateTemplate(ClusterSchemaTree schemaTree, PartialPath devicePath, int templateId) {
+    internalActivateTemplate(devicePath);
+    Template template = templateManager.getTemplate(templateId);
     for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
       schemaTree.appendSingleMeasurement(
           devicePath.concatNode(entry.getKey()),
@@ -172,6 +190,38 @@ class AutoCreateSchemaExecutor {
           null,
           null,
           template.isDirectAligned());
+    }
+  }
+
+  void autoActivateTemplate(
+      ClusterSchemaTree schemaTree,
+      List<PartialPath> deviceList,
+      List<Pair<Template, PartialPath>> templateSetInfoList) {
+    Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
+    for (int i = 0; i < deviceList.size(); i++) {
+      devicesNeedActivateTemplate.put(
+          deviceList.get(i),
+          new Pair<>(
+              templateManager.getTemplate(templateSetInfoList.get(i).left.getId()),
+              templateSetInfoList.get(i).right));
+    }
+    internalActivateTemplate(devicesNeedActivateTemplate);
+    PartialPath devicePath;
+    Template template;
+    for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
+        devicesNeedActivateTemplate.entrySet()) {
+      devicePath = entry.getKey();
+      // take the latest template
+      template = templateManager.getTemplate(entry.getValue().left.getId());
+      for (Map.Entry<String, IMeasurementSchema> measurementEntry :
+          template.getSchemaMap().entrySet()) {
+        schemaTree.appendSingleMeasurement(
+            devicePath.concatNode(measurementEntry.getKey()),
+            (MeasurementSchema) measurementEntry.getValue(),
+            null,
+            null,
+            template.isDirectAligned());
+      }
     }
   }
 
@@ -208,10 +258,9 @@ class AutoCreateSchemaExecutor {
       }
 
       if (templateInfo == null) {
-        indexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
         // there are measurements need to be created as normal timeseries
         int finalDeviceIndex = deviceIndex;
-        List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfMeasurementsNotInTemplate;
+        List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
         devicesNeedAutoCreateTimeSeries.compute(
             devicePath,
             (k, v) -> {
@@ -303,6 +352,9 @@ class AutoCreateSchemaExecutor {
             templateExtendInfo.getDataTypes(),
             templateExtendInfo.getEncodings(),
             templateExtendInfo.getCompressors());
+      }
+      for (Pair<Template, PartialPath> value : devicesNeedActivateTemplate.values()) {
+        value.left = templateManager.getTemplate(value.left.getId());
       }
     }
 

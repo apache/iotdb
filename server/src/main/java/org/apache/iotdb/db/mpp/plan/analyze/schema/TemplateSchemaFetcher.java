@@ -25,13 +25,19 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 class TemplateSchemaFetcher {
 
@@ -56,6 +62,23 @@ class TemplateSchemaFetcher {
   List<Integer> processTemplateTimeSeries(
       Pair<Template, PartialPath> templateSetInfo,
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+    PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
+    String[] measurements = schemaComputationWithAutoCreation.getMeasurements();
+    Template template = templateSetInfo.getLeft();
+    List<String> extensionMeasurementList = new ArrayList<>();
+    List<TSDataType> extensionDataTypeList = new ArrayList<>();
+    for (int i = 0; i < measurements.length; i++) {
+      if (!template.hasSchema(measurements[i])) {
+        extensionMeasurementList.add(measurements[i]);
+        extensionDataTypeList.add(schemaComputationWithAutoCreation.getDataType(i));
+      }
+    }
+
+    if (!extensionMeasurementList.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+      autoCreateSchemaExecutor.autoExtendTemplate(
+          template.getName(), extensionMeasurementList, extensionDataTypeList);
+    }
+
     List<Integer> indexOfMissingMeasurements =
         templateSchemaCache.conformsToTemplateCache(schemaComputationWithAutoCreation);
     // all schema can be taken from cache
@@ -63,6 +86,12 @@ class TemplateSchemaFetcher {
       return indexOfMissingMeasurements;
     }
 
+    if (indexOfMissingMeasurements.size() < measurements.length) {
+      // activated but missing measurement in template
+      return indexOfMissingMeasurements;
+    }
+
+    // not activated or not cached
     // try fetch the missing schema from remote and cache fetched schema
     ClusterSchemaTree remoteSchemaTree =
         clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
@@ -75,19 +104,15 @@ class TemplateSchemaFetcher {
 
     // all schema has been taken and processed
     if (indexOfMissingMeasurements.isEmpty()) {
+      // already activated
       return indexOfMissingMeasurements;
     }
 
+    // not activated
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      autoCreateSchemaExecutor.autoCreateMissingMeasurements(
-          schemaTree,
-          schemaComputationWithAutoCreation.getDevicePath(),
-          indexOfMissingMeasurements,
-          schemaComputationWithAutoCreation.getMeasurements(),
-          schemaComputationWithAutoCreation::getDataType,
-          schemaComputationWithAutoCreation.isAligned());
+      autoCreateSchemaExecutor.autoActivateTemplate(schemaTree, devicePath, template.getId());
       indexOfMissingMeasurements =
           schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     }
@@ -103,8 +128,32 @@ class TemplateSchemaFetcher {
     List<List<Integer>> indexOfMissingMeasurementsList =
         new ArrayList<>(schemaComputationWithAutoCreationList.size());
 
+    Map<String, TemplateExtendInfo> extensionMeasurementMap = new HashMap<>();
+
     ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation;
     List<Integer> indexOfMissingMeasurements;
+    String[] measurements;
+    Template template;
+    for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
+      schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
+      template = templateSetInfoList.get(i).left;
+      measurements = schemaComputationWithAutoCreation.getMeasurements();
+      for (String measurement : measurements) {
+        if (!template.hasSchema(measurement)) {
+          extensionMeasurementMap
+              .computeIfAbsent(template.getName(), TemplateExtendInfo::new)
+              .addMeasurement(
+                  measurements[i],
+                  schemaComputationWithAutoCreation.getDataType(i),
+                  getDefaultEncoding(schemaComputationWithAutoCreation.getDataType(i)),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+        }
+      }
+    }
+    if (!extensionMeasurementMap.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+      autoCreateSchemaExecutor.autoExtendTemplate(extensionMeasurementMap);
+    }
+
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
       schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
       indexOfMissingMeasurements =
@@ -154,30 +203,13 @@ class TemplateSchemaFetcher {
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+      autoCreateSchemaExecutor.autoActivateTemplate(
           schemaTree,
-          schemaComputationWithAutoCreationList.stream()
-              .map(ISchemaComputationWithAutoCreation::getDevicePath)
+          indexOfDevicesNeedAutoCreateSchema.stream()
+              .map(index -> schemaComputationWithAutoCreationList.get(index).getDevicePath())
               .collect(Collectors.toList()),
-          indexOfDevicesNeedAutoCreateSchema,
-          indexOfMeasurementsNeedAutoCreate,
-          schemaComputationWithAutoCreationList.stream()
-              .map(ISchemaComputationWithAutoCreation::getMeasurements)
-              .collect(Collectors.toList()),
-          schemaComputationWithAutoCreationList.stream()
-              .map(
-                  o -> {
-                    TSDataType[] dataTypes = new TSDataType[o.getMeasurements().length];
-                    for (int i = 0, length = dataTypes.length; i < length; i++) {
-                      dataTypes[i] = o.getDataType(i);
-                    }
-                    return dataTypes;
-                  })
-              .collect(Collectors.toList()),
-          null,
-          null,
-          schemaComputationWithAutoCreationList.stream()
-              .map(ISchemaComputationWithAutoCreation::isAligned)
+          indexOfDevicesNeedAutoCreateSchema.stream()
+              .map(templateSetInfoList::get)
               .collect(Collectors.toList()));
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();

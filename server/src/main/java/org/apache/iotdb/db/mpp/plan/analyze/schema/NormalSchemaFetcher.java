@@ -74,7 +74,7 @@ class NormalSchemaFetcher {
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+      autoCreateSchemaExecutor.autoCreateTimeSeries(
           schemaTree,
           schemaComputationWithAutoCreation.getDevicePath(),
           indexOfMissingMeasurements,
@@ -144,7 +144,7 @@ class NormalSchemaFetcher {
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+      autoCreateSchemaExecutor.autoCreateTimeSeries(
           schemaTree,
           schemaComputationWithAutoCreationList.stream()
               .map(ISchemaComputationWithAutoCreation::getDevicePath)
@@ -164,8 +164,6 @@ class NormalSchemaFetcher {
                     return dataTypes;
                   })
               .collect(Collectors.toList()),
-          null,
-          null,
           schemaComputationWithAutoCreationList.stream()
               .map(ISchemaComputationWithAutoCreation::isAligned)
               .collect(Collectors.toList()));
