@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -32,14 +33,17 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -284,5 +288,42 @@ public class IoTDBSessionSchemaTemplateIT {
     assertEquals(
         new HashSet<>(Arrays.asList("root.db.v4.GPS", "root.db.v5.GPS", "root.db.v6.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template2")));
+  }
+
+  @Test
+  public void testInsertRecordsWithTemplate() throws Exception {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    session.createSchemaTemplate(temp1);
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+
+    List<String> devices = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<String> measurements = Arrays.asList(new String[] {"x", "y"});
+    List<Long> times = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+    List<String> value = Arrays.asList(new String[] {"1.23", "2.34"});
+    for (int i = 0; i < 101; i++) {
+      devices.add("root.db.v1.d" + i);
+      measurementsList.add(measurements);
+      times.add(12345L + i);
+      values.add(value);
+    }
+
+    session.insertRecords(devices, times, measurementsList, values);
+    SessionDataSet dataSet;
+    RowRecord row;
+    for (int i = 0; i < 10; i++) {
+      dataSet =
+          session.executeQueryStatement(
+              String.format("SELECT * from root.db.v1.d%d", (int) (Math.random() * 100)));
+      while (dataSet.hasNext()) {
+        row = dataSet.next();
+        Assert.assertEquals("1.23", row.getFields().get(0).toString());
+        Assert.assertEquals("2.34", row.getFields().get(1).toString());
+      }
+    }
   }
 }

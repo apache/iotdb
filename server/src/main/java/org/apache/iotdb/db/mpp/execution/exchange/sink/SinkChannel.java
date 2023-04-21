@@ -329,20 +329,21 @@ public class SinkChannel implements ISinkChannel {
         iterator.remove();
         LOGGER.debug("[ACKTsBlock] {}.", entry.getKey());
       }
+
+      // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
+      // ack message's freedBytes may be zero
+      if (freedBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                freedBytes);
+      }
     }
     if (isFinished()) {
       sinkListener.onFinish(this);
-    }
-    // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
-    // ack message's freedBytes may be zero
-    if (freedBytes > 0) {
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              freedBytes);
     }
   }
 

@@ -774,6 +774,12 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
+    // the size of device path cache
+    conf.setDevicePathCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
+
     // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(
         Integer.parseInt(
