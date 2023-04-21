@@ -112,25 +112,25 @@ Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
 
 #### 配置
-配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
+配置位于 iotdb-common.properties，设定 authorizer_provider_class 为 org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
 
 ```
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 ```
-如果开启了 openID 服务则 openID_url 为必填项，openID_url 值为 http://ip:port/auth/realms/{realmsName}
+如果开启了 openID 服务则 openID_url 为必填项，openID_url 值为 http://ip:port/realms/{realmsName}
 
 ```
-openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
+openID_url=http://127.0.0.1:8080/realms/iotdb/
 ```
 ####keycloack 配置
 
-1、下载 keycloack 程序，在 keycloack/bin 中启动 keycloack
+1、下载 keycloack 程序（此教程为21.1.0版本），在 keycloack/bin 中启动 keycloack
 
 ```shell
 Shell > cd bin
-Shell > bash ./standalone.sh
+Shell > ./kc.sh start-dev
 ```
-2、使用 https://ip:port/auth 登陆 keycloack, 首次登陆需要创建用户
+2、使用 https://ip:port 登陆 keycloack, 首次登陆需要创建用户
 
 ![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
 
@@ -138,43 +138,41 @@ Shell > bash ./standalone.sh
 
 ![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/AdministrationConsole.png?raw=true)
 
-4、在左侧的 Master 菜单点击 add Realm, 输入 Name 创建一个新的 Realm
+4、在左侧的 Master 菜单点击 Create Realm, 输入 Realm Name 创建一个新的 Realm
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_1.jpg?raw=true)
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_Realm_2.jpg?raw=true)
 
 5、点击左侧菜单 Clients，创建 client
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/client.jpg?raw=true)
 
 6、点击左侧菜单 User，创建 user
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/user.jpg?raw=true)
 
 7、点击新创建的用户 id，点击 Credentials 导航输入密码和关闭 Temporary 选项，至此 keyclork 配置完成
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/pwd.jpg?raw=true)
 
-8、创建角色，点击左侧菜单的 Roles然后点击Add Role 按钮添加角色
+8、创建角色，点击左侧菜单的 Roles然后点击Create Role 按钮添加角色
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role1.jpg?raw=true)
 
 9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建 database、添加用户、角色等功能
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role2.jpg?raw=true)
 
-10、点击左侧的User 菜单然后点击用户列表中的Edit的按钮为该用户添加我们刚创建的`iotdb_admin`角色
+10、点击左侧的User 菜单然后点击用户列表中的用户为该用户添加我们刚创建的`iotdb_admin`角色
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role3.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role3.jpg?raw=true)
 
-11、选择Role Mappings ，在Available Role选择`iotdb_admin`角色然后点Add selected 按钮添加角色
+11、选择Role Mappings ，在Assign role选择`iotdb_admin`增加角色
 
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role4.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role4.jpg?raw=true)
 
-12、如果`iotdb_admin`角色在Assigned Roles中并且出现`Success Role mappings updated`提示，证明角色添加成功
-
-![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role5.png?raw=true)
+![avatar](https://alioss.timecho.com/docs/img/UserGuide/CLI/Command-Line-Interface/add_role5.jpg?raw=true)
 
 提示：如果用户角色有调整需要重新生成token并且重新登陆iotdb才会生效
 
@@ -188,13 +186,13 @@ Shell > bash ./standalone.sh
 Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
-其中，需要将{my-access-token} （注意，包括{}）替换成你的 token，即 access_token 对应的值。
+其中，需要将{my-access-token} （注意，包括{}）替换成你的 token，即 access_token 对应的值。密码为空需要再次确认。
 
 如何获取 token 取决于你的 OIDC 设置。 最简单的一种情况是使用`password-grant`。例如，假设你在用 keycloack 作为你的 OIDC 服务，
 并且你在 keycloack 中有一个被定义成 public 的`iotdb`客户的 realm，那么你可以使用如下`curl`命令获得 token。
 （注意例子中的{}和里面的内容需要替换成具体的服务器地址和 realm 名字）：
 ```shell
-curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/openid-connect/token" \ -H "Content-Type: application/x-www-form-urlencoded" \
+curl -X POST "http://{your-keycloack-server}/realms/{your-realm}/protocol/openid-connect/token" \ -H "Content-Type: application/x-www-form-urlencoded" \
  -d "username={username}" \
  -d "password={password}" \
  -d 'grant_type=password' \
