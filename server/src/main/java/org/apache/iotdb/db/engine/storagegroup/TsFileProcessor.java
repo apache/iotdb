@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
+import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
@@ -1077,8 +1078,8 @@ public class TsFileProcessor {
       } else {
         try {
           writer.mark();
-          MemTableFlushTaskV2 flushTask =
-              new MemTableFlushTaskV2(
+          MemTableFlushTask flushTask =
+              new MemTableFlushTask(
                   memTableToFlush,
                   writer,
                   storageGroupName,

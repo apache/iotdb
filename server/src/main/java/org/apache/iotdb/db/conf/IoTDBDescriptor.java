@@ -1029,13 +1029,11 @@ public class IoTDBDescriptor {
     conf.setDynamicThreadMinIdleRatio(
         Double.parseDouble(
             properties.getProperty(
-                "dynamic_min_idle_ratio",
-                Double.toString(conf.getDynamicThreadMinIdleRatio()))));
+                "dynamic_min_idle_ratio", Double.toString(conf.getDynamicThreadMinIdleRatio()))));
     conf.setDynamicThreadMaxIdleRatio(
         Double.parseDouble(
             properties.getProperty(
-                "dynamic_max_idle_ratio",
-                Double.toString(conf.getDynamicThreadMaxIdleRatio()))));
+                "dynamic_max_idle_ratio", Double.toString(conf.getDynamicThreadMaxIdleRatio()))));
     conf.setDynamicThreadMinRunningTimeNS(
         Long.parseLong(
             properties.getProperty(
