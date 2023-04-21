@@ -1088,6 +1088,11 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  /** The minimum/maximum number of subtask threads of each stage when flushing one MemTable. */
+  private int flushMemTableMinSubThread = 1;
+
+  private int flushMemTableMaxSubThread = 16;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3757,5 +3762,21 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
+  }
+
+  public int getFlushMemTableMinSubThread() {
+    return flushMemTableMinSubThread;
+  }
+
+  public void setFlushMemTableMinSubThread(int flushMemTableMinSubThread) {
+    this.flushMemTableMinSubThread = flushMemTableMinSubThread;
+  }
+
+  public int getFlushMemTableMaxSubThread() {
+    return flushMemTableMaxSubThread;
+  }
+
+  public void setFlushMemTableMaxSubThread(int flushMemTableMaxSubThread) {
+    this.flushMemTableMaxSubThread = flushMemTableMaxSubThread;
   }
 }

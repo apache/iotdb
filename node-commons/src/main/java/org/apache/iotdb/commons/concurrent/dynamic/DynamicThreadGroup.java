@@ -35,8 +35,8 @@ public class DynamicThreadGroup {
   private String name;
   private Supplier<DynamicThread> threadFactory;
   private AtomicInteger threadCnt = new AtomicInteger();
-  private int minThreadCnt = 1;
-  private int maxThreadCnt = 8;
+  private int minThreadCnt;
+  private int maxThreadCnt;
   private Map<DynamicThread, Future<?>> threadFutureMap = new ConcurrentHashMap<>();
 
   public DynamicThreadGroup(
@@ -50,7 +50,9 @@ public class DynamicThreadGroup {
     this.threadFactory = threadFactory;
     this.minThreadCnt = Math.max(1, minThreadCnt);
     this.maxThreadCnt = Math.max(this.minThreadCnt, maxThreadCnt);
-    for (int i = 0; i < this.maxThreadCnt; i++) {
+
+    int initialThreadNum = (this.minThreadCnt + this.maxThreadCnt) / 2;
+    for (int i = 0; i < initialThreadNum; i++) {
       addThread();
     }
     logger.info(

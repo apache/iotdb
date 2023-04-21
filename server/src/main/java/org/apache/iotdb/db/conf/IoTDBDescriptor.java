@@ -1009,6 +1009,17 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
+    conf.setFlushMemTableMinSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_min_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMinSubThread()))));
+    conf.setFlushMemTableMaxSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_max_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMaxSubThread()))));
+
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());

@@ -107,15 +107,15 @@ public class MemTableFlushTaskV2 {
             storageGroup + "-" + dataRegionId + "-" + memTable,
             SUB_TASK_POOL_MANAGER::submit,
             this::newSortThread,
-            1,
-            8);
+            config.getFlushMemTableMinSubThread(),
+            config.getFlushMemTableMaxSubThread());
     this.encodingTasks =
         new DynamicThreadGroup(
             storageGroup + "-" + dataRegionId + "-" + memTable,
             SUB_TASK_POOL_MANAGER::submit,
             this::newEncodingThread,
-            1,
-            8);
+            config.getFlushMemTableMinSubThread(),
+            config.getFlushMemTableMaxSubThread());
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(newIOThread());
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
