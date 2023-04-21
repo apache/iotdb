@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -424,6 +426,30 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
       Assert.assertEquals(endTime - startTime, getTimeSlotListResp.getTimeSlotListSize());
+
+      // Test CountTimeSlotList api
+      TCountTimeSlotListReq countTimeSlotListReq;
+      TCountTimeSlotListResp countTimeSlotListResp;
+      countTimeSlotListReq = new TCountTimeSlotListReq();
+      countTimeSlotListReq.setDatabase(sg0);
+      countTimeSlotListResp = client.countTimeSlotList(countTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), countTimeSlotListResp.status.getCode());
+      Assert.assertEquals(timePartitionBatchSize, countTimeSlotListResp.getCount());
+
+      countTimeSlotListReq.setStartTime(startTime * testTimePartitionInterval);
+
+      countTimeSlotListResp = client.countTimeSlotList(countTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), countTimeSlotListResp.status.getCode());
+      Assert.assertEquals(timePartitionBatchSize - startTime, countTimeSlotListResp.getCount());
+
+      countTimeSlotListReq.setEndTime(endTime * testTimePartitionInterval);
+
+      countTimeSlotListResp = client.countTimeSlotList(countTimeSlotListReq);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), countTimeSlotListResp.status.getCode());
+      Assert.assertEquals(endTime - startTime, countTimeSlotListResp.getCount());
 
       // Test GetSeriesSlotList api
       TGetSeriesSlotListReq getSeriesSlotListReq;

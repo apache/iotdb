@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.response;
+package org.apache.iotdb.confignode.consensus.response.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -48,7 +48,7 @@ public class CountTimeSlotListResp implements DataSet {
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.count = count;
+      resp.setCount(count);
     }
 
     return resp;
