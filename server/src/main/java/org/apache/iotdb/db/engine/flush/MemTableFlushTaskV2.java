@@ -115,12 +115,16 @@ public class MemTableFlushTaskV2 {
             this::newEncodingThread,
             config.getFlushMemTableMinSubThread(),
             config.getFlushMemTableMaxSubThread());
-    this.ioTask = new DynamicThreadGroup(
-        storageGroup + "-" + dataRegionId + "-" + memTable,
-        SUB_TASK_POOL_MANAGER::submit,
-        this::newIOThread,
-        1,
-        1);
+    this.ioTask =
+        new DynamicThreadGroup(
+            storageGroup + "-" + dataRegionId + "-" + memTable,
+            SUB_TASK_POOL_MANAGER::submit,
+            this::newIOThread,
+            1,
+            1);
+    this.sortTasks.init();
+    this.encodingTasks.init();
+    this.ioTask.init();
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,

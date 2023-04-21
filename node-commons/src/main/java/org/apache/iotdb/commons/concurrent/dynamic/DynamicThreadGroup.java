@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.commons.concurrent.dynamic;
 
-import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -51,7 +51,9 @@ public class DynamicThreadGroup {
     this.threadFactory = threadFactory;
     this.minThreadCnt = Math.max(1, minThreadCnt);
     this.maxThreadCnt = Math.max(this.minThreadCnt, maxThreadCnt);
+  }
 
+  public void init() {
     int initialThreadNum = (this.minThreadCnt + this.maxThreadCnt) / 2;
     for (int i = 0; i < initialThreadNum; i++) {
       addThread();

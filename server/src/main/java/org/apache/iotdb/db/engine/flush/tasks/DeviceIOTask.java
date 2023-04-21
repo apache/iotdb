@@ -29,8 +29,8 @@ import java.io.IOException;
  * A DeviceIOTask will check if the current device in the FlushContext (indicated by
  * FlushContext.cursor) is fully encoded. If it is fully encoded, it will be flushed to the
  * underlying file and the cursor will be moved to the next device.
- * <p>
- * The above procedure repeats until the current device is still being encoded or all devices are
+ *
+ * <p>The above procedure repeats until the current device is still being encoded or all devices are
  * flushed. If all devices are flushed, a FinalTask will be generated. Otherwise, no new task will
  * be generated.
  */

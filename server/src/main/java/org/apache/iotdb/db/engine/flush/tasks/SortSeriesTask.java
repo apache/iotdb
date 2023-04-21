@@ -23,9 +23,7 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 
-/**
- * SortSeriesTask sorts a timeseries and generates the associated encoding task.
- */
+/** SortSeriesTask sorts a timeseries and generates the associated encoding task. */
 public class SortSeriesTask implements Task {
   private IDeviceID deviceId;
   private String seriesId;
