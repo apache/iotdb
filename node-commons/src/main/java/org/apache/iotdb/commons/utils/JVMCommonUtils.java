@@ -61,6 +61,7 @@ public class JVMCommonUtils {
   }
 
   public static boolean hasSpace(String dir) {
+    // TODO: use ratio to judgement ?
     return getUsableSpace(dir) > 0;
   }
 
