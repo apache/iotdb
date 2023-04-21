@@ -269,7 +269,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       if (!templateTimeSeriesRequestList.isEmpty()) {
         templateSchemaFetcher.processTemplateTimeSeries(
-            templateSetInfoList, normalTimeSeriesRequestList);
+            templateSetInfoList, templateTimeSeriesRequestList);
       }
     } finally {
       schemaCache.releaseReadLock();
