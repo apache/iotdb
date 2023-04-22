@@ -43,14 +43,26 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= statistics.getStartTime()
-          && ((Long) value) <= statistics.getEndTime();
+      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
       return value.compareTo((T) statistics.getMinValue()) >= 0
           && value.compareTo((T) statistics.getMaxValue()) <= 0;
+    }
+  }
+
+  @Override
+  public boolean allSatisfy(Statistics statistics) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return value.compareTo((T) statistics.getMinValue()) == 0
+          && value.compareTo((T) statistics.getMaxValue()) == 0;
     }
   }
 
@@ -76,13 +88,13 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
       long time = (Long) value;
       return time == startTime && time == endTime;
     } else {
-      return true;
+      return false;
     }
   }
 
   @Override
   public Filter copy() {
-    return new Eq(value, filterType);
+    return new Eq<>(value, filterType);
   }
 
   @Override
@@ -93,5 +105,10 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.EQ;
+  }
+
+  @Override
+  public Filter reverse() {
+    return new NotEq<>(value, filterType);
   }
 }

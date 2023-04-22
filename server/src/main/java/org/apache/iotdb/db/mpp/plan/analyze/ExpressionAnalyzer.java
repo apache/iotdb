@@ -930,12 +930,11 @@ public class ExpressionAnalyzer {
     } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
       if (timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        return new Pair<>(
-            TimeFilter.in(
-                ((InExpression) predicate)
-                    .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
-                ((InExpression) predicate).isNotIn()),
-            false);
+        boolean not = ((InExpression) predicate).isNotIn();
+        Set<Long> values =
+            ((InExpression) predicate)
+                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet());
+        return new Pair<>(not ? TimeFilter.notIn(values) : TimeFilter.in(values), false);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)

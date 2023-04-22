@@ -365,7 +365,8 @@ public class ExpressionUtils {
         && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64) {
       long value1 = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
       long value2 = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
-      return new Pair<>(TimeFilter.between(value1, value2, not), false);
+      return new Pair<>(
+          not ? TimeFilter.notBetween(value1, value2) : TimeFilter.between(value1, value2), false);
     } else {
       return new Pair<>(null, true);
     }
