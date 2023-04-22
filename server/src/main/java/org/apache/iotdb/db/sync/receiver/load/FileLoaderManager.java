@@ -144,8 +144,16 @@ public class FileLoaderManager {
           .lines()
           .forEach(
               o -> {
-                String[] entry = o.split(" ");
-                finalMap.put(entry[0], entry[1]);
+                try {
+                  String[] entry = o.split(" ");
+                  if (entry.length == 2) {
+                    finalMap.put(entry[0], entry[1]);
+                  }
+                } catch (Exception e) {
+                  LOGGER.warn(
+                      String.format("Deserialize owner map %s line %s error", deviceOwnerFile, o),
+                      e);
+                }
               });
     }
     deviceOwnerMap = finalMap;
