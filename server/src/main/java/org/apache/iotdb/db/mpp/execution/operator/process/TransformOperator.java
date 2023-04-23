@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFQueryIdAssigner;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -77,6 +78,8 @@ public class TransformOperator implements ProcessOperator {
   protected TimeSelector timeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
 
+  private final long udtfQueryId;
+
   public TransformOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -91,6 +94,7 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
+    this.udtfQueryId = UDTFQueryIdAssigner.getInstance().getNextId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
@@ -103,7 +107,7 @@ public class TransformOperator implements ProcessOperator {
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
     inputLayer =
         new QueryDataSetInputLayer(
-            operatorContext.getOperatorId(),
+            udtfQueryId,
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
@@ -120,11 +124,11 @@ public class TransformOperator implements ProcessOperator {
     UDFManagementService.getInstance().acquireLock();
     try {
       // This statement must be surrounded by the registration lock.
-      UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
+      UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
       // UDF executors will be initialized at the same time
       transformers =
           new EvaluationDAGBuilder(
-                  operatorContext.getOperatorId(),
+                  udtfQueryId,
                   inputLayer,
                   inputLocations,
                   outputExpressions,
@@ -324,7 +328,7 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    udtfContext.finalizeUDFExecutors(operatorContext.getOperatorId());
+    udtfContext.finalizeUDFExecutors(udtfQueryId);
     inputOperator.close();
   }
 
