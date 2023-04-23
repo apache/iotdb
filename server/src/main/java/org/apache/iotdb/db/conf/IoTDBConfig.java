@@ -960,6 +960,8 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 1000;
 
+  private int devicePathCacheSize = 500_000;
+
   /** Cache size of user and role */
   private int authorCacheSize = 100;
 
@@ -3166,6 +3168,14 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getDevicePathCacheSize() {
+    return devicePathCacheSize;
+  }
+
+  public void setDevicePathCacheSize(int devicePathCacheSize) {
+    this.devicePathCacheSize = devicePathCacheSize;
   }
 
   public int getAuthorCacheSize() {

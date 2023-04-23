@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -843,6 +844,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dropSchemaTemplate(String req) {
     return configManager.dropSchemaTemplate(req);
+  }
+
+  @Override
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+    return configManager.alterSchemaTemplate(req);
   }
 
   @Override

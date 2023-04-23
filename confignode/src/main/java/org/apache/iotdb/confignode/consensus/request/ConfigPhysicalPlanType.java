@@ -115,6 +115,7 @@ public enum ConfigPhysicalPlanType {
   DropSchemaTemplate((short) 811),
   PreSetSchemaTemplate((short) 812),
   CommitSetSchemaTemplate((short) 813),
+  ExtendSchemaTemplate((short) 814),
 
   /** Deprecated types for sync, restored them for upgrade */
   @Deprecated

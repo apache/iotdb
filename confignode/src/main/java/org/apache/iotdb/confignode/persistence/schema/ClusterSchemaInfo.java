@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
@@ -59,6 +60,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -937,6 +939,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       templateTable.dropTemplate(dropSchemaTemplatePlan.getTemplateName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus extendSchemaTemplate(ExtendSchemaTemplatePlan extendSchemaTemplatePlan) {
+    TemplateExtendInfo templateExtendInfo = extendSchemaTemplatePlan.getTemplateExtendInfo();
+    try {
+      templateTable.extendTemplate(templateExtendInfo);
+      return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }

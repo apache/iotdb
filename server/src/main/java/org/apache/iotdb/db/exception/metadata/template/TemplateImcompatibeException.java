@@ -44,4 +44,9 @@ public class TemplateImcompatibeException extends MetadataException {
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
+
+  public TemplateImcompatibeException(String reason) {
+    super(reason, TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
+  }
 }
