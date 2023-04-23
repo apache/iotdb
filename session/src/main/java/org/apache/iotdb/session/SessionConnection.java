@@ -87,7 +87,7 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
-  private static final long CHECK_CONNECT_PRIMARY_CLUSTER_S = 60;
+  private static final long CHECK_CONNECT_PRIMARY_CLUSTER_S = 10;
   private Session session;
   private TTransport transport;
   private IClientRPCService.Iface client;
@@ -115,8 +115,15 @@ public class SessionConnection {
             : SessionUtils.parseSeedNodeUrls(session.backupNodeUrls);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     try {
-      init(endPoint);
-      clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
+      if (isPrimary(endPoint)) {
+        init(endPoint);
+        clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
+      } else {
+        endPointList.clear();
+        endPoint = session.defaultEndPoint;
+        endPointList.add(endPoint);
+        reconnect();
+      }
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -209,6 +216,10 @@ public class SessionConnection {
       }
       break;
     }
+  }
+
+  private boolean isPrimary(TEndPoint endPoint) {
+    return backupEndPointList.isEmpty() || !backupEndPointList.contains(endPoint);
   }
 
   public void close() throws IoTDBConnectionException {
@@ -396,7 +407,13 @@ public class SessionConnection {
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
       execResp = client.executeQueryStatementV2(execReq);
-      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+      try {
+        RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+      } catch (RedirectException e) {
+        if (isPrimary(endPoint)) {
+          throw e;
+        }
+      }
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -463,7 +480,13 @@ public class SessionConnection {
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
       execResp = client.executeRawDataQueryV2(execReq);
-      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+      try {
+        RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+      } catch (RedirectException e) {
+        if (isPrimary(endPoint)) {
+          throw e;
+        }
+      }
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -504,7 +527,13 @@ public class SessionConnection {
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
       tsExecuteStatementResp = client.executeLastDataQueryV2(tsLastDataQueryReq);
-      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+      try {
+        RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+      } catch (RedirectException e) {
+        if (isPrimary(endPoint)) {
+          throw e;
+        }
+      }
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -585,7 +614,13 @@ public class SessionConnection {
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
       tsExecuteStatementResp = client.executeAggregationQueryV2(tsAggregationQueryReq);
-      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+      try {
+        RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+      } catch (RedirectException e) {
+        if (isPrimary(endPoint)) {
+          throw e;
+        }
+      }
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -642,6 +677,10 @@ public class SessionConnection {
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
+      }
     }
   }
 
@@ -661,6 +700,10 @@ public class SessionConnection {
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
       }
     }
   }
@@ -683,6 +726,10 @@ public class SessionConnection {
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
+      }
     }
   }
 
@@ -704,6 +751,10 @@ public class SessionConnection {
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
+      }
     }
   }
 
@@ -723,6 +774,10 @@ public class SessionConnection {
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
       }
     }
   }
@@ -744,6 +799,10 @@ public class SessionConnection {
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
+      }
     }
   }
 
@@ -763,6 +822,10 @@ public class SessionConnection {
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
       }
     }
   }
@@ -784,6 +847,10 @@ public class SessionConnection {
         }
       } else {
         throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    } catch (RedirectException e) {
+      if (isPrimary(endPoint)) {
+        throw e;
       }
     }
   }
