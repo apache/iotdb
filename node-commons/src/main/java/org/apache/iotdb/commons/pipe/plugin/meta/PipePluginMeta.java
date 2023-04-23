@@ -45,8 +45,13 @@ public class PipePluginMeta {
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = isBuiltin;
-    this.jarName = Objects.requireNonNull(jarName);
-    this.jarMD5 = Objects.requireNonNull(jarMD5);
+    if (isBuiltin) {
+      this.jarName = jarName;
+      this.jarMD5 = jarMD5;
+    } else {
+      this.jarName = Objects.requireNonNull(jarName);
+      this.jarMD5 = Objects.requireNonNull(jarMD5);
+    }
   }
 
   public PipePluginMeta(String pluginName, String className) {
