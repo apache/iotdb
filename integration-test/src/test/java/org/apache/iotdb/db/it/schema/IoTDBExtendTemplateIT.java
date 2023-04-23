@@ -174,4 +174,49 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       }
     }
   }
+
+  @Test
+  public void testSelectInto() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create database
+      statement.execute("CREATE DATABASE root.db");
+
+      // create schema template
+      statement.execute(
+          "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
+
+      statement.execute("SET SCHEMA TEMPLATE t1 to root.db");
+
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) values(1, 1, 1)");
+
+      statement.execute("SELECT s1, s2 into root.::(t1, t2) from root.db.d1");
+
+      String[] sqls =
+          new String[] {
+            "show timeseries",
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(
+                Arrays.asList("root.db.d1.s1", "root.db.d1.s2", "root.db.d1.t1", "root.db.d1.t2"))
+          };
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            String string = resultSet.getString(1);
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
+          }
+          assertEquals(0, standard.size());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
 }

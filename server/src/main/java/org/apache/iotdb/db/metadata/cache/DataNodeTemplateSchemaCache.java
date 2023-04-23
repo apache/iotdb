@@ -96,13 +96,16 @@ public class DataNodeTemplateSchemaCache {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     if (deviceCacheEntry != null) {
       Template template = templateManager.getTemplate(deviceCacheEntry.getTemplateId());
-      schemaTree.appendSingleMeasurement(
-          fullPath,
-          (MeasurementSchema) template.getSchema(fullPath.getMeasurement()),
-          null,
-          null,
-          template.isDirectAligned());
-      schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+      IMeasurementSchema measurementSchema = template.getSchema(fullPath.getMeasurement());
+      if (measurementSchema != null) {
+        schemaTree.appendSingleMeasurement(
+            fullPath,
+            (MeasurementSchema) measurementSchema,
+            null,
+            null,
+            template.isDirectAligned());
+        schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+      }
     }
     return schemaTree;
   }
