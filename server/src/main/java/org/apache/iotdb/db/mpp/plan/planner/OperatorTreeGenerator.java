@@ -285,7 +285,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
@@ -327,7 +327,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
@@ -385,11 +385,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      scanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
 
     SeriesAggregationScanOperator aggregateScanOperator =
@@ -458,10 +462,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      scanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
 
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =

@@ -76,11 +76,36 @@ public class IoTDBPaginationIT {
         "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
         "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
         "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
-        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)"
+        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.d1.s1 INT32",
+        "insert into root.db.d1(timestamp,s1) values(0, 0)",
+        "insert into root.db.d1(timestamp,s1) values(1, 1)",
+        "insert into root.db.d1(timestamp,s1) values(2, 2)",
+        "insert into root.db.d1(timestamp,s1) values(3, 3)",
+        "insert into root.db.d1(timestamp,s1) values(4, 4)",
+        "flush",
+        "insert into root.db.d1(timestamp,s1) values(5, 5)",
+        "insert into root.db.d1(timestamp,s1) values(6, 6)",
+        "insert into root.db.d1(timestamp,s1) values(7, 7)",
+        "insert into root.db.d1(timestamp,s1) values(8, 8)",
+        "insert into root.db.d1(timestamp,s1) values(9, 9)",
+        "flush",
+        "insert into root.db.d1(timestamp,s1) values(10, 10)",
+        "insert into root.db.d1(timestamp,s1) values(11, 11)",
+        "insert into root.db.d1(timestamp,s1) values(12, 12)",
+        "insert into root.db.d1(timestamp,s1) values(13, 13)",
+        "insert into root.db.d1(timestamp,s1) values(14, 14)"
       };
 
   @BeforeClass
   public static void setUp() throws InterruptedException {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
@@ -134,5 +159,37 @@ public class IoTDBPaginationIT {
     for (int i = 0; i < querySQLs.size(); i++) {
       resultSetEqualTest(querySQLs.get(0), expectHeaders.get(0), retArrays.get(0));
     }
+  }
+
+  @Test
+  public void limitOffsetPushDownTest() {
+    String expectedHeader = "Time,root.db.d1.s1,";
+    String[] retArray =
+        new String[] {
+          "3,3,",
+        };
+    resultSetEqualTest(
+        "select s1 from root.db.d1 where time > 1 offset 1 limit 1", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "5,5,",
+        };
+    resultSetEqualTest(
+        "select s1 from root.db.d1 where time > 1 offset 3 limit 1", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "7,7,",
+        };
+    resultSetEqualTest(
+        "select s1 from root.db.d1 where time > 1 offset 5 limit 1", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "12,12,",
+        };
+    resultSetEqualTest(
+        "select s1 from root.db.d1 where time > 1 offset 10 limit 1", expectedHeader, retArray);
   }
 }
