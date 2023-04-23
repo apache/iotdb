@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
+
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -83,5 +85,15 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));
     }
     builder.declarePosition();
+  }
+
+  @Override
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+    return pathPattern.equals(ALL_MATCH_PATTERN);
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
   }
 }

@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.DoubleCircularQueue;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -35,7 +33,7 @@ import org.apache.iotdb.udf.api.type.Type;
 /** This function calculates moving average of given window length of input series. */
 public class UDTFMvAvg implements UDTF {
   int windowSize;
-  TSDataType dataType;
+  Type dataType;
   DoubleCircularQueue v;
 
   @Override
@@ -53,7 +51,7 @@ public class UDTFMvAvg implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    dataType = parameters.getDataType(0);
     windowSize = parameters.getIntOrDefault("window", 10);
     v = new DoubleCircularQueue(windowSize);
   }

@@ -104,7 +104,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -178,12 +177,16 @@ public class LogicalPlanBuilder {
             new SeriesScanNode(
                 context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
         seriesScanNode.setTimeFilter(timeFilter);
+        // TODO: push down value filter
+        seriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(seriesScanNode);
       } else if (path instanceof AlignedPath) { // aligned series
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
                 context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
         alignedSeriesScanNode.setTimeFilter(timeFilter);
+        // TODO: push down value filter
+        alignedSeriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(alignedSeriesScanNode);
       } else {
         throw new IllegalArgumentException("unexpected path type");
@@ -737,24 +740,25 @@ public class LogicalPlanBuilder {
           tagValuesToGroupedTimeseriesOperands.get(tagValues);
       List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
 
-      Iterator<Expression> iter = groupedTimeseriesOperands.keySet().iterator();
+      // Bind an AggregationDescriptor for each GroupByTagOutputExpression
       for (Expression groupByTagOutputExpression : groupByTagOutputExpressions) {
-        if (!iter.hasNext()) {
-          aggregationDescriptors.add(null);
-          continue;
+        boolean added = false;
+        for (Expression expression : groupedTimeseriesOperands.keySet()) {
+          if (expression.equals(groupByTagOutputExpression)) {
+            String functionName = ((FunctionExpression) expression).getFunctionName();
+            CrossSeriesAggregationDescriptor aggregationDescriptor =
+                new CrossSeriesAggregationDescriptor(
+                    functionName,
+                    curStep,
+                    groupedTimeseriesOperands.get(expression),
+                    ((FunctionExpression) expression).getFunctionAttributes(),
+                    expression.getExpressions().get(0));
+            aggregationDescriptors.add(aggregationDescriptor);
+            added = true;
+            break;
+          }
         }
-        Expression next = iter.next();
-        if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName();
-          CrossSeriesAggregationDescriptor aggregationDescriptor =
-              new CrossSeriesAggregationDescriptor(
-                  functionName,
-                  curStep,
-                  groupedTimeseriesOperands.get(next),
-                  ((FunctionExpression) next).getFunctionAttributes(),
-                  next.getExpressions().get(0));
-          aggregationDescriptors.add(aggregationDescriptor);
-        } else {
+        if (!added) {
           aggregationDescriptors.add(null);
         }
       }
@@ -790,6 +794,8 @@ public class LogicalPlanBuilder {
               scanOrder,
               groupByTimeParameter);
       seriesAggregationScanNode.setTimeFilter(timeFilter);
+      // TODO: push down value filter
+      seriesAggregationScanNode.setValueFilter(timeFilter);
       return seriesAggregationScanNode;
     } else if (selectPath instanceof AlignedPath) { // aligned series
       AlignedSeriesAggregationScanNode alignedSeriesAggregationScanNode =
@@ -800,6 +806,8 @@ public class LogicalPlanBuilder {
               scanOrder,
               groupByTimeParameter);
       alignedSeriesAggregationScanNode.setTimeFilter(timeFilter);
+      // TODO: push down value filter
+      alignedSeriesAggregationScanNode.setValueFilter(timeFilter);
       return alignedSeriesAggregationScanNode;
     } else {
       throw new IllegalArgumentException("unexpected path type");
