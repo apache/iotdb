@@ -92,7 +92,10 @@ public class QueryStateMachine {
   }
 
   public void transitionToRunning() {
-    queryState.setIf(RUNNING, currentState -> currentState == DISPATCHING);
+    // if we can skipExecute in QueryExecution.start(), we will directly change from QUEUED to
+    // RUNNING
+    queryState.setIf(
+        RUNNING, currentState -> currentState == DISPATCHING || currentState == QUEUED);
   }
 
   public void transitionToFinished() {
