@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -77,6 +78,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -369,6 +371,28 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    return insertStatement;
+  }
+
+  public static InsertRowsStatement createStatement(TSFastInsertRecordsReq req)
+      throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
+    // construct insert statement
+    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0; i < req.prefixPaths.size(); i++) {
+      FastInsertRowStatement statement = new FastInsertRowStatement();
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
+      statement.setTime(req.getTimestamps().get(i));
+      statement.setValues(req.valuesList.get(i));
       // skip empty statement
       if (statement.isEmpty()) {
         continue;

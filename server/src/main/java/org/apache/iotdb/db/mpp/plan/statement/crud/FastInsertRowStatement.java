@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,19 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-import java.util.List;
+import java.nio.ByteBuffer;
 
-public class FastInsertRowsNode extends InsertRowsNode {
-  public FastInsertRowsNode(PlanNodeId id) {
-    super(id);
+public class FastInsertRowStatement extends InsertRowStatement{
+
+  private ByteBuffer rawValues;
+
+  public void setValues(ByteBuffer values) {
+    this.rawValues = values;
   }
 
-  public FastInsertRowsNode(
-      PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> fastInsertRowNodeList) {
-    super(id, insertRowNodeIndexList, fastInsertRowNodeList);
+  public ByteBuffer getRawValues() {
+    return rawValues;
   }
+
 }

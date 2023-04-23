@@ -91,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFastInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -1174,6 +1175,76 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              "",
+              partitionFetcher,
+              schemaFetcher);
+
+      return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORDS,
+          StatementType.BATCH_INSERT_ROWS,
+          System.currentTimeMillis() - t1);
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSStatus fastInsertRecords(TSFastInsertRecordsReq req) {
+    long t1 = System.currentTimeMillis();
+    OperationQuota quota = null;
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInStatus();
+      }
+
+      // check whether measurement is legal according to syntax convention
+//      req.setMeasurementsList(
+//          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+
+      // Step 1:  transfer from TSInsertRecordsReq to Statement
+      InsertRowsStatement statement = StatementGenerator.createStatement(req);
+      // return success when this statement is empty because server doesn't need to execute it
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecords, first device %s, first time %s",
+                req.prefixPaths.get(0), req.getTimestamps().get(0)),
+            statement,
+            true);
+      }
+
+      // permission check
+      // CANNOT checkAuthority
+//      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+//      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+//        return status;
+//      }
+//
+//      quota =
+//          DataNodeThrottleQuotaManager.getInstance()
+//              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();

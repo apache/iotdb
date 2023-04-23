@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.FastInsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -625,6 +627,25 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType()),
+          i);
+    }
+    return insertRowsNode;
+  }
+
+  @Override
+  public PlanNode visitFastInsertRows(
+      InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+    // convert insert statement to insert node
+    InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
+    for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
+      InsertRowStatement fastInsertRowStatement =
+          insertRowsStatement.getInsertRowStatementList().get(i);
+      insertRowsNode.addOneInsertRowNode(
+          new FastInsertRowNode(
+              insertRowsNode.getPlanNodeId(),
+              fastInsertRowStatement.getDevicePath(),
+              fastInsertRowStatement.getTime(),
+              ((FastInsertRowStatement) fastInsertRowStatement).getRawValues()),
           i);
     }
     return insertRowsNode;

@@ -548,6 +548,8 @@ service IClientRPCService {
 
   common.TSStatus insertRecords(1:TSInsertRecordsReq req);
 
+  common.TSStatus fastInsertRecords(1:TSFastInsertRecordsReq req);
+
   common.TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
   common.TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req);
