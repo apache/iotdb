@@ -457,7 +457,7 @@ Specifications:
    
 2. "DATABASE" and "DEVICE" must begin with "root". If the path does not exist, it will return empty instead of reporting an error, as will be seen below.
 
-3. Currently, "DATABASE" and "DEVICE" do not support wildcard matching. If it contains a wildcard character, such as * or **, an error will be reported, as will be seen below.
+3. Currently, "DATABASE" and "DEVICE" do not support wildcard matching or multiple queries. If it contains a wildcard character(such as * or **) or multiple DATABASE and DEVICE, an error will be reported, as will be seen below.
 
 4. "TIME" supports both timestamps and universal dates. For timestamp, it must be greater than or equal to 0. For universal time, it need to be no earlier than 1970-01-01 00:00:00.
 
@@ -554,7 +554,7 @@ Show the data/schema series slots related to a database:
 
 Eg:
 ```
-IoTDB> show data seriesslotid where root.sg
+IoTDB> show data seriesslotid where database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -563,7 +563,7 @@ IoTDB> show data seriesslotid where root.sg
 Total line number = 1
 It costs 0.007s
 
-IoTDB> show schema seriesslotid where root.sg
+IoTDB> show schema seriesslotid where database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -582,9 +582,10 @@ Show the TimePartition of a certain device, database, or DataRegion.
 Specifications:
 
 1. TimePartition is short for SeriesTimeSlotId.
-2. If REGIONID is the Id of schemaRegion, return empty instead of reporting an error.
-3. "STARTTIME" and "ENDTIME" support both timestamps and universal dates. For timestamp, it must be greater than or equal to 0. For universal time, it need to be no earlier than 1970-01-01 00:00:00.
-4. The StartTime in the returned result is the starting time of the TimePartition's corresponding time interval.
+2. If REGIONID is the Id of schemaRegion, return empty instead of reporting an error. 
+3. REGIONID do not support multiple queries. If it contains multiple REGIONID, an error will be reported, as will be seen below.
+4. "STARTTIME" and "ENDTIME" support both timestamps and universal dates. For timestamp, it must be greater than or equal to 0. For universal time, it need to be no earlier than 1970-01-01 00:00:00.
+5. The StartTime in the returned result is the starting time of the TimePartition's corresponding time interval.
 
 Eg:
 ```

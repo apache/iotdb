@@ -454,7 +454,7 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
    
 2. DATABASE 和 DEVICE 必须以 root 开头，如果是不存在的路径时返回空，不报错，下同。
 
-3. DATABASE 和 DEVICE 目前不支持通配符匹配，如果包含 * 或 ** 的通配符则会报错，下同。
+3. DATABASE 和 DEVICE 目前不支持通配符匹配或者批量查询，如果包含 * 或 ** 的通配符或者输入多个 DATABASE 和 DEVICE 则会报错，下同。
 
 4. TIME 支持时间戳和通用日期。对于时间戳，必须得大于等于0，对于通用日期，需要不早于1970-01-01 00:00:00
 
@@ -550,7 +550,7 @@ It costs 0.007s
 
 示例:
 ```
-IoTDB> show data seriesslotid where root.sg
+IoTDB> show data seriesslotid where database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -559,7 +559,7 @@ IoTDB> show data seriesslotid where root.sg
 Total line number = 1
 It costs 0.007s
 
-IoTDB> show schema seriesslotid where root.sg
+IoTDB> show schema seriesslotid where  database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -578,10 +578,11 @@ It costs 0.006s
 1. TimePartition 是 SeriesTimeSlotId 的简称。
 
 2. REGIONID 如果为 schemaRegion 的 Id 返回空，不报错。
+3. REGIONID 不支持批量查询，如果输入多个 REGIONID 则会报错，下同。
 
-3. STARTTIME 和 ENDTIME 支持时间戳和通用日期。对于时间戳，必须得大于等于0，对于通用日期，需要不早于1970-01-01 00:00:00。
+4. STARTTIME 和 ENDTIME 支持时间戳和通用日期。对于时间戳，必须得大于等于0，对于通用日期，需要不早于1970-01-01 00:00:00。
 
-4. 返回结果中的 StartTime 为 TimePartition 对应时间区间的起始时间。
+5. 返回结果中的 StartTime 为 TimePartition 对应时间区间的起始时间。
 
 示例:
 ```
