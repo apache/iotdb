@@ -25,11 +25,9 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -216,19 +214,19 @@ public class LinuxNetMetricManager implements INetMetricManager {
     }
 
     // update socket num
-    try {
-      Process process = Runtime.getRuntime().exec(this.getConnectNumCmd);
-      StringBuilder result = new StringBuilder();
-      try (BufferedReader input =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-        String line;
-        while ((line = input.readLine()) != null) {
-          result.append(line);
-        }
-      }
-      this.connectionNum = Integer.parseInt(result.toString().trim());
-    } catch (IOException e) {
-      log.error("Failed to get socket num", e);
-    }
+    //    try {
+    //      Process process = Runtime.getRuntime().exec(this.getConnectNumCmd);
+    //      StringBuilder result = new StringBuilder();
+    //      try (BufferedReader input =
+    //          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+    //        String line;
+    //        while ((line = input.readLine()) != null) {
+    //          result.append(line);
+    //        }
+    //      }
+    //      this.connectionNum = Integer.parseInt(result.toString().trim());
+    //    } catch (IOException e) {
+    //      log.error("Failed to get socket num", e);
+    //    }
   }
 }
