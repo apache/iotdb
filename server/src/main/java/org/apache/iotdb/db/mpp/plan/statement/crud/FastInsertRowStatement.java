@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+
 import java.nio.ByteBuffer;
 
 public class FastInsertRowStatement extends InsertRowStatement {
@@ -31,5 +33,10 @@ public class FastInsertRowStatement extends InsertRowStatement {
 
   public ByteBuffer getRawValues() {
     return rawValues;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitFastInsertRow(this, context);
   }
 }

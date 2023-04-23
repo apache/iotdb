@@ -455,6 +455,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
+  public PlanNode visitFastInsertRow(
+      FastInsertRowStatement insertRowStatement, MPPQueryContext context) {
+    // convert insert statement to insert node
+    return new FastInsertRowNode(
+        context.getQueryId().genPlanNodeId(),
+        insertRowStatement.getDevicePath(),
+        insertRowStatement.getTime(),
+        insertRowStatement.getRawValues());
+  }
+
+  @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsFileNode(
         context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
@@ -618,16 +629,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       InsertRowStatement insertRowStatement =
           insertRowsStatement.getInsertRowStatementList().get(i);
       insertRowsNode.addOneInsertRowNode(
-          new InsertRowNode(
-              insertRowsNode.getPlanNodeId(),
-              insertRowStatement.getDevicePath(),
-              insertRowStatement.isAligned(),
-              insertRowStatement.getMeasurements(),
-              insertRowStatement.getDataTypes(),
-              insertRowStatement.getTime(),
-              insertRowStatement.getValues(),
-              insertRowStatement.isNeedInferType()),
-          i);
+          (InsertRowNode) insertRowStatement.accept(this, context), i);
     }
     return insertRowsNode;
   }

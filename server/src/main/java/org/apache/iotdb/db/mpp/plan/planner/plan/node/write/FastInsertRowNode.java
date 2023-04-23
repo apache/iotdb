@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -35,5 +36,10 @@ public class FastInsertRowNode extends InsertRowNode {
   public FastInsertRowNode(PlanNodeId id, PartialPath devicePath, long time, ByteBuffer values) {
     super(id, devicePath, true, null, null, time, null, false);
     this.rawValues = values;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitFastInsertRow(this, context);
   }
 }
