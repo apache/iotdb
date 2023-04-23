@@ -51,6 +51,8 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // Pipe Plugin
+    | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -484,7 +486,6 @@ dropPipePlugin
 showPipePlugins
     : SHOW PIPEPLUGINS
     ;
-
 
 // ML Model =========================================================================================
 // ---- Create Model
