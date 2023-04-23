@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -48,7 +46,7 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
   private final Comparator<Binary> comparator;
 
-  // use this List to ensure that the TsBlock we
+  // sort this List to ensure that the TsBlock we return is sorted
   private final List<LastValueEntry> lastValueEntryList;
 
   public AlignedUpdateLastCacheOperator(
@@ -100,7 +98,6 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
                 seriesPath.getSchemaList().get(i / 2).getType()));
       }
     }
-    ;
     lastValueEntryList.sort(
         Comparator.comparing(lastValueEntry -> lastValueEntry.fullPath, comparator));
     for (LastValueEntry lastValueEntry : lastValueEntryList) {
@@ -115,12 +112,12 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
   }
 
-  class LastValueEntry implements Comparable<LastValueEntry> {
-    private long lastTime;
-    private Binary fullPath;
+  static class LastValueEntry {
+    private final long lastTime;
+    private final Binary fullPath;
 
-    private TsPrimitiveType lastValue;
-    private TSDataType dataType;
+    private final TsPrimitiveType lastValue;
+    private final TSDataType dataType;
 
     public LastValueEntry(
         long lastTime, Binary fullPath, TsPrimitiveType lastValue, TSDataType dataType) {
@@ -128,11 +125,6 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       this.fullPath = fullPath;
       this.lastValue = lastValue;
       this.dataType = dataType;
-    }
-
-    @Override
-    public int compareTo(@NotNull LastValueEntry o) {
-      return this.fullPath.compareTo(o.fullPath);
     }
   }
 }

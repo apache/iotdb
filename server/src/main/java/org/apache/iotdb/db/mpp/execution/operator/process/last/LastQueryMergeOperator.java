@@ -120,8 +120,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
       if (!noMoreTsBlocks[i] && empty(i) && currentChild != null) {
         if (currentChild.hasNextWithTimer()) {
           inputIndex[i] = 0;
-          TsBlock tsBlock = currentChild.nextWithTimer();
-          inputTsBlocks[i] = tsBlock;
+          inputTsBlocks[i] = currentChild.nextWithTimer();
           if (!empty(i)) {
             int rowSize = inputTsBlocks[i].getPositionCount();
             for (int row = 0; row < rowSize; row++) {
@@ -175,8 +174,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
     while (!timeSeriesSelector.isEmpty()
         && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
       Location location = timeSeriesSelector.pollFirstEntry().getValue();
-      TsBlock tsBlock = inputTsBlocks[location.tsBlockIndex];
-      appendLastValue(tsBlockBuilder, tsBlock, location.rowIndex);
+      appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
     }
 
     clearTsBlockCache(currentEndTimeSeries);
