@@ -338,6 +338,12 @@ public class IoTDBDescriptor {
                     "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))
                 .trim()));
 
+    conf.setQueryMetricsEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty("query_metric_enable", Boolean.toString(conf.isQueryMetricsEnable()))
+                .trim()));
+
     initMemoryAllocate(properties);
 
     loadWALProps(properties);

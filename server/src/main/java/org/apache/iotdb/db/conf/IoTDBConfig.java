@@ -511,6 +511,9 @@ public class IoTDBConfig {
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
+  /** whether to enable query metrics monitoring or not. */
+  private boolean queryMetricsEnable = true;
+
   /** Memory allocated for bloomFilter cache in read process */
   private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
 
@@ -2063,6 +2066,14 @@ public class IoTDBConfig {
 
   public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
     this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public boolean isQueryMetricsEnable() {
+    return queryMetricsEnable;
+  }
+
+  public void setQueryMetricsEnable(boolean queryMetricsEnable) {
+    this.queryMetricsEnable = queryMetricsEnable;
   }
 
   public long getAllocateMemoryForBloomFilterCache() {
