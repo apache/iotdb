@@ -68,7 +68,7 @@ public class SchemaFileConfig {
 
   // region Segment Configuration
 
-  public static final int SEG_HEADER_SIZE = 25; // in bytes
+  public static final int SEG_HEADER_SIZE = 25; // (bytes) minimum segment size de facto
   public static final short SEG_OFF_DIG =
       2; // length of short, which is the type of segment offset and index
   public static final short SEG_MAX_SIZ = (short) (PAGE_LENGTH - PAGE_HEADER_SIZE - SEG_OFF_DIG);

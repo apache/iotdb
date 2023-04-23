@@ -79,6 +79,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -433,6 +434,11 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
     return visitStatement(showPathsUsingTemplateStatement, context);
+  }
+
+  public R visitAlterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement, C context) {
+    return visitStatement(alterSchemaTemplateStatement, context);
   }
 
   public R visitShowPipeSink(ShowPipeSinkStatement showPipeSinkStatement, C context) {

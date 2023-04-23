@@ -183,7 +183,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       database =
           ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
-              .getStorageGroupFullPath();
+              .getDatabaseFullPath();
     }
     return database;
   }

@@ -40,8 +40,11 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -57,6 +60,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -101,12 +105,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private final TemplateTable templateTable;
 
+  private final TemplatePreSetTable templatePreSetTable;
+
   public ClusterSchemaInfo() throws IOException {
     databaseReadWriteLock = new ReentrantReadWriteLock();
 
     try {
       mTree = new ConfigMTree();
       templateTable = new TemplateTable();
+      templatePreSetTable = new TemplatePreSetTable();
     } catch (MetadataException e) {
       LOGGER.error("Can't construct ClusterSchemaInfo", e);
       throw new IOException(e);
@@ -551,7 +558,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return processMTreeTakeSnapshot(snapshotDir) && templateTable.processTakeSnapshot(snapshotDir);
+    return processMTreeTakeSnapshot(snapshotDir)
+        && templateTable.processTakeSnapshot(snapshotDir)
+        && templatePreSetTable.processTakeSnapshot(snapshotDir);
   }
 
   public boolean processMTreeTakeSnapshot(File snapshotDir) throws IOException {
@@ -592,6 +601,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void processLoadSnapshot(File snapshotDir) throws IOException {
     processMTreeLoadSnapshot(snapshotDir);
     templateTable.processLoadSnapshot(snapshotDir);
+    templatePreSetTable.processLoadSnapshot(snapshotDir);
   }
 
   public void processMTreeLoadSnapshot(File snapshotDir) throws IOException {
@@ -719,11 +729,82 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
-      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      mTree.setTemplate(templateId, path);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  public synchronized TSStatus preSetSchemaTemplate(
+      PreSetSchemaTemplatePlan preSetSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(preSetSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(preSetSchemaTemplatePlan.getName()).getId();
+      if (preSetSchemaTemplatePlan.isRollback()) {
+        rollbackPreSetSchemaTemplate(templateId, path);
+      } else {
+        preSetSchemaTemplate(templateId, path);
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  private void preSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    templatePreSetTable.preSetTemplate(templateId, templateSetPath);
+    mTree.setTemplate(templateId, templateSetPath);
+  }
+
+  private void rollbackPreSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    try {
+      mTree.unsetTemplate(templateId, templateSetPath);
+    } catch (MetadataException ignore) {
+      // node not exists or not set template
+    }
+    templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
+  }
+
+  public synchronized TSStatus commitSetSchemaTemplate(
+      CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(commitSetSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(commitSetSchemaTemplatePlan.getName()).getId();
+      if (commitSetSchemaTemplatePlan.isRollback()) {
+        rollbackCommitSetSchemaTemplate(templateId, path);
+      } else {
+        commitSetSchemaTemplate(templateId, path);
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  private void commitSetSchemaTemplate(int templateId, PartialPath templateSetPath) {
+    templatePreSetTable.removeSetTemplate(templateId, templateSetPath);
+  }
+
+  private void rollbackCommitSetSchemaTemplate(int templateId, PartialPath templateSetPath)
+      throws MetadataException {
+    mTree.unsetTemplate(templateId, templateSetPath);
   }
 
   public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
@@ -748,21 +829,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public AllTemplateSetInfoResp getAllTemplateSetInfo() {
     List<Template> templateList = templateTable.getAllTemplate();
-    Map<Integer, List<String>> templateSetInfo = new HashMap<>();
+    Map<Integer, List<Pair<String, Boolean>>> templateSetInfo = new HashMap<>();
     int id;
     for (Template template : templateList) {
       id = template.getId();
       try {
         List<String> pathList = mTree.getPathsSetOnTemplate(id, true);
         if (!pathList.isEmpty()) {
-          templateSetInfo.put(id, pathList);
+          List<Pair<String, Boolean>> pathSetInfoList = new ArrayList<>();
+          for (String path : pathList) {
+            pathSetInfoList.add(
+                new Pair<>(path, templatePreSetTable.isPreSet(id, new PartialPath(path))));
+          }
+          templateSetInfo.put(id, pathSetInfoList);
         }
       } catch (MetadataException e) {
         LOGGER.error("Error occurred when get paths set on template {}", id, e);
       }
     }
 
-    Map<Template, List<String>> templateSetInfoMap = new HashMap<>();
+    Map<Template, List<Pair<String, Boolean>>> templateSetInfoMap = new HashMap<>();
     for (Template template : templateList) {
       if (templateSetInfo.containsKey(template.getId())) {
         templateSetInfoMap.put(template, templateSetInfo.get(template.getId()));
@@ -770,7 +856,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     return new AllTemplateSetInfoResp(
-        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(templateSetInfoMap));
+        TemplateInternalRPCUtil.generateAddAllTemplateSetInfoBytes(templateSetInfoMap));
   }
 
   /**
@@ -853,6 +939,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       templateTable.dropTemplate(dropSchemaTemplatePlan.getTemplateName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public TSStatus extendSchemaTemplate(ExtendSchemaTemplatePlan extendSchemaTemplatePlan) {
+    TemplateExtendInfo templateExtendInfo = extendSchemaTemplatePlan.getTemplateExtendInfo();
+    try {
+      templateTable.extendTemplate(templateExtendInfo);
+      return RpcUtils.SUCCESS_STATUS;
     } catch (MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }

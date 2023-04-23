@@ -82,7 +82,7 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
       IDeviceSchemaInfo deviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
       Mockito.when(deviceSchemaInfo.getFullPath())
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
@@ -190,7 +190,7 @@ public class SchemaQueryScanOperatorTest {
       }
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
 
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));

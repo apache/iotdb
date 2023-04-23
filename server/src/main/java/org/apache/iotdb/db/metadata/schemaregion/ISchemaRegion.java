@@ -86,7 +86,7 @@ public interface ISchemaRegion {
   // region Interfaces for schema region Info query and operation
   SchemaRegionId getSchemaRegionId();
 
-  String getStorageGroupFullPath();
+  String getDatabaseFullPath();
 
   // delete this schemaRegion and clear all resources
   void deleteSchemaRegion() throws MetadataException;

@@ -41,14 +41,13 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
@@ -76,8 +75,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
@@ -169,13 +166,6 @@ public interface IManager {
   TriggerManager getTriggerManager();
 
   /**
-   * Get SyncManager
-   *
-   * @return SyncManager instance
-   */
-  SyncManager getSyncManager();
-
-  /**
    * Get ProcedureManager
    *
    * @return ProcedureManager instance
@@ -188,6 +178,13 @@ public interface IManager {
    * @return CQManager instance
    */
   CQManager getCQManager();
+
+  /**
+   * Get ModelManager
+   *
+   * @return ModelManager instance
+   */
+  ModelManager getModelManager();
 
   /**
    * Get PipeManager
@@ -543,35 +540,13 @@ public interface IManager {
   /** Drop schema template */
   TSStatus dropSchemaTemplate(String templateName);
 
+  TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
+
   /*
    * delete timeseries
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
-
-  /**
-   * Create PipeSink
-   *
-   * @param plan Info about PipeSink
-   * @return TSStatus
-   */
-  TSStatus createPipeSink(CreatePipeSinkPlan plan);
-
-  /**
-   * Drop PipeSink
-   *
-   * @param plan Name of PipeSink
-   * @return TSStatus
-   */
-  TSStatus dropPipeSink(DropPipeSinkPlan plan);
-
-  /**
-   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
-   *
-   * @param req specify the pipeSinkName
-   * @return TGetPipeSinkResp contains the PipeSink
-   */
-  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
 
   /**
    * Create Pipe
