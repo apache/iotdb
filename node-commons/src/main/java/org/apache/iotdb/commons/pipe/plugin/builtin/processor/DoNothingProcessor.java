@@ -17,5 +17,52 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.processor;public class DoNothingProcessor {
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor;
+
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+
+import java.io.IOException;
+
+public class DoNothingProcessor implements PipeProcessor {
+
+  @Override
+  public void validate(PipeParameterValidator validator) {
+    // do nothing
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
+    // do nothing
+  }
+
+  @Override
+  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collectTabletInsertionEvent(tabletInsertionEvent);
+  }
+
+  @Override
+  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collectTsFileInsertionEvent(tsFileInsertionEvent);
+  }
+
+  @Override
+  public void process(DeletionEvent deletionEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collectDeletionEvent(deletionEvent);
+  }
+
+  @Override
+  public void close() {
+    // do nothing
+  }
 }

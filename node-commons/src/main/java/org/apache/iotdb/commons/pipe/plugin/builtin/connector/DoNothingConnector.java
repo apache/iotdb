@@ -17,5 +17,56 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;public class DoNothingConnector {
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+
+public class DoNothingConnector implements PipeConnector {
+
+  @Override
+  public void validate(PipeParameterValidator validator) {
+    // do nothing
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
+    // do nothing
+  }
+
+  @Override
+  public void handshake() {
+    // do nothing
+  }
+
+  @Override
+  public void heartbeat() {
+    // do nothing
+  }
+
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+    // do nothing
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
+    // do nothing
+  }
+
+  @Override
+  public void transfer(DeletionEvent deletionEvent) {
+    // do nothing
+  }
+
+  @Override
+  public void close() {
+    // do nothing
+  }
 }

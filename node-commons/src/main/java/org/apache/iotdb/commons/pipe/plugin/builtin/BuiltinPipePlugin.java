@@ -17,5 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin;public enum BuiltinPipePlugin {
+package org.apache.iotdb.commons.pipe.plugin.builtin;
+
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+
+public enum BuiltinPipePlugin {
+
+  // processors
+  DO_NOTHING_PROCESSOR("do_nothing_processor", DoNothingProcessor.class),
+
+  // connectors
+  DO_NOTHING_CONNECTOR("do_nothing_connector", DoNothingConnector.class),
+  ;
+
+  private final String pipePluginName;
+  private final Class<?> pipePluginClass;
+  private final String className;
+
+  BuiltinPipePlugin(String functionName, Class<?> pipePluginClass) {
+    this.pipePluginName = functionName;
+    this.pipePluginClass = pipePluginClass;
+    this.className = pipePluginClass.getName();
+  }
+
+  public String getPipePluginName() {
+    return pipePluginName;
+  }
+
+  public Class<?> getPipePluginClass() {
+    return pipePluginClass;
+  }
+
+  public String getClassName() {
+    return className;
+  }
 }
