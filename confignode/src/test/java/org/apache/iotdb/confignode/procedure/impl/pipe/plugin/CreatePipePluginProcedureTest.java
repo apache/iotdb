@@ -39,7 +39,7 @@ public class CreatePipePluginProcedureTest {
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
     PipePluginMeta pipePluginMeta =
-        new PipePluginMeta("test", "test.class", "test.jar", "testMD5test");
+        new PipePluginMeta("test", "test.class", false, "test.jar", "testMD5test");
     CreatePipePluginProcedure proc =
         new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3});
 

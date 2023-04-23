@@ -39,11 +39,12 @@ public class PipePluginMeta {
   private final String jarName;
   private final String jarMD5;
 
-  public PipePluginMeta(String pluginName, String className, String jarName, String jarMD5) {
+  public PipePluginMeta(
+      String pluginName, String className, boolean isBuiltin, String jarName, String jarMD5) {
     this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
     this.className = Objects.requireNonNull(className);
 
-    isBuiltin = false;
+    this.isBuiltin = isBuiltin;
     this.jarName = Objects.requireNonNull(jarName);
     this.jarMD5 = Objects.requireNonNull(jarMD5);
   }
@@ -84,13 +85,10 @@ public class PipePluginMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  /**
-   * All built-in plugins' information is kept in Java class {@code BuiltinPipePlugin }. So we never
-   * serialize the built-in plugins, then we don't need to serialize the isBuiltin field.
-   */
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pluginName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
+    ReadWriteIOUtils.write(isBuiltin, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(jarMD5, outputStream);
   }
@@ -98,9 +96,10 @@ public class PipePluginMeta {
   public static PipePluginMeta deserialize(ByteBuffer byteBuffer) {
     final String pluginName = ReadWriteIOUtils.readString(byteBuffer);
     final String className = ReadWriteIOUtils.readString(byteBuffer);
+    final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
     final String jarName = ReadWriteIOUtils.readString(byteBuffer);
     final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipePluginMeta(pluginName, className, jarName, jarMD5);
+    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {

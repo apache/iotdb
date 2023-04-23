@@ -84,7 +84,7 @@ public class PipeInfoTest {
 
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
-            new PipePluginMeta("testPlugin", "org.apache.iotdb.testJar", "testJar", "???"),
+            new PipePluginMeta("testPlugin", "org.apache.iotdb.testJar", false, "testJar", "???"),
             new Binary("123"));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
