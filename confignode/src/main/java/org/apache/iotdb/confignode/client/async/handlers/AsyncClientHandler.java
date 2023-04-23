@@ -23,10 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.OperatePipeRPCHandler;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 
@@ -176,16 +177,6 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
             countDownLatch);
-      case PRE_CREATE_PIPE:
-      case OPERATE_PIPE:
-      case ROLLBACK_OPERATE_PIPE:
-        return new OperatePipeRPCHandler(
-            requestType,
-            requestId,
-            targetDataNode,
-            dataNodeLocationMap,
-            (Map<Integer, TSStatus>) responseMap,
-            countDownLatch);
       case COUNT_PATHS_USING_TEMPLATE:
         return new CountPathsUsingTemplateRPCHandler(
             requestType,
@@ -193,6 +184,14 @@ public class AsyncClientHandler<Q, R> {
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
+            countDownLatch);
+      case CHECK_TIMESERIES_EXISTENCE:
+        return new CheckTimeSeriesExistenceRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCheckTimeSeriesExistenceResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:

@@ -45,6 +45,7 @@ ddlStatement
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
+    | alterSchemaTemplate
     // TTL
     | setTTL | unsetTTL | showTTL | showAllTTL
     // Function
@@ -267,6 +268,10 @@ setSchemaTemplate
 // ---- Unset Schema Template
 unsetSchemaTemplate
     : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    ;
+
+alterSchemaTemplate
+    : ALTER SCHEMA TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 
@@ -1002,12 +1007,18 @@ intoPath
 
 nodeName
     : wildcard
-    | wildcard? identifier wildcard?
-    | identifier
+    | wildcard nodeNameSlice wildcard?
+    | nodeNameSlice wildcard
+    | nodeNameWithoutWildcard
     ;
 
 nodeNameWithoutWildcard
     : identifier
+    ;
+
+nodeNameSlice
+    : identifier
+    | INTEGER_LITERAL
     ;
 
 nodeNameInIntoPath

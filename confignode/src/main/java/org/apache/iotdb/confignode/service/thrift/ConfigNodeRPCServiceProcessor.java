@@ -55,8 +55,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
@@ -69,6 +67,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -848,23 +847,34 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+    return configManager.alterSchemaTemplate(req);
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     return configManager.deleteTimeSeries(req);
   }
 
   @Override
+  @Deprecated
   public TSStatus createPipeSink(TPipeSinkInfo req) {
-    return configManager.createPipeSink(new CreatePipeSinkPlan(req));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TSStatus dropPipeSink(TDropPipeSinkReq req) {
-    return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    return configManager.getPipeSink(req);
+    // To be deleted
+    return new TGetPipeSinkResp();
   }
 
   @Override
@@ -893,11 +903,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  @Deprecated
   public TGetAllPipeInfoResp getAllPipeInfo() {
     return configManager.getAllPipeInfo();
   }
 
   @Override
+  @Deprecated
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
     return configManager.recordPipeMessage(req);
   }

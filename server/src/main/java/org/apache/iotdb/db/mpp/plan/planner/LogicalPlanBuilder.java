@@ -178,12 +178,16 @@ public class LogicalPlanBuilder {
             new SeriesScanNode(
                 context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
         seriesScanNode.setTimeFilter(timeFilter);
+        // TODO: push down value filter
+        seriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(seriesScanNode);
       } else if (path instanceof AlignedPath) { // aligned series
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
                 context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
         alignedSeriesScanNode.setTimeFilter(timeFilter);
+        // TODO: push down value filter
+        alignedSeriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(alignedSeriesScanNode);
       } else {
         throw new IllegalArgumentException("unexpected path type");
@@ -780,6 +784,8 @@ public class LogicalPlanBuilder {
               scanOrder,
               groupByTimeParameter);
       seriesAggregationScanNode.setTimeFilter(timeFilter);
+      // TODO: push down value filter
+      seriesAggregationScanNode.setValueFilter(timeFilter);
       return seriesAggregationScanNode;
     } else if (selectPath instanceof AlignedPath) { // aligned series
       AlignedSeriesAggregationScanNode alignedSeriesAggregationScanNode =
@@ -790,6 +796,8 @@ public class LogicalPlanBuilder {
               scanOrder,
               groupByTimeParameter);
       alignedSeriesAggregationScanNode.setTimeFilter(timeFilter);
+      // TODO: push down value filter
+      alignedSeriesAggregationScanNode.setValueFilter(timeFilter);
       return alignedSeriesAggregationScanNode;
     } else {
       throw new IllegalArgumentException("unexpected path type");

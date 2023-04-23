@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -3033,6 +3035,31 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.ALIGNED() != null);
   }
 
+  @Override
+  public Statement visitAlterSchemaTemplate(IoTDBSqlParser.AlterSchemaTemplateContext ctx) {
+    String name = parseIdentifier(ctx.templateName.getText());
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+
+    for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+        ctx.templateMeasurementClause()) {
+      measurements.add(
+          parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
+      parseAttributeClause(
+          templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+    }
+
+    return new AlterSchemaTemplateStatement(
+        name,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        TemplateAlterOperationType.EXTEND_TEMPLATE);
+  }
+
   void parseAttributeClause(
       IoTDBSqlParser.AttributeClausesContext ctx,
       List<TSDataType> dataTypes,
@@ -3468,9 +3495,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseAttributeValue(attributePair.attributeValue()));
     }
 
+    quotas
+        .keySet()
+        .forEach(
+            quotaType -> {
+              switch (quotaType) {
+                case IoTDBConstant.COLUMN_DEVICES:
+                  break;
+                case IoTDBConstant.COLUMN_TIMESERIES:
+                  break;
+                case IoTDBConstant.SPACE_QUOTA_DISK:
+                  break;
+                default:
+                  throw new SemanticException("Wrong space quota type: " + quotaType);
+              }
+            });
+
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
       if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDeviceNum(-1);
+        setSpaceQuotaStatement.setDeviceNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
         throw new SemanticException("Please set the number of devices greater than 0");
       } else {
@@ -3480,7 +3523,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
       if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setTimeSeriesNum(-1);
+        setSpaceQuotaStatement.setTimeSeriesNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
         throw new SemanticException("Please set the number of timeseries greater than 0");
       } else {
@@ -3490,7 +3533,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
       if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDiskSize(-1);
+        setSpaceQuotaStatement.setDiskSize(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         setSpaceQuotaStatement.setDiskSize(
             parseSpaceQuotaSizeUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
@@ -3520,9 +3563,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       TTimedQuota timedQuota;
       String request = quotas.get(IoTDBConstant.REQUEST_NUM_PER_UNIT_TIME);
       if (request.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        timedQuota = new TTimedQuota(1000, Long.MAX_VALUE);
+        timedQuota = new TTimedQuota(IoTDBConstant.SEC, Long.MAX_VALUE);
       } else {
-        String[] split = request.toLowerCase().split("req/");
+        String[] split = request.toLowerCase().split(IoTDBConstant.REQ_SPLIT_UNIT);
         if (Long.parseLong(split[0]) < 0) {
           throw new SemanticException("Please set the number of requests greater than 0");
         }
@@ -3550,7 +3593,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       TTimedQuota timedQuota;
       String size = quotas.get(IoTDBConstant.REQUEST_SIZE_PER_UNIT_TIME);
       if (size.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        timedQuota = new TTimedQuota(1000, Long.MAX_VALUE);
+        timedQuota = new TTimedQuota(IoTDBConstant.SEC, Long.MAX_VALUE);
       } else {
         String[] split = size.toLowerCase().split("/");
         timedQuota =
@@ -3577,7 +3620,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (quotas.containsKey(IoTDBConstant.MEMORY_SIZE_PER_READ)) {
       String mem = quotas.get(IoTDBConstant.MEMORY_SIZE_PER_READ);
       if (mem.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setThrottleQuotaStatement.setMemLimit(-1);
+        setThrottleQuotaStatement.setMemLimit(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         setThrottleQuotaStatement.setMemLimit(parseThrottleQuotaSizeUnit(mem));
       }
@@ -3586,7 +3629,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (quotas.containsKey(IoTDBConstant.CPU_NUMBER_PER_READ)) {
       String cpuLimit = quotas.get(IoTDBConstant.CPU_NUMBER_PER_READ);
       if (cpuLimit.contains(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setThrottleQuotaStatement.setCpuLimit(-1);
+        setThrottleQuotaStatement.setCpuLimit(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         int cpuNum = Integer.parseInt(cpuLimit);
         if (cpuNum <= 0) {
@@ -3613,14 +3656,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private long parseThrottleQuotaTimeUnit(String timeUnit) {
     switch (timeUnit.toLowerCase()) {
-      case "sec":
-        return 1000;
-      case "min":
-        return 60 * 1000;
-      case "hour":
-        return 60 * 60 * 1000;
-      case "day":
-        return 24 * 60 * 60 * 1000;
+      case IoTDBConstant.SEC_UNIT:
+        return IoTDBConstant.SEC;
+      case IoTDBConstant.MIN_UNIT:
+        return IoTDBConstant.MIN;
+      case IoTDBConstant.HOUR_UNIT:
+        return IoTDBConstant.HOUR;
+      case IoTDBConstant.DAY_UNIT:
+        return IoTDBConstant.DAY;
       default:
         throw new SemanticException(
             "When setting the request, the unit is incorrect. Please use 'sec', 'min', 'hour', 'day' as the unit");
@@ -3633,19 +3676,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (size <= 0) {
       throw new SemanticException("Please set the size greater than 0");
     }
-    switch (unit.toLowerCase()) {
-      case "b":
+    switch (unit.toUpperCase()) {
+      case IoTDBConstant.B_UNIT:
         return size;
-      case "k":
-        return size * 1024;
-      case "m":
-        return size * 1024 * 1024;
-      case "g":
-        return size * 1024 * 1024 * 1024;
-      case "t":
-        return size * 1024 * 1024 * 1024 * 1024;
-      case "p":
-        return size * 1024 * 1024 * 1024 * 1024 * 1024;
+      case IoTDBConstant.KB_UNIT:
+        return size * IoTDBConstant.KB;
+      case IoTDBConstant.MB_UNIT:
+        return size * IoTDBConstant.MB;
+      case IoTDBConstant.GB_UNIT:
+        return size * IoTDBConstant.GB;
+      case IoTDBConstant.TB_UNIT:
+        return size * IoTDBConstant.TB;
+      case IoTDBConstant.PB_UNIT:
+        return size * IoTDBConstant.PB;
       default:
         throw new SemanticException(
             "When setting the size/time, the unit is incorrect. Please use 'B', 'K', 'M', 'G', 'P', 'T' as the unit");
@@ -3658,15 +3701,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (disk <= 0) {
       throw new SemanticException("Please set the disk size greater than 0");
     }
-    switch (unit.toLowerCase()) {
-      case "m":
+    switch (unit.toUpperCase()) {
+      case IoTDBConstant.MB_UNIT:
         return disk;
-      case "g":
-        return disk * 1024;
-      case "t":
-        return disk * 1024 * 1024;
-      case "p":
-        return disk * 1024 * 1024 * 1024;
+      case IoTDBConstant.GB_UNIT:
+        return disk * IoTDBConstant.KB;
+      case IoTDBConstant.TB_UNIT:
+        return disk * IoTDBConstant.MB;
+      case IoTDBConstant.PB_UNIT:
+        return disk * IoTDBConstant.GB;
       default:
         throw new SemanticException(
             "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");
