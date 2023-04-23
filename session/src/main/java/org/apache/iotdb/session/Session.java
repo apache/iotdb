@@ -40,6 +40,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -1746,14 +1747,36 @@ public class Session implements ISession {
     request.addToValuesList(values);
   }
 
-  // TODO: (FASTWRITE) (曹志杰) 实现该接口
   @Override
   public void fastInsertRecords(
       List<String> deviceIds,
       List<Long> times,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {}
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = deviceIds.size();
+    if (len != times.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException("deviceIds, times and valuesList's size should be equal");
+    }
+    if (enableRedirection) {
+      fastInsertRecordsWithLeaderCache(deviceIds, times, typesList, valuesList);
+    } else {
+      TSFastInsertRecordsReq request;
+      try {
+        request = genTSFastInsertRecordsReq(deviceIds, times, typesList, valuesList);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}]",
+            deviceIds.toString(),
+            times.toString());
+        return;
+      }
+      try {
+        defaultSessionConnection.fastInsertRecords(request);
+      } catch (RedirectException ignored) {
+      }
+    }
+  }
 
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
@@ -2335,6 +2358,31 @@ public class Session implements ISession {
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
   }
 
+  private void fastInsertRecordsWithLeaderCache(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Map<SessionConnection, TSFastInsertRecordsReq> recordsGroup = new HashMap<>();
+    for (int i = 0; i < deviceIds.size(); i++) {
+      final SessionConnection connection = getSessionConnection(deviceIds.get(i));
+      TSFastInsertRecordsReq request =
+          recordsGroup.getOrDefault(connection, new TSFastInsertRecordsReq());
+      try {
+        updateTSFastInsertRecordsReq(
+            request, deviceIds.get(i), times.get(i), typesList.get(i), valuesList.get(i));
+        recordsGroup.putIfAbsent(connection, request);
+      } catch (NoValidValueException e) {
+        logger.warn(
+            "All values are null and this submission is ignored,deviceId is [{}],time is [{}]",
+            deviceIds.get(i),
+            times.get(i));
+      }
+    }
+    insertByGroup(recordsGroup, SessionConnection::fastInsertRecords);
+  }
+
   private TSInsertRecordsReq filterAndGenTSInsertRecordsReq(
       List<String> deviceIds,
       List<Long> times,
@@ -2373,6 +2421,20 @@ public class Session implements ISession {
     return request;
   }
 
+  private TSFastInsertRecordsReq genTSFastInsertRecordsReq(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException {
+    TSFastInsertRecordsReq request = new TSFastInsertRecordsReq();
+    request.setPrefixPaths(deviceIds);
+    request.setTimestamps(times);
+    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    request.setValuesList(buffersList);
+    return request;
+  }
+
   private void filterAndUpdateTSInsertRecordsReq(
       TSInsertRecordsReq request,
       String deviceId,
@@ -2404,9 +2466,22 @@ public class Session implements ISession {
       throws IoTDBConnectionException {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
-    // TODO: (FASTWRITE) 不需要再添加 measurement 的信息
     request.addToMeasurementsList(measurements);
     ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
+    request.addToValuesList(buffer);
+  }
+
+  private void updateTSFastInsertRecordsReq(
+      TSFastInsertRecordsReq request,
+      String deviceId,
+      Long time,
+      List<TSDataType> types,
+      List<Object> values)
+      throws IoTDBConnectionException {
+    request.addToPrefixPaths(deviceId);
+    request.addToTimestamps(time);
+    ByteBuffer buffer =
+        ByteBuffer.allocate(SessionUtils.calculateLengthForFastInsert(types, values));
     request.addToValuesList(buffer);
   }
 

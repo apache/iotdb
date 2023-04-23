@@ -29,7 +29,9 @@ public class FastInsertRowsNode extends InsertRowsNode {
   }
 
   public FastInsertRowsNode(
-      PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> fastInsertRowNodeList) {
+      PlanNodeId id,
+      List<Integer> insertRowNodeIndexList,
+      List<InsertRowNode> fastInsertRowNodeList) {
     super(id, insertRowNodeIndexList, fastInsertRowNodeList);
   }
 }

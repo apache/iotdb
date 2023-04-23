@@ -19,26 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.nio.ByteBuffer;
 
 public class FastInsertRowNode extends InsertRowNode {
 
   private ByteBuffer rawValues;
 
-
   public FastInsertRowNode(PlanNodeId id) {
     super(id);
   }
 
-  public FastInsertRowNode(
-      PlanNodeId id,
-      PartialPath devicePath,
-      long time,
-      ByteBuffer values) {
+  public FastInsertRowNode(PlanNodeId id, PartialPath devicePath, long time, ByteBuffer values) {
     super(id, devicePath, true, null, null, time, null, false);
     this.rawValues = values;
   }

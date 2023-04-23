@@ -17,12 +17,11 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import java.nio.ByteBuffer;
 
-public class FastInsertRowStatement extends InsertRowStatement{
+public class FastInsertRowStatement extends InsertRowStatement {
 
   private ByteBuffer rawValues;
 
@@ -33,5 +32,4 @@ public class FastInsertRowStatement extends InsertRowStatement{
   public ByteBuffer getRawValues() {
     return rawValues;
   }
-
 }

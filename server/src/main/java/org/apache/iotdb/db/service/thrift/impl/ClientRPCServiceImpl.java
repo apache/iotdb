@@ -1216,8 +1216,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-//      req.setMeasurementsList(
-//          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      //      req.setMeasurementsList(
+      //          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1:  transfer from TSInsertRecordsReq to Statement
       InsertRowsStatement statement = StatementGenerator.createStatement(req);
@@ -1237,14 +1237,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // permission check
       // CANNOT checkAuthority
-//      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
-//      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-//        return status;
-//      }
-//
-//      quota =
-//          DataNodeThrottleQuotaManager.getInstance()
-//              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
+      //      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      //      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      //        return status;
+      //      }
+      //
+      //      quota =
+      //          DataNodeThrottleQuotaManager.getInstance()
+      //              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();

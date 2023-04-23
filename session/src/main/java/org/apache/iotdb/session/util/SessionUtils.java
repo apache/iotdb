@@ -79,8 +79,6 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
       throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
-    // TODO: (FASTWRITE) putValues 时可以少写一个字节的 Type
-    SessionUtils.putValues(types, values, buffer);
     return buffer;
   }
 
@@ -121,6 +119,41 @@ public class SessionUtils {
     return res;
   }
 
+  public static int calculateLengthForFastInsert(List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException {
+    int res = 0;
+    for (int i = 0; i < types.size(); i++) {
+      // types
+      switch (types.get(i)) {
+        case BOOLEAN:
+          res += 1;
+          break;
+        case INT32:
+          res += Integer.BYTES;
+          break;
+        case INT64:
+          res += Long.BYTES;
+          break;
+        case FLOAT:
+          res += Float.BYTES;
+          break;
+        case DOUBLE:
+          res += Double.BYTES;
+          break;
+        case TEXT:
+          res += Integer.BYTES;
+          if (values.get(i) instanceof Binary) {
+            res += ((Binary) values.get(i)).getValues().length;
+          } else {
+            res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          }
+          break;
+        default:
+          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+      }
+    }
+    return res;
+  }
   /**
    * put value in buffer
    *
@@ -136,7 +169,6 @@ public class SessionUtils {
         ReadWriteIOUtils.write(TYPE_NULL, buffer);
         continue;
       }
-      ReadWriteIOUtils.write(types.get(i), buffer);
       switch (types.get(i)) {
         case BOOLEAN:
           ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
