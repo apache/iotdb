@@ -394,9 +394,6 @@ public class StatementGenerator {
       statement.setTime(req.getTimestamps().get(i));
       statement.setValues(req.valuesList.get(i));
       // skip empty statement
-      if (statement.isEmpty()) {
-        continue;
-      }
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
