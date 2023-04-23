@@ -248,8 +248,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("ShuffleSinkHandle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("ShuffleSinkHandle is closed.");
     }
   }
 
