@@ -403,6 +403,8 @@ public class ColumnTransformerVisitor
               inputLocations.get(0).getValueColumnIndex());
       // add to leafList
       context.leafList.add(identity);
+      context.inputDataTypes.add(context.getType(expression));
+      context.cache.put(expression, identity);
       return true;
     }
     return false;
