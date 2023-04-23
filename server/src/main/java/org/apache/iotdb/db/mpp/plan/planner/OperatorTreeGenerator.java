@@ -2140,7 +2140,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         lastQueryScan,
         unCachedPath,
         DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache());
+        context.isNeedUpdateLastCache(),
+        context.getLastQueryComparator());
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(
@@ -2284,6 +2285,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         (items.isEmpty() || items.get(0).getOrdering() == Ordering.ASC)
             ? ASC_BINARY_COMPARATOR
             : DESC_BINARY_COMPARATOR;
+    context.setLastQueryComparator(comparator);
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new LastQueryMergeOperator(operatorContext, children, comparator);

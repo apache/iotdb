@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,6 +46,8 @@ public class LastQueryUtil {
 
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LastQueryUtil.class);
 
   public static TsBlockBuilder createTsBlockBuilder() {
     return new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
@@ -104,15 +108,20 @@ public class LastQueryUtil {
   }
 
   public static void appendLastValue(TsBlockBuilder builder, TsBlock tsBlock, int index) {
-    // Time
-    builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(index));
-    // timeseries
-    builder.getColumnBuilder(0).writeBinary(tsBlock.getColumn(0).getBinary(index));
-    // value
-    builder.getColumnBuilder(1).writeBinary(tsBlock.getColumn(1).getBinary(index));
-    // dataType
-    builder.getColumnBuilder(2).writeBinary(tsBlock.getColumn(2).getBinary(index));
-    builder.declarePosition();
+    try {
+      // Time
+      builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(index));
+      // timeseries
+      builder.getColumnBuilder(0).writeBinary(tsBlock.getColumn(0).getBinary(index));
+      // value
+      builder.getColumnBuilder(1).writeBinary(tsBlock.getColumn(1).getBinary(index));
+      // dataType
+      builder.getColumnBuilder(2).writeBinary(tsBlock.getColumn(2).getBinary(index));
+      builder.declarePosition();
+    } catch (NullPointerException e) {
+      LOGGER.warn("NPE at index {}, TsBlock is {}", index, tsBlock);
+      throw e;
+    }
   }
 
   public static int compareTimeSeries(

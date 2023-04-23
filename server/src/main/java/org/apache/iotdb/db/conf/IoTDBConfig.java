@@ -544,7 +544,7 @@ public class IoTDBConfig {
   private boolean enableQueryMemoryEstimation = true;
 
   /** Whether to enable Last cache */
-  private boolean lastCacheEnable = true;
+  private boolean lastCacheEnable = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;

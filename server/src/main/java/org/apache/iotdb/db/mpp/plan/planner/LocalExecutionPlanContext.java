@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +79,9 @@ public class LocalExecutionPlanContext {
   private Filter lastQueryTimeFilter;
   // whether we need to update last cache
   private boolean needUpdateLastCache;
+
+  // used to sort temp results of operators of last query, default ASC
+  private Comparator<Binary> lastQueryComparator = Comparator.naturalOrder();
 
   // for data region
   public LocalExecutionPlanContext(
@@ -222,6 +226,14 @@ public class LocalExecutionPlanContext {
 
   public void setNeedUpdateLastCache(boolean needUpdateLastCache) {
     this.needUpdateLastCache = needUpdateLastCache;
+  }
+
+  public Comparator<Binary> getLastQueryComparator() {
+    return lastQueryComparator;
+  }
+
+  public void setLastQueryComparator(Comparator<Binary> lastQueryComparator) {
+    this.lastQueryComparator = lastQueryComparator;
   }
 
   public void addCachedLastValue(TimeValuePair timeValuePair, String fullPath) {

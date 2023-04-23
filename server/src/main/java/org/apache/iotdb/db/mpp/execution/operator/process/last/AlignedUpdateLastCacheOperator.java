@@ -25,9 +25,17 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
 
@@ -38,15 +46,23 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
   private final PartialPath devicePath;
 
+  private final Comparator<Binary> comparator;
+
+  // use this List to ensure that the TsBlock we
+  private final List<LastValueEntry> lastValueEntryList;
+
   public AlignedUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
+      boolean needUpdateCache,
+      Comparator<Binary> comparator) {
     super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
+    this.comparator = comparator;
+    this.lastValueEntryList = new ArrayList<>();
   }
 
   @Override
@@ -76,14 +92,47 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
         }
-        LastQueryUtil.appendLastValue(
-            tsBlockBuilder,
-            lastTime,
-            measurementPath.getFullPath(),
-            lastValue.getStringValue(),
-            seriesPath.getSchemaList().get(i / 2).getType().name());
+        lastValueEntryList.add(
+            new LastValueEntry(
+                lastTime,
+                new Binary(measurementPath.getFullPath()),
+                lastValue,
+                seriesPath.getSchemaList().get(i / 2).getType()));
       }
     }
+    ;
+    lastValueEntryList.sort(
+        Comparator.comparing(lastValueEntry -> lastValueEntry.fullPath, comparator));
+    for (LastValueEntry lastValueEntry : lastValueEntryList) {
+      LastQueryUtil.appendLastValue(
+          tsBlockBuilder,
+          lastValueEntry.lastTime,
+          lastValueEntry.fullPath.getStringValue(),
+          lastValueEntry.lastValue.getStringValue(),
+          lastValueEntry.dataType.name());
+    }
+    lastValueEntryList.clear();
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
+  }
+
+  class LastValueEntry implements Comparable<LastValueEntry> {
+    private long lastTime;
+    private Binary fullPath;
+
+    private TsPrimitiveType lastValue;
+    private TSDataType dataType;
+
+    public LastValueEntry(
+        long lastTime, Binary fullPath, TsPrimitiveType lastValue, TSDataType dataType) {
+      this.lastTime = lastTime;
+      this.fullPath = fullPath;
+      this.lastValue = lastValue;
+      this.dataType = dataType;
+    }
+
+    @Override
+    public int compareTo(@NotNull LastValueEntry o) {
+      return this.fullPath.compareTo(o.fullPath);
+    }
   }
 }
