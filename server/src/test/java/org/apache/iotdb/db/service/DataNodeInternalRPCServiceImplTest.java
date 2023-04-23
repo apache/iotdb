@@ -43,8 +43,9 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeBatchResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeSingleReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -61,11 +62,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DataNodeInternalRPCServiceImplTest {
+
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static final int dataNodeId = 0;
@@ -145,16 +148,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendPlanNodeSingleReq request = new TSendPlanNodeSingleReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeBatchResp response =
+        dataNodeInternalRPCServiceImpl.sendPlanNode(
+            new TSendPlanNodeBatchReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   @Test
@@ -221,16 +226,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createAlignedTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendPlanNodeSingleReq request = new TSendPlanNodeSingleReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeBatchResp response =
+        dataNodeInternalRPCServiceImpl.sendPlanNode(
+            new TSendPlanNodeBatchReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   @Test
@@ -308,16 +315,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createMultiTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendPlanNodeSingleReq request = new TSendPlanNodeSingleReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeBatchResp response =
+        dataNodeInternalRPCServiceImpl.sendPlanNode(
+            new TSendPlanNodeBatchReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   private TRegionReplicaSet genRegionReplicaSet() {

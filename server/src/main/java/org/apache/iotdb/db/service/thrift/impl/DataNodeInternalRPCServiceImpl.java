@@ -175,8 +175,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeBatchResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeSingleResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -289,18 +290,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req) {
-    LOGGER.debug("receive PlanNode to group[{}]", req.getConsensusGroupId());
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
-    RegionWriteExecutor executor = new RegionWriteExecutor();
-    TSendPlanNodeResp resp = new TSendPlanNodeResp();
-    RegionExecutionResult executionResult = executor.execute(groupId, planNode);
-    resp.setAccepted(executionResult.isAccepted());
-    resp.setMessage(executionResult.getMessage());
-    resp.setStatus(executionResult.getStatus());
-    return resp;
+  public TSendPlanNodeBatchResp sendPlanNode(TSendPlanNodeBatchReq req) {
+    TSendPlanNodeBatchResp responses = new TSendPlanNodeBatchResp();
+    req.getRequests()
+        .forEach(
+            request -> {
+              ConsensusGroupId groupId =
+                  ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                      request.getConsensusGroupId());
+              PlanNode planNode = PlanNodeType.deserialize(request.planNode.body);
+              RegionWriteExecutor executor = new RegionWriteExecutor();
+              TSendPlanNodeSingleResp resp = new TSendPlanNodeSingleResp();
+              RegionExecutionResult executionResult = executor.execute(groupId, planNode);
+              resp.setAccepted(executionResult.isAccepted());
+              resp.setMessage(executionResult.getMessage());
+              resp.setStatus(executionResult.getStatus());
+              responses.addToResponses(resp);
+            });
+    return responses;
   }
 
   @Override

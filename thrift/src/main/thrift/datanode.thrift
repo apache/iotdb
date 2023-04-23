@@ -118,12 +118,20 @@ struct TSendFragmentInstanceResp {
   2: optional string message
 }
 
-struct TSendPlanNodeReq {
+struct TSendPlanNodeBatchReq {
+  1: required list<TSendPlanNodeSingleReq> requests;
+}
+
+struct TSendPlanNodeSingleReq {
   1: required TPlanNode planNode
   2: required common.TConsensusGroupId consensusGroupId
 }
 
-struct TSendPlanNodeResp {
+struct TSendPlanNodeBatchResp {
+  1: required list<TSendPlanNodeSingleResp> responses;
+}
+
+struct TSendPlanNodeSingleResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
@@ -472,7 +480,7 @@ service IDataNodeRPCService {
   /**
   * dispatch PlanNode to remote node for write request in order to save resource
   */
-  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
+  TSendPlanNodeBatchResp sendPlanNode(TSendPlanNodeBatchReq req);
 
   TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
