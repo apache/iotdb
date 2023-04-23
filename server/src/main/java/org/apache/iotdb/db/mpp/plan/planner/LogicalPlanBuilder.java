@@ -69,6 +69,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowConcatNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowSplitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -1190,6 +1192,26 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planWindowSplit(GroupByTimeParameter parameter) {
+    this.root =
+        new WindowSplitNode(
+            context.getQueryId().genPlanNodeId(),
+            root,
+            parameter.getInterval(),
+            parameter.getSlidingStep());
+    return this;
+  }
+
+  public LogicalPlanBuilder planWindowConcat(GroupByTimeParameter parameter) {
+    this.root =
+        new WindowConcatNode(
+            context.getQueryId().genPlanNodeId(),
+            root,
+            parameter.getInterval(),
+            parameter.getSlidingStep());
     return this;
   }
 }

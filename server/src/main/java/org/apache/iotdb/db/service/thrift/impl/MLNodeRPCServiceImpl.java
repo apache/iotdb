@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -204,7 +205,59 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
 
   @Override
   public TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req) throws TException {
-    throw new TException(new UnsupportedOperationException().getCause());
+    TFetchWindowBatchResp resp = new TFetchWindowBatchResp();
+    boolean finished = false;
+    Throwable t = null;
+    try {
+      FetchWindowBatchStatement statement = StatementGenerator.createStatement(req);
+
+      long queryId =
+          SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        resp.setStatus(result.status);
+        return resp;
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+
+        DatasetHeader header = queryExecution.getDatasetHeader();
+        resp.setStatus(result.status);
+        resp.setColumnNameList(header.getRespColumns());
+        resp.setColumnTypeList(header.getRespDataTypeList());
+        resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
+        resp.setQueryId(queryId);
+
+        Pair<List<ByteBuffer>, Boolean> pair =
+            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
+        resp.setWindowDataset(pair.left);
+        finished = pair.right;
+        resp.setHasMoreData(!finished);
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      resp.setStatus(onQueryException(e, OperationType.EXECUTE_STATEMENT));
+      return resp;
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      if (finished) {
+        COORDINATOR.cleanupQueryExecution(resp.queryId, t);
+      }
+    }
   }
 
   @Override

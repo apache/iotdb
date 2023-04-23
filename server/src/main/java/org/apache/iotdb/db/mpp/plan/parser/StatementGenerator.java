@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -68,6 +70,8 @@ import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGroupByTimeParameter;
 import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -887,5 +891,29 @@ public class StatementGenerator {
             + TsFileConstant.PATH_SEPARATOR
             + MULTI_LEVEL_PATH_WILDCARD;
     return new DeleteTimeSeriesStatement(Collections.singletonList(new PartialPath(path)));
+  }
+
+  public static FetchWindowBatchStatement createStatement(TFetchWindowBatchReq req)
+      throws IllegalPathException {
+    FetchWindowBatchStatement fetchWindowBatchStatement = new FetchWindowBatchStatement();
+
+    List<PartialPath> queryPath = new ArrayList<>();
+    for (String path : req.getQueryExpressions()) {
+      queryPath.add(new PartialPath(path));
+    }
+    fetchWindowBatchStatement.setQueryPaths(queryPath);
+
+    fetchWindowBatchStatement.setQueryFilter(req.getQueryFilter());
+
+    TGroupByTimeParameter groupByTimeParameter = req.getGroupByTimeParameter();
+    fetchWindowBatchStatement.setGroupByTimeParameter(
+        new GroupByTimeParameter(
+            groupByTimeParameter.startTime,
+            groupByTimeParameter.endTime,
+            groupByTimeParameter.interval,
+            groupByTimeParameter.slidingStep,
+            true));
+
+    return fetchWindowBatchStatement;
   }
 }

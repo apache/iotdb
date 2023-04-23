@@ -168,9 +168,15 @@ public class FloatColumn implements Column {
   @Override
   public Column mergeColumn(Column column) {
     if (!(column instanceof FloatColumn)) {
-      throw new IllegalArgumentException(
-          "The columns in mergeColumns should be the same type. Got:FloatColumn and "
-              + column.getClass().getName());
+      if (column instanceof RunLengthEncodedColumn) {
+        column =
+            new FloatColumn(
+                column.getPositionCount(), Optional.of(column.isNull()), column.getFloats());
+      } else {
+        throw new IllegalArgumentException(
+            "The columns in mergeColumns should be the same type. Got:FloatColumn and "
+                + column.getClass().getName());
+      }
     }
     int anotherPositionCount = column.getPositionCount();
     int newSize = positionCount + anotherPositionCount;
@@ -183,7 +189,7 @@ public class FloatColumn implements Column {
       return new FloatColumn(newSize, Optional.empty(), newValues);
 
     boolean[] newIsNull = new boolean[newSize];
-    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(isNull(), 0, newIsNull, 0, positionCount);
     System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
     return new FloatColumn(0, newSize, newIsNull, newValues);
   }

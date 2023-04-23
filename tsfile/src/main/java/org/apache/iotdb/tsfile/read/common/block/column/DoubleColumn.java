@@ -170,9 +170,15 @@ public class DoubleColumn implements Column {
   @Override
   public Column mergeColumn(Column column) {
     if (!(column instanceof DoubleColumn)) {
-      throw new IllegalArgumentException(
-          "The columns in mergeColumns should be the same type. Got:DoubleColumn and "
-              + column.getClass().getName());
+      if (column instanceof RunLengthEncodedColumn) {
+        column =
+            new DoubleColumn(
+                column.getPositionCount(), Optional.of(column.isNull()), column.getDoubles());
+      } else {
+        throw new IllegalArgumentException(
+            "The columns in mergeColumns should be the same type. Got:DoubleColumn and "
+                + column.getClass().getName());
+      }
     }
     int anotherPositionCount = column.getPositionCount();
     int newSize = positionCount + anotherPositionCount;
@@ -185,7 +191,7 @@ public class DoubleColumn implements Column {
       return new DoubleColumn(newSize, Optional.empty(), newValues);
 
     boolean[] newIsNull = new boolean[newSize];
-    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(isNull(), 0, newIsNull, 0, positionCount);
     System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
     return new DoubleColumn(0, newSize, newIsNull, newValues);
   }

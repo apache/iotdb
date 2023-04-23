@@ -168,9 +168,15 @@ public class IntColumn implements Column {
   @Override
   public Column mergeColumn(Column column) {
     if (!(column instanceof IntColumn)) {
-      throw new IllegalArgumentException(
-          "The columns in mergeColumns should be the same type. Got:IntColumn and "
-              + column.getClass().getName());
+      if (column instanceof RunLengthEncodedColumn) {
+        column =
+            new IntColumn(
+                column.getPositionCount(), Optional.of(column.isNull()), column.getInts());
+      } else {
+        throw new IllegalArgumentException(
+            "The columns in mergeColumns should be the same type. Got:IntColumn and "
+                + column.getClass().getName());
+      }
     }
     int anotherPositionCount = column.getPositionCount();
     int newSize = positionCount + anotherPositionCount;
@@ -183,7 +189,7 @@ public class IntColumn implements Column {
       return new IntColumn(newSize, Optional.empty(), newValues);
 
     boolean[] newIsNull = new boolean[newSize];
-    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(isNull(), 0, newIsNull, 0, positionCount);
     System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
     return new IntColumn(0, newSize, newIsNull, newValues);
   }

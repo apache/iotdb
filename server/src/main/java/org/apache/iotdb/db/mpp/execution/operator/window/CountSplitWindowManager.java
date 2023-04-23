@@ -66,10 +66,10 @@ public class CountSplitWindowManager implements RawDataWindowManager {
     if (needSkip) {
       // when step > interval, we need to skip some data
       int skipCount = countIterator.getSkipCount();
-      tsBlock = tsBlock.subTsBlock(skipCount);
       if (tsBlock.getPositionCount() <= skipCount) {
         return null;
       }
+      tsBlock = tsBlock.subTsBlock(skipCount);
     }
     initial = true;
     leftCount = countIterator.nextCount();

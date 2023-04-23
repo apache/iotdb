@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -217,14 +218,47 @@ public class RunLengthEncodedColumn implements Column {
   @Override
   public Column mergeColumn(Column column) {
     if (!(column instanceof RunLengthEncodedColumn)) {
-      throw new IllegalArgumentException(
-          "The columns in mergeColumns should be the same type. Got:RunLengthEncodedColumn and "
-              + column.getClass().getName());
+      if (this.getDataType() == column.getDataType()) {
+        return mergeNonRunLengthColumn(column);
+      } else {
+        throw new IllegalArgumentException(
+            "The columns in mergeColumns should be the same type. Got:RunLengthEncodedColumn and "
+                + column.getClass().getName());
+      }
     }
     if (value != ((RunLengthEncodedColumn) column).value) {
       throw new IllegalArgumentException(
           "The value in runLengthEncoded to merge should be the same");
     }
     return new RunLengthEncodedColumn(value, positionCount + column.getPositionCount());
+  }
+
+  Column mergeNonRunLengthColumn(Column column) {
+    switch (getDataType()) {
+      case BOOLEAN:
+        BooleanColumn newBooleanColumn =
+            new BooleanColumn(positionCount, Optional.of(isNull()), getBooleans());
+        return newBooleanColumn.mergeColumn(column);
+      case INT32:
+        IntColumn newIntColumn = new IntColumn(positionCount, Optional.of(isNull()), getInts());
+        return newIntColumn.mergeColumn(column);
+      case INT64:
+        LongColumn newLongColumn = new LongColumn(positionCount, Optional.of(isNull()), getLongs());
+        return newLongColumn.mergeColumn(column);
+      case FLOAT:
+        FloatColumn newFloatColumn =
+            new FloatColumn(positionCount, Optional.of(isNull()), getFloats());
+        return newFloatColumn.mergeColumn(column);
+      case DOUBLE:
+        DoubleColumn newDoubleColumn =
+            new DoubleColumn(positionCount, Optional.of(isNull()), getDoubles());
+        return newDoubleColumn.mergeColumn(column);
+      case TEXT:
+        BinaryColumn newBinaryColumn =
+            new BinaryColumn(positionCount, Optional.of(isNull()), getBinaries());
+        return newBinaryColumn.mergeColumn(column);
+      default:
+        throw new UnsupportedOperationException("Unsupported data type:" + getDataType());
+    }
   }
 }

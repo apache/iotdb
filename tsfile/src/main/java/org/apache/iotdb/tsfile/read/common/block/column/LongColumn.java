@@ -168,9 +168,15 @@ public class LongColumn implements Column {
   @Override
   public Column mergeColumn(Column column) {
     if (!(column instanceof LongColumn)) {
-      throw new IllegalArgumentException(
-          "The columns in mergeColumns should be the same type. Got:LongColumn and "
-              + column.getClass().getName());
+      if (column instanceof RunLengthEncodedColumn) {
+        column =
+            new LongColumn(
+                column.getPositionCount(), Optional.of(column.isNull()), column.getLongs());
+      } else {
+        throw new IllegalArgumentException(
+            "The columns in mergeColumns should be the same type. Got:LongColumn and "
+                + column.getClass().getName());
+      }
     }
     int anotherPositionCount = column.getPositionCount();
     int newSize = positionCount + anotherPositionCount;
@@ -183,7 +189,7 @@ public class LongColumn implements Column {
       return new LongColumn(newSize, Optional.empty(), newValues);
 
     boolean[] newIsNull = new boolean[newSize];
-    System.arraycopy(valueIsNull, 0, newIsNull, 0, positionCount);
+    System.arraycopy(isNull(), 0, newIsNull, 0, positionCount);
     System.arraycopy(column.isNull(), 0, newIsNull, positionCount, anotherPositionCount);
     return new LongColumn(0, newSize, newIsNull, newValues);
   }

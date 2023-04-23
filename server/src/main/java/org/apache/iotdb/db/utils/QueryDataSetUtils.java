@@ -271,6 +271,32 @@ public class QueryDataSetUtils {
     return new Pair<>(res, !queryExecution.hasNextResult());
   }
 
+  //  public static Pair<List<List<ByteBuffer>>, Boolean> convertFetchWindowsByFetchSize(
+  //          IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
+  //    int rowCount = 0;
+  //    List<List<ByteBuffer>> res = new ArrayList<>();
+  //
+  //    while (rowCount < fetchSize) {
+  //      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+  //      if (!optionalByteBuffer.isPresent()) {
+  //        break;
+  //      }
+  //      ByteBuffer byteBuffer = optionalByteBuffer.get();
+  //      byteBuffer.mark();
+  //      int valueColumnCount = byteBuffer.getInt();
+  //      for (int i = 0; i < valueColumnCount; i++) {
+  //        byteBuffer.get();
+  //      }
+  //      int positionCount = byteBuffer.getInt();
+  //      byteBuffer.reset();
+  //      if (positionCount != 0) {
+  //        res.add(byteBuffer);
+  //      }
+  //      rowCount += positionCount;
+  //    }
+  //    return new Pair<>(res, !queryExecution.hasNextResult());
+  //  }
+
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {

@@ -47,7 +47,6 @@ public class SingleWindowQueue extends AbstractWindowQueue {
 
   @Override
   public void stepToNextWindow() {
-    windowIndex++;
     count = 0;
     totalRowSize -= interval;
   }

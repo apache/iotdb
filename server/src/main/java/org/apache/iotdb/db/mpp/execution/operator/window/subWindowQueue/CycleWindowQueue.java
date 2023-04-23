@@ -65,7 +65,6 @@ public class CycleWindowQueue extends AbstractWindowQueue {
       TsBlock tsBlock = queue.removeFirst();
       needSkipCount -= tsBlock.getPositionCount();
     }
-    windowIndex++;
     iterator = null;
     count = 0;
     totalRowSize -= step;

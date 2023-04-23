@@ -70,6 +70,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.WindowSplitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -167,7 +168,9 @@ public enum PlanNodeType {
   INTERNAL_CREATE_MULTI_TIMESERIES((short) 69),
   IDENTITY_SINK((short) 70),
   SHUFFLE_SINK((short) 71),
-  BATCH_ACTIVATE_TEMPLATE((short) 72);
+  BATCH_ACTIVATE_TEMPLATE((short) 72),
+  WINDOW_SPLIT((short) 73),
+  WINDOW_CONCAT((short) 74);
 
   public static final int BYTES = Short.BYTES;
 
@@ -360,6 +363,8 @@ public enum PlanNodeType {
         return ShuffleSinkNode.deserialize(buffer);
       case 72:
         return BatchActivateTemplateNode.deserialize(buffer);
+      case 73:
+        return WindowSplitNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

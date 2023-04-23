@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.window.subWindowQueue;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -39,7 +38,6 @@ public abstract class AbstractWindowQueue {
   int valueColumnCount;
 
   long totalRowSize = 0;
-  long windowIndex = 0;
 
   int cachedBytes = 0;
   long count;
@@ -72,7 +70,6 @@ public abstract class AbstractWindowQueue {
       return null;
     }
 
-    writeWindowIndex(windowIndex);
     if (count == interval || count == totalRowSize) {
       stepToNextWindow();
     }
@@ -86,7 +83,7 @@ public abstract class AbstractWindowQueue {
 
   public void genTsBlockColumns(int valueColumnCount) {
     this.valueColumnCount = valueColumnCount;
-    this.columns = new Column[valueColumnCount + 1];
+    this.columns = new Column[valueColumnCount];
   }
 
   public boolean isEmpty() {
@@ -106,7 +103,9 @@ public abstract class AbstractWindowQueue {
     cachedBytes += tsBlock.getRetainedSizeInBytes();
     count += tsBlock.getPositionCount();
 
-    return cachedBytes >= TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    //    strict the number of rows in a TsBlock
+    //    return cachedBytes >= TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return false;
   }
 
   protected void writeWindowIndex(long windowIndex) {

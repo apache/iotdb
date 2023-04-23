@@ -125,7 +125,7 @@ public class NullColumn implements Column {
 
   @Override
   public Column mergeColumn(Column column) {
-    if (!(column instanceof FloatColumn)) {
+    if (!(column instanceof NullColumn)) {
       throw new IllegalArgumentException(
           "The columns in mergeColumns should be the same type. Got:NullColumn and "
               + column.getClass().getName());

@@ -46,6 +46,8 @@ import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -92,6 +94,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FetchWindowBatchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -146,6 +149,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -399,6 +403,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setGlobalTimeFilter(globalTimeFilter);
     analysis.setHasValueFilter(hasValueFilter);
+  }
+
+  private void analyzeGlobalTimeFilter(Analysis analysis, FetchWindowBatchStatement statement) {
+    GroupByTimeParameter groupByTimeParameter = statement.getGroupByTimeParameter();
+    ITimeRangeIterator iterator =
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            groupByTimeParameter.getStartTime(),
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            true,
+            false,
+            false,
+            true,
+            false);
+    long totalNum = iterator.getTotalIntervalNum();
+
+    long minTime = groupByTimeParameter.getStartTime();
+    long maxTime = groupByTimeParameter.getEndTime();
+    analysis.setGlobalTimeFilter(
+        FilterFactory.and(TimeFilter.gtEq(minTime), TimeFilter.ltEq(maxTime)));
   }
 
   private void analyzeLastSource(
@@ -2940,5 +2965,55 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setWhereExpression(whereExpression);
+  }
+
+  @Override
+  public Analysis visitFetchWindowBatch(
+      FetchWindowBatchStatement fetchWindowBatchStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+
+    fetchWindowBatchStatement.semanticCheck();
+    analysis.setStatement(fetchWindowBatchStatement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    List<PartialPath> queryPaths = fetchWindowBatchStatement.getQueryPaths();
+    for (PartialPath path : queryPaths) {
+      patternTree.appendFullPath(path);
+    }
+
+    // request schema fetch API
+    logger.info("[StartFetchSchema]");
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    logger.info("[EndFetchSchema]");
+
+    analyzeGlobalTimeFilter(analysis, fetchWindowBatchStatement);
+
+    Set<Expression> sourceExpressions = new HashSet<>();
+    List<MeasurementPath> measurementPaths = new LinkedList<>();
+    for (PartialPath path : queryPaths) {
+      measurementPaths.addAll(schemaTree.searchMeasurementPaths(path).left);
+    }
+    for (MeasurementPath measurementPath : measurementPaths) {
+      Expression expression = new TimeSeriesOperand(measurementPath);
+      analyzeExpression(analysis, expression);
+      sourceExpressions.add(expression);
+    }
+    analysis.setSourceExpressions(sourceExpressions);
+
+    // set output
+    List<ColumnHeader> columnHeaders =
+        sourceExpressions.stream()
+            .map(
+                expression -> new ColumnHeader(expression.toString(), analysis.getType(expression)))
+            .collect(Collectors.toList());
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
+
+    Set<String> deviceSet =
+        measurementPaths.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
+    analysis.setDataPartitionInfo(dataPartition);
+
+    return analysis;
   }
 }

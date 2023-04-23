@@ -416,13 +416,11 @@ struct TFetchTimeseriesResp {
 }
 
 struct TFetchWindowBatchReq {
-  1: required i64 sessionId
-  2: required i64 statementId
-  3: required list<string> queryExpressions
-  4: required TGroupByTimeParameter groupByTimeParameter
-  5: optional string queryFilter
-  6: optional i32 fetchSize
-  7: optional i64 timeout
+  1: required list<string> queryExpressions
+  2: required TGroupByTimeParameter groupByTimeParameter
+  3: optional string queryFilter
+  4: optional i32 fetchSize
+  5: optional i64 timeout
 }
 
 struct TGroupByTimeParameter {
@@ -435,12 +433,12 @@ struct TGroupByTimeParameter {
 
 struct TFetchWindowBatchResp {
   1: required common.TSStatus status
-  2: required i64 queryId
-  3: required list<string> columnNameList
-  4: required list<string> columnTypeList
-  5: required map<string, i32> columnNameIndexMap
-  6: required list<list<binary>> windowDataset
-  7: required bool hasMoreData
+  2: optional i64 queryId
+  3: optional list<string> columnNameList
+  4: optional list<string> columnTypeList
+  5: optional map<string, i32> columnNameIndexMap
+  6: optional list<binary> windowDataset
+  7: optional bool hasMoreData
 }
 
 struct TRecordModelMetricsReq {
