@@ -55,6 +55,7 @@ After a schema template is created, it should be set to specific path before cre
 
 **It is recommended to set schema template to database path. It is not suggested to set schema template to some path above database**
 
+**It is forbidden to create timeseries under a path setting schema template. Schema template shall not be set on a prefix path of an existing timeseries.**
 
 The SQL Statement for setting schema template is as follow:
 
