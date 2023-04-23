@@ -226,3 +226,13 @@ IoTDB> drop schema template t1
 ```
 
 **Attention**: Dropping an already set template is not supported.
+
+## Alter Schema Template
+
+In a scenario where measurements need to be added, you can modify the schema template to add measurements to all devices using the schema template.
+
+The SQL Statement for altering schema template is as follow:
+
+```shell
+IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
+```
