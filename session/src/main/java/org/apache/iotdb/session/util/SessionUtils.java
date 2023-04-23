@@ -79,6 +79,7 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
       throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
+    // TODO: (FASTWRITE) putValues 时可以少写一个字节的 Type
     SessionUtils.putValues(types, values, buffer);
     return buffer;
   }

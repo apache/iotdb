@@ -246,6 +246,14 @@ struct TSInsertTabletsReq {
   8: optional bool isAligned
 }
 
+// TODO: （FASTWRITE）定义一个新的接口
+struct TSFastInsertRecordsReq {
+  1: required i64 sessionId
+  2: required list<string> prefixPaths
+  5: required list<i64> timestamps
+  4: required list<binary> valuesList
+}
+
 struct TSInsertRecordsReq {
   1: required i64 sessionId
   2: required list<string> prefixPaths

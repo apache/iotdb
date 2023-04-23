@@ -245,6 +245,8 @@ public class RegionWriteExecutor {
           PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(
               System.nanoTime() - startTime);
         }
+
+        // TODO: (FASTWRITE) 我们认为这块不会走到
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;
         if (hasFailedMeasurement) {
@@ -255,6 +257,9 @@ public class RegionWriteExecutor {
           LOGGER.warn(partialInsertMessage);
         }
 
+        // TODO: (FAStWRITE) (侯昊男) 根据数据类型把 values 反序列化出来
+
+        // TODO: (FAStWRITE) 然后再进入到这一步
         ConsensusWriteResponse writeResponse =
             fireTriggerAndInsert(context.getRegionId(), insertNode);
 

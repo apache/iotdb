@@ -236,6 +236,13 @@ public interface ISession extends AutoCloseable {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void fastInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void insertRecords(
       List<String> deviceIds,
       List<Long> times,

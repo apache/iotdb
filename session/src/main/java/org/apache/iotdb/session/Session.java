@@ -1746,6 +1746,15 @@ public class Session implements ISession {
     request.addToValuesList(values);
   }
 
+  // TODO: (FASTWRITE) (曹志杰) 实现该接口
+  @Override
+  public void fastInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {}
+
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
@@ -2395,6 +2404,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
+    // TODO: (FASTWRITE) 不需要再添加 measurement 的信息
     request.addToMeasurementsList(measurements);
     ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
     request.addToValuesList(buffer);

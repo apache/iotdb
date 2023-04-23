@@ -75,6 +75,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   private static final byte TYPE_NULL = -2;
 
   private long time;
+
+  // TODO: (FASTWRITE) (侯昊男) 增加 byteBuffer 字段
   private Object[] values;
 
   private boolean isNeedInferType = false;
@@ -285,6 +287,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     subSerialize(stream);
   }
 
+  // TODO: (FASTWRITE) (侯昊男) 增加 byteBuffer 字段后，相应的序列化反序列化方法要改一下
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(time, buffer);
     ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
@@ -809,6 +812,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
 
   @Override
   public void validateDeviceSchema(boolean isAligned) {
+    // TODO: [FASTWRITE] (周钰坤) 填充是否要 align
     if (this.isAligned != isAligned) {
       throw new SemanticException(
           new AlignedTimeseriesException(
@@ -833,6 +837,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
 
   @Override
   public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    // TODO: [FASTWRITE] (周钰坤) 在元数据校验时将 measurements、dataTypes 填充好
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
@@ -846,9 +851,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     }
 
     try {
+      // TODO: [FASTWRITE] (周钰坤) 这块可能需要直接去掉，不去做元数据的校验
       selfCheckDataTypes(index);
     } catch (DataTypeMismatchException | PathNotExistException e) {
       throw new SemanticException(e);
     }
+
+    measurements[index] = measurementSchemas[index].getMeasurementId();
+    dataTypes[index] = measurementSchemas[index].getType();
   }
 }
