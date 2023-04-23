@@ -236,3 +236,5 @@ The SQL Statement for altering schema template is as follow:
 ```shell
 IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
 ```
+
+**When executing data insertion to devices with schema template set on related prefix path and there are measurements not present in this schema template, the measurements will be auto added to this schema template.**

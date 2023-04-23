@@ -236,3 +236,5 @@ IoTDB> drop schema template t1
 ```shell
 IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
 ```
+
+**向已挂载模板的路径下的设备中写入数据，若写入请求中的物理量不在模板中，将自动扩展模板。**
