@@ -93,7 +93,7 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-    // TODO if no delete operation exists globally, return false
+    // TODO if no delete operation exists globally, return emptyList
 
     // if the mods file does not exist, do not add it to the cache
     if (!modFile.exists()) {
