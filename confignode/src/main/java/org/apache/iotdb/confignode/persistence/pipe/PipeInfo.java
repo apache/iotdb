@@ -23,26 +23,81 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 public class PipeInfo implements SnapshotProcessor {
 
   private final PipePluginInfo pipePluginInfo;
+  private final PipeTaskInfo pipeTaskInfo;
 
   public PipeInfo() throws IOException {
     pipePluginInfo = new PipePluginInfo();
+    pipeTaskInfo = new PipeTaskInfo();
   }
 
   public PipePluginInfo getPipePluginInfo() {
     return pipePluginInfo;
   }
 
+  public PipeTaskInfo getPipeTaskInfo() {
+    return pipeTaskInfo;
+  }
+
+  /////////////////////////////////  SnapshotProcessor  /////////////////////////////////
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    return pipePluginInfo.processTakeSnapshot(snapshotDir);
+    pipeTaskInfo.acquirePipeTaskInfoLock();
+    pipePluginInfo.acquirePipePluginInfoLock();
+    try {
+      return pipeTaskInfo.processTakeSnapshot(snapshotDir)
+          && pipePluginInfo.processTakeSnapshot(snapshotDir);
+    } finally {
+      pipePluginInfo.releasePipePluginInfoLock();
+      pipeTaskInfo.releasePipeTaskInfoLock();
+    }
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    pipePluginInfo.processLoadSnapshot(snapshotDir);
+    pipeTaskInfo.acquirePipeTaskInfoLock();
+    pipePluginInfo.acquirePipePluginInfoLock();
+    try {
+      pipeTaskInfo.processLoadSnapshot(snapshotDir);
+      pipePluginInfo.processLoadSnapshot(snapshotDir);
+    } finally {
+      pipePluginInfo.releasePipePluginInfoLock();
+      pipeTaskInfo.releasePipeTaskInfoLock();
+    }
+  }
+
+  /////////////////////////////////  equals & hashCode  /////////////////////////////////
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipeInfo pipeInfo = (PipeInfo) o;
+    return Objects.equals(pipePluginInfo, pipeInfo.pipePluginInfo)
+        && Objects.equals(pipeTaskInfo, pipeInfo.pipeTaskInfo);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipePluginInfo, pipeTaskInfo);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeInfo{"
+        + "pipePluginInfo="
+        + pipePluginInfo
+        + ", pipeTaskInfo="
+        + pipeTaskInfo
+        + '}';
   }
 }

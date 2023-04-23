@@ -25,6 +25,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.apache.iotdb.tsfile.read.filter.operator.NotFilter.CONTAIN_NOT_ERR_MSG;
+import static org.junit.Assert.fail;
+
 public class MinTimeMaxTimeFilterTest {
 
   long minTime = 100;
@@ -81,7 +84,7 @@ public class MinTimeMaxTimeFilterTest {
 
     Filter valueEq = ValueFilter.gt(100);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(valueEq.containStartEndTime(minTime, maxTime));
+    Assert.assertFalse(valueEq.containStartEndTime(minTime, maxTime));
   }
 
   @Test
@@ -104,11 +107,11 @@ public class MinTimeMaxTimeFilterTest {
 
     Filter valueEq = ValueFilter.gtEq(100);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(valueEq.containStartEndTime(minTime, maxTime));
+    Assert.assertFalse(valueEq.containStartEndTime(minTime, maxTime));
 
     valueEq = ValueFilter.gtEq(150);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(valueEq.containStartEndTime(minTime, maxTime));
+    Assert.assertFalse(valueEq.containStartEndTime(minTime, maxTime));
   }
 
   @Test
@@ -131,7 +134,7 @@ public class MinTimeMaxTimeFilterTest {
 
     Filter valueEq = ValueFilter.lt(100);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(valueEq.containStartEndTime(minTime, maxTime));
+    Assert.assertFalse(valueEq.containStartEndTime(minTime, maxTime));
   }
 
   @Test
@@ -154,7 +157,7 @@ public class MinTimeMaxTimeFilterTest {
 
     Filter valueEq = ValueFilter.ltEq(100);
     Assert.assertTrue(valueEq.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(valueEq.containStartEndTime(minTime, maxTime));
+    Assert.assertFalse(valueEq.containStartEndTime(minTime, maxTime));
   }
 
   @Test
@@ -193,22 +196,17 @@ public class MinTimeMaxTimeFilterTest {
   @Test
   public void testNot() {
     Filter not = FilterFactory.not(TimeFilter.ltEq(10L));
-    Assert.assertTrue(not.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertTrue(not.containStartEndTime(minTime, maxTime));
-
-    not = FilterFactory.not(TimeFilter.ltEq(100L));
-    Assert.assertFalse(not.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertFalse(not.containStartEndTime(minTime, maxTime));
-
-    not = FilterFactory.not(TimeFilter.ltEq(200L));
-    Assert.assertFalse(not.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertFalse(not.containStartEndTime(minTime, maxTime));
-
-    not = FilterFactory.not(TimeFilter.ltEq(300L));
-    Assert.assertFalse(not.satisfyStartEndTime(minTime, maxTime));
-    Assert.assertFalse(not.containStartEndTime(minTime, maxTime));
-
-    not = FilterFactory.not(ValueFilter.ltEq(100));
-    Assert.assertFalse(not.satisfyStartEndTime(minTime, maxTime));
+    try {
+      not.satisfyStartEndTime(minTime, maxTime);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
+    try {
+      not.containStartEndTime(minTime, maxTime);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
+    }
   }
 }

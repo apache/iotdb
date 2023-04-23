@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -102,6 +103,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -150,6 +152,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -1267,17 +1270,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setSchemaTemplate(
-      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+      String queryId, SetSchemaTemplateStatement setSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     String templateName = setSchemaTemplateStatement.getTemplateName();
     PartialPath path = setSchemaTemplateStatement.getPath();
     try {
       // Send request to some API server
-      ClusterTemplateManager.getInstance().setSchemaTemplate(templateName, path);
+      ClusterTemplateManager.getInstance().setSchemaTemplate(queryId, templateName, path);
       // build TSBlock
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Exception e) {
-      future.setException(e.getCause());
+    } catch (Throwable e) {
+      if (e.getCause() instanceof IoTDBException) {
+        future.setException(e.getCause());
+      } else {
+        future.setException(e);
+      }
     }
     return future;
   }
@@ -1358,6 +1365,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             dropSchemaTemplateStatement.getTemplateName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterSchemaTemplate(
+      String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
+    req.setQueryId(queryId);
+    req.setTemplateAlterInfo(
+        TemplateAlterOperationUtil.generateExtendTemplateReqInfo(
+            alterSchemaTemplateStatement.getOperationType(),
+            alterSchemaTemplateStatement.getTemplateAlterInfo()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.alterSchemaTemplate(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // Time out mainly caused by slow execution, just wait
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // Keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to alter schema template {} in config node, status is {}.",
+            alterSchemaTemplateStatement.getTemplateAlterInfo().getTemplateName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }

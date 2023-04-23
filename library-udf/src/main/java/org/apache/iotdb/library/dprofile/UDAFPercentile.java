@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -45,7 +43,7 @@ public class UDAFPercentile implements UDTF {
   private GKArray sketch;
   private boolean exact;
   private double rank;
-  private TSDataType dataType;
+  private Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -68,14 +66,12 @@ public class UDAFPercentile implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    dataType = parameters.getDataType(0);
     double error = parameters.getDoubleOrDefault("error", 0);
     rank = parameters.getDoubleOrDefault("rank", 0.5);
     exact = (error == 0);
     if (exact) {
-      statistics =
-          new ExactOrderStatistics(
-              UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
+      statistics = new ExactOrderStatistics(parameters.getDataType(0));
     } else {
       sketch = new GKArray(error);
     }

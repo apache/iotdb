@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
@@ -64,26 +65,26 @@ public class QuotaInfo implements SnapshotProcessor {
   public TSStatus setSpaceQuota(SetSpaceQuotaPlan setSpaceQuotaPlan) {
     for (String database : setSpaceQuotaPlan.getPrefixPathList()) {
       TSpaceQuota spaceQuota = setSpaceQuotaPlan.getSpaceLimit();
-      // “0” means that the user has not reset the value of the space quota type
+      // “DEFAULT_VALUE” means that the user has not reset the value of the space quota type
       // So the old values are still used
       if (spaceQuotaLimit.containsKey(database)) {
-        if (spaceQuota.getDeviceNum() == 0) {
+        if (spaceQuota.getDeviceNum() == IoTDBConstant.DEFAULT_VALUE) {
           spaceQuota.setDeviceNum(spaceQuotaLimit.get(database).getDeviceNum());
         }
-        if (spaceQuota.getTimeserieNum() == 0) {
+        if (spaceQuota.getTimeserieNum() == IoTDBConstant.DEFAULT_VALUE) {
           spaceQuota.setTimeserieNum(spaceQuotaLimit.get(database).getTimeserieNum());
         }
-        if (spaceQuota.getDiskSize() == 0) {
+        if (spaceQuota.getDiskSize() == IoTDBConstant.DEFAULT_VALUE) {
           spaceQuota.setDiskSize(spaceQuotaLimit.get(database).getDiskSize());
         }
-        if (spaceQuota.getDeviceNum() == -1) {
-          spaceQuota.setDeviceNum(0);
+        if (spaceQuota.getDeviceNum() == IoTDBConstant.UNLIMITED_VALUE) {
+          spaceQuota.setDeviceNum(IoTDBConstant.DEFAULT_VALUE);
         }
-        if (spaceQuota.getTimeserieNum() == -1) {
-          spaceQuota.setTimeserieNum(0);
+        if (spaceQuota.getTimeserieNum() == IoTDBConstant.UNLIMITED_VALUE) {
+          spaceQuota.setTimeserieNum(IoTDBConstant.DEFAULT_VALUE);
         }
-        if (spaceQuota.getDiskSize() == -1) {
-          spaceQuota.setDiskSize(0);
+        if (spaceQuota.getDiskSize() == IoTDBConstant.UNLIMITED_VALUE) {
+          spaceQuota.setDiskSize(IoTDBConstant.DEFAULT_VALUE);
         }
       }
       if (!spaceQuotaUsage.containsKey(database)) {
@@ -99,16 +100,18 @@ public class QuotaInfo implements SnapshotProcessor {
     String userName = setThrottleQuotaPlan.getUserName();
     if (throttleQuotaLimit.containsKey(setThrottleQuotaPlan.getUserName())) {
       // about memory
-      if (setThrottleQuotaPlan.getThrottleQuota().getMemLimit() == -1) {
-        throttleQuotaLimit.get(userName).setMemLimit(0);
-      } else if (setThrottleQuotaPlan.getThrottleQuota().getMemLimit() != 0) {
+      if (setThrottleQuotaPlan.getThrottleQuota().getMemLimit() == IoTDBConstant.UNLIMITED_VALUE) {
+        throttleQuotaLimit.get(userName).setMemLimit(IoTDBConstant.DEFAULT_VALUE);
+      } else if (setThrottleQuotaPlan.getThrottleQuota().getMemLimit()
+          != IoTDBConstant.DEFAULT_VALUE) {
         throttleQuotaLimit.get(userName).setMemLimit(throttleQuota.getMemLimit());
       }
 
       // about cpu
-      if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() == -1) {
-        throttleQuotaLimit.get(userName).setCpuLimit(0);
-      } else if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() != 0) {
+      if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit() == IoTDBConstant.UNLIMITED_VALUE) {
+        throttleQuotaLimit.get(userName).setCpuLimit(IoTDBConstant.DEFAULT_VALUE);
+      } else if (setThrottleQuotaPlan.getThrottleQuota().getCpuLimit()
+          != IoTDBConstant.DEFAULT_VALUE) {
         throttleQuotaLimit.get(userName).setCpuLimit(throttleQuota.getCpuLimit());
       }
       if (!throttleQuota.getThrottleLimit().isEmpty()) {
@@ -218,6 +221,7 @@ public class QuotaInfo implements SnapshotProcessor {
       spaceQuota.setTimeserieNum(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuota.setDiskSize(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuotaLimit.put(path, spaceQuota);
+      spaceQuotaUsage.put(path, new TSpaceQuota());
       size--;
     }
   }

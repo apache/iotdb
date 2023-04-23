@@ -94,16 +94,18 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean pageSatisfy() {
-    if (valueFilter != null) {
-      return valueFilter.satisfy(getStatistics());
-    } else {
-      long rowCount = getStatistics().getCount();
+    Statistics statistics = getStatistics();
+    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
+      long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
+      } else {
+        return true;
       }
+    } else {
+      return valueFilter.satisfy(statistics);
     }
-    return true;
   }
 
   @Override

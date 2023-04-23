@@ -72,10 +72,9 @@ public class PartitionMetrics implements IMetricSet {
       metricService.createAutoGauge(
           Metric.REGION_NUM.toString(),
           MetricLevel.CORE,
-          getPartitionManager(),
-          partitionManager ->
-              partitionManager.countRegionWithSpecifiedStatus(
-                  TConsensusGroupType.SchemaRegion, status),
+          getLoadManager(),
+          loadManager ->
+              loadManager.countRegionWithSpecifiedStatus(TConsensusGroupType.SchemaRegion, status),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString(),
           Tag.STATUS.toString(),
@@ -85,10 +84,9 @@ public class PartitionMetrics implements IMetricSet {
       metricService.createAutoGauge(
           Metric.REGION_NUM.toString(),
           MetricLevel.CORE,
-          getPartitionManager(),
-          partitionManager ->
-              partitionManager.countRegionWithSpecifiedStatus(
-                  TConsensusGroupType.DataRegion, status),
+          getLoadManager(),
+          loadManager ->
+              loadManager.countRegionWithSpecifiedStatus(TConsensusGroupType.DataRegion, status),
           Tag.TYPE.toString(),
           TConsensusGroupType.DataRegion.toString(),
           Tag.STATUS.toString(),
@@ -330,8 +328,8 @@ public class PartitionMetrics implements IMetricSet {
     return configManager.getClusterSchemaManager();
   }
 
-  private PartitionManager getPartitionManager() {
-    return configManager.getPartitionManager();
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   @Override
