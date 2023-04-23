@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class FastInsertRowNode extends InsertRowNode {
@@ -41,5 +46,64 @@ public class FastInsertRowNode extends InsertRowNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitFastInsertRow(this, context);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.FAST_INSERT_ROW.serialize(byteBuffer);
+    subSerialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.FAST_INSERT_ROW.serialize(stream);
+    subSerialize(stream);
+  }
+
+  // TODO: (FASTWRITE) (侯昊男) 增加 byteBuffer 字段后，相应的序列化反序列化方法要改一下
+  void subSerialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(getTime(), buffer);
+    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    serializeValues(buffer);
+  }
+
+  void subSerialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(getTime(), stream);
+    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeValues(stream);
+  }
+
+  /** Serialize measurements and values, ignoring failed time series */
+  void serializeValues(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(rawValues, buffer);
+  }
+
+  /** Serialize measurements and values, ignoring failed time series */
+  void serializeValues(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(rawValues, stream);
+  }
+
+  public static FastInsertRowNode deserialize(ByteBuffer byteBuffer) {
+    // TODO: (xingtanzjr) remove placeholder
+    FastInsertRowNode insertNode = new FastInsertRowNode(new PlanNodeId(""));
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  void subDeserialize(ByteBuffer byteBuffer) {
+    setTime(byteBuffer.getLong());
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    deserializeValues(byteBuffer);
+  }
+
+  void deserializeValues(ByteBuffer byteBuffer) {
+    int length = ReadWriteIOUtils.readInt(byteBuffer);
+    byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, length);
+    this.rawValues = ByteBuffer.wrap(bytes);
   }
 }
