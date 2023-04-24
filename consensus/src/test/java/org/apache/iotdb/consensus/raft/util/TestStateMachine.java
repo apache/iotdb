@@ -66,6 +66,9 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   @Override
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    if (request instanceof TestEntry) {
+      return request;
+    }
     ByteBufferConsensusRequest byteBufferConsensusRequest = (ByteBufferConsensusRequest) request;
     ByteBuffer byteBuffer = byteBufferConsensusRequest.serializeToByteBuffer();
     byteBuffer.rewind();

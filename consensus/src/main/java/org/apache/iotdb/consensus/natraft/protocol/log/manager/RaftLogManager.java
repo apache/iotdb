@@ -298,7 +298,7 @@ public abstract class RaftLogManager {
       if (index < firstIndex) {
         // search in disk
         if (config.isEnableRaftLogPersistence()) {
-          List<Entry> logsInDisk = getStableEntryManager().getEntries(index, index);
+          List<Entry> logsInDisk = getStableEntryManager().getEntries(index, index, false);
           if (logsInDisk.isEmpty()) {
             return -1;
           } else {
@@ -764,6 +764,7 @@ public abstract class RaftLogManager {
   }
 
   public void close() {
+    getStableEntryManager().updateMeta(commitIndex, appliedIndex);
     getStableEntryManager().close();
     if (deleteLogExecutorService != null) {
       deleteLogExecutorService.shutdownNow();

@@ -44,6 +44,7 @@ public interface StableEntryManager {
 
   HardState getHardState();
 
+  void updateMeta(long commitIndex, long applyIndex);
   LogManagerMeta getMeta();
 
   /**
@@ -51,7 +52,7 @@ public interface StableEntryManager {
    * @param endIndex (inclusive) the log end index
    * @return the raft log which index between [startIndex, endIndex] or empty if not found
    */
-  List<Entry> getEntries(long startIndex, long endIndex);
+  List<Entry> getEntries(long startIndex, long endIndex, boolean limitBatch);
 
   void close();
 

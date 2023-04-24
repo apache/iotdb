@@ -987,7 +987,7 @@ public class RaftMember {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER.deepCopy().setMessage("No leader to forward in: " + groupId);
     }
-    logger.info("{}: Forward {} to node {}", name, plan, node);
+    logger.debug("{}: Forward {} to node {}", name, plan, node);
 
     TSStatus status;
     status = forwardPlanAsync(plan, node, groupId);

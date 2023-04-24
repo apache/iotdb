@@ -196,7 +196,7 @@ public class CatchUpTask implements Runnable {
 
   private List<Entry> getLogsInStableEntryManager(long startIndex, long endIndex) {
     List<Entry> logsInDisk =
-        raftMember.getLogManager().getStableEntryManager().getEntries(startIndex, endIndex);
+        raftMember.getLogManager().getStableEntryManager().getEntries(startIndex, endIndex, true);
     logger.debug(
         "{}, found {} logs in disk to catchup {}, startIndex={}, endIndex={}",
         raftMember.getName(),
