@@ -131,15 +131,6 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
-    TRegionReplicaSet regionReplicaSet =
-        dataPartition.getDataRegionReplicaSetForWriting(
-            devicePath.getFullPath(), TimePartitionUtils.getTimePartition(time));
-    return Collections.singletonList(
-        regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
-  }
-
-  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRow(this, context);
   }
