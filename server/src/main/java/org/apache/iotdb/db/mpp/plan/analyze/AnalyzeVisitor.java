@@ -144,6 +144,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -373,6 +374,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
       globalTimeFilter = resultPair.left;
+      if (globalTimeFilter != null) {
+        globalTimeFilter = PredicateRemoveNotRewriter.rewrite(globalTimeFilter);
+      }
       hasValueFilter = resultPair.right;
 
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);

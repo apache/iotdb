@@ -61,7 +61,6 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
-import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -719,6 +718,28 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       unPinPath(cur);
     }
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  @Override
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    IMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isEntity();
+    } catch (MetadataException e) {
+      return false;
+    } finally {
+      if (deviceMNode != null) {
+        unPinMNode(deviceMNode);
+      }
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -841,8 +862,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             throw new DifferentTemplateException(activatePath.getFullPath(), template.getName());
           }
         }
-        DataNodeSchemaQuotaManager.getInstance()
-            .checkMeasurementLevel(template.getMeasurementNumber());
 
         if (cur.isEntity()) {
           entityMNode = cur.getAsEntityMNode();

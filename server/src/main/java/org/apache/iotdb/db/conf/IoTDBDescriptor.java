@@ -500,6 +500,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_priority", conf.getCompactionPriority().toString())));
 
+    conf.setEnableCompactionMemControl(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_mem_control",
+                Boolean.toString(conf.isEnableCompactionMemControl()))));
+
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
@@ -756,6 +762,12 @@ public class IoTDBDescriptor {
         properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+    // the size of device path cache
+    conf.setDevicePathCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
 
     // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(

@@ -119,6 +119,10 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     return valueFilter;
   }
 
+  public void setValueFilter(@Nullable Filter valueFilter) {
+    this.valueFilter = valueFilter;
+  }
+
   public long getLimit() {
     return limit;
   }

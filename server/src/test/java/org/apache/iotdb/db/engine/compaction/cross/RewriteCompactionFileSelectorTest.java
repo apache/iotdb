@@ -67,6 +67,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
   }
 
   @After
@@ -1061,5 +1062,16 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     if (fail.get()) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testFirstUnseqFileIsLarge() {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(1);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<CrossCompactionTaskResource> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    Assert.assertEquals(1, selected.size());
   }
 }
