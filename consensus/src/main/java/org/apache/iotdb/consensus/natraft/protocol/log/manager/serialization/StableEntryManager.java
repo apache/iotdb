@@ -45,6 +45,7 @@ public interface StableEntryManager {
   HardState getHardState();
 
   void updateMeta(long commitIndex, long applyIndex);
+
   LogManagerMeta getMeta();
 
   /**

@@ -19,21 +19,20 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-
-import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DispatcherGroup {
+
   private static final Logger logger = LoggerFactory.getLogger(DispatcherGroup.class);
   private final Peer peer;
   private final BlockingQueue<VotingEntry> entryQueue;
@@ -41,9 +40,8 @@ public class DispatcherGroup {
   private final RateLimiter rateLimiter;
   private final ExecutorService dispatcherThreadPool;
   private final LogDispatcher logDispatcher;
-  private final AtomicInteger groupThreadNum = new AtomicInteger();
-  private int maxBindingThreadNum;
   private boolean delayed;
+  private DynamicThreadGroup dynamicThreadGroup;
 
   public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     this.logDispatcher = logDispatcher;
@@ -51,11 +49,10 @@ public class DispatcherGroup {
     this.entryQueue = new ArrayBlockingQueue<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
-    this.maxBindingThreadNum = maxBindingThreadNum;
     this.dispatcherThreadPool = createPool(peer, logDispatcher.getMember().getName());
-    for (int i = 0; i < maxBindingThreadNum; i++) {
-      addThread();
-    }
+    this.dynamicThreadGroup = new DynamicThreadGroup(logDispatcher.member.getName() + "-" + peer,
+        dispatcherThreadPool::submit, () -> newDispatcherThread(peer, entryQueue, rateLimiter), 1,
+        maxBindingThreadNum);
   }
 
   public void close() {
@@ -69,15 +66,6 @@ public class DispatcherGroup {
     if (!closeSucceeded) {
       logger.warn(
           "Cannot shut down dispatcher pool of {}-{}", logDispatcher.member.getName(), peer);
-    }
-  }
-
-  public void addThread() {
-    int threadNum = groupThreadNum.incrementAndGet();
-    if (threadNum <= maxBindingThreadNum) {
-      dispatcherThreadPool.submit(newDispatcherThread(peer, entryQueue, rateLimiter));
-    } else {
-      groupThreadNum.decrementAndGet();
     }
   }
 
@@ -115,19 +103,15 @@ public class DispatcherGroup {
     return entryQueue;
   }
 
-  public AtomicInteger getGroupThreadNum() {
-    return groupThreadNum;
-  }
-
-  public int getMaxBindingThreadNum() {
-    return maxBindingThreadNum;
-  }
-
   public boolean isDelayed() {
     return delayed;
   }
 
   public void setDelayed(boolean delayed) {
     this.delayed = delayed;
+  }
+
+  public DynamicThreadGroup getDynamicThreadGroup() {
+    return dynamicThreadGroup;
   }
 }

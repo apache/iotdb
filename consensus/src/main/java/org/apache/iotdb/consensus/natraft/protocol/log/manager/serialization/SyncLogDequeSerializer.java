@@ -71,14 +71,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private static final String LOG_DATA_FILE_SUFFIX = "data";
   private static final String LOG_INDEX_FILE_SUFFIX = "idx";
 
-  /**
-   * the log data files
-   */
+  /** the log data files */
   private List<File> logDataFileList;
 
-  /**
-   * the log index files
-   */
+  /** the log index files */
   private List<IndexFileDescriptor> logIndexFileList;
 
   private LogParser parser = LogParser.getINSTANCE();
@@ -88,14 +84,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private LogManagerMeta meta;
   private HardState state;
 
-  /**
-   * min version of available log
-   */
+  /** min version of available log */
   private long minAvailableVersion = 0;
 
-  /**
-   * max version of available log
-   */
+  /** max version of available log */
   private long maxAvailableVersion = Long.MAX_VALUE;
 
   private String logDir;
@@ -150,9 +142,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private static final int LOG_DELETE_CHECK_INTERVAL_SECOND = 5;
 
-  /**
-   * the lock uses when change the log data files or log index files
-   */
+  /** the lock uses when change the log data files or log index files */
   private final Lock lock = new ReentrantLock();
 
   private volatile boolean isClosed = false;
@@ -211,9 +201,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return systemDir + File.separator + groupId + File.separator + "raftLog" + File.separator;
   }
 
-  /**
-   * for log tools
-   */
+  /** for log tools */
   @Override
   public LogManagerMeta getMeta() {
     return meta;
@@ -225,9 +213,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     meta.setLastAppliedIndex(applyIndex);
   }
 
-  /**
-   * Recover all the logs in disk. This function will be called once this instance is created.
-   */
+  /** Recover all the logs in disk. This function will be called once this instance is created. */
   @Override
   public List<Entry> getAllEntriesAfterAppliedIndex() {
     logger.debug(
@@ -241,8 +227,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * is uncommitted for persistent LogManagerMeta(meta's info is stale).We need to recover these
    * already persistent logs.
    *
-   * <p>For example,commitIndex is 5 in persistent LogManagerMeta,But the log file has actually
-   * been
+   * <p>For example,commitIndex is 5 in persistent LogManagerMeta,But the log file has actually been
    * flushed to 7,when we restart cluster,we need to recover 6 and 7.
    *
    * <p>Maybe,we can extract getAllEntriesAfterAppliedIndex and getAllEntriesAfterCommittedIndex
@@ -393,11 +378,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       try {
         checkStream();
         // 1. write to the log data file
-        byte[] compressed =
-            compressor.compress(
-                logDataBuffer.array(),
-                0,
-                logDataBuffer.position());
+        byte[] compressed = compressor.compress(logDataBuffer.array(), 0, logDataBuffer.position());
         ReadWriteIOUtils.write(compressed.length, currentLogDataOutputStream);
         currentLogDataOutputStream.write(compressed);
         logIndexOffsetList.add(new Pair<>(lastLogIndex, offsetOfTheCurrentLogDataOutputStream));
@@ -445,9 +426,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  /**
-   * flush the log buffer and check if the file needs to be closed
-   */
+  /** flush the log buffer and check if the file needs to be closed */
   @Override
   public void forceFlushLogBuffer() {
     lock.lock();
@@ -491,9 +470,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  /**
-   * The file name rules are as follows: ${startLogIndex}-${endLogIndex}-${version}.data
-   */
+  /** The file name rules are as follows: ${startLogIndex}-${endLogIndex}-${version}.data */
   private void recoverLogFiles() {
     // 1. first we should recover the log index file
     recoverLogFiles(LOG_INDEX_FILE_SUFFIX);
@@ -540,9 +517,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   /**
    * Check that the file is legal or not
    *
-   * @param file     file needs to be check
-   * @param fileType {@link SyncLogDequeSerializer#LOG_DATA_FILE_SUFFIX} or
-   *                 {@link SyncLogDequeSerializer#LOG_INDEX_FILE_SUFFIX}
+   * @param file file needs to be check
+   * @param fileType {@link SyncLogDequeSerializer#LOG_DATA_FILE_SUFFIX} or {@link
+   *     SyncLogDequeSerializer#LOG_INDEX_FILE_SUFFIX}
    * @return true if the file legal otherwise false
    */
   private boolean checkLogFile(File file, String fileType) {
@@ -770,9 +747,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  /**
-   * for unclosed file, the file name is ${startIndex}-${Long.MAX_VALUE}-{version}
-   */
+  /** for unclosed file, the file name is ${startIndex}-${Long.MAX_VALUE}-{version} */
   private void createNewLogFile(String dirName, long startLogIndex) throws IOException {
     lock.lock();
     try {
@@ -1117,7 +1092,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   /**
    * @param startIndex the log start index
-   * @param endIndex   the log end index
+   * @param endIndex the log end index
    * @return the raft log which index between [startIndex, endIndex] or empty if not found
    */
   @Override
@@ -1222,9 +1197,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   /**
    * @param startIndex the log start index
-   * @param endIndex   the log end index
+   * @param endIndex the log end index
    * @return first value-> the log data file, second value-> the left value is the start offset of
-   * the file, the right is the end offset of the file
+   *     the file, the right is the end offset of the file
    */
   private List<Pair<File, Pair<Long, Long>>> getLogDataFileAndOffset(
       long startIndex, long endIndex) {
@@ -1272,8 +1247,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (logDataFileWithStartAndEndLogIndex != null) {
       // this means the endIndex's offset can not be found in the file
       // logDataFileWithStartAndEndLogIndex.left
-      long endOffset = getOffsetAccordingToLogIndex(
-          Math.min(endIndex, logDataFileWithStartAndEndLogIndex.right.right));
+      long endOffset =
+          getOffsetAccordingToLogIndex(
+              Math.min(endIndex, logDataFileWithStartAndEndLogIndex.right.right));
       fileNameWithStartAndEndOffset.add(
           new Pair<>(logDataFileWithStartAndEndLogIndex.left, new Pair<>(startOffset, endOffset)));
       logger.debug(
@@ -1290,8 +1266,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   /**
    * @param startIndex the start log index
    * @return the first value of the pair is the log index file which contains the start index; the
-   * second pair's first value is the file's start log index. the second pair's second value is the
-   * file's end log index. null if not found
+   *     second pair's first value is the file's start log index. the second pair's second value is
+   *     the file's end log index. null if not found
    */
   public IndexFileDescriptor getLogIndexFile(long startIndex) {
     for (IndexFileDescriptor descriptor : logIndexFileList) {
@@ -1306,8 +1282,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   /**
    * @param startIndex the start log index
    * @return the first value of the pair is the log data file which contains the start index; the
-   * second pair's first value is the file's start log index. the second pair's second value is the
-   * file's end log index. null if not found
+   *     second pair's first value is the file's start log index. the second pair's second value is
+   *     the file's end log index. null if not found
    */
   public Pair<File, Pair<Long, Long>> getLogDataFile(long startIndex) {
     for (File file : logDataFileList) {
@@ -1326,9 +1302,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   /**
-   * @param file              the log data file
+   * @param file the log data file
    * @param startAndEndOffset the left value is the start offset of the file, the right is the end
-   *                          offset of the file
+   *     offset of the file
    * @return the logs between start offset and end offset
    */
   private List<Entry> getLogsFromOneLogDataFile(File file, Pair<Long, Long> startAndEndOffset) {
@@ -1421,9 +1397,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
        * automatically increased by saveInterval to avoid conflicts.
        */
       private static long saveInterval = 100;
-      /**
-       * time partition id to dividing time series into different storage group
-       */
+      /** time partition id to dividing time series into different storage group */
       private long timePartitionId;
 
       private long prevVersion;
@@ -1437,9 +1411,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         restore();
       }
 
-      /**
-       * only used for upgrading
-       */
+      /** only used for upgrading */
       public SimpleFileVersionController(String directoryPath) throws IOException {
         this.directoryPath = directoryPath + File.separator + UPGRADE_DIR;
         restore();
@@ -1502,9 +1474,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         prevVersion = currVersion;
       }
 
-      /**
-       * recovery from disk
-       */
+      /** recovery from disk */
       @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
       private void restore() throws IOException {
         File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);
