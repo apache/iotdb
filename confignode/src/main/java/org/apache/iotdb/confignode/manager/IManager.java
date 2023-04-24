@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
@@ -538,6 +539,8 @@ public interface IManager {
 
   /** Drop schema template */
   TSStatus dropSchemaTemplate(String templateName);
+
+  TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
 
   /*
    * delete timeseries

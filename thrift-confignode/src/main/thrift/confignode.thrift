@@ -559,6 +559,11 @@ struct TCreateSchemaTemplateReq {
   2: required binary serializedTemplate
 }
 
+struct TAlterSchemaTemplateReq {
+  1: required string queryId
+  2: required binary templateAlterInfo
+}
+
 struct TGetAllTemplatesResp {
   1: required common.TSStatus status
   2: optional list<binary> templateList
@@ -1231,6 +1236,8 @@ service IConfigNodeRPCService {
    * Drop schema template
    */
   common.TSStatus dropSchemaTemplate(string req)
+
+  common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
