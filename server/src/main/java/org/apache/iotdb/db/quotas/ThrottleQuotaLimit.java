@@ -64,6 +64,7 @@ public class ThrottleQuotaLimit {
   public boolean checkCpu(String userName, int cpuNum) {
     if (cpuLimit.get(userName) == null
         || cpuLimit.get(userName) == 0
+        || cpuLimit.get(userName) == -1
         || cpuLimit.get(userName) > cpuNum) {
       return true;
     }
@@ -73,6 +74,7 @@ public class ThrottleQuotaLimit {
   public boolean checkMemory(String userName, long estimatedMemory) {
     if (memLimit.get(userName) == null
         || memLimit.get(userName) == 0
+        || memLimit.get(userName) == -1
         || memLimit.get(userName) > estimatedMemory) {
       return true;
     }
