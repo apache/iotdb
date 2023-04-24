@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FastInsertRowsNode extends InsertRowsNode {
   public FastInsertRowsNode(PlanNodeId id) {
@@ -33,5 +40,31 @@ public class FastInsertRowsNode extends InsertRowsNode {
       List<Integer> insertRowNodeIndexList,
       List<InsertRowNode> fastInsertRowNodeList) {
     super(id, insertRowNodeIndexList, fastInsertRowNodeList);
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    for (int i = 0; i < getInsertRowNodeList().size(); i++) {
+      InsertRowNode insertRowNode = getInsertRowNodeList().get(i);
+      // data region for insert row node
+      TRegionReplicaSet dataRegionReplicaSet =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(
+                  insertRowNode.devicePath.getFullPath(),
+                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
+      if (splitMap.containsKey(dataRegionReplicaSet)) {
+        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+      } else {
+        InsertRowsNode tmpNode = new FastInsertRowsNode(this.getPlanNodeId());
+        tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.addOneInsertRowNode(insertRowNode, i);
+        splitMap.put(dataRegionReplicaSet, tmpNode);
+      }
+    }
+
+    return new ArrayList<>(splitMap.values());
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement;
 
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -326,7 +327,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(insertRowsStatement, context);
   }
 
-  public R visitFastInsertRows(InsertRowsStatement insertRowsStatement, C context) {
+  public R visitFastInsertRows(FastInsertRowsStatement insertRowsStatement, C context) {
     return visitStatement(insertRowsStatement, context);
   }
 

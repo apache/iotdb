@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -386,7 +387,7 @@ public class StatementGenerator {
       throws IllegalPathException, QueryProcessException {
     final long startTime = System.nanoTime();
     // construct insert statement
-    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    FastInsertRowsStatement insertStatement = new FastInsertRowsStatement();
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       FastInsertRowStatement statement = new FastInsertRowStatement();

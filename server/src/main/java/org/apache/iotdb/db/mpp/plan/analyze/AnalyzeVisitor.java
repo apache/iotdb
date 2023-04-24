@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.FastInsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -1928,6 +1929,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     return getAnalysisForWriting(
         insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
+  }
+
+  public Analysis visitFastInsertRows(
+      FastInsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+    return visitInsertRows(insertRowsStatement, context);
   }
 
   @Override
