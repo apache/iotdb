@@ -35,19 +35,4 @@ public class PipeRuntimeAgent {
         subtask.getTaskID(),
         subtask.getLastFailedCause());
   }
-
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipeRuntimeAgent() {}
-
-  private static class PipeRuntimeAgentHolder {
-    private static PipeRuntimeAgent INSTANCE = null;
-  }
-
-  public static PipeRuntimeAgent setupAndGetInstance() {
-    if (PipeRuntimeAgentHolder.INSTANCE == null) {
-      PipeRuntimeAgentHolder.INSTANCE = new PipeRuntimeAgent();
-    }
-    return PipeRuntimeAgentHolder.INSTANCE;
-  }
 }

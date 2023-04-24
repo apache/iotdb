@@ -23,26 +23,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 
 public class PipeTaskAgent {
+
   private final PipeMetaKeeper pipeMetaKeeper;
 
-  public PipeMeta getPipeMeta(String pipeName) {
-    return pipeMetaKeeper.getPipeMeta(pipeName);
-  }
-
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipeTaskAgent() {
+  public PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
   }
 
-  private static class PipeTaskAgentHolder {
-    private static PipeTaskAgent instance = null;
-  }
-
-  public static PipeTaskAgent setupAndGetInstance() {
-    if (PipeTaskAgentHolder.instance == null) {
-      PipeTaskAgentHolder.instance = new PipeTaskAgent();
-    }
-    return PipeTaskAgentHolder.instance;
+  // TODO: remove this method
+  public PipeMeta getPipeMeta(String pipeName) {
+    return pipeMetaKeeper.getPipeMeta(pipeName);
   }
 }

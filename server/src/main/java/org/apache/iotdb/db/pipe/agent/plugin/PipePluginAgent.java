@@ -43,6 +43,10 @@ public class PipePluginAgent {
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
+  public PipePluginAgent() {
+    this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
+  }
+
   /////////////////////////////// Lock ///////////////////////////////
 
   public void acquireLock() {
@@ -206,22 +210,5 @@ public class PipePluginAgent {
       LOGGER.warn(errorMessage, e);
       throw new RuntimeException(errorMessage);
     }
-  }
-
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipePluginAgent() {
-    this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
-  }
-
-  private static class PipePluginAgentServiceHolder {
-    private static PipePluginAgent instance = null;
-  }
-
-  public static PipePluginAgent setupAndGetInstance() {
-    if (PipePluginAgentServiceHolder.instance == null) {
-      PipePluginAgentServiceHolder.instance = new PipePluginAgent();
-    }
-    return PipePluginAgentServiceHolder.instance;
   }
 }

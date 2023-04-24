@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.callable;
 
-import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -95,7 +95,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
           retryCount,
           throwable);
       lastFailedCause = throwable;
-      PipeRuntimeAgent.setupAndGetInstance().report(this);
+      PipeAgent.runtime().report(this);
     }
   }
 

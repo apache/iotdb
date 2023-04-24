@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.PipeSubtaskManager;
@@ -41,12 +41,10 @@ public class PipeTaskConnectorStage implements PipeTaskStage {
       PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask, String pipeName) {
     this.executor = executor;
     this.subtask = subtask;
+    // TODO: get the connector attributes from the constructor's parameter
     this.pipeConnectorAttributes =
         new TreeMap<>(
-                PipeTaskAgent.setupAndGetInstance()
-                    .getPipeMeta(pipeName)
-                    .getStaticMeta()
-                    .getConnectorAttributes())
+                PipeAgent.task().getPipeMeta(pipeName).getStaticMeta().getConnectorAttributes())
             .toString();
 
     subtaskManager = PipeSubtaskManager.setupAndGetInstance();
