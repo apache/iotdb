@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler.load;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -45,8 +46,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,13 +105,22 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
+    TTsFilePieceReq loadTsFileReq = null;
+
     for (TDataNodeLocation dataNodeLocation :
         instance.getRegionReplicaSet().getDataNodeLocations()) {
       TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint);
+        if (loadTsFileReq == null) {
+          loadTsFileReq =
+              new TTsFilePieceReq(
+                  instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
+                  uuid,
+                  instance.getRegionReplicaSet().getRegionId());
+        }
+        dispatchRemote(loadTsFileReq, endPoint);
       }
     }
   }
@@ -121,15 +129,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
-  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
+  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      TTsFilePieceReq loadTsFileReq =
-          new TTsFilePieceReq(
-              instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
-              uuid,
-              instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
         logger.warn(loadResp.message);
