@@ -16,24 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.observer;
 
+package org.apache.iotdb.confignode.manager.load.subscriber;
+
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
-public class NodeStatisticsEvent implements IEvent {
+public class StatisticsChangeEvent {
 
-  // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one means
-  // the previous NodeStatistics
-  private Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap;
+  // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>
+  private final Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap;
+  // Map<RegionGroupId, Pair<old RegionGroupStatistics, new RegionGroupStatistics>>
+  private final Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      regionGroupStatisticsMap;
 
-  public NodeStatisticsEvent(Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap) {
+  public StatisticsChangeEvent(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap,
+      Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+          regionGroupStatisticsMap) {
     this.nodeStatisticsMap = nodeStatisticsMap;
+    this.regionGroupStatisticsMap = regionGroupStatisticsMap;
   }
 
   public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getNodeStatisticsMap() {
     return nodeStatisticsMap;
+  }
+
+  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      getRegionGroupStatisticsMap() {
+    return regionGroupStatisticsMap;
   }
 }

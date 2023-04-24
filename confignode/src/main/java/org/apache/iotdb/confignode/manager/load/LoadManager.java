@@ -72,8 +72,8 @@ public class LoadManager {
   private final HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
 
-  private final EventBus eventBus =
-      new AsyncEventBus("LoadManager-EventBus", Executors.newFixedThreadPool(5));
+  private final EventBus loadPublisher =
+      new AsyncEventBus("Cluster-LoadPublisher-Thread", Executors.newFixedThreadPool(5));
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -85,9 +85,9 @@ public class LoadManager {
     this.loadCache = new LoadCache();
     this.heartbeatService = new HeartbeatService(configManager, loadCache);
     this.statisticsService =
-        new StatisticsService(configManager, routeBalancer, loadCache, eventBus);
+        new StatisticsService(configManager, routeBalancer, loadCache, loadPublisher);
 
-    eventBus.register(configManager.getClusterSchemaManager());
+    loadPublisher.register(statisticsService);
   }
 
   /**
