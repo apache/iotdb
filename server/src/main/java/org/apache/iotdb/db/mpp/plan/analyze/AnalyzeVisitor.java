@@ -2001,8 +2001,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
-    Map<String, Long> device2MinTime = new HashMap<>();
-    Map<String, Long> device2MaxTime = new HashMap<>();
     Map<String, Map<MeasurementSchema, File>> device2Schemas = new HashMap<>();
     Map<String, Pair<Boolean, File>> device2IsAligned = new HashMap<>();
 
@@ -2017,13 +2015,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       try {
         TsFileResource resource =
-            analyzeTsFile(
-                loadTsFileStatement,
-                tsFile,
-                device2MinTime,
-                device2MaxTime,
-                device2Schemas,
-                device2IsAligned);
+            analyzeTsFile(loadTsFileStatement, tsFile, device2Schemas, device2IsAligned);
         loadTsFileStatement.addTsFileResource(resource);
       } catch (IllegalArgumentException e) {
         logger.warn(
@@ -2063,25 +2055,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               loadTsFileStatement));
     }
 
-    // construct partition info
-    List<DataPartitionQueryParam> params = new ArrayList<>();
-    for (Map.Entry<String, Long> entry : device2MinTime.entrySet()) {
-      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-      String device = entry.getKey();
-      long endTime = device2MaxTime.get(device);
-      long interval = TimePartitionUtils.timePartitionInterval;
-      long time = (entry.getValue() / interval) * interval;
-      for (; time <= endTime; time += interval) {
-        timePartitionSlots.add(TimePartitionUtils.getTimePartition(time));
-      }
-
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(device);
-      dataPartitionQueryParam.setTimePartitionSlotList(timePartitionSlots);
-      params.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(loadTsFileStatement, params);
+    // load function will query data partition in scheduler
+    Analysis analysis = new Analysis();
+    analysis.setStatement(loadTsFileStatement);
+    return analysis;
   }
 
   /** get analysis according to statement and params */
@@ -2104,8 +2081,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private TsFileResource analyzeTsFile(
       LoadTsFileStatement statement,
       File tsFile,
-      Map<String, Long> device2MinTime,
-      Map<String, Long> device2MaxTime,
       Map<String, Map<MeasurementSchema, File>> device2Schemas,
       Map<String, Pair<Boolean, File>> device2IsAligned)
       throws IOException, VerifyMetadataException {
@@ -2159,19 +2134,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         resource.updatePlanIndexes(reader.getMaxPlanIndex());
       } else {
         resource.deserialize();
-      }
-
-      // construct device time range
-      for (String device : resource.getDevices()) {
-        device2MinTime.put(
-            device,
-            Math.min(
-                device2MinTime.getOrDefault(device, Long.MAX_VALUE),
-                resource.getStartTime(device)));
-        device2MaxTime.put(
-            device,
-            Math.max(
-                device2MaxTime.getOrDefault(device, Long.MIN_VALUE), resource.getEndTime(device)));
       }
 
       resource.setStatus(TsFileResourceStatus.CLOSED);

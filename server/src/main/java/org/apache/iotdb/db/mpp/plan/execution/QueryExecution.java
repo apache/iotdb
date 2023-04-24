@@ -297,7 +297,11 @@ public class QueryExecution implements IQueryExecution {
     if (rawStatement instanceof LoadTsFileStatement) {
       this.scheduler =
           new LoadTsFileScheduler(
-              distributedPlan, context, stateMachine, syncInternalServiceClientManager);
+              distributedPlan,
+              context,
+              stateMachine,
+              syncInternalServiceClientManager,
+              partitionFetcher);
       this.scheduler.start();
       return;
     }
