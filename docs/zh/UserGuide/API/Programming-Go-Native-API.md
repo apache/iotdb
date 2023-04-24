@@ -81,5 +81,5 @@ go mod tidy
 # 编译并运行程序
 go run session_example.go
 ```
-#### 注意：GO原生客户端Session是多线程不安全的，强烈不建议在多线程场景下应用。如有多线程场景，请使用Session Pool.
+#### 注意：GO原生客户端Session不是线程安全的，强烈不建议在多线程场景下应用。如有多线程应用场景，请使用Session Pool.
 
