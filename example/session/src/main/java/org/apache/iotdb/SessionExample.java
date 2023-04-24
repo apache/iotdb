@@ -59,7 +59,83 @@ public class SessionExample {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String LOCAL_HOST = "127.0.0.1";
 
-  public static void main(String[] args)
+  public static void main(String[] args) {
+    List<String> backupUrls = new ArrayList<>();
+    backupUrls.add("172.20.31.10:6667");
+    backupUrls.add("172.20.31.10:6668");
+    backupUrls.add("172.20.31.10:6669");
+    List<String> primaryUrls = new ArrayList<>();
+    primaryUrls.add("127.0.0.1:6667");
+    //    primaryUrls.add("127.0.0.1:6668");
+    //    primaryUrls.add("127.0.0.1:6669");
+    session =
+        new Session.Builder()
+            .nodeUrls(primaryUrls)
+            .username("root")
+            .password("root")
+            .backupNodeUrls(backupUrls)
+            .backupPassword("root")
+            .backupUsername("root")
+            .checkPrimaryClusterIsConnectedTimeS(20L)
+            .timeOut(1000)
+            .build();
+
+    new Thread(
+            () -> {
+              try {
+                Thread.sleep(5000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              System.out.println("fill");
+              session.fillAllNodeUrls();
+              System.out.println("fillSuccess");
+            })
+        .start();
+    try {
+      session.open(false, 1000);
+      session.setFetchSize(10000);
+      createTimeseries();
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        session.close();
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    }
+    for (int i = 0; i < 2000; i++) {
+      try {
+        //        System.out.println("插入数据");
+        insertRecord();
+        insertTablet();
+        Thread.sleep(100);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    System.out.println("查询数据");
+    for (int i = 0; i < 20; i++) {
+      try {
+        query();
+        rawDataQuery();
+        lastDataQuery();
+        aggregationQuery();
+        groupByQuery();
+        Thread.sleep(1000);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    try {
+      session.close();
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void main1(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
     session =
         new Session.Builder()
@@ -284,7 +360,7 @@ public class SessionExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      session.insertRecord(deviceId, time, measurements, types, values);
+      session.insertRecord(deviceId, System.currentTimeMillis(), measurements, types, values);
     }
   }
 

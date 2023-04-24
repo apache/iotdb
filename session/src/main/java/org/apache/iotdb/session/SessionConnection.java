@@ -112,10 +112,10 @@ public class SessionConnection {
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
-    if (session.defaultSessionConnection.endPointList.isEmpty()) {
+    if (null == session.defaultSessionConnection
+        || session.defaultSessionConnection.endPointList.isEmpty()) {
       endPointList.add(endPoint);
     } else {
-      System.out.println("----------" + session.defaultSessionConnection.endPointList);
       endPointList = session.defaultSessionConnection.endPointList;
     }
     this.backupEndPointList =
