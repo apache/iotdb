@@ -64,6 +64,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -88,6 +89,8 @@ public class SessionConnection {
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
   private static final long CHECK_CONNECT_PRIMARY_CLUSTER_S = 10;
+  private static final String NODE_STATUS_RUNNING = "Running";
+  private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = -1;
   private Session session;
   private TTransport transport;
   private IClientRPCService.Iface client;
@@ -95,6 +98,7 @@ public class SessionConnection {
   private long statementId;
   private ZoneId zoneId;
   private TEndPoint endPoint;
+  private long checkPrimaryClusterIsConnectedTimeS;
   private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
   private List<TEndPoint> backupEndPointList = new ArrayList<>();
@@ -108,22 +112,24 @@ public class SessionConnection {
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
-    endPointList.add(endPoint);
+    if (session.defaultSessionConnection.endPointList.isEmpty()) {
+      endPointList.add(endPoint);
+    } else {
+      System.out.println("----------" + session.defaultSessionConnection.endPointList);
+      endPointList = session.defaultSessionConnection.endPointList;
+    }
     this.backupEndPointList =
         null == session.backupNodeUrls
             ? backupEndPointList
             : SessionUtils.parseSeedNodeUrls(session.backupNodeUrls);
+    this.checkPrimaryClusterIsConnectedTimeS =
+        null == session.checkPrimaryClusterIsConnectedTimeS
+            ? CHECK_CONNECT_PRIMARY_CLUSTER_S
+            : session.checkPrimaryClusterIsConnectedTimeS;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     try {
-      if (isPrimary(endPoint)) {
-        init(endPoint);
-        clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
-      } else {
-        endPointList.clear();
-        endPoint = session.defaultEndPoint;
-        endPointList.add(endPoint);
-        reconnect();
-      }
+      init(endPoint);
+      clusterStatus = ClusterStatus.PRIMARY_CLUSTER_UP;
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -137,6 +143,10 @@ public class SessionConnection {
         null == session.backupNodeUrls
             ? backupEndPointList
             : SessionUtils.parseSeedNodeUrls(session.backupNodeUrls);
+    this.checkPrimaryClusterIsConnectedTimeS =
+        null == session.checkPrimaryClusterIsConnectedTimeS
+            ? CHECK_CONNECT_PRIMARY_CLUSTER_S
+            : session.checkPrimaryClusterIsConnectedTimeS;
     initClusterConn();
   }
 
@@ -220,6 +230,28 @@ public class SessionConnection {
 
   private boolean isPrimary(TEndPoint endPoint) {
     return backupEndPointList.isEmpty() || !backupEndPointList.contains(endPoint);
+  }
+
+  public List<TEndPoint> fillingEndPointList() {
+    try {
+      SessionDataSet dataSet = executeQueryStatement("SHOW DATANODES", DEFAULT_QUERY_TIMEOUT_IN_MS);
+      while (dataSet.hasNext()) {
+        RowRecord record = dataSet.next();
+        if (NODE_STATUS_RUNNING.equals(record.getFields().get(1).getStringValue())) {
+          String host = record.getFields().get(2).getStringValue();
+          int post = record.getFields().get(3).getIntV();
+          TEndPoint endPoint = new TEndPoint(host, post);
+          if (!endPointList.contains(endPoint) && !backupEndPointList.contains(endPoint)) {
+            endPointList.add(endPoint);
+          }
+        }
+      }
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      logger.error("endPointList fill failure", e);
+    } catch (RedirectException e) {
+      logger.error("need to redirect query, should not see this.", e);
+    }
+    return endPointList;
   }
 
   public void close() throws IoTDBConnectionException {
@@ -1080,8 +1112,8 @@ public class SessionConnection {
     }
     checkPrimaryClusterExecutorService.scheduleAtFixedRate(
         this::checkNode,
-        CHECK_CONNECT_PRIMARY_CLUSTER_S,
-        CHECK_CONNECT_PRIMARY_CLUSTER_S,
+        checkPrimaryClusterIsConnectedTimeS,
+        checkPrimaryClusterIsConnectedTimeS,
         TimeUnit.SECONDS);
   }
 

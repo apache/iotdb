@@ -70,6 +70,8 @@ public interface ISession extends AutoCloseable {
 
   void setTimeZoneOfSession(String zoneId);
 
+  List<String> fillAllNodeUrls();
+
   /** @deprecated Use {@link #createDatabase(String)} instead. */
   @Deprecated
   void setStorageGroup(String storageGroup)

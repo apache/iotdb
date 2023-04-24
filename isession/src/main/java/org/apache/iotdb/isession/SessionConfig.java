@@ -48,4 +48,6 @@ public class SessionConfig {
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 
   public static final Version DEFAULT_VERSION = Version.V_1_0;
+
+  public static final boolean DEFAULT_FILL_ALL_NODE_URLS_STATUS = false;
 }
