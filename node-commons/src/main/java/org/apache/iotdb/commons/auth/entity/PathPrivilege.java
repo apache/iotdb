@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+
+import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -35,9 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the seriesPath will be null.
  */
 public class PathPrivilege {
-
+  private static final Logger logger = org.slf4j.LoggerFactory.getLogger(PathPrivilege.class);
   private Set<Integer> privileges;
-  private String path;
+  private PartialPath path;
 
   /**
    * This field records how many times this privilege is referenced during a life cycle (from being
@@ -56,7 +59,7 @@ public class PathPrivilege {
     // Empty constructor
   }
 
-  public PathPrivilege(String path) {
+  public PathPrivilege(PartialPath path) {
     this.path = path;
     this.privileges = new HashSet<>();
   }
@@ -69,11 +72,11 @@ public class PathPrivilege {
     this.privileges = privileges;
   }
 
-  public String getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(String path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 
@@ -104,7 +107,7 @@ public class PathPrivilege {
 
   @Override
   public String toString() {
-    StringBuilder builder = new StringBuilder(path);
+    StringBuilder builder = new StringBuilder(path.getFullPath());
     builder.append(" :");
     for (Integer privilegeId : privileges) {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
@@ -117,7 +120,8 @@ public class PathPrivilege {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
     SerializeUtils.serializeIntSet(privileges, dataOutputStream);
-    SerializeUtils.serialize(path, dataOutputStream);
+    // TODO @SpriCoder use a more efficient way to serialize path
+    SerializeUtils.serialize(path.getFullPath(), dataOutputStream);
 
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -125,6 +129,11 @@ public class PathPrivilege {
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
     SerializeUtils.deserializeIntSet(privileges, buffer);
-    path = SerializeUtils.deserializeString(buffer);
+    // TODO @SpriCoder use a more efficient way to deserialize path
+    try {
+      path = new PartialPath(SerializeUtils.deserializeString(buffer));
+    } catch (Exception e) {
+      logger.error("Failed to create partialPath when deserialize pathPrivilege.");
+    }
   }
 }

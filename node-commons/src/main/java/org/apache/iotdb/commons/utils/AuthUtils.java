@@ -23,13 +23,16 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,14 +42,24 @@ import java.util.Map;
 import java.util.Set;
 
 public class AuthUtils {
+  private static final Logger logger = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
-  public static final String ROOT_PATH_PRIVILEGE =
-      IoTDBConstant.PATH_ROOT
-          + IoTDBConstant.PATH_SEPARATOR
-          + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+  public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
   private static final int MIN_ROLENAME_LENGTH = 4;
+
+  static {
+    try {
+      ROOT_PATH_PRIVILEGE_PATH =
+          new PartialPath(
+              IoTDBConstant.PATH_ROOT
+                  + IoTDBConstant.PATH_SEPARATOR
+                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    } catch (MetadataException e) {
+      // do nothing
+    }
+  }
 
   private AuthUtils() {
     // Empty constructor
@@ -135,8 +148,8 @@ public class AuthUtils {
    * @param path series path
    * @throws AuthException contains message why path is invalid
    */
-  public static void validatePath(String path) throws AuthException {
-    if (!path.startsWith(ROOT_PREFIX)) {
+  public static void validatePath(PartialPath path) throws AuthException {
+    if (!path.getFirstNode().equals(ROOT_PREFIX)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
@@ -151,10 +164,11 @@ public class AuthUtils {
    * @param privilegeId privilege Id
    * @throws AuthException contains message why path is invalid
    */
-  public static void validatePrivilegeOnPath(String path, int privilegeId) throws AuthException {
+  public static void validatePrivilegeOnPath(PartialPath path, int privilegeId)
+      throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (!path.equals(ROOT_PATH_PRIVILEGE)) {
+    if (!path.equals(ROOT_PATH_PRIVILEGE_PATH)) {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
@@ -206,25 +220,6 @@ public class AuthUtils {
   }
 
   /**
-   * Check if pathA belongs to pathB according to path pattern.
-   *
-   * @param pathA sub-path
-   * @param pathB path
-   * @exception AuthException throw if pathA or pathB is invalid
-   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c" and pathB =
-   *     "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
-   */
-  public static boolean pathBelongsTo(String pathA, String pathB) throws AuthException {
-    try {
-      PartialPath partialPathA = new PartialPath(pathA);
-      PartialPath partialPathB = new PartialPath(pathB);
-      return partialPathB.matchFullPath(partialPathA);
-    } catch (IllegalPathException e) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
-    }
-  }
-
-  /**
    * Check privilege
    *
    * @param path series path
@@ -234,14 +229,14 @@ public class AuthUtils {
    * @return True if privilege-check passed
    */
   public static boolean checkPrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
     if (privilegeList == null) {
       return false;
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
         if (pathPrivilege.getPath() != null
-            && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())
+            && pathPrivilege.getPath().matchFullPath(path)
             && pathPrivilege.getPrivileges().contains(privilegeId)) {
           return true;
         }
@@ -263,7 +258,7 @@ public class AuthUtils {
    * @exception AuthException throw if path is invalid or path in privilege is invalid
    * @return The privileges granted to the role
    */
-  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList)
+  public static Set<Integer> getPrivileges(PartialPath path, List<PathPrivilege> privilegeList)
       throws AuthException {
     if (privilegeList == null) {
       return new HashSet<>();
@@ -271,8 +266,7 @@ public class AuthUtils {
     Set<Integer> privileges = new HashSet<>();
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.getPath() != null
-            && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())) {
+        if (pathPrivilege.getPath() != null && pathPrivilege.getPath().matchFullPath(path)) {
           privileges.addAll(pathPrivilege.getPrivileges());
         }
       } else {
@@ -293,7 +287,7 @@ public class AuthUtils {
    * @return True if series path has this privilege
    */
   public static boolean hasPrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) {
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)
           && pathPrivilege.getPrivileges().contains(privilegeId)) {
@@ -311,7 +305,8 @@ public class AuthUtils {
    * @param privilegeId privilege Id
    * @param privilegeList privileges in List structure of user or role
    */
-  public static void addPrivilege(String path, int privilegeId, List<PathPrivilege> privilegeList) {
+  public static void addPrivilege(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
     PathPrivilege targetPathPrivilege = null;
     // check PathPrivilege of target path is already existed
     for (PathPrivilege pathPrivilege : privilegeList) {
@@ -343,7 +338,7 @@ public class AuthUtils {
    * @param privilegeList privileges in List structure of user or role
    */
   public static void removePrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) {
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
     PathPrivilege targetPathPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
@@ -410,5 +405,17 @@ public class AuthUtils {
       }
     }
     return result;
+  }
+
+  public static List<PartialPath> transformToPartialPath(List<String> paths) {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    try {
+      for (String path : paths) {
+        partialPaths.add(new PartialPath(path));
+      }
+    } catch (Exception e) {
+      logger.error("Failed to transform to partial path", e);
+    }
+    return partialPaths;
   }
 }

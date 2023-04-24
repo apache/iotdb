@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -62,7 +63,7 @@ import java.util.stream.Collectors;
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
 
-  private IAuthorCache iAuthorCache;
+  private final IAuthorCache iAuthorCache;
   private IAuthorizer authorizer;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
@@ -78,10 +79,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserPrivileges(String username, List<String> allPath, int permission) {
+  public TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (String path : allPath) {
+      for (PartialPath path : allPath) {
         try {
           if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
             if (!user.checkPrivilege(path, permission)) {
@@ -227,8 +228,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  public TSStatus checkPath(String username, List<String> allPath, int permission) {
-    TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
+  public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
+    TCheckUserPrivilegesReq req =
+        new TCheckUserPrivilegesReq(
+            username,
+            allPath.stream().map(PartialPath::getFullPath).collect(Collectors.toList()),
+            permission);
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -259,7 +264,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
       String privilege = privilegeList.get(i + 1);
-      pathPrivilegeList.add(toPathPrivilege(path, privilege));
+      try {
+        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+      } catch (MetadataException e) {
+        logger.error("Failed to parse path {}.", path, e);
+      }
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
@@ -279,7 +288,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
       String privilege = privilegeList.get(i + 1);
-      pathPrivilegeList.add(toPathPrivilege(path, privilege));
+      try {
+        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+      } catch (MetadataException e) {
+        logger.error("Failed to parse path {}.", path, e);
+      }
     }
     role.setPrivilegeList(pathPrivilegeList);
     return role;
@@ -292,7 +305,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
    * @param privilege privilegeIds
    * @return
    */
-  private PathPrivilege toPathPrivilege(String path, String privilege) {
+  private PathPrivilege toPathPrivilege(PartialPath path, String privilege) {
     PathPrivilege pathPrivilege = new PathPrivilege();
     String[] privileges = privilege.replace(" ", "").split(",");
     Set<Integer> privilegeIds = new HashSet<>();
