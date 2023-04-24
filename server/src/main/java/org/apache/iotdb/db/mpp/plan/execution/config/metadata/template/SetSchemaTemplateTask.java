@@ -28,15 +28,18 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class SetSchemaTemplateTask implements IConfigTask {
 
+  private final String queryId;
   private final SetSchemaTemplateStatement setSchemaTemplateStatement;
 
-  public SetSchemaTemplateTask(SetSchemaTemplateStatement setSchemaTemplateStatement) {
+  public SetSchemaTemplateTask(
+      String queryId, SetSchemaTemplateStatement setSchemaTemplateStatement) {
+    this.queryId = queryId;
     this.setSchemaTemplateStatement = setSchemaTemplateStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.setSchemaTemplate(setSchemaTemplateStatement);
+    return configTaskExecutor.setSchemaTemplate(queryId, setSchemaTemplateStatement);
   }
 }

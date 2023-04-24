@@ -113,6 +113,9 @@ public enum ConfigPhysicalPlanType {
   RollbackUnsetTemplate((short) 809),
   UnsetTemplate((short) 810),
   DropSchemaTemplate((short) 811),
+  PreSetSchemaTemplate((short) 812),
+  CommitSetSchemaTemplate((short) 813),
+  ExtendSchemaTemplate((short) 814),
 
   /** Deprecated types for sync, restored them for upgrade */
   @Deprecated

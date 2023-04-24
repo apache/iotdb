@@ -50,6 +50,11 @@ public class RegionRouteMap {
     this.regionPriorityMap = new ConcurrentHashMap<>();
   }
 
+  public RegionRouteMap(RegionRouteMap other) {
+    this.regionLeaderMap = new ConcurrentHashMap<>(other.regionLeaderMap);
+    this.regionPriorityMap = new ConcurrentHashMap<>(other.regionPriorityMap);
+  }
+
   /**
    * @return DataNodeId where the specified RegionGroup's leader resides. And return -1 if the
    *     leader is not recorded yet

@@ -47,6 +47,9 @@ import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 /** Region migrate procedure */
 public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
+
+  // TODO: Reach an agreement on RegionMigrateProcedure
+
   private static final Logger LOG = LoggerFactory.getLogger(RegionMigrateProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
