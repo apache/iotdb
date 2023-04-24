@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
 import org.junit.Before;
 import org.mockito.Mockito;
-
-import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.mockito.Mockito.mock;
 
@@ -38,9 +36,7 @@ public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     subtask =
         Mockito.spy(
             new PipeConnectorSubtask(
-                "PipeConnectorSubtaskExecutorTest",
-                mock(PipeConnector.class),
-                mock(ArrayBlockingQueue.class)) {
+                "PipeConnectorSubtaskExecutorTest", mock(PipeConnector.class)) {
               @Override
               public void executeForAWhile() {}
             });

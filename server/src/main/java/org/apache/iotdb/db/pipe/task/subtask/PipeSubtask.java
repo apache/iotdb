@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.callable;
+package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 
@@ -34,7 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void> {
+public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void>, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 

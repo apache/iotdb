@@ -24,7 +24,10 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 
 import org.slf4j.Logger;
@@ -185,7 +188,15 @@ public class PipePluginAgent {
     }
   }
 
-  public PipePlugin reflect(String pluginName) {
+  public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  public PipeConnector reflectConnector(PipeParameters connectorParameters) {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  private PipePlugin reflect(String pluginName) {
     PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
       String errorMessage =

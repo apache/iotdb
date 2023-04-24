@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskProcessorStage implements PipeTaskStage {

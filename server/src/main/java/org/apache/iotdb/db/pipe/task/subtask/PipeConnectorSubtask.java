@@ -17,57 +17,76 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.callable;
+package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ArrayBlockingQueue;
 
-public class PipeProcessorSubtask extends PipeSubtask {
+public class PipeConnectorSubtask extends PipeSubtask {
 
-  private final ArrayBlockingQueue<Event> pendingEventQueue;
-  private final PipeProcessor pipeProcessor;
-  private final EventCollector outputEventCollector;
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  public PipeProcessorSubtask(
-      String taskID,
-      ArrayBlockingQueue<Event> pendingEventQueue,
-      PipeProcessor pipeProcessor,
-      EventCollector outputEventCollector) {
+  // input
+  private final ArrayBlockingQueue<Event> pendingQueue;
+  // output
+  private final PipeConnector pipeConnector;
+
+  /** @param taskID connectorAttributeSortedString */
+  public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
     super(taskID);
-    this.pipeProcessor = pipeProcessor;
-    this.pendingEventQueue = pendingEventQueue;
-    this.outputEventCollector = outputEventCollector;
+    // TODO: make the size of the queue size reasonable and configurable
+    this.pendingQueue = new ArrayBlockingQueue<>(Integer.MAX_VALUE);
+    this.pipeConnector = pipeConnector;
   }
 
+  public ArrayBlockingQueue<Event> getInputPendingQueue() {
+    return pendingQueue;
+  }
+
+  // TODO: for a while
   @Override
   protected void executeForAWhile() {
-    if (pendingEventQueue.isEmpty()) {
+    if (pendingQueue.isEmpty()) {
       return;
     }
 
-    final Event event = pendingEventQueue.poll();
+    final Event event = pendingQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        pipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        pipeConnector.transfer((TsFileInsertionEvent) event);
       } else if (event instanceof DeletionEvent) {
-        pipeProcessor.process((DeletionEvent) event, outputEventCollector);
+        pipeConnector.transfer((DeletionEvent) event);
       } else {
         throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
       }
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
-          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          e);
+    }
+  }
+
+  @Override
+  public void close() {
+    try {
+      pipeConnector.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOGGER.info(
+          "Error occurred during closing PipeConnector, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
   }

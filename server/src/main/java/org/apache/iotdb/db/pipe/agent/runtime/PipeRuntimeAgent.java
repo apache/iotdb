@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

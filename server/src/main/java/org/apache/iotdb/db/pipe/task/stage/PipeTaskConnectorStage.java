@@ -19,67 +19,114 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.db.pipe.core.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.PipeSubtaskManager;
-import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-
-import java.util.TreeMap;
 
 public class PipeTaskConnectorStage implements PipeTaskStage {
 
-  protected final PipeSubtaskExecutor executor;
-  protected final PipeSubtask subtask;
-  private final PipeSubtaskManager subtaskManager;
+  protected final PipeConnectorSubtaskExecutor executor;
+  protected final PipeParameters connectorAttributes;
 
-  private final String pipeConnectorAttributes;
+  protected PipeStatus status = null;
+  protected String connectorSubtaskId = null;
+  protected boolean hasBeenExternallyStopped = false;
 
   protected PipeTaskConnectorStage(
-      PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask, String pipeName) {
+      PipeConnectorSubtaskExecutor executor, PipeParameters connectorAttributes) {
     this.executor = executor;
-    this.subtask = subtask;
-    // TODO: get the connector attributes from the constructor's parameter
-    this.pipeConnectorAttributes =
-        new TreeMap<>(
-                PipeAgent.task().getPipeMeta(pipeName).getStaticMeta().getConnectorAttributes())
-            .toString();
-
-    subtaskManager = PipeSubtaskManager.setupAndGetInstance();
+    this.connectorAttributes = connectorAttributes;
   }
 
   @Override
-  public void create() throws PipeException {
-    if (subtaskManager.increaseAlivePipePluginRef(pipeConnectorAttributes) == 1) {
-      executor.register(subtask);
+  public synchronized void create() throws PipeException {
+    if (status != null) {
+      if (status == PipeStatus.RUNNING) {
+        throw new PipeException(
+            String.format("The PipeConnectorSubtask %s has been started", connectorSubtaskId));
+      }
+      if (status == PipeStatus.DROPPED) {
+        throw new PipeException(
+            String.format("The PipeConnectorSubtask %s has been dropped", connectorSubtaskId));
+      }
+      // status == PipeStatus.STOPPED
+      if (hasBeenExternallyStopped) {
+        throw new PipeException(
+            String.format(
+                "The PipeConnectorSubtask %s has been externally stopped", connectorSubtaskId));
+      }
+      // otherwise, do nothing to allow retry strategy
+      return;
     }
+
+    // status == null, register the connector
+    connectorSubtaskId =
+        PipeConnectorSubtaskManager.instance().register(executor, connectorAttributes);
+    status = PipeStatus.STOPPED;
   }
 
   @Override
-  public void start() throws PipeException {
-    if (subtaskManager.increaseRuntimePipePluginRef(pipeConnectorAttributes) == 1) {
-      executor.start(subtask.getTaskID());
+  public synchronized void start() throws PipeException {
+    if (status == null) {
+      throw new PipeException(
+          String.format("The PipeConnectorSubtask %s has not been created", connectorSubtaskId));
     }
+    if (status == PipeStatus.RUNNING) {
+      // do nothing to allow retry strategy
+      return;
+    }
+    if (status == PipeStatus.DROPPED) {
+      throw new PipeException(
+          String.format("The PipeConnectorSubtask %s has been dropped", connectorSubtaskId));
+    }
+
+    // status == PipeStatus.STOPPED, start the connector
+    PipeConnectorSubtaskManager.instance().start(connectorSubtaskId);
+    status = PipeStatus.RUNNING;
   }
 
   @Override
-  public void stop() throws PipeException {
-    if (!subtaskManager.decreaseRuntimePipePluginRef(pipeConnectorAttributes)) {
-      executor.stop(subtask.getTaskID());
+  public synchronized void stop() throws PipeException {
+    if (status == null) {
+      throw new PipeException(
+          String.format("The PipeConnectorSubtask %s has not been created", connectorSubtaskId));
     }
+    if (status == PipeStatus.STOPPED) {
+      // do nothing to allow retry strategy
+      return;
+    }
+    if (status == PipeStatus.DROPPED) {
+      throw new PipeException(
+          String.format("The PipeConnectorSubtask %s has been dropped", connectorSubtaskId));
+    }
+
+    // status == PipeStatus.RUNNING, stop the connector
+    PipeConnectorSubtaskManager.instance().stop(connectorSubtaskId);
+    status = PipeStatus.STOPPED;
+    hasBeenExternallyStopped = true;
   }
 
   @Override
-  public void drop() throws PipeException {
-    if (!subtaskManager.decreaseAlivePipePluginRef(pipeConnectorAttributes)) {
-      executor.deregister(subtask.getTaskID());
+  public synchronized void drop() throws PipeException {
+    if (status == null) {
+      throw new PipeException(
+          String.format("The PipeConnectorSubtask %s has not been created", connectorSubtaskId));
     }
+    if (status == PipeStatus.DROPPED) {
+      // do nothing to allow retry strategy
+      return;
+    }
+
+    // status == PipeStatus.RUNNING or PipeStatus.STOPPED, drop the connector
+    PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
+    status = PipeStatus.DROPPED;
   }
 
   @Override
   public PipeSubtask getSubtask() {
-    return subtask;
+    return PipeConnectorSubtaskManager.instance().getPipeConnectorSubtask(connectorSubtaskId);
   }
 }
