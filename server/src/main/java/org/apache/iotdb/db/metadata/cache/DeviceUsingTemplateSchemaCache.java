@@ -64,6 +64,14 @@ public class DeviceUsingTemplateSchemaCache {
             .build();
   }
 
+  public long getHitCount() {
+    return cache.stats().hitCount();
+  }
+
+  public long getRequestCount() {
+    return cache.stats().requestCount();
+  }
+
   public ClusterSchemaTree get(PartialPath fullPath) {
     DeviceCacheEntry deviceCacheEntry = cache.getIfPresent(fullPath.getDevicePath());
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();

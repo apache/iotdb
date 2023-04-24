@@ -62,8 +62,12 @@ public class TimeSeriesSchemaCache {
             .build();
   }
 
-  public double getHitRate() {
-    return dualKeyCache.stats().hitRate() * 100;
+  public long getHitCount() {
+    return dualKeyCache.stats().hitCount();
+  }
+
+  public long getRequestCount() {
+    return dualKeyCache.stats().requestCount();
   }
 
   /**

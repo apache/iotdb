@@ -67,7 +67,10 @@ public class DataNodeSchemaCache {
   }
 
   public double getHitRate() {
-    return 0;
+    return (deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount())
+        * 1.0
+        / (deviceUsingTemplateSchemaCache.getRequestCount()
+            + timeSeriesSchemaCache.getRequestCount());
   }
 
   public static DataNodeSchemaCache getInstance() {
