@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -38,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the seriesPath will be null.
  */
 public class PathPrivilege {
-  private static final Logger logger = org.slf4j.LoggerFactory.getLogger(PathPrivilege.class);
+  private static final Logger logger = LoggerFactory.getLogger(PathPrivilege.class);
   private Set<Integer> privileges;
   private PartialPath path;
 
@@ -120,20 +122,17 @@ public class PathPrivilege {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
     SerializeUtils.serializeIntSet(privileges, dataOutputStream);
-    // TODO @SpriCoder use a more efficient way to serialize path
-    SerializeUtils.serialize(path.getFullPath(), dataOutputStream);
-
+    try {
+      path.serialize(byteArrayOutputStream);
+    } catch (IOException exception) {
+      logger.error("Unexpected exception when serialize path", exception);
+    }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
     SerializeUtils.deserializeIntSet(privileges, buffer);
-    // TODO @SpriCoder use a more efficient way to deserialize path
-    try {
-      path = new PartialPath(SerializeUtils.deserializeString(buffer));
-    } catch (Exception e) {
-      logger.error("Failed to create partialPath when deserialize pathPrivilege.");
-    }
+    path = PartialPath.deserialize(buffer);
   }
 }
