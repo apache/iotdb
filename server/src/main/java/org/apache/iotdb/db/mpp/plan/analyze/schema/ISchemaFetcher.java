@@ -76,6 +76,12 @@ public interface ISchemaFetcher {
   void fetchAndComputeSchemaWithAutoCreate(
       List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList);
 
+  default void fetchAndComputeSchemaWithAutoCreateForFastWrite(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
+
+  default void fetchAndComputeSchemaWithAutoCreateForFastWrite(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
+
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,

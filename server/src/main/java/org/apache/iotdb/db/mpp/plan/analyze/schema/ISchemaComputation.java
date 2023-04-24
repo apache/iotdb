@@ -40,4 +40,6 @@ public interface ISchemaComputation {
    * @param measurementSchemaInfo the measurement schema of fetched measurement
    */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
+
+  default void initMeasurementSchemaContainer(int size, String[] measurements) {}
 }

@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +46,8 @@ public class Template implements Serializable {
   private String name;
   private boolean isDirectAligned;
   private Map<String, IMeasurementSchema> schemaMap;
+
+  private List<String> measurementsInorder;
 
   private transient int rehashCode;
 
@@ -72,11 +76,13 @@ public class Template implements Serializable {
     this.isDirectAligned = isAligned;
     this.schemaMap = new ConcurrentHashMap<>();
     this.name = name;
+    this.measurementsInorder = Collections.synchronizedList(new ArrayList<>());
     for (int i = 0; i < measurements.size(); i++) {
       IMeasurementSchema schema =
           new MeasurementSchema(
               measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));
       schemaMap.put(schema.getMeasurementId(), schema);
+      measurementsInorder.add(measurements.get(i));
     }
   }
 
@@ -144,6 +150,7 @@ public class Template implements Serializable {
       IMeasurementSchema schema =
           constructSchema(measurements[i], dataTypes[i], encodings[i], compressors[i]);
       schemaMap.put(measurements[i], schema);
+      measurementsInorder.add(measurements[i]);
     }
   }
 
@@ -153,6 +160,11 @@ public class Template implements Serializable {
       TSEncoding encoding,
       CompressionType compressionType) {
     schemaMap.put(measurement, constructSchema(measurement, dataType, encoding, compressionType));
+    measurementsInorder.add(measurement);
+  }
+
+  public List<String> getMeasurementsInorder() {
+    return measurementsInorder;
   }
 
   // endregion
@@ -166,6 +178,9 @@ public class Template implements Serializable {
       ReadWriteIOUtils.write(entry.getKey(), buffer);
       entry.getValue().partialSerializeTo(buffer);
     }
+    for (String measurement : measurementsInorder) {
+      ReadWriteIOUtils.write(measurement, buffer);
+    }
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
@@ -176,6 +191,9 @@ public class Template implements Serializable {
     for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().partialSerializeTo(outputStream);
+    }
+    for (String measurement : measurementsInorder) {
+      ReadWriteIOUtils.write(measurement, outputStream);
     }
   }
 
@@ -205,6 +223,10 @@ public class Template implements Serializable {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
       schemaMap.put(schemaName, measurementSchema);
+    }
+    measurementsInorder = Collections.synchronizedList(new ArrayList<>());
+    for (int i = 0; i < schemaSize; i++) {
+      measurementsInorder.add(ReadWriteIOUtils.readString(buffer));
     }
   }
 

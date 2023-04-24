@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.FastInsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.FastInsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,10 +40,20 @@ public class SchemaValidator {
   public static void validate(InsertNode insertNode) {
     try {
       if (insertNode instanceof BatchInsertNode) {
-        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
-            ((BatchInsertNode) insertNode).getSchemaValidationList());
+        if (insertNode instanceof FastInsertRowsNode) {
+          SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreateForFastWrite(
+              ((BatchInsertNode) insertNode).getSchemaValidationList());
+        } else {
+          SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
+              ((BatchInsertNode) insertNode).getSchemaValidationList());
+        }
       } else {
-        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertNode.getSchemaValidation());
+        if (insertNode instanceof FastInsertRowNode) {
+          SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreateForFastWrite(
+              insertNode.getSchemaValidation());
+        } else {
+          SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertNode.getSchemaValidation());
+        }
       }
       insertNode.updateAfterSchemaValidation();
     } catch (QueryProcessException e) {

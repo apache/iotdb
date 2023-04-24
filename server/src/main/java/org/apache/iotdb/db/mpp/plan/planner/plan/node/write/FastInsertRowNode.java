@@ -21,10 +21,14 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -105,5 +109,26 @@ public class FastInsertRowNode extends InsertRowNode {
     int length = ReadWriteIOUtils.readInt(byteBuffer);
     byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, length);
     this.rawValues = ByteBuffer.wrap(bytes);
+  }
+
+  @Override
+  public void initMeasurementSchemaContainer(int size, String[] measurements) {
+    this.measurementSchemas = new MeasurementSchema[size];
+    this.measurements = measurements;
+    this.dataTypes = new TSDataType[size];
+  }
+
+  @Override
+  public void validateDeviceSchema(boolean isAligned) {
+    this.isAligned = isAligned;
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {}
+
+  @Override
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    measurementSchemas[index] = measurementSchemaInfo.getSchema();
+    this.dataTypes[index] = measurementSchemaInfo.getSchema().getType();
   }
 }

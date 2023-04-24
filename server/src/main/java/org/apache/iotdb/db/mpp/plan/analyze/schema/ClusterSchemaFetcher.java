@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -358,6 +359,84 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return schemaTree;
     } finally {
       schemaCache.releaseReadLock();
+    }
+  }
+
+  @Override
+  public void fetchAndComputeSchemaWithAutoCreateForFastWrite(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
+    schemaCache.takeReadLock();
+    templateSchemaCache.takeReadLock();
+    try {
+      List<ISchemaComputationWithAutoCreation> templateTimeSeriesRequestList = new ArrayList<>();
+      List<Pair<Template, PartialPath>> templateSetInfoList = new ArrayList<>();
+      Pair<Template, PartialPath> templateSetInfo;
+      for (ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation :
+          schemaComputationWithAutoCreationList) {
+        templateSetInfo =
+            templateManager.checkTemplateSetInfo(schemaComputationWithAutoCreation.getDevicePath());
+        if (templateSetInfo == null) {
+          throw new SemanticException(
+              "There's no template on prefix path of"
+                  + schemaComputationWithAutoCreation.getDevicePath());
+        }
+        templateTimeSeriesRequestList.add(schemaComputationWithAutoCreation);
+        templateSetInfoList.add(templateSetInfo);
+
+        schemaComputationWithAutoCreation.initMeasurementSchemaContainer(
+            templateSetInfo.left.getMeasurementNumber(),
+            templateSetInfo.getLeft().getMeasurementsInorder().toArray(new String[0]));
+      }
+
+      if (!templateTimeSeriesRequestList.isEmpty()) {
+        templateSchemaFetcher.processTemplateTimeSeries(
+            templateSetInfoList, templateTimeSeriesRequestList);
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+      templateSchemaCache.releaseReadLock();
+    }
+  }
+
+  @Override
+  public void fetchAndComputeSchemaWithAutoCreateForFastWrite(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+    schemaCache.takeReadLock();
+    templateSchemaCache.takeReadLock();
+    try {
+
+      Pair<Template, PartialPath> templateSetInfo =
+          templateManager.checkTemplateSetInfo(schemaComputationWithAutoCreation.getDevicePath());
+      List<Integer> indexOfMissingMeasurements;
+      if (templateSetInfo == null) {
+        throw new SemanticException(
+            "There's no template on prefix path of"
+                + schemaComputationWithAutoCreation.getDevicePath());
+      }
+
+      schemaComputationWithAutoCreation.initMeasurementSchemaContainer(
+          templateSetInfo.left.getMeasurementNumber(),
+          templateSetInfo.getLeft().getMeasurementsInorder().toArray(new String[0]));
+
+      // template timeseries
+      indexOfMissingMeasurements =
+          templateSchemaFetcher.processTemplateTimeSeries(
+              templateSetInfo, schemaComputationWithAutoCreation);
+
+      // all schema has been taken and processed
+      if (indexOfMissingMeasurements.isEmpty()) {
+        return;
+      }
+
+      // offer null for the rest missing schema processing
+      for (int index : indexOfMissingMeasurements) {
+        schemaComputationWithAutoCreation.computeMeasurement(index, null);
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+      templateSchemaCache.releaseReadLock();
     }
   }
 
