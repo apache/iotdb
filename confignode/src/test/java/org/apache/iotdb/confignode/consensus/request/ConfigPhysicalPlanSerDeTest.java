@@ -1098,7 +1098,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void CreatePipePluginPlanTest() throws IOException {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
-            new PipePluginMeta("testPlugin", "org.apache.iotdb.testJar", "testJar", "???"),
+            new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123"));
     CreatePipePluginPlan createPipePluginPlan1 =
         (CreatePipePluginPlan)

@@ -110,7 +110,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     try {
       pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
     } catch (PipeManagementException e) {
-      // if the pipe plugin is not exist, we should end the procedure
+      // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
       pipePluginCoordinator.unlock();
@@ -180,14 +180,14 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnDataNodes({})", pluginName);
 
     // do nothing but wait for rolling back to the previous state: LOCK
-    // TODO: we should drop the pipe plugin on data nodes
+    // TODO: we should drop the pipe plugin on data nodes properly with RuntimeAgent's help
   }
 
   private void rollbackFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnConfigNodes({})", pluginName);
 
     // do nothing but wait for rolling back to the previous state: DROP_ON_DATA_NODES
-    // TODO: we should drop the pipe plugin on config nodes
+    // TODO: we should drop the pipe plugin on config nodes properly with RuntimeCoordinator's help
   }
 
   @Override
