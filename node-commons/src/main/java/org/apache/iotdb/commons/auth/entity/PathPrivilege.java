@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents a privilege on a specific seriesPath. If the privilege is seriesPath-free,
- * the seriesPath will be null.
+ * the seriesPath will be null.I
  */
 public class PathPrivilege {
   private static final Logger logger = LoggerFactory.getLogger(PathPrivilege.class);
