@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
+import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
@@ -42,13 +43,14 @@ public class MergeSortComparator {
       int index = indexList.get(i);
       TSDataType dataType = dataTypeList.get(i);
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
-      list.add(genSingleComparator(asc, index, dataType));
+      boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;
+      list.add(genSingleComparator(asc, index, dataType, nullFirst));
     }
     return new ComparatorChain<>(list);
   }
 
   private static Comparator<MergeSortKey> genSingleComparator(
-      boolean asc, int index, TSDataType dataType) {
+      boolean asc, int index, TSDataType dataType, boolean nullFirst) {
     Comparator<MergeSortKey> comparator;
     switch (dataType) {
       case INT32:
@@ -99,6 +101,9 @@ public class MergeSortComparator {
     if (!asc) {
       comparator = comparator.reversed();
     }
-    return comparator;
+
+    return index != -1
+        ? MergeSortKeyComparator.getInstance(index, nullFirst, comparator)
+        : comparator;
   }
 }

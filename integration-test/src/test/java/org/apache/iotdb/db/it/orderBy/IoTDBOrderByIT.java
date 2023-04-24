@@ -36,8 +36,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Objects;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -348,6 +350,37 @@ public class IoTDBOrderByIT {
     }
   }
 
+  @Test
+  public void orderByTest16() {
+    String sql = "select num+floatNum from root.sg.d order by floatNum+num desc, floatNum desc";
+    int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        checkHeader(metaData, new String[] {"Time", "root.sg.d.num + root.sg.d.floatNum"});
+        int i = 0;
+        while (resultSet.next()) {
+
+          String actualTime = resultSet.getString(1);
+          double actualNum = resultSet.getDouble(2);
+
+          assertEquals(res[ans[i]][0], actualTime);
+          assertEquals(
+              Long.parseLong(res[ans[i]][1]) + Double.parseDouble(res[ans[i]][3]),
+              actualNum,
+              0.001);
+
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   // 3. aggregation query
   @Test
   public void orderByInAggregationTest() {
@@ -552,6 +585,34 @@ public class IoTDBOrderByIT {
     }
   }
 
+  @Test
+  public void orderByInAggregationTest8() {
+    String sql =
+        "select avg(num)+avg(floatNum) from root.sg.d group by session(10000ms) order by avg(floatNum)+avg(num)";
+    double[][] ans =
+        new double[][] {{1079.56122}, {395.4584}, {65.121}, {151.2855}, {67.12}, {250.213}};
+    long[] times =
+        new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
+    int[] order = new int[] {2, 4, 3, 5, 1, 0};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int i = 0;
+        while (resultSet.next()) {
+          long actualTime = resultSet.getLong(1);
+          double actualAvg = resultSet.getDouble(2);
+          assertEquals(times[order[i]], actualTime);
+          assertEquals(ans[order[i]][0], actualAvg, 0.0001);
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   // 4. raw data query with align by device
   private void testNormalOrderByAlignByDevice(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -601,7 +662,7 @@ public class IoTDBOrderByIT {
   @Test
   public void alignByDeviceOrderByTest1() {
     String sql =
-        "select num+bigNum from root.sg.d order by num+floatNum desc, floatNum desc align by device";
+        "select num+bigNum from root.** order by num+floatNum desc, floatNum desc align by device";
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     String device = "root.sg.d";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -624,7 +685,7 @@ public class IoTDBOrderByIT {
             i++;
           }
         }
-        assertEquals(i, ans.length * 2);
+        assertEquals(i, ans.length);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -892,15 +953,6 @@ public class IoTDBOrderByIT {
     orderByBigNumAlignByDevice(sql, ans);
   }
 
-  //    double[][] ans =
-  //        new double[][] {
-  //          {13.0, 54.12},
-  //          {11.0, 54.121},
-  //          {13.0, 231.34},
-  //          {15.0, 235.213},
-  //          {6.4, 1231.21},
-  //          {4.6, 4654.231}
-  //        };
   // 5. aggregation query align by device
   @Test
   public void orderByInAggregationAlignByDeviceTest() {
@@ -1084,5 +1136,76 @@ public class IoTDBOrderByIT {
     String sql = "select avg(num+floatNum) from root.** order by time,avg(num) align by device";
     String value = "537.34154";
     checkSingleDouble(sql, value, true);
+  }
+
+  String[][] UDFRes =
+      new String[][] {
+        {"0", "3", "0", "0"},
+        {"20", "2", "0", "0"},
+        {"40", "1", "0", "0"},
+        {"80", "9", "0", "0"},
+        {"100", "8", "0", "0"},
+        {"31536000000", "6", "0", "0"},
+        {"31536000100", "10", "0", "0"},
+        {"31536000500", "4", "0", "0"},
+        {"31536001000", "5", "0", "0"},
+        {"31536010000", "7", "0", "0"},
+        {"31536100000", "11", "0", "0"},
+        {"41536000000", "12", "2146483648", "0"},
+        {"41536000020", "14", "0", "14"},
+        {"41536900000", "13", "2107483648", "0"},
+        {"51536000000", "15", "0", "15"},
+      };
+
+  // UDF Test
+  private void orderByUDFTest(String sql, int[] ans) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int i = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(1);
+          String num = resultSet.getString(2);
+          String topK = resultSet.getString(3);
+          String bottomK = resultSet.getString(4);
+
+          assertEquals(time, UDFRes[ans[i]][0]);
+          assertEquals(num, UDFRes[ans[i]][1]);
+          if (Objects.equals(UDFRes[ans[i]][3], "0")) {
+            assertNull(topK);
+          } else {
+            assertEquals(topK, UDFRes[ans[i]][3]);
+          }
+
+          if (Objects.equals(UDFRes[ans[i]][2], "0")) {
+            assertNull(bottomK);
+          } else {
+            assertEquals(bottomK, UDFRes[ans[i]][2]);
+          }
+
+          i++;
+        }
+        assertEquals(i, 15);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void orderByUDFTest1() {
+    String sql =
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2') nulls first, bottom_k(bigNum, 'k'='2') nulls first";
+    int[] ans = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 11, 12, 14};
+    orderByUDFTest(sql, ans);
+  }
+
+  @Test
+  public void orderByUDFTest2() {
+    String sql =
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
+    int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    orderByUDFTest(sql, ans);
   }
 }

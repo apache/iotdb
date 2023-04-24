@@ -95,6 +95,10 @@ public class SortOperator implements ProcessOperator {
           int row = mergeSortKey.rowIndex;
           timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(row));
           for (int i = 0; i < valueColumnBuilders.length; i++) {
+            if (tsBlock.getColumn(i).isNull(row)) {
+              valueColumnBuilders[i].appendNull();
+              continue;
+            }
             valueColumnBuilders[i].write(tsBlock.getColumn(i), row);
           }
           tsBlockBuilder.declarePosition();
