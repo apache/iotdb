@@ -24,16 +24,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -138,25 +139,15 @@ public class FileLoaderManager {
 
   private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
       throws IOException, ClassNotFoundException {
-    Map<String, String> finalMap = new HashMap<>();
-    try (BufferedReader reader = new BufferedReader(new FileReader(deviceOwnerFile))) {
-      reader
-          .lines()
-          .forEach(
-              o -> {
-                try {
-                  String[] entry = o.split(" ");
-                  if (entry.length == 2) {
-                    finalMap.put(entry[0], entry[1]);
-                  }
-                } catch (Exception e) {
-                  LOGGER.warn(
-                      String.format("Deserialize owner map %s line %s error", deviceOwnerFile, o),
-                      e);
-                }
-              });
+    try (InputStream stream = Files.newInputStream(deviceOwnerFile.toPath())) {
+      while (stream.available() > 0) {
+        String k = ReadWriteIOUtils.readString(stream);
+        String v = ReadWriteIOUtils.readString(stream);
+        deviceOwnerMap.put(k, v);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Deserialize owner map %s error.", deviceOwnerFile), e);
     }
-    deviceOwnerMap = finalMap;
   }
 
   private void serializeDeviceOwnerMap(File deviceOwnerFile) throws IOException {
@@ -166,15 +157,18 @@ public class FileLoaderManager {
     if (!deviceOwnerFile.exists()) {
       deviceOwnerFile.createNewFile();
     }
-    try (FileWriter writer = new FileWriter(deviceOwnerFile)) {
+    try (OutputStream stream = Files.newOutputStream(deviceOwnerFile.toPath())) {
       deviceOwnerMap.forEach(
           (k, v) -> {
             try {
-              writer.write(k + " " + v + System.lineSeparator());
+              ReadWriteIOUtils.write(k, stream);
+              ReadWriteIOUtils.write(v, stream);
             } catch (IOException e) {
-              throw new RuntimeException(e);
+              LOGGER.warn(String.format("Serialize owner map %s %s error.", k, v), e);
             }
           });
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Serialize owner map %s error.", deviceOwnerMap), e);
     }
   }
 
