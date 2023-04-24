@@ -44,7 +44,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
     super(taskID);
     // TODO: make the size of the queue size reasonable and configurable
-    this.pendingQueue = new ArrayBlockingQueue<>(Integer.MAX_VALUE);
+    this.pendingQueue = new ArrayBlockingQueue<>(1024 * 1024);
     this.pipeConnector = pipeConnector;
   }
 
