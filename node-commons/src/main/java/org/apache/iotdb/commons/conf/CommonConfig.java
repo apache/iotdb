@@ -120,7 +120,7 @@ public class CommonConfig {
 
   private volatile String statusReason = null;
 
-  private int TTimePartitionSlotTransmitLimit = 65536;
+  private int TTimePartitionSlotTransmitLimit = 1000;
 
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;

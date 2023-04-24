@@ -2022,9 +2022,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException(
             String.format("Parse file %s to resource error", tsFile.getPath()));
       }
+      if (device2Schemas.size() > CONFIG.getMaxLoadingDeviceNumber()) {
+        autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);
+      }
     }
 
-    // auto create and verify schema
+    autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);
+
+    // load function will query data partition in scheduler
+    Analysis analysis = new Analysis();
+    analysis.setStatement(loadTsFileStatement);
+    return analysis;
+  }
+
+  private void autoCreateAndVerifySchema(
+      LoadTsFileStatement loadTsFileStatement,
+      Map<String, Map<MeasurementSchema, File>> device2Schemas,
+      Map<String, Pair<Boolean, File>> device2IsAligned)
+      throws SemanticException {
+    if (device2Schemas.isEmpty()) {
+      return;
+    }
     try {
       if (loadTsFileStatement.isVerifySchema()) {
         verifyLoadingMeasurements(device2Schemas);
@@ -2046,12 +2064,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           String.format(
               "Auto create or verify schema error when executing statement %s.",
               loadTsFileStatement));
+    } finally {
+      device2Schemas.clear();
+      device2IsAligned.clear();
     }
-
-    // load function will query data partition in scheduler
-    Analysis analysis = new Analysis();
-    analysis.setStatement(loadTsFileStatement);
-    return analysis;
   }
 
   /** get analysis according to statement and params */
