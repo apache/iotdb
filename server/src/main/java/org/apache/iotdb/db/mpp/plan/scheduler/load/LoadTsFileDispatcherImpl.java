@@ -165,7 +165,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
-    } else if (planNode instanceof LoadSingleTsFileNode) { // do not need split
+    } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       try {
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
