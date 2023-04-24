@@ -195,7 +195,7 @@ public class DataNodeSchemaCache {
     }
   }
 
-  private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
+  public void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
     SchemaCacheEntry schemaCacheEntry =
         new SchemaCacheEntry(
             storageGroup,

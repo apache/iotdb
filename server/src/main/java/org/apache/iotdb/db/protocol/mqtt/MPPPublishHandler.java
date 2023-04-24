@@ -19,10 +19,10 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -136,7 +136,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       TSStatus tsStatus = null;
       try {
         InsertRowStatement statement = new InsertRowStatement();
-        statement.setDevicePath(new PartialPath(event.getDevice()));
+        statement.setDevicePath(
+            DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
         statement.setTime(event.getTimestamp());
         statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
         if (event.getDataTypes() == null) {

@@ -46,23 +46,6 @@ public class TemplateInternalRPCUtil {
     return outputStream.toByteArray();
   }
 
-  public static byte[] generateAddTemplateSetInfoBytes(
-      Map<Template, List<String>> templateSetInfo) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
-      for (Map.Entry<Template, List<String>> entry : templateSetInfo.entrySet()) {
-        entry.getKey().serialize(outputStream);
-        ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
-        for (String templateSetPath : entry.getValue()) {
-          ReadWriteIOUtils.write(templateSetPath, outputStream);
-        }
-      }
-    } catch (IOException ignored) {
-    }
-    return outputStream.toByteArray();
-  }
-
   public static Map<Template, List<String>> parseAddTemplateSetInfoBytes(ByteBuffer buffer) {
     int templateNum = ReadWriteIOUtils.readInt(buffer);
     Map<Template, List<String>> result = new HashMap<>(templateNum);
@@ -82,6 +65,45 @@ public class TemplateInternalRPCUtil {
     return result;
   }
 
+  public static byte[] generateAddAllTemplateSetInfoBytes(
+      Map<Template, List<Pair<String, Boolean>>> templateSetInfo) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
+      for (Map.Entry<Template, List<Pair<String, Boolean>>> entry : templateSetInfo.entrySet()) {
+        entry.getKey().serialize(outputStream);
+        ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
+        for (Pair<String, Boolean> templateSetPath : entry.getValue()) {
+          ReadWriteIOUtils.write(templateSetPath.left, outputStream);
+          ReadWriteIOUtils.write(templateSetPath.right, outputStream);
+        }
+      }
+    } catch (IOException ignored) {
+    }
+    return outputStream.toByteArray();
+  }
+
+  public static Map<Template, List<Pair<String, Boolean>>> parseAddAllTemplateSetInfoBytes(
+      ByteBuffer buffer) {
+    int templateNum = ReadWriteIOUtils.readInt(buffer);
+    Map<Template, List<Pair<String, Boolean>>> result = new HashMap<>(templateNum);
+    int pathNum;
+    List<Pair<String, Boolean>> templateSetPathList;
+    for (int i = 0; i < templateNum; i++) {
+      Template template = new Template();
+      template.deserialize(buffer);
+
+      pathNum = ReadWriteIOUtils.readInt(buffer);
+      templateSetPathList = new ArrayList<>(pathNum);
+      for (int j = 0; j < pathNum; j++) {
+        templateSetPathList.add(
+            new Pair<>(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readBool(buffer)));
+      }
+      result.put(template, templateSetPathList);
+    }
+    return result;
+  }
+
   public static byte[] generateInvalidateTemplateSetInfoBytes(int templateId, String path) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
@@ -95,5 +117,15 @@ public class TemplateInternalRPCUtil {
 
   public static Pair<Integer, String> parseInvalidateTemplateSetInfoBytes(ByteBuffer buffer) {
     return new Pair<>(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readString(buffer));
+  }
+
+  public static byte[] generateUpdateTemplateInfoBytes(Template template) {
+    return template.serialize().array();
+  }
+
+  public static Template parseUpdateTemplateInfoBytes(ByteBuffer buffer) {
+    Template template = new Template();
+    template.deserialize(buffer);
+    return template;
   }
 }

@@ -212,10 +212,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       throws IOException {
     TsFileNameGenerator.TsFileName unseqFileName =
         TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
-    // we add a hard limit for cross compaction that selected unseqFile should be compacted in inner
+    // we add a hard limit for cross compaction that selected unseqFile should reach a certain size
+    // or be compacted in inner
     // space at least once. This is used to make to improve the priority of inner compaction and
     // avoid too much cross compaction with small files.
-    if (unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
+    if (unseqFile.getTsFileSize() < config.getTargetCompactionFileSize()
+        && unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
       return false;
     }
     // currently, we must allow at least one unseqFile be selected to handle the situation that
@@ -279,7 +281,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return Collections.emptyList();
       }
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms.",
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {} MB, total selected file size is {} MB, total selected seq file size is {} MB, total selected unseq file size is {} MB, time consumption {}ms.",
           logicalStorageGroupName + "-" + dataRegionId,
           sequenceFileList.size(),
           unsequenceFileList.size(),
@@ -287,7 +289,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size(),
           taskResources.getSeqFiles().size(),
           taskResources.getUnseqFiles().size(),
-          taskResources.getTotalMemoryCost(),
+          (float) (taskResources.getTotalMemoryCost()) / 1024 / 1024,
+          (float) (taskResources.getTotalFileSize()) / 1024 / 1024,
+          taskResources.getTotalSeqFileSize() / 1024 / 1024,
+          taskResources.getTotalUnseqFileSize() / 1024 / 1024,
           System.currentTimeMillis() - startTime);
       hasPrintedLog = false;
       return Collections.singletonList(taskResources);

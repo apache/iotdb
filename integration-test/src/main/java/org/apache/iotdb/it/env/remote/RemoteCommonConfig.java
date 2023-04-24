@@ -251,4 +251,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
     return this;
   }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    return this;
+  }
 }
