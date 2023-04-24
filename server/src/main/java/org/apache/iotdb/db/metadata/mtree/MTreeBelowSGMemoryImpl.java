@@ -37,7 +37,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -709,13 +708,6 @@ public class MTreeBelowSGMemoryImpl {
     IDeviceMNode<IMemMNode> entityMNode;
 
     synchronized (this) {
-      for (String measurement : template.getSchemaMap().keySet()) {
-        if (cur.hasChild(measurement)) {
-          throw new TemplateImcompatibeException(
-              activatePath.concatNode(measurement).getFullPath(), template.getName());
-        }
-      }
-
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {

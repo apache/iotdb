@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
@@ -203,6 +204,49 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus setSchemaTemplate(String queryId, String templateName, String templateSetPath) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      SetTemplateProcedure setTemplateProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
+          continue;
+        }
+        setTemplateProcedure = (SetTemplateProcedure) procedure;
+        if (queryId.equals(setTemplateProcedure.getQueryId())) {
+          procedureId = setTemplateProcedure.getProcId();
+          break;
+        }
+        if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is setting template on target path.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new SetTemplateProcedure(queryId, templateName, templateSetPath));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();

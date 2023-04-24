@@ -440,6 +440,13 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  /**
+   * Enable compaction memory control or not. If true and estimated memory size of one compaction
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
+   */
+  private boolean enableCompactionMemControl = true;
+
   private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 1 GB by default */
@@ -953,6 +960,8 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 1000;
 
+  private int devicePathCacheSize = 500_000;
+
   /** Cache size of user and role */
   private int authorCacheSize = 100;
 
@@ -1071,7 +1080,7 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
-  /** multi-tenancy */
+  /** Resource control */
   private boolean quotaEnable = false;
 
   /**
@@ -1080,6 +1089,23 @@ public class IoTDBConfig {
    * TimeUnit/resources interval.
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
+
+  /** The minimum/maximum number of subtask threads of each stage when flushing one MemTable. */
+  private int flushMemTableMinSubThread = 1;
+
+  private int flushMemTableMaxSubThread = 16;
+  /**
+   * If the idle ratio of a DynamicThread is below this value, it will try to add a new thread in
+   * its group if there are fewer threads than flushMemTableMaxSubThread.
+   */
+  private double dynamicThreadMinIdleRatio = 0.1;
+  /**
+   * If the idle ratio of a DynamicThread is over this value, it will try to exit if there are more
+   * threads than flushMemTableMinSubThread.
+   */
+  private double dynamicThreadMaxIdleRatio = 0.5;
+  /** A DynamicThread will not automatically exit unless its running time exceeds the value. */
+  private long dynamicThreadMinRunningTimeNS = 10_000_000_000L;
 
   IoTDBConfig() {}
 
@@ -2783,6 +2809,14 @@ public class IoTDBConfig {
     this.compactionPriority = compactionPriority;
   }
 
+  public boolean isEnableCompactionMemControl() {
+    return enableCompactionMemControl;
+  }
+
+  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
+    this.enableCompactionMemControl = enableCompactionMemControl;
+  }
+
   public long getTargetCompactionFileSize() {
     return targetCompactionFileSize;
   }
@@ -3151,6 +3185,14 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getDevicePathCacheSize() {
+    return devicePathCacheSize;
+  }
+
+  public void setDevicePathCacheSize(int devicePathCacheSize) {
+    this.devicePathCacheSize = devicePathCacheSize;
   }
 
   public int getAuthorCacheSize() {
@@ -3742,5 +3784,45 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
+  }
+
+  public int getFlushMemTableMinSubThread() {
+    return flushMemTableMinSubThread;
+  }
+
+  public void setFlushMemTableMinSubThread(int flushMemTableMinSubThread) {
+    this.flushMemTableMinSubThread = flushMemTableMinSubThread;
+  }
+
+  public int getFlushMemTableMaxSubThread() {
+    return flushMemTableMaxSubThread;
+  }
+
+  public void setFlushMemTableMaxSubThread(int flushMemTableMaxSubThread) {
+    this.flushMemTableMaxSubThread = flushMemTableMaxSubThread;
+  }
+
+  public double getDynamicThreadMinIdleRatio() {
+    return dynamicThreadMinIdleRatio;
+  }
+
+  public void setDynamicThreadMinIdleRatio(double dynamicThreadMinIdleRatio) {
+    this.dynamicThreadMinIdleRatio = dynamicThreadMinIdleRatio;
+  }
+
+  public double getDynamicThreadMaxIdleRatio() {
+    return dynamicThreadMaxIdleRatio;
+  }
+
+  public void setDynamicThreadMaxIdleRatio(double dynamicThreadMaxIdleRatio) {
+    this.dynamicThreadMaxIdleRatio = dynamicThreadMaxIdleRatio;
+  }
+
+  public long getDynamicThreadMinRunningTimeNS() {
+    return dynamicThreadMinRunningTimeNS;
+  }
+
+  public void setDynamicThreadMinRunningTimeNS(long dynamicThreadMinRunningTimeNS) {
+    this.dynamicThreadMinRunningTimeNS = dynamicThreadMinRunningTimeNS;
   }
 }

@@ -502,6 +502,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_priority", conf.getCompactionPriority().toString())));
 
+    conf.setEnableCompactionMemControl(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_mem_control",
+                Boolean.toString(conf.isEnableCompactionMemControl()))));
+
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
@@ -768,6 +774,12 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
+    // the size of device path cache
+    conf.setDevicePathCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
+
     // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(
         Integer.parseInt(
@@ -1002,6 +1014,31 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
+
+    conf.setFlushMemTableMinSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_min_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMinSubThread()))));
+    conf.setFlushMemTableMaxSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_max_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMaxSubThread()))));
+
+    conf.setDynamicThreadMinIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_min_idle_ratio", Double.toString(conf.getDynamicThreadMinIdleRatio()))));
+    conf.setDynamicThreadMaxIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_max_idle_ratio", Double.toString(conf.getDynamicThreadMaxIdleRatio()))));
+    conf.setDynamicThreadMinRunningTimeNS(
+        Long.parseLong(
+            properties.getProperty(
+                "dynamic_min_running_time_ns",
+                Long.toString(conf.getDynamicThreadMinRunningTimeNS()))));
 
     // commons
     commonDescriptor.loadCommonProps(properties);

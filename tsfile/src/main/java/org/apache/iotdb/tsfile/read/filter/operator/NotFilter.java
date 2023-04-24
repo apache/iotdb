@@ -32,11 +32,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** NotFilter necessary. Use InvertExpressionVisitor */
 public class NotFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 584860326604020881L;
   private Filter that;
+
+  public static final String CONTAIN_NOT_ERR_MSG =
+      "This predicate contains a not! Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
 
   public NotFilter() {}
 
@@ -46,7 +48,12 @@ public class NotFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(Statistics statistics) {
-    return !that.satisfy(statistics);
+    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+  }
+
+  @Override
+  public boolean allSatisfy(Statistics statistics) {
+    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
@@ -54,18 +61,14 @@ public class NotFilter implements Filter, Serializable {
     return !that.satisfy(time, value);
   }
 
-  /**
-   * Notice that, if the not filter only contains value filter, this method may return false, this
-   * may cause misunderstanding.
-   */
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return !that.satisfyStartEndTime(startTime, endTime);
+    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return !that.satisfyStartEndTime(startTime, endTime);
+    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
@@ -79,7 +82,7 @@ public class NotFilter implements Filter, Serializable {
 
   @Override
   public String toString() {
-    return "NotFilter: " + that;
+    return "not (" + that + ")";
   }
 
   @Override
@@ -138,5 +141,10 @@ public class NotFilter implements Filter, Serializable {
       res.add(new TimeRange(list.get(list.size() - 1).getMax() + 1, Long.MAX_VALUE));
     }
     return res;
+  }
+
+  @Override
+  public Filter reverse() {
+    return that;
   }
 }

@@ -33,6 +33,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregatio
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
 import org.junit.Test;
 
@@ -62,7 +64,8 @@ public class GroupByLevelNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
             Ordering.ASC,
-            null,
+            TimeFilter.gt(100L),
+            ValueFilter.gt(100),
             groupByTimeParameter,
             null);
     SeriesAggregationScanNode seriesAggregationScanNode2 =
@@ -76,7 +79,8 @@ public class GroupByLevelNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
             Ordering.ASC,
-            null,
+            TimeFilter.gt(100L),
+            ValueFilter.gt(100),
             groupByTimeParameter,
             null);
 

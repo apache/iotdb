@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
@@ -123,6 +124,9 @@ public class ProcedureFactory implements IProcedureFactory {
             new CreateCQProcedure(
                 ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
         break;
+      case SET_TEMPLATE_PROCEDURE:
+        procedure = new SetTemplateProcedure();
+        break;
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
         break;
@@ -178,6 +182,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_PIPE_PROCEDURE;
     } else if (procedure instanceof CreateCQProcedure) {
       return ProcedureType.CREATE_CQ_PROCEDURE;
+    } else if (procedure instanceof SetTemplateProcedure) {
+      return ProcedureType.SET_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof DeactivateTemplateProcedure) {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {

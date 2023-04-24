@@ -146,6 +146,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -375,6 +376,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
       globalTimeFilter = resultPair.left;
+      if (globalTimeFilter != null) {
+        globalTimeFilter = PredicateRemoveNotRewriter.rewrite(globalTimeFilter);
+      }
       hasValueFilter = resultPair.right;
 
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
@@ -1127,19 +1131,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
     analysis.setDeviceViewSpecialProcess(
-        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement));
+        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
   private boolean analyzeDeviceViewSpecialProcess(
-      Set<Expression> deviceViewOutputExpressions, QueryStatement queryStatement) {
+      Set<Expression> deviceViewOutputExpressions,
+      QueryStatement queryStatement,
+      Analysis analysis) {
     if (queryStatement.isAggregationQuery()
         || queryStatement.hasWhere()
             && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
-                queryStatement.getWhereCondition().getPredicate())) {
+                queryStatement.getWhereCondition().getPredicate(), analysis)) {
       return true;
     }
     for (Expression expression : deviceViewOutputExpressions) {
-      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression)) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression, analysis)) {
         return true;
       }
     }
@@ -1723,51 +1729,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkIsTemplateCompatible(PartialPath timeseriesPath, String alias) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(timeseriesPath);
+    Pair<Template, PartialPath> templateInfo =
+        schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
-      if (templateInfo.left.hasSchema(timeseriesPath.getMeasurement())) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getFullPath(),
-                templateInfo.left.getName(),
-                timeseriesPath.getMeasurement()));
-      }
-
-      if (alias != null && templateInfo.left.hasSchema(alias)) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getDevicePath().concatNode(alias).getFullPath(),
-                templateInfo.left.getName(),
-                alias));
-      }
+      throw new RuntimeException(
+          new TemplateImcompatibeException(
+              timeseriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
     }
   }
 
   private void checkIsTemplateCompatible(
       PartialPath devicePath, List<String> measurements, List<String> aliasList) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
-    if (templateInfo != null) {
-      Template template = templateInfo.left;
-      for (String measurement : measurements) {
-        if (template.hasSchema(measurement)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(measurement).getFullPath(),
-                  templateInfo.left.getName(),
-                  measurement));
-        }
-      }
-
-      if (aliasList == null) {
-        return;
-      }
-
-      for (String alias : aliasList) {
-        if (template.hasSchema(alias)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(alias).getFullPath(), templateInfo.left.getName(), alias));
-        }
+    for (int i = 0; i < measurements.size(); i++) {
+      Pair<Template, PartialPath> templateInfo =
+          schemaFetcher.checkTemplateSetAndPreSetInfo(
+              devicePath.concatNode(measurements.get(i)),
+              aliasList == null ? null : aliasList.get(i));
+      if (templateInfo != null) {
+        throw new RuntimeException(
+            new TemplateImcompatibeException(
+                devicePath.getFullPath() + measurements,
+                templateInfo.left.getName(),
+                templateInfo.right));
       }
     }
   }
