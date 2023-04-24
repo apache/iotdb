@@ -272,7 +272,7 @@ public class Analysis {
     this.redirectNodeList = redirectNodeList;
   }
 
-  public void addEndPointInRedirectNodeList(TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }

@@ -239,7 +239,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
     // collect redirectInfo
-    analysis.addEndPointInRedirectNodeList(
+    analysis.addEndPointToRedirectNodeList(
         dataRegionReplicaSets
             .get(dataRegionReplicaSets.size() - 1)
             .getDataNodeLocations()
