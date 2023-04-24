@@ -34,32 +34,43 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 
 public class PipeRealtimeCollectTest {
+  private static final Logger logger = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
   private PipeRealtimeCollectorManager collectorManager;
   private final String dataRegion1 = "dataRegion-1";
   private final String dataRegion2 = "dataRegion-2";
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
+  private static volatile boolean alive;
 
-  private ExecutorService executorService;
+  private ExecutorService writeService;
+  private ExecutorService listenerService;
 
   @Before
   public void setUp() {
     collectorManager = new PipeRealtimeCollectorManager();
-    executorService = Executors.newFixedThreadPool(4);
+    writeService = Executors.newFixedThreadPool(2);
+    listenerService = Executors.newFixedThreadPool(4);
   }
 
   @After
   public void tearDown() {
-    executorService.shutdownNow();
+    writeService.shutdownNow();
   }
 
   @Test
@@ -79,84 +90,73 @@ public class PipeRealtimeCollectTest {
 
     // test result of collector 0, 1
     int writeNum = 10;
-    Future<?> future1 = write2DataRegion(writeNum, dataRegion1);
-    Future<?> future2 = write2DataRegion(writeNum, dataRegion2);
-    future1.get();
-    future2.get();
+    List<Future<?>> writeFutures =
+        Arrays.asList(
+            write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
 
-    int eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[0].supply();
-      if (event != null) {
-        System.out.println("collector 0 event = " + event);
-        eventNum += (event.getType().equals(EventType.TABLET_INSERTION) ? 1 : 2);
-      }
-    }
-    Assert.assertEquals(writeNum << 1, eventNum);
+    Function<EventType, Integer> weight1 = type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2;
+    Function<EventType, Integer> weight2 = typ2 -> 1;
+    alive = true;
+    List<Future<?>> listenFutures =
+        Arrays.asList(
+            listen(collectors[0], weight1, writeNum << 1),
+            listen(collectors[1], weight2, writeNum));
 
-    eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[1].supply();
-      if (event != null) {
-        System.out.println("collector 1 event = " + event);
-        eventNum += 1;
-      }
+    try {
+      listenFutures.get(0).get(10, TimeUnit.MINUTES);
+      listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      logger.warn("Time out when listening collector", e);
+      alive = false;
+      Assert.fail();
     }
-    Assert.assertEquals(writeNum, eventNum);
+    writeFutures.forEach(
+        future -> {
+          try {
+            future.get();
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+        });
 
     // start collector 2, 3
     collectors[2].start();
     collectors[3].start();
 
     // test result of collector 0 - 3
-    future1 = write2DataRegion(writeNum, dataRegion1);
-    future2 = write2DataRegion(writeNum, dataRegion2);
-    future1.get();
-    future2.get();
+    writeFutures =
+        Arrays.asList(
+            write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
 
-    eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[0].supply();
-      if (event != null) {
-        System.out.println("collector 0 event = " + event);
-        eventNum += (event.getType().equals(EventType.TABLET_INSERTION) ? 1 : 2);
-      }
+    alive = true;
+    listenFutures =
+        Arrays.asList(
+            listen(collectors[0], weight1, writeNum << 1),
+            listen(collectors[1], weight2, writeNum),
+            listen(collectors[2], weight1, writeNum << 1),
+            listen(collectors[3], weight2, writeNum));
+    try {
+      listenFutures.get(0).get(10, TimeUnit.MINUTES);
+      listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
+      listenFutures.get(2).get(1, TimeUnit.MILLISECONDS);
+      listenFutures.get(3).get(1, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      logger.warn("Time out when listening collector", e);
+      alive = false;
+      Assert.fail();
     }
-    Assert.assertEquals(writeNum << 1, eventNum);
-
-    eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[1].supply();
-      if (event != null) {
-        System.out.println("collector 1 event = " + event);
-        eventNum += 1;
-      }
-    }
-    Assert.assertEquals(writeNum, eventNum);
-
-    eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[2].supply();
-      if (event != null) {
-        System.out.println("collector 2 event = " + event);
-        eventNum += (event.getType().equals(EventType.TABLET_INSERTION) ? 1 : 2);
-      }
-    }
-    Assert.assertEquals(writeNum << 1, eventNum);
-
-    eventNum = 0;
-    for (int i = 0; i < 10000; i++) {
-      Event event = collectors[3].supply();
-      if (event != null) {
-        System.out.println("collector 3 event = " + event);
-        eventNum += 1;
-      }
-    }
-    Assert.assertEquals(writeNum, eventNum);
+    writeFutures.forEach(
+        future -> {
+          try {
+            future.get();
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   private Future<?> write2DataRegion(int writeNum, String dataRegionId) {
-    return executorService.submit(
+    return writeService.submit(
         () -> {
           for (int i = 0; i < writeNum; ++i) {
             TsFileResource resource =
@@ -190,6 +190,24 @@ public class PipeRealtimeCollectTest {
                         false),
                     resource);
             PipeChangeDataCaptureListener.getInstance().collectTsFile(dataRegionId, resource);
+          }
+        });
+  }
+
+  private Future<?> listen(
+      PipeRealtimeCollector collector, Function<EventType, Integer> weight, int expectNum) {
+    return listenerService.submit(
+        () -> {
+          int eventNum = 0;
+          try {
+            while (alive && eventNum < expectNum) {
+              Event event = collector.supply();
+              if (event != null) {
+                eventNum += weight.apply(event.getType());
+              }
+            }
+          } finally {
+            Assert.assertEquals(expectNum, eventNum);
           }
         });
   }
