@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -29,12 +27,10 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -42,45 +38,32 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class GetTimeSlotListTask implements IConfigTask {
+public class CountTimeSlotListTask implements IConfigTask {
 
-  private final GetTimeSlotListStatement getTimeSlotListStatement;
+  private final CountTimeSlotListStatement countTimeSlotListStatement;
 
-  public GetTimeSlotListTask(GetTimeSlotListStatement getTimeSlotListStatement) {
-    this.getTimeSlotListStatement = getTimeSlotListStatement;
+  public CountTimeSlotListTask(CountTimeSlotListStatement countTimeSlotListStatement) {
+    this.countTimeSlotListStatement = countTimeSlotListStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.getTimeSlotList(getTimeSlotListStatement);
-  }
-
-  public static void buildTSBlockRow(TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot) {
-    builder.getTimeColumnBuilder().writeLong(0L);
-    builder
-        .getColumnBuilder(0)
-        .writeLong(
-            timePartitionSlot.getStartTime()
-                / IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval());
-    builder
-        .getColumnBuilder(1)
-        .writeBinary(new Binary(DateTimeUtils.convertLongToDate(timePartitionSlot.getStartTime())));
-    builder.declarePosition();
+    return configTaskExecutor.countTimeSlotList(countTimeSlotListStatement);
   }
 
   public static void buildTSBlock(
-      TGetTimeSlotListResp getTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
+      TCountTimeSlotListResp countTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.getTimeSlotListColumnHeaders.stream()
+        ColumnHeaderConstant.countTimeSlotListColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-
-    getTimeSlotListResp.getTimeSlotList().forEach(e -> buildTSBlockRow(builder, e));
-
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getGetTimeSlotListHeader();
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeLong(countTimeSlotListResp.getCount());
+    builder.declarePosition();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getCountTimeSlotListHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

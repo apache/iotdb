@@ -19,23 +19,20 @@
 
 package org.apache.iotdb.confignode.consensus.response.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.List;
-
-public class GetRegionIdResp implements DataSet {
+public class CountTimeSlotListResp implements DataSet {
 
   private TSStatus status;
 
-  private final List<TConsensusGroupId> dataRegionIdList;
+  private final long count;
 
-  public GetRegionIdResp(TSStatus status, List<TConsensusGroupId> dataRegionIdList) {
+  public CountTimeSlotListResp(TSStatus status, long count) {
     this.status = status;
-    this.dataRegionIdList = dataRegionIdList;
+    this.count = count;
   }
 
   public TSStatus getStatus() {
@@ -46,12 +43,12 @@ public class GetRegionIdResp implements DataSet {
     this.status = status;
   }
 
-  public TGetRegionIdResp convertToRpcGetRegionIdResp() {
-    TGetRegionIdResp resp = new TGetRegionIdResp();
+  public TCountTimeSlotListResp convertToRpcCountTimeSlotListResp() {
+    TCountTimeSlotListResp resp = new TCountTimeSlotListResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataRegionIdList(dataRegionIdList);
+      resp.setCount(count);
     }
 
     return resp;

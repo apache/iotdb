@@ -125,7 +125,9 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String TIME_PARTITION = "TimePartition";
+  public static final String COUNT_TIME_PARTITION = "count(timePartition)";
+  public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
 
@@ -398,7 +400,12 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(START_TIME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> countTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COUNT_TIME_PARTITION, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));

@@ -33,16 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * GET REGION statement
- *
- * <p>Here is the syntax definition:
- *
- * <p>SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
- * (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)? (OPERATOR_AND ENDTIME operator_eq
- * endTime=INTEGER_LITERAL)?
- */
-public class GetTimeSlotListStatement extends Statement implements IConfigStatement {
+public class CountTimeSlotListStatement extends Statement implements IConfigStatement {
 
   private String database;
 
@@ -54,9 +45,9 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   private long endTime = -1;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GetTimeSlotListStatement.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CountTimeSlotListStatement.class);
 
-  public GetTimeSlotListStatement() {
+  public CountTimeSlotListStatement() {
     super();
   }
 
@@ -102,7 +93,7 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitGetTimeSlotList(this, context);
+    return visitor.visitCountTimeSlotList(this, context);
   }
 
   @Override

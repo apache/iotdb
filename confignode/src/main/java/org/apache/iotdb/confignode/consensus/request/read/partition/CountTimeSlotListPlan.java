@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.region;
+package org.apache.iotdb.confignode.consensus.request.read.partition;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -32,34 +32,45 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetRegionIdPlan extends ConfigPhysicalPlan {
+public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
 
   private String database;
 
-  private TConsensusGroupType partitionType;
-
-  private TTimePartitionSlot timeSlotId;
-
   private TSeriesPartitionSlot seriesSlotId;
 
-  public GetRegionIdPlan() {
-    super(ConfigPhysicalPlanType.GetRegionId);
+  private TConsensusGroupId regionId;
+
+  private long startTime;
+
+  private long endTime;
+
+  public CountTimeSlotListPlan() {
+    super(ConfigPhysicalPlanType.CountTimeSlotList);
   }
 
-  public GetRegionIdPlan(TConsensusGroupType partitionType) {
+  public CountTimeSlotListPlan(long startTime, long endTime) {
     this();
-    this.partitionType = partitionType;
+    this.startTime = startTime;
+    this.endTime = endTime;
     this.database = "";
     this.seriesSlotId = new TSeriesPartitionSlot(-1);
-    this.timeSlotId = new TTimePartitionSlot(-1);
+    this.regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
   public String getDatabase() {
     return database;
   }
 
-  public void setDatabase(String database) {
-    this.database = database;
+  public void setRegionId(TConsensusGroupId regionId) {
+    this.regionId = regionId;
+  }
+
+  public TConsensusGroupId getRegionId() {
+    return regionId;
   }
 
   public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
@@ -70,53 +81,53 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     return seriesSlotId;
   }
 
-  public void setTimeSlotId(TTimePartitionSlot timeSlotId) {
-    this.timeSlotId = timeSlotId;
+  public long getStartTime() {
+    return startTime;
   }
 
-  public TTimePartitionSlot getTimeSlotId() {
-    return timeSlotId;
-  }
-
-  public TConsensusGroupType getPartitionType() {
-    return partitionType;
+  public long getEndTime() {
+    return endTime;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.writeInt(partitionType.ordinal());
     ReadWriteIOUtils.write(database, stream);
     ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
-    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(timeSlotId, stream);
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
+    stream.writeLong(startTime);
+    stream.writeLong(endTime);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
     this.database = ReadWriteIOUtils.readString(buffer);
     this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-    this.timeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
+    this.regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
+    this.startTime = buffer.getLong();
+    this.endTime = buffer.getLong();
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetRegionIdPlan that = (GetRegionIdPlan) o;
+    CountTimeSlotListPlan that = (CountTimeSlotListPlan) o;
     return database.equals(that.database)
-        && partitionType.equals(that.partitionType)
         && seriesSlotId.equals(that.seriesSlotId)
-        && timeSlotId.equals(that.timeSlotId);
+        && regionId.equals(that.regionId)
+        && startTime == that.startTime
+        && endTime == that.endTime;
   }
 
   @Override
   public int hashCode() {
     int hashcode = 1;
-    hashcode = hashcode * 31 + Objects.hash(partitionType.ordinal());
     hashcode = hashcode * 31 + Objects.hash(database);
     hashcode = hashcode * 31 + seriesSlotId.hashCode();
-    hashcode = hashcode * 31 + timeSlotId.hashCode();
+    hashcode = hashcode * 31 + regionId.hashCode();
+    hashcode = hashcode * 31 + (int) startTime;
+    hashcode = hashcode * 31 + (int) endTime;
     return hashcode;
   }
 }
