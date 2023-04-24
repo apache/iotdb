@@ -632,8 +632,7 @@ public class QueryExecution implements IQueryExecution {
         && (!config.isEnable13DataInsertAdapt()
             || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList =
-          insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
+      List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices

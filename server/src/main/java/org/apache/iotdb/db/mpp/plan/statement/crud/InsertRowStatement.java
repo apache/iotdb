@@ -126,8 +126,8 @@ public class InsertRowStatement extends InsertBaseStatement {
     }
   }
 
-  public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
+  public TTimePartitionSlot getTimePartitionSlot() {
+    return TimePartitionUtils.getTimePartition(time);
   }
 
   @Override
