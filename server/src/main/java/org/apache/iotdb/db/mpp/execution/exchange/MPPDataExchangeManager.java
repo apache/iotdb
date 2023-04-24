@@ -443,8 +443,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
 
     private void decrementCnt() {
-      if (!hasDecremented.get()) {
-        hasDecremented.compareAndSet(false, true);
+      if (hasDecremented.compareAndSet(false, true)) {
         if (cnt.decrementAndGet() == 0) {
           closeShuffleSinkHandle();
         }
