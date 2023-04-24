@@ -55,7 +55,6 @@ class TrainingTrialObjective:
         self.pid_info[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
         _trial = ForecastingTrainingTrial(trial_configs, model, self.model_configs, self.dataset)
         loss = _trial.start()
-        print(trial._trial_id, loss)
         return loss
 
 
