@@ -132,7 +132,7 @@ class DataNodeClient(object):
                          timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
             queryExpressions=query_expressions,
-            queryFilter=query_filter,
+            # queryFilter=query_filter,
             fetchSize=fetch_size,
             timeout=timeout
         )
@@ -168,6 +168,7 @@ class DataNodeClient(object):
                                                        column_type_list,
                                                        column_name_index_map,
                                                        resp.tsDataset))
+                has_more_data = resp.hasMoreData
             except Exception as e:
                 logger.warn(
                     f'Fail to fetch more data with query id: {query_id}')
