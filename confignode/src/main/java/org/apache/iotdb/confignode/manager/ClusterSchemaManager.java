@@ -728,7 +728,7 @@ public class ClusterSchemaManager {
     // execute drop template
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
-  
+
   public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
     if (templateExtendInfo.getEncodings() != null) {
       for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
