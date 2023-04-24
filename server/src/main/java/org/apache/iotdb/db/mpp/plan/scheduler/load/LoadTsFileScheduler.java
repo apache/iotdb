@@ -158,13 +158,13 @@ public class LoadTsFileScheduler implements IScheduler {
           logger.info(
               String.format(
                   "Load TsFile %s Successfully, load process [%s/%s]",
-                  node.getTsFileResource().getTsFilePath(), i, tsFileNodeListSize));
+                  node.getTsFileResource().getTsFilePath(), i + 1, tsFileNodeListSize));
         } else {
           isLoadSuccess = false;
           logger.warn(
               String.format(
                   "Can not Load TsFile %s, load process [%s/%s]",
-                  node.getTsFileResource().getTsFilePath(), i, tsFileNodeListSize));
+                  node.getTsFileResource().getTsFilePath(), i + 1, tsFileNodeListSize));
         }
       } catch (Exception e) {
         isLoadSuccess = false;
@@ -405,7 +405,9 @@ public class LoadTsFileScheduler implements IScheduler {
               sortedReplicaSet,
               new LoadTsFilePieceNode(
                   singleTsFileNode.getPlanNodeId(),
-                  singleTsFileNode.getTsFileResource().getTsFile()));
+                  singleTsFileNode
+                      .getTsFileResource()
+                      .getTsFile())); // can not just remove, because of deletion
           if (dataSize <= MAX_MEMORY_SIZE) {
             break;
           }
@@ -416,6 +418,10 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private void routeChunkData() {
+      if (nonDirectionalChunkData.isEmpty()) {
+        return;
+      }
+
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
@@ -436,6 +442,8 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean addOrSendDeletionData(TsFileData deletionData) {
+      routeChunkData(); // ensure chunk data will be added before deletion
+
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         dataSize += deletionData.getDataSize();
         entry.getValue().addTsFileData(deletionData);
@@ -444,6 +452,8 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private boolean sendAllTsFileData() {
+      routeChunkData();
+
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
           logger.warn(
