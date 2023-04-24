@@ -22,12 +22,11 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -41,21 +40,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DataNodeTemplateSchemaCache {
+public class DeviceUsingTemplateSchemaCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeTemplateSchemaCache.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(DeviceUsingTemplateSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Cache<PartialPath, DeviceCacheEntry> cache;
 
-  private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
+  private final ITemplateManager templateManager;
 
-  // cache update due to activation or clear procedure
-  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
-
-  private DataNodeTemplateSchemaCache() {
+  DeviceUsingTemplateSchemaCache(ITemplateManager templateManager) {
+    this.templateManager = templateManager;
     // TODO proprietary config parameter expected
     cache =
         Caffeine.newBuilder()
@@ -63,32 +60,8 @@ public class DataNodeTemplateSchemaCache {
             .weigher(
                 (Weigher<PartialPath, DeviceCacheEntry>)
                     (key, val) -> (PartialPath.estimateSize(key) + 32))
+            .recordStats()
             .build();
-  }
-
-  public static DataNodeTemplateSchemaCache getInstance() {
-    return DataNodeTemplateSchemaCacheHolder.INSTANCE;
-  }
-
-  /** singleton pattern. */
-  private static class DataNodeTemplateSchemaCacheHolder {
-    private static final DataNodeTemplateSchemaCache INSTANCE = new DataNodeTemplateSchemaCache();
-  }
-
-  public void takeReadLock() {
-    readWriteLock.readLock().lock();
-  }
-
-  public void releaseReadLock() {
-    readWriteLock.readLock().unlock();
-  }
-
-  public void takeWriteLock() {
-    readWriteLock.writeLock().lock();
-  }
-
-  public void releaseWriteLock() {
-    readWriteLock.writeLock().unlock();
   }
 
   public ClusterSchemaTree get(PartialPath fullPath) {
@@ -118,7 +91,7 @@ public class DataNodeTemplateSchemaCache {
    * @param computation
    * @return true if conform to template cache, which means no need to fetch or create anymore
    */
-  public List<Integer> conformsToTemplateCache(ISchemaComputationWithAutoCreation computation) {
+  public List<Integer> compute(ISchemaComputation computation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     PartialPath devicePath = computation.getDevicePath();
     String[] measurements = computation.getMeasurements();
