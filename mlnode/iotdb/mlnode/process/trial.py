@@ -170,7 +170,7 @@ class ForecastingTrainingTrial(BasicTrial):
             loss = self.criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
-            if (i + 1) % 50 == 0:
+            if (i + 1) % 500 == 0:
                 logger.info('\titers: {0}, epoch: {1} | loss: {2:.7f}'
                             .format(i + 1, epoch + 1, loss.item()))
 
@@ -242,7 +242,6 @@ class ForecastingTrainingTrial(BasicTrial):
                                                           trial_id=self.trial_id)
 
             logger.info(f'Trial: ({self.model_id}_{self.trial_id}) - Finished with best model saved successfully')
-
             model_info = {}
             model_info.update(best_metrics_dict)
             model_info.update(self.trial_configs)
