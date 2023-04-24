@@ -1048,7 +1048,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               projectExpressionColumnTransformerMap,
               ImmutableMap.of(),
               ImmutableList.of(),
-              inputDataTypes,
               inputLocations.size());
 
       for (Expression expression : projectExpressions) {
@@ -1149,7 +1148,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             filterExpressionColumnTransformerMap,
             ImmutableMap.of(),
             ImmutableList.of(),
-            ImmutableList.of(),
             0);
 
     ColumnTransformer filterOutputTransformer =
@@ -1174,7 +1172,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               projectExpressionColumnTransformerMap,
               filterExpressionColumnTransformerMap,
               commonTransformerList,
-              filterOutputDataTypes,
               inputLocations.size());
 
       for (Expression expression : projectExpressions) {
