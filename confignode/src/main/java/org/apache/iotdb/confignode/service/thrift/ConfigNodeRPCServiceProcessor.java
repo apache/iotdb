@@ -30,7 +30,6 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -173,7 +172,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -507,8 +505,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              AuthUtils.transformToPartialPath(req.getNodeNameList()));
-      // TODO @SpriCoder optimize deserialize
+              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
@@ -531,8 +528,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              AuthUtils.transformToPartialPath(req.getNodeNameList()));
-      // TODO @SpriCoder optimize deserialize
+              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
@@ -549,15 +545,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
-    // TODO @SpriCoder deserialize the path list
-    List<PartialPath> partialPaths = new ArrayList<>();
-    try {
-      for (String path : req.getPaths()) {
-        partialPaths.add(new PartialPath(path));
-      }
-    } catch (MetadataException e) {
-      LOGGER.error("Failed to deserialize the path list", e);
-    }
+    List<PartialPath> partialPaths =
+        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
   }
 

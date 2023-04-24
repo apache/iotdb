@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import org.slf4j.Logger;
@@ -123,7 +124,7 @@ public class PathPrivilege {
 
     SerializeUtils.serializeIntSet(privileges, dataOutputStream);
     try {
-      path.serialize(byteArrayOutputStream);
+      path.serialize(dataOutputStream);
     } catch (IOException exception) {
       logger.error("Unexpected exception when serialize path", exception);
     }
@@ -133,6 +134,6 @@ public class PathPrivilege {
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
     SerializeUtils.deserializeIntSet(privileges, buffer);
-    path = PartialPath.deserialize(buffer);
+    path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
   }
 }

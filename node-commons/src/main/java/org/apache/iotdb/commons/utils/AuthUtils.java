@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
@@ -34,6 +35,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -407,15 +412,27 @@ public class AuthUtils {
     return result;
   }
 
-  public static List<PartialPath> transformToPartialPath(List<String> paths) {
-    List<PartialPath> partialPaths = new ArrayList<>();
+  public static ByteBuffer serializePartialPathList(List<PartialPath> paths) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
     try {
-      for (String path : paths) {
-        partialPaths.add(new PartialPath(path));
+      dataOutputStream.writeInt(paths.size());
+      for (PartialPath path : paths) {
+        path.serialize(dataOutputStream);
       }
-    } catch (Exception e) {
-      logger.error("Failed to transform to partial path", e);
+    } catch (IOException e) {
+      logger.error("Failed to serialize PartialPath list", e);
     }
-    return partialPaths;
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static List<PartialPath> deserializePartialPathList(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    List<PartialPath> paths = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      paths.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
+    }
+    return paths;
   }
 }

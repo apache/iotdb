@@ -53,12 +53,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -231,9 +229,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
-            username,
-            allPath.stream().map(PartialPath::getFullPath).collect(Collectors.toList()),
-            permission);
+            username, AuthUtils.serializePartialPathList(allPath), permission);
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -319,6 +315,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
       throws AuthException {
+    if (authorStatement.getAuthorType() == null) {
+      authorStatement.setNodeNameList(new ArrayList<>());
+    }
     return new TAuthorizerReq(
         authorStatement.getAuthorType().ordinal(),
         authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
@@ -326,10 +325,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
-        authorStatement.getNodeNameList() == null
-            ? Collections.emptyList()
-            : authorStatement.getNodeNameList().stream()
-                .map(PartialPath::getFullPath)
-                .collect(Collectors.toList()));
+        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
   }
 }
