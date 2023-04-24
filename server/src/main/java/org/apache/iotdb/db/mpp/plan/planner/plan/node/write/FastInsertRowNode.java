@@ -111,6 +111,10 @@ public class FastInsertRowNode extends InsertRowNode {
     this.rawValues = ByteBuffer.wrap(bytes);
   }
 
+  public boolean hasFailedMeasurements() {
+    return false;
+  }
+
   @Override
   public void initMeasurementSchemaContainer(int size, String[] measurements) {
     this.measurementSchemas = new MeasurementSchema[size];
@@ -130,5 +134,33 @@ public class FastInsertRowNode extends InsertRowNode {
   public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
     measurementSchemas[index] = measurementSchemaInfo.getSchema();
     this.dataTypes[index] = measurementSchemaInfo.getSchema().getType();
+  }
+
+  public void fillValues() throws QueryProcessException {
+    this.values = new Object[measurements.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(this.rawValues);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(this.rawValues);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(this.rawValues);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(this.rawValues);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(this.rawValues);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(this.rawValues);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+      }
+    }
   }
 }

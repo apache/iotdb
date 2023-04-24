@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
@@ -40,6 +41,16 @@ public class FastInsertRowsNode extends InsertRowsNode {
       List<Integer> insertRowNodeIndexList,
       List<InsertRowNode> fastInsertRowNodeList) {
     super(id, insertRowNodeIndexList, fastInsertRowNodeList);
+  }
+
+  public boolean hasFailedMeasurements() {
+    return false;
+  }
+
+  public void fillValues() throws QueryProcessException {
+    for (int i = 0; i < getInsertRowNodeList().size(); i++) {
+      ((FastInsertRowNode) getInsertRowNodeList().get(i)).fillValues();
+    }
   }
 
   @Override

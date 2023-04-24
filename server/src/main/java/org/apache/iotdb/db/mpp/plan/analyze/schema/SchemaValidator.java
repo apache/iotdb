@@ -43,6 +43,7 @@ public class SchemaValidator {
         if (insertNode instanceof FastInsertRowsNode) {
           SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreateForFastWrite(
               ((BatchInsertNode) insertNode).getSchemaValidationList());
+          ((FastInsertRowsNode) insertNode).fillValues();
         } else {
           SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
               ((BatchInsertNode) insertNode).getSchemaValidationList());

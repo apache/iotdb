@@ -79,6 +79,7 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
       throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
+    SessionUtils.putValues(types, values, buffer);
     return buffer;
   }
 

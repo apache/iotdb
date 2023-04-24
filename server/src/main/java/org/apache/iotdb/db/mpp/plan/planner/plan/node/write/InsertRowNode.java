@@ -77,7 +77,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   private long time;
 
   // TODO: (FASTWRITE) (侯昊男) 增加 byteBuffer 字段
-  private Object[] values;
+  protected Object[] values;
 
   private boolean isNeedInferType = false;
 

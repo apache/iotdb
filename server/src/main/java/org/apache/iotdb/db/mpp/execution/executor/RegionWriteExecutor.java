@@ -257,8 +257,6 @@ public class RegionWriteExecutor {
           LOGGER.warn(partialInsertMessage);
         }
 
-        // TODO: (FAStWRITE) (侯昊男) 根据数据类型把 values 反序列化出来
-
         // TODO: (FAStWRITE) 然后再进入到这一步
         ConsensusWriteResponse writeResponse =
             fireTriggerAndInsert(context.getRegionId(), insertNode);

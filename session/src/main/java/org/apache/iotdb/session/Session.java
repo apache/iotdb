@@ -2480,8 +2480,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
-    ByteBuffer buffer =
-        ByteBuffer.allocate(SessionUtils.calculateLengthForFastInsert(types, values));
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
     request.addToValuesList(buffer);
   }
 

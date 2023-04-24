@@ -65,7 +65,7 @@ public class FastInsertExample {
     List<Long> timestamps = new ArrayList<>();
     List<List<TSDataType>> typesList = new ArrayList<>();
 
-    for (long time = 0; time < 500; time++) {
+    for (long time = 1000; time < 1500; time++) {
       List<Object> values = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
       values.add(1L);
