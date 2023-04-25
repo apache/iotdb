@@ -506,7 +506,7 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void AuthorPlanTest() throws IOException, AuthException {
+  public void AuthorPlanTest() throws IOException, AuthException, IllegalPathException {
 
     AuthorPlan req0;
     AuthorPlan req1;
@@ -554,9 +554,9 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(req0, req1);
 
     // grant user
-    List<String> nodeNameList = new ArrayList<>();
-    nodeNameList.add("root.ln.**");
-    nodeNameList.add("root.abc.**");
+    List<PartialPath> nodeNameList = new ArrayList<>();
+    nodeNameList.add(new PartialPath("root.ln.**"));
+    nodeNameList.add(new PartialPath("root.abc.**"));
     req0 =
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions, nodeNameList);
