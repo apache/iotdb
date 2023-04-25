@@ -927,6 +927,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new CompactionTaskSummary());
       performer.perform();
 
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -950,6 +951,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
       chunkPagePointsNumMerged.put(deletedPath, null);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, "root.compactionTest");
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -1013,6 +1016,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new CompactionTaskSummary());
       performer.perform();
 
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -1036,6 +1040,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
       chunkPagePointsNumMerged.put(deletedPath, null);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, "root.compactionTest");
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -1104,6 +1110,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new CompactionTaskSummary());
       performer.perform();
 
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -1127,6 +1134,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
       chunkPagePointsNumMerged.put(deletedPath, null);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, "root.compactionTest");
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
