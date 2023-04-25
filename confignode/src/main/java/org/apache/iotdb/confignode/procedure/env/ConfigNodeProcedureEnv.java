@@ -81,6 +81,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -543,6 +544,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // Wait for leader election
+    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

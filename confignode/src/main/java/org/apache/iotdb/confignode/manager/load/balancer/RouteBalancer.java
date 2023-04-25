@@ -80,9 +80,6 @@ public class RouteBalancer {
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
 
-  private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
-      ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
-
   private final IManager configManager;
 
   /** RegionRouteMap */

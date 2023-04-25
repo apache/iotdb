@@ -37,6 +37,9 @@ public class RegionRouteCache {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getDataRegionConsensusProtocolClass();
 
+  public static final int unReadyLeaderId = -1;
+  public static final TRegionReplicaSet unReadyRegionPriority = new TRegionReplicaSet();
+
   private final TConsensusGroupId consensusGroupId;
   private final String consensusProtocolClass;
 

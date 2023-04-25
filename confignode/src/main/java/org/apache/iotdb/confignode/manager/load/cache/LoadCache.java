@@ -27,6 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
@@ -40,17 +42,27 @@ import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** Maintain all kinds of heartbeat samples. */
 public class LoadCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadCache.class);
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   // Map<NodeId, INodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
@@ -488,7 +500,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the latest RegionLeaderMap.
+   * Safely get the latest RegionLeaderMap.
    *
    * @return Map<RegionGroupId, leaderId>
    */
@@ -501,7 +513,7 @@ public class LoadCache {
   }
 
   /**
-   * Get the latest RegionPriorityMap.
+   * Safely get the latest RegionPriorityMap.
    *
    * @return Map<RegionGroupId, RegionPriority>
    */
@@ -511,6 +523,40 @@ public class LoadCache {
         (regionGroupId, regionRouteCache) ->
             regionPriorityMap.put(regionGroupId, regionRouteCache.getRegionPriority()));
     return regionPriorityMap;
+  }
+
+  /**
+   * Wait for the specified RegionGroups to finish leader election
+   *
+   * @param regionGroupIds Specified RegionGroupIds
+   */
+  public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
+    for (int retry = 0; retry < 10; retry++) {
+      AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
+      regionGroupIds.forEach(
+          regionGroupId -> {
+            if (!regionRouteCacheMap.containsKey(regionGroupId)
+                || regionRouteCacheMap.get(regionGroupId).getLeaderId()
+                    == RegionRouteCache.unReadyLeaderId
+                || RegionRouteCache.unReadyRegionPriority.equals(
+                    regionRouteCacheMap.get(regionGroupId).getRegionPriority())) {
+              allRegionLeaderElected.set(false);
+            }
+          });
+      if (allRegionLeaderElected.get()) {
+        LOGGER.info("[RegionElection] The leader of RegionGroups: {} is elected.", regionGroupIds);
+        return;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(HEARTBEAT_INTERVAL);
+      } catch (InterruptedException e) {
+        LOGGER.warn("Interrupt when wait for leader election", e);
+      }
+    }
+
+    LOGGER.warn(
+        "[RegionElection] The leader of RegionGroups: {} is not elected after 10 seconds. Some function might fail.",
+        regionGroupIds);
   }
 
   /**
