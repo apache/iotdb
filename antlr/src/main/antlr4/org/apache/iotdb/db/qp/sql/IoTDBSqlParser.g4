@@ -45,12 +45,15 @@ ddlStatement
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
+    | alterSchemaTemplate
     // TTL
     | setTTL | unsetTTL | showTTL | showAllTTL
     // Function
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // Pipe Plugin
+    | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -269,6 +272,10 @@ unsetSchemaTemplate
     : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
     ;
 
+alterSchemaTemplate
+    : ALTER SCHEMA TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ;
+
 
 // TTL =============================================================================================
 // ---- Set TTL
@@ -484,7 +491,6 @@ dropPipePlugin
 showPipePlugins
     : SHOW PIPEPLUGINS
     ;
-
 
 // ML Model =========================================================================================
 // ---- Create Model

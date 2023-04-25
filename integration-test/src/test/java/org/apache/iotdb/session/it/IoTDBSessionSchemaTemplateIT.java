@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -325,5 +326,66 @@ public class IoTDBSessionSchemaTemplateIT {
         Assert.assertEquals("2.34", row.getFields().get(1).toString());
       }
     }
+  }
+
+  @Test
+  public void testHybridAutoCreateSchema()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    Template temp2 = getTemplate("template2");
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+    session.createSchemaTemplate(temp2);
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+
+    session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.v1.d1"));
+
+    session.setSchemaTemplate("template2", "root.db.v4");
+
+    List<String> deviceIds =
+        Arrays.asList("root.db.v1.d1", "root.db.v1.d2", "root.db.v2.d1", "root.db.v4.d1");
+    List<Long> timestamps = Arrays.asList(1L, 1L, 1L, 1L);
+    List<String> measurements = Arrays.asList("x", "y", "z");
+    List<List<String>> allMeasurements =
+        Arrays.asList(measurements, measurements, measurements, measurements);
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT);
+    List<List<TSDataType>> allTsDataTypes =
+        Arrays.asList(tsDataTypes, tsDataTypes, tsDataTypes, tsDataTypes);
+    List<Object> values = Arrays.asList(1f, 2f, "3");
+    List<List<Object>> allValues = Arrays.asList(values, values, values, values);
+
+    session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+
+    Set<String> expectedSeries =
+        new HashSet<>(
+            Arrays.asList(
+                "root.db.v1.d1.x",
+                "root.db.v1.d1.y",
+                "root.db.v1.d1.z",
+                "root.db.v1.d2.x",
+                "root.db.v1.d2.y",
+                "root.db.v1.d2.z",
+                "root.db.v2.d1.x",
+                "root.db.v2.d1.y",
+                "root.db.v2.d1.z",
+                "root.db.v4.d1.x",
+                "root.db.v4.d1.y",
+                "root.db.v4.d1.z"));
+
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
+        expectedSeries.remove(iterator.getString(1));
+      }
+    }
+
+    Assert.assertTrue(expectedSeries.isEmpty());
   }
 }

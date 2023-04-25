@@ -16,6 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.observer;
 
-public interface IEvent {}
+package org.apache.iotdb.confignode.manager.load.subscriber;
+
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
+
+public interface IClusterStatusSubscriber {
+
+  @Subscribe
+  @AllowConcurrentEvents
+  void onClusterStatisticsChanged(StatisticsChangeEvent event);
+
+  @Subscribe
+  @AllowConcurrentEvents
+  void onRegionGroupLeaderChanged(RouteChangeEvent event);
+}

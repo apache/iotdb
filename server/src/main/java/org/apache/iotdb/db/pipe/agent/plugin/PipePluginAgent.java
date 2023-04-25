@@ -58,6 +58,10 @@ public class PipePluginAgent {
   public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile) throws Exception {
     acquireLock();
     try {
+      // try to deregister first to avoid inconsistent state
+      deregister(pipePluginMeta.getPluginName(), false);
+
+      // register process from here
       checkIfRegistered(pipePluginMeta);
       saveJarFileIfNeeded(pipePluginMeta.getJarName(), jarFile);
       doRegister(pipePluginMeta);
@@ -73,6 +77,15 @@ public class PipePluginAgent {
       return;
     }
 
+    if (information.isBuiltin()) {
+      String errorMessage =
+          String.format(
+              "Failed to register PipePlugin %s, because the given PipePlugin name is the same as a built-in PipePlugin name.",
+              pluginName);
+      LOGGER.warn(errorMessage);
+      throw new PipeManagementException(errorMessage);
+    }
+
     if (PipePluginExecutableManager.getInstance()
             .hasFileUnderInstallDir(pipePluginMeta.getJarName())
         && !PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
@@ -84,6 +97,9 @@ public class PipePluginAgent {
       LOGGER.warn(errMsg);
       throw new PipeManagementException(errMsg);
     }
+
+    // if the pipe plugin is already registered and the jar file is the same, do nothing
+    // we allow users to register the same pipe plugin multiple times without any error
   }
 
   private void saveJarFileIfNeeded(String jarName, ByteBuffer byteBuffer) throws IOException {
@@ -111,7 +127,7 @@ public class PipePluginAgent {
 
       final Class<?> pluginClass = Class.forName(className, true, currentActiveClassLoader);
       // ensure that it is a PipePlugin class
-      PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
+      final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
       pipePluginMetaKeeper.addPluginAndClass(pluginName, pluginClass);
@@ -141,15 +157,21 @@ public class PipePluginAgent {
   public void deregister(String pluginName, boolean needToDeleteJar) throws Exception {
     acquireLock();
     try {
-      PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
-      if (information == null) {
-        return;
+      final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
+
+      if (information != null && information.isBuiltin()) {
+        String errorMessage =
+            String.format("Failed to deregister builtin PipePlugin %s.", pluginName);
+        LOGGER.warn(errorMessage);
+        throw new PipeManagementException(errorMessage);
       }
 
+      // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
       pipePluginMetaKeeper.removePluginClass(pluginName);
 
-      if (needToDeleteJar) {
+      // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5
+      if (information != null && needToDeleteJar) {
         PipePluginExecutableManager.getInstance().removeFileUnderLibRoot(information.getJarName());
         PipePluginExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(pluginName.toUpperCase() + ".txt");
@@ -188,18 +210,17 @@ public class PipePluginAgent {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipePluginAgent(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
+  private PipePluginAgent() {
+    this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
   }
 
   private static class PipePluginAgentServiceHolder {
     private static PipePluginAgent instance = null;
   }
 
-  public static PipePluginAgent setupAndGetInstance(
-      DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  public static PipePluginAgent setupAndGetInstance() {
     if (PipePluginAgentServiceHolder.instance == null) {
-      PipePluginAgentServiceHolder.instance = new PipePluginAgent(pipePluginMetaKeeper);
+      PipePluginAgentServiceHolder.instance = new PipePluginAgent();
     }
     return PipePluginAgentServiceHolder.instance;
   }

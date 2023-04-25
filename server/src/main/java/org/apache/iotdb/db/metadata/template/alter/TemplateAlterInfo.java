@@ -16,24 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.observer;
 
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
-import org.apache.iotdb.tsfile.utils.Pair;
+package org.apache.iotdb.db.metadata.template.alter;
 
-import java.util.Map;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class NodeStatisticsEvent implements IEvent {
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
-  // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one means
-  // the previous NodeStatistics
-  private Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap;
+public abstract class TemplateAlterInfo {
 
-  public NodeStatisticsEvent(Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap) {
-    this.nodeStatisticsMap = nodeStatisticsMap;
+  protected String templateName;
+
+  public String getTemplateName() {
+    return templateName;
   }
 
-  public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getNodeStatisticsMap() {
-    return nodeStatisticsMap;
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(templateName, outputStream);
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    this.templateName = ReadWriteIOUtils.readString(buffer);
   }
 }

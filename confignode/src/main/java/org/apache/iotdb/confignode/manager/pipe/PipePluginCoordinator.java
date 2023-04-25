@@ -69,7 +69,7 @@ public class PipePluginCoordinator {
     final String jarName = req.getJarName();
     final String jarMD5 = req.getJarMD5();
     final PipePluginMeta pipePluginMeta =
-        new PipePluginMeta(pluginName, className, jarName, jarMD5);
+        new PipePluginMeta(pluginName, className, false, jarName, jarMD5);
 
     return configManager.getProcedureManager().createPipePlugin(pipePluginMeta, req.getJarFile());
   }

@@ -29,7 +29,8 @@ public enum TemplateInternalRPCUpdateType {
   ADD_TEMPLATE_SET_INFO((byte) 0),
   INVALIDATE_TEMPLATE_SET_INFO((byte) 1),
   ADD_TEMPLATE_PRE_SET_INFO((byte) 2),
-  COMMIT_TEMPLATE_SET_INFO((byte) 3);
+  COMMIT_TEMPLATE_SET_INFO((byte) 3),
+  UPDATE_TEMPLATE_INFO((byte) 4);
 
   private final byte operationType;
 
@@ -60,6 +61,8 @@ public enum TemplateInternalRPCUpdateType {
         return ADD_TEMPLATE_PRE_SET_INFO;
       case 3:
         return COMMIT_TEMPLATE_SET_INFO;
+      case 4:
+        return UPDATE_TEMPLATE_INFO;
       default:
         throw new IllegalArgumentException("Unknown template update operation type" + type);
     }
