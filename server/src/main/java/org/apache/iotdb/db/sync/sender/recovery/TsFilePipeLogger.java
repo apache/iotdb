@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
@@ -34,6 +35,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,7 +46,13 @@ public class TsFilePipeLogger {
   private final String pipeDir;
   private final String tsFileDir;
 
+  private final String pipeName;
+
+  private final long createTime;
+
   public TsFilePipeLogger(TsFilePipe tsFilePipe) {
+    this.pipeName = tsFilePipe.getName();
+    this.createTime = tsFilePipe.getCreateTime();
     pipeDir = SyncPathUtil.getSenderPipeDir(tsFilePipe.getName(), tsFilePipe.getCreateTime());
     tsFileDir = SyncPathUtil.getSenderFileDataDir(tsFilePipe.getName(), tsFilePipe.getCreateTime());
   }
@@ -108,15 +116,38 @@ public class TsFilePipeLogger {
   }
 
   private File createHardLink(File file) throws IOException {
-    File link = new File(tsFileDir, getRelativeFilePath(file));
-    if (!link.getParentFile().exists()) {
-      link.getParentFile().mkdirs();
-    }
+    try {
+      File link = new File(tsFileDir, getRelativeFilePath(file));
+      if (!link.getParentFile().exists()) {
+        link.getParentFile().mkdirs();
+      }
 
-    Path sourcePath = FileSystems.getDefault().getPath(file.getAbsolutePath());
-    Path linkPath = FileSystems.getDefault().getPath(link.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
-    return link;
+      Path sourcePath = FileSystems.getDefault().getPath(file.getAbsolutePath());
+      Path linkPath = FileSystems.getDefault().getPath(link.getAbsolutePath());
+      Files.createLink(linkPath, sourcePath);
+      return link;
+    } catch (FileSystemException e) {
+      // Invalid cross-device link
+      // dataDir/sequence/root.xx/x/xx/tsfile
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      for (String dir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+        if (dataDir.getCanonicalPath().equals(new File(dir).getCanonicalPath())) {
+          File link =
+              new File(
+                  SyncPathUtil.getSenderFileDataDir(dir, pipeName, createTime),
+                  getRelativeFilePath(file));
+          if (!link.getParentFile().exists()) {
+            link.getParentFile().mkdirs();
+          }
+          Path sourcePath = FileSystems.getDefault().getPath(file.getAbsolutePath());
+          Path linkPath = FileSystems.getDefault().getPath(link.getAbsolutePath());
+          Files.createLink(linkPath, sourcePath);
+          return link;
+        }
+      }
+      throw e;
+    }
   }
 
   private String getRelativeFilePath(File file) {
@@ -150,6 +181,13 @@ public class TsFilePipeLogger {
     File pipeDir = new File(this.pipeDir);
     if (pipeDir.exists()) {
       FileUtils.deleteDirectory(pipeDir);
+    }
+    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+      File crossDiskSyncDir =
+          new File(SyncPathUtil.getSenderFileDataDir(dataDir, pipeName, createTime));
+      if (crossDiskSyncDir.exists()) {
+        FileUtils.deleteDirectory(crossDiskSyncDir);
+      }
     }
   }
 }
