@@ -158,15 +158,10 @@ public class FileLoaderManager {
       deviceOwnerFile.createNewFile();
     }
     try (OutputStream stream = Files.newOutputStream(deviceOwnerFile.toPath())) {
-      deviceOwnerMap.forEach(
-          (k, v) -> {
-            try {
-              ReadWriteIOUtils.write(k, stream);
-              ReadWriteIOUtils.write(v, stream);
-            } catch (IOException e) {
-              LOGGER.warn(String.format("Serialize owner map %s %s error.", k, v), e);
-            }
-          });
+      for (Map.Entry<String, String> entry : deviceOwnerMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
     } catch (Exception e) {
       LOGGER.warn(String.format("Serialize owner map %s error.", deviceOwnerMap), e);
     }
