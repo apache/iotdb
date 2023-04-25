@@ -107,4 +107,9 @@ public class DynamicThreadGroup {
       future.get();
     }
   }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }

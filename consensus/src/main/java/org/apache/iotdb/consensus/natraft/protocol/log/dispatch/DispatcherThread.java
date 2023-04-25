@@ -98,7 +98,7 @@ class DispatcherThread extends DynamicThread {
             continue;
           }
         }
-       idleToRunning();
+        idleToRunning();
         if (logger.isDebugEnabled()) {
           logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
         }

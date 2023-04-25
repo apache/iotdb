@@ -175,7 +175,7 @@ public class AsyncLogApplier implements LogApplier {
           return;
         }
       }
-      logger.info("DataLogConsumer exits");
+      logger.debug("DataLogConsumer exits");
     }
 
     @Override

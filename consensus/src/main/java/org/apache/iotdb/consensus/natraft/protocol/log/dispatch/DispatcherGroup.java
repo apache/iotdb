@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 
 public class DispatcherGroup {
 
@@ -50,22 +52,21 @@ public class DispatcherGroup {
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
     this.dispatcherThreadPool = createPool(peer, logDispatcher.getMember().getName());
-    this.dynamicThreadGroup = new DynamicThreadGroup(logDispatcher.member.getName() + "-" + peer,
-        dispatcherThreadPool::submit, () -> newDispatcherThread(peer, entryQueue, rateLimiter), 1,
-        maxBindingThreadNum);
+    this.dynamicThreadGroup =
+        new DynamicThreadGroup(
+            logDispatcher.member.getName() + "-" + peer,
+            dispatcherThreadPool::submit,
+            () -> newDispatcherThread(peer, entryQueue, rateLimiter),
+            maxBindingThreadNum / 4,
+            maxBindingThreadNum);
+    this.dynamicThreadGroup.init();
   }
 
   public void close() {
-    dispatcherThreadPool.shutdownNow();
-    boolean closeSucceeded = false;
     try {
-      closeSucceeded = dispatcherThreadPool.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      // ignore
-    }
-    if (!closeSucceeded) {
-      logger.warn(
-          "Cannot shut down dispatcher pool of {}-{}", logDispatcher.member.getName(), peer);
+      dynamicThreadGroup.join();
+    } catch (ExecutionException | InterruptedException e) {
+      logger.error("Failed to stop threads in {}", dynamicThreadGroup);
     }
   }
 

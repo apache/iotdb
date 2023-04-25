@@ -240,7 +240,7 @@ public class HeartbeatThread implements Runnable {
     }
 
     // the election goes on until this node becomes a follower or a leader
-    while (localMember.getRole() == RaftRole.CANDIDATE) {
+    while (localMember.getRole() == RaftRole.CANDIDATE && !Thread.interrupted()) {
       startElection();
       if (localMember.getRole() == RaftRole.CANDIDATE) {
         // sleep random time to reduce election conflicts
