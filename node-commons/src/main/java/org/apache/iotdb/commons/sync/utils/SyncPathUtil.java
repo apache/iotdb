@@ -88,6 +88,10 @@ public class SyncPathUtil {
     return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.PIPE_LOG_DIR_NAME;
   }
 
+  public static String getSenderFileDataDir(String dataDir, String pipeName, long createTime) {
+    return dataDir + File.separator + getSenderPipeDirName(pipeName, createTime);
+  }
+
   public static String getSenderFileDataDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime)
         + File.separator
