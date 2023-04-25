@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -111,7 +113,7 @@ public class StatisticsService implements IClusterStatusSubscriber {
     // Broadcast the RegionRouteMap if some LoadStatistics has changed
     boolean isNeedBroadcast = false;
 
-    // Update NodeStatistics:
+    // Update NodeStatistics
     // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
         loadCache.updateNodeStatistics();
@@ -127,31 +129,32 @@ public class StatisticsService implements IClusterStatusSubscriber {
       isNeedBroadcast = true;
     }
 
-    if (isNeedBroadcast) {
-      StatisticsChangeEvent statisticsChangeEvent =
-          new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap);
-      eventBus.post(statisticsChangeEvent);
-    }
-
-    // Update RegionRouteMap
-    RouteChangeEvent routeChangeEvent = routeBalancer.updateRegionRouteMap();
-    if (routeChangeEvent.isNeedBroadcast()) {
+    // Update RegionGroupLeaders
+    // Map<RegionGroupId, Pair<old leader index, new leader index>>
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
+        loadCache.updateRegionGroupLeader();
+    if (!differentRegionLeaderMap.isEmpty()) {
       isNeedBroadcast = true;
-      eventBus.post(routeChangeEvent);
     }
 
     if (isNeedBroadcast) {
+      differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
+      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+          differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
+
+      eventBus.post(
+          new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));
+      eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
       broadcastLatestRegionRouteMap();
     }
   }
 
   public void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap =
-        routeBalancer.getLatestRegionPriorityMap();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
+        getLoadManager().getRegionPriorityMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
-    configManager
-        .getNodeManager()
+    getNodeManager()
         .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Removing, NodeStatus.ReadOnly)
         .forEach(
             onlineDataNode ->
@@ -164,7 +167,7 @@ public class StatisticsService implements IClusterStatusSubscriber {
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
+            new TRegionRouteReq(broadcastTime, regionPriorityMap),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     LOGGER.info("[UpdateLoadStatistics] Broadcast the latest RegionRouteMap finished.");
@@ -235,5 +238,13 @@ public class StatisticsService implements IClusterStatusSubscriber {
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     recordRegionLeaderMap(event.getLeaderMap());
     recordRegionPriorityMap(event.getPriorityMap());
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }
