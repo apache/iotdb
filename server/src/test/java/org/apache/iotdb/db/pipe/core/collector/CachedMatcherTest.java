@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe;
+package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollectorManager;
