@@ -213,23 +213,46 @@ public class TimeSeriesSchemaCache {
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     SchemaCacheEntry entry;
-    for (int i = 0; i < measurements.length; i++) {
-      if (!shouldUpdateProvider.apply(i)) {
-        continue;
-      }
-      entry = dualKeyCache.get(devicePath, measurements[i]);
+    List<Integer> missingMeasurements = new ArrayList<>();
+    dualKeyCache.compute(
+        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return devicePath;
+          }
+
+          @Override
+          public String[] getSecondKeyList() {
+            return measurements;
+          }
+
+          @Override
+          public void computeValue(int index, SchemaCacheEntry value) {
+            if (!shouldUpdateProvider.apply(index)) {
+              return;
+            }
+            if (value == null) {
+              missingMeasurements.add(index);
+            }
+            DataNodeLastCacheManager.updateLastCache(
+                value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
+          }
+        });
+
+    for (int index : missingMeasurements) {
+      entry = dualKeyCache.get(devicePath, measurements[index]);
       if (entry == null) {
         synchronized (dualKeyCache) {
-          entry = dualKeyCache.get(devicePath, measurements[i]);
+          entry = dualKeyCache.get(devicePath, measurements[index]);
           if (null == entry) {
-            entry = new SchemaCacheEntry(database, measurementSchemas[i], null, isAligned);
-            dualKeyCache.put(devicePath, measurements[i], entry);
+            entry = new SchemaCacheEntry(database, measurementSchemas[index], null, isAligned);
+            dualKeyCache.put(devicePath, measurements[index], entry);
           }
         }
       }
 
       DataNodeLastCacheManager.updateLastCache(
-          entry, timeValuePairProvider.apply(i), highPriorityUpdate, latestFlushedTime);
+          entry, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
     }
   }
 
