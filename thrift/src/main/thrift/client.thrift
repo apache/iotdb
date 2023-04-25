@@ -323,6 +323,7 @@ struct TSRawDataQueryReq {
   7: optional bool enableRedirectQuery
   8: optional bool jdbcQuery
   9: optional i64 timeout
+  10: optional bool legalPathNodes
 }
 
 struct TSLastDataQueryReq {
@@ -334,6 +335,7 @@ struct TSLastDataQueryReq {
   6: optional bool enableRedirectQuery
   7: optional bool jdbcQuery
   8: optional i64 timeout
+  9: optional bool legalPathNodes
 }
 
 struct TSAggregationQueryReq {
