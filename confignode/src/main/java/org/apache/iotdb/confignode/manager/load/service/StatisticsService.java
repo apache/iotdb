@@ -67,12 +67,15 @@ public class StatisticsService implements IClusterStatusSubscriber {
   private final LoadCache loadCache;
   private final EventBus eventBus;
 
+  private final Object recordLock;
+
   public StatisticsService(
       IManager configManager, RouteBalancer routeBalancer, LoadCache loadCache, EventBus eventBus) {
     this.configManager = configManager;
     this.routeBalancer = routeBalancer;
     this.loadCache = loadCache;
     this.eventBus = eventBus;
+    this.recordLock = new Object();
   }
 
   /** Load statistics executor service. */
@@ -202,8 +205,10 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    recordNodeStatistics(event.getNodeStatisticsMap());
-    recordRegionGroupStatistics(event.getRegionGroupStatisticsMap());
+    synchronized (recordLock) {
+      recordNodeStatistics(event.getNodeStatisticsMap());
+      recordRegionGroupStatistics(event.getRegionGroupStatisticsMap());
+    }
   }
 
   private void recordRegionLeaderMap(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
@@ -233,8 +238,10 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
-    recordRegionLeaderMap(event.getLeaderMap());
-    recordRegionPriorityMap(event.getPriorityMap());
+    synchronized (recordLock) {
+      recordRegionLeaderMap(event.getLeaderMap());
+      recordRegionPriorityMap(event.getPriorityMap());
+    }
   }
 
   private NodeManager getNodeManager() {
