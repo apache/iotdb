@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -46,7 +44,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -58,8 +55,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
-  private final DataNodeTemplateSchemaCache templateSchemaCache =
-      DataNodeTemplateSchemaCache.getInstance();
   MPPQueryContext context = null;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
@@ -90,16 +85,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   ClusterPartitionFetcher.getInstance(),
                   this,
                   config.getQueryTimeoutThreshold()),
-          this::cacheUpdater);
+          schemaCache::put);
 
   private final NormalSchemaFetcher normalSchemaFetcher =
       new NormalSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
   private final TemplateSchemaFetcher templateSchemaFetcher =
       new TemplateSchemaFetcher(
-          templateManager,
-          templateSchemaCache,
-          autoCreateSchemaExecutor,
-          clusterSchemaFetchExecutor);
+          templateManager, schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -140,10 +132,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         ClusterSchemaTree cachedSchema;
         Set<String> storageGroupSet = new HashSet<>();
         for (PartialPath fullPath : fullPathList) {
-          cachedSchema = templateSchemaCache.get(fullPath);
-          if (cachedSchema.isEmpty()) {
-            cachedSchema = schemaCache.get(fullPath);
-          }
+          cachedSchema = schemaCache.get(fullPath);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -170,45 +159,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, true);
   }
 
-  /**
-   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
-   * associated device.
-   */
-  private void cacheUpdater(ClusterSchemaTree tree) {
-    Optional<Pair<Template, ?>> templateInfo;
-    PartialPath devicePath;
-    Set<PartialPath> templateDevices = new HashSet<>();
-    Set<PartialPath> commonDevices = new HashSet<>();
-    for (MeasurementPath path : tree.getAllMeasurement()) {
-      devicePath = path.getDevicePath();
-      if (templateDevices.contains(devicePath)) {
-        continue;
-      }
-
-      if (commonDevices.contains(devicePath)) {
-        schemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        continue;
-      }
-
-      templateInfo = Optional.ofNullable(templateManager.checkTemplateSetInfo(devicePath));
-      if (templateInfo.isPresent()) {
-        templateSchemaCache.put(
-            devicePath, tree.getBelongedDatabase(devicePath), templateInfo.get().left.getId());
-        templateDevices.add(devicePath);
-      } else {
-        schemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        commonDevices.add(devicePath);
-      }
-    }
-  }
-
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
-    templateSchemaCache.takeReadLock();
     try {
       Pair<Template, PartialPath> templateSetInfo =
           templateManager.checkTemplateSetInfo(schemaComputationWithAutoCreation.getDevicePath());
@@ -235,7 +191,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
     } finally {
       schemaCache.releaseReadLock();
-      templateSchemaCache.releaseReadLock();
     }
   }
 
@@ -245,7 +200,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
-    templateSchemaCache.takeReadLock();
     try {
 
       List<ISchemaComputationWithAutoCreation> normalTimeSeriesRequestList = new ArrayList<>();
@@ -273,7 +227,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
     } finally {
       schemaCache.releaseReadLock();
-      templateSchemaCache.releaseReadLock();
     }
   }
 
@@ -429,7 +382,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void invalidAllCache() {
-    DataNodeSchemaCache.getInstance().invalidateAll();
-    DataNodeTemplateSchemaCache.getInstance().invalidateCache();
+    schemaCache.invalidateAll();
   }
 }
