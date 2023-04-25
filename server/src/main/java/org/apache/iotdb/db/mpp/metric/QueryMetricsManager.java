@@ -22,21 +22,21 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
 
-public class QueryMetricsManager {
+import static org.apache.iotdb.metrics.utils.MetricLevel.DO_NOTHING;
 
-  private static final boolean QUERY_METRICS_ENABLE =
-      IoTDBDescriptor.getInstance().getConfig().isQueryMetricsEnable();
+public class QueryMetricsManager {
 
   private final MetricService metricService = MetricService.getInstance();
 
   public void recordPlanCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       metricService.timer(
           costTimeInNanos,
           TimeUnit.NANOSECONDS,
@@ -48,7 +48,8 @@ public class QueryMetricsManager {
   }
 
   public void recordOperatorExecutionCost(String operatorType, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       metricService.timer(
           costTimeInNanos,
           TimeUnit.NANOSECONDS,
@@ -60,7 +61,8 @@ public class QueryMetricsManager {
   }
 
   public void recordOperatorExecutionCount(String operatorType, long count) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       metricService.count(
           count,
           Metric.OPERATOR_EXECUTION_COUNT.toString(),
@@ -71,7 +73,8 @@ public class QueryMetricsManager {
   }
 
   public void recordSeriesScanCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       MetricInfo metricInfo = SeriesScanCostMetricSet.metricInfoMap.get(stage);
       metricService.timer(
           costTimeInNanos,
@@ -83,7 +86,8 @@ public class QueryMetricsManager {
   }
 
   public void recordExecutionCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       MetricInfo metricInfo = QueryExecutionMetricSet.metricInfoMap.get(stage);
       metricService.timer(
           costTimeInNanos,
@@ -95,7 +99,8 @@ public class QueryMetricsManager {
   }
 
   public void recordQueryResourceNum(String type, int count) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       metricService.histogram(
           count,
           Metric.QUERY_RESOURCE.toString(),
@@ -106,7 +111,8 @@ public class QueryMetricsManager {
   }
 
   public void recordDataExchangeCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       MetricInfo metricInfo = DataExchangeCostMetricSet.metricInfoMap.get(stage);
       metricService.timer(
           costTimeInNanos,
@@ -118,7 +124,8 @@ public class QueryMetricsManager {
   }
 
   public void recordDataBlockNum(String type, int num) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       MetricInfo metricInfo = DataExchangeCountMetricSet.metricInfoMap.get(type);
       metricService.histogram(
           num, metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
@@ -126,7 +133,8 @@ public class QueryMetricsManager {
   }
 
   public void recordTaskQueueTime(String name, long queueTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
+    if (!DO_NOTHING.equals(
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
       metricService.timer(
           queueTimeInNanos,
           TimeUnit.NANOSECONDS,
