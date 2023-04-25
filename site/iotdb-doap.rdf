@@ -61,6 +61,14 @@
 
     <release>
       <Version>
+        <name>apache-iotdb-1.1.0</name>
+        <created>2023-04-03</created>
+        <revision>1.1.0</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
         <name>apache-iotdb-1.0.1</name>
         <created>2023-02-22</created>
         <revision>1.0.1</revision>

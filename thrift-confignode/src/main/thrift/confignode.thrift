@@ -232,12 +232,10 @@ struct TDataPartitionTableResp {
 }
 
 struct TGetRegionIdReq {
-    1: required string database
-    2: required common.TConsensusGroupType type
-    3: optional common.TSeriesPartitionSlot seriesSlotId
-    4: optional string deviceId
-    5: optional common.TTimePartitionSlot timeSlotId
-    6: optional i64 timeStamp
+    1: required common.TConsensusGroupType type
+    2: optional string database
+    3: optional string device
+    4: optional i64 timeStamp
 }
 
 struct TGetRegionIdResp {
@@ -246,10 +244,11 @@ struct TGetRegionIdResp {
 }
 
 struct TGetTimeSlotListReq {
-    1: required string database
-    2: required common.TSeriesPartitionSlot seriesSlotId
-    3: optional i64 startTime
-    4: optional i64 endTime
+    1: optional string database
+    3: optional string device
+    4: optional i64 regionId
+    5: optional i64 startTime
+    6: optional i64 endTime
 }
 
 struct TGetTimeSlotListResp {
@@ -257,9 +256,22 @@ struct TGetTimeSlotListResp {
     2: optional list<common.TTimePartitionSlot> timeSlotList
 }
 
+struct TCountTimeSlotListReq {
+    1: optional string database
+    3: optional string device
+    4: optional i64 regionId
+    5: optional i64 startTime
+    6: optional i64 endTime
+}
+
+struct TCountTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional i64 count
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
-    2: optional common.TConsensusGroupType type
+    2: required common.TConsensusGroupType type
 }
 
 struct TGetSeriesSlotListResp {
@@ -559,6 +571,11 @@ struct TCreateSchemaTemplateReq {
   2: required binary serializedTemplate
 }
 
+struct TAlterSchemaTemplateReq {
+  1: required string queryId
+  2: required binary templateAlterInfo
+}
+
 struct TGetAllTemplatesResp {
   1: required common.TSStatus status
   2: optional list<binary> templateList
@@ -570,8 +587,9 @@ struct TGetTemplateResp {
 }
 
 struct TSetSchemaTemplateReq {
-  1: required string name
-  2: required string path
+  1: required string queryId
+  2: required string name
+  3: required string path
 }
 
 struct TGetPathsSetTemplatesResp {
@@ -728,6 +746,24 @@ struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
   3: optional string bestTrailId
+}
+
+// ====================================================
+// Quota
+// ====================================================
+struct TSpaceQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TSpaceQuota> spaceQuota
+  3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+}
+
+struct TThrottleQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TThrottleQuota> throttleQuota
+}
+
+struct TShowThrottleReq{
+  1: optional string userName;
 }
 
 service IConfigNodeRPCService {
@@ -1213,6 +1249,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus dropSchemaTemplate(string req)
 
+  common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
+
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
    *
@@ -1265,6 +1303,8 @@ service IConfigNodeRPCService {
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req)
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
@@ -1333,5 +1373,26 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
+
+  // ======================================================
+  // Quota
+  // ======================================================
+  /** Set Space Quota */
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
+
+  /** Show space quota */
+  TSpaceQuotaResp showSpaceQuota(list<string> databases);
+
+  /** Get space quota information */
+  TSpaceQuotaResp getSpaceQuota();
+
+  /** Set throttle quota */
+  common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+
+  /** Show throttle quota */
+  TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req)
+
+  /** Get throttle quota information */
+  TThrottleQuotaResp getThrottleQuota()
 }
 

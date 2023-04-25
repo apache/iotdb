@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreatePipePluginTask;
@@ -49,6 +50,11 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.CreateModelTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.DropModelTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.model.ShowTrailsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DropSchemaTemplateTask;
@@ -69,6 +75,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.DropPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.StopPipeTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetSpaceQuotaTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetThrottleQuotaTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
@@ -76,6 +86,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
@@ -104,6 +115,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -124,6 +140,10 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
@@ -317,7 +337,7 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TaskContext context) {
-    return new SetSchemaTemplateTask(setSchemaTemplateStatement);
+    return new SetSchemaTemplateTask(context.getQueryId(), setSchemaTemplateStatement);
   }
 
   @Override
@@ -342,6 +362,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, TaskContext context) {
     return new DropSchemaTemplateTask(dropSchemaTemplateStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterSchemaTemplate(
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement, TaskContext context) {
+    return new AlterSchemaTemplateTask(alterSchemaTemplateStatement, context.getQueryId());
   }
 
   @Override
@@ -423,6 +449,11 @@ public class ConfigTaskVisitor
     return new GetTimeSlotListTask(getTimeSlotListStatement);
   }
 
+  public IConfigTask visitCountTimeSlotList(
+      CountTimeSlotListStatement countTimeSlotListStatement, TaskContext context) {
+    return new CountTimeSlotListTask(countTimeSlotListStatement);
+  }
+
   @Override
   public IConfigTask visitMigrateRegion(
       MigrateRegionStatement migrateRegionStatement, TaskContext context) {
@@ -446,6 +477,52 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowContinuousQueries(
       ShowContinuousQueriesStatement showContinuousQueriesStatement, TaskContext context) {
     return new ShowContinuousQueriesTask();
+  }
+
+  @Override
+  public IConfigTask visitSetSpaceQuota(
+      SetSpaceQuotaStatement setSpaceQuotaStatement, TaskContext context) {
+    return new SetSpaceQuotaTask(setSpaceQuotaStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSpaceQuota(
+      ShowSpaceQuotaStatement showSpaceQuotaStatement, TaskContext context) {
+    return new ShowSpaceQuotaTask(showSpaceQuotaStatement);
+  }
+
+  @Override
+  public IConfigTask visitSetThrottleQuota(
+      SetThrottleQuotaStatement setThrottleQuotaStatement, TaskContext context) {
+    return new SetThrottleQuotaTask(setThrottleQuotaStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowThrottleQuota(
+      ShowThrottleQuotaStatement showThrottleQuotaStatement, TaskContext context) {
+    return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
+  }
+
+  /** ML Model Management */
+  @Override
+  public IConfigTask visitCreateModel(
+      CreateModelStatement createModelStatement, TaskContext context) {
+    return new CreateModelTask(createModelStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropModel(DropModelStatement dropModelStatement, TaskContext context) {
+    return new DropModelTask(dropModelStatement.getModelId());
+  }
+
+  @Override
+  public IConfigTask visitShowModels(ShowModelsStatement showModelsStatement, TaskContext context) {
+    return new ShowModelsTask();
+  }
+
+  @Override
+  public IConfigTask visitShowTrails(ShowTrailsStatement showTrailsStatement, TaskContext context) {
+    return new ShowTrailsTask(showTrailsStatement.getModelId());
   }
 
   public static class TaskContext {

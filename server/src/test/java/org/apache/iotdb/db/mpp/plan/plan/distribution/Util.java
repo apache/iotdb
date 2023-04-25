@@ -294,7 +294,7 @@ public class Util {
   private static ISchemaFetcher getFakeSchemaFetcher() {
     return new ISchemaFetcher() {
       @Override
-      public ISchemaTree fetchSchema(PathPatternTree patternTree) {
+      public ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -324,7 +324,13 @@ public class Util {
       }
 
       @Override
-      public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+      public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
+        return null;
+      }
+
+      @Override
+      public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+          PartialPath timeSeriesPath, String alias) {
         return null;
       }
 

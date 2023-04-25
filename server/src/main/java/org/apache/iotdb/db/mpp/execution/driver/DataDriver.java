@@ -40,8 +40,12 @@ public class DataDriver extends Driver {
 
   private boolean init;
 
-  public DataDriver(Operator root, DriverContext driverContext) {
+  // Unit : Byte
+  private final long estimatedMemorySize;
+
+  public DataDriver(Operator root, DriverContext driverContext, long estimatedMemorySize) {
     super(root, driverContext);
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
   @Override
@@ -106,5 +110,10 @@ public class DataDriver extends Driver {
    */
   private QueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();
+  }
+
+  @Override
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
   }
 }

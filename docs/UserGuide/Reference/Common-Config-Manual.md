@@ -781,6 +781,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000                                                                    |
 |Effective| After restarting system                                                 |
 
+* 0.13\_data\_insert\_adapt
+
+|Name| 0.13\_data\_insert\_adapt                                             |
+|:---:|:----------------------------------------------------------------------|
+|Description| if using v0.13 client to insert data, set this configuration to true. |
+|Type| Boolean                                                               |
+|Default| false                                                                 |
+|Effective| After restarting system                                               |
+
 * upgrade\_thread\_count
 
 |   Name    | upgrade\_thread\_count                                                                            |
@@ -788,7 +797,16 @@ Different configuration parameters take effect in the following three ways:
 |Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
 |   Type    | Int32                                                                                             |
 |  Default  | 1                                                                                                 |
-| Effective | After restarting system                                                                           |                                                                        |
+| Effective | After restarting system                                                                           |
+
+* device\_path\_cache\_size
+
+|   Name    | device\_path\_cache\_size                                                                                                 |
+|:---------:|:--------------------------------------------------------------------------------------------------------------------------|
+|Description| The max size of the device path cache. This cache is for avoiding initialize duplicated device id object in write process |
+|   Type    | Int32                                                                                                                     |
+|  Default  | 500000                                                                                                                    |
+| Effective | After restarting system                                                                                                   |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -1212,12 +1230,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                            |
-|:-----------:|:------------------------------------------------------|
-| Description | Data compression method                               |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4", "ZSTD" |
-|   Default   | SNAPPY                                                |
-|  Effective  | hot-load                                              |
+|    Name     | compressor                                                     |
+|:-----------:|:---------------------------------------------------------------|
+| Description | Data compression method                                        |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|   Default   | SNAPPY                                                         |
+|  Effective  | hot-load                                                       |
 
 * bloomFilterErrorRate
 
@@ -1391,6 +1409,16 @@ Different configuration parameters take effect in the following three ways:
 
 
 ### SELECT-INTO
+
+* into\_operation\_buffer\_size\_in\_byte
+
+|    Name     | into\_operation\_buffer\_size\_in\_byte                                                                                            |
+| :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Description | When the select-into statement is executed, the maximum memory occupied by the data to be written (unit: Byte) |
+|    Type     | int64                                                        |
+|   Default   | 100MB                                                        |
+|  Effective  | hot-load                                                      |
+
 
 * select\_into\_insert\_tablet\_plan\_row\_limit
 

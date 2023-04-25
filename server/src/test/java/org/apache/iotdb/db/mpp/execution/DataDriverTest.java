@@ -178,7 +178,7 @@ public class DataDriverTest {
       driverContext.setSink(stubSink);
       IDriver dataDriver = null;
       try {
-        dataDriver = new DataDriver(limitOperator, driverContext);
+        dataDriver = new DataDriver(limitOperator, driverContext, 0);
         assertEquals(
             fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
 

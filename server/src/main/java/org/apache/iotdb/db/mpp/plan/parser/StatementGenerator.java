@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -66,6 +67,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -101,16 +105,24 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.service.thrift.impl.MLNodeRPCServiceImpl.ML_METRICS_PATH_PREFIX;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
 
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
@@ -248,7 +260,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
@@ -262,7 +275,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setDataTypes(new TSDataType[insertStatement.getMeasurements().length]);
@@ -278,7 +292,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(new PartialPath(insertTabletReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     insertStatement.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
@@ -310,7 +325,7 @@ public class StatementGenerator {
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-      insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
+      insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       insertTabletStatement.setTimes(
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -349,7 +364,7 @@ public class StatementGenerator {
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
       statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
@@ -373,7 +388,7 @@ public class StatementGenerator {
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
       statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
@@ -396,7 +411,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
-    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
@@ -421,7 +436,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
-    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
@@ -801,5 +816,83 @@ public class StatementGenerator {
     }
     MetaFormatUtils.checkDatabase(database);
     return databasePath;
+  }
+
+  public static InsertRowStatement createStatement(TRecordModelMetricsReq recordModelMetricsReq)
+      throws IllegalPathException {
+    String path =
+        ML_METRICS_PATH_PREFIX
+            + TsFileConstant.PATH_SEPARATOR
+            + recordModelMetricsReq.getModelId()
+            + TsFileConstant.PATH_SEPARATOR
+            + recordModelMetricsReq.getTrialId();
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(path));
+    insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
+    insertRowStatement.setMeasurements(recordModelMetricsReq.getMetrics().toArray(new String[0]));
+    insertRowStatement.setAligned(true);
+
+    TSDataType[] dataTypes = new TSDataType[recordModelMetricsReq.getValues().size()];
+    Arrays.fill(dataTypes, TSDataType.DOUBLE);
+    insertRowStatement.setDataTypes(dataTypes);
+    insertRowStatement.setValues(recordModelMetricsReq.getValues().toArray(new Object[0]));
+    return insertRowStatement;
+  }
+
+  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
+      throws IllegalPathException {
+    QueryStatement queryStatement = new QueryStatement();
+
+    FromComponent fromComponent = new FromComponent();
+    for (String pathStr : fetchTimeseriesReq.getQueryExpressions()) {
+      PartialPath path = new PartialPath(pathStr);
+      fromComponent.addPrefixPath(path);
+    }
+    queryStatement.setFromComponent(fromComponent);
+
+    SelectComponent selectComponent = new SelectComponent(zoneId);
+    selectComponent.addResultColumn(
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+    queryStatement.setSelectComponent(selectComponent);
+
+    if (fetchTimeseriesReq.isSetQueryFilter()) {
+      WhereCondition whereCondition = new WhereCondition();
+      String queryFilter = fetchTimeseriesReq.getQueryFilter();
+      String[] times = queryFilter.split(",");
+      int predictNum = 0;
+      LessThanExpression rightPredicate = null;
+      GreaterEqualExpression leftPredicate = null;
+      if (!Objects.equals(times[0], "-1")) {
+        leftPredicate =
+            new GreaterEqualExpression(
+                new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
+        predictNum += 1;
+      }
+      if (!Objects.equals(times[1], "-1")) {
+        rightPredicate =
+            new LessThanExpression(
+                new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
+        predictNum += 2;
+      }
+      whereCondition.setPredicate(
+          predictNum == 3
+              ? new LogicAndExpression(leftPredicate, rightPredicate)
+              : (predictNum == 1 ? leftPredicate : rightPredicate));
+
+      queryStatement.setWhereCondition(whereCondition);
+    }
+    return queryStatement;
+  }
+
+  public static DeleteTimeSeriesStatement createStatement(TDeleteModelMetricsReq req)
+      throws IllegalPathException {
+    String path =
+        ML_METRICS_PATH_PREFIX
+            + TsFileConstant.PATH_SEPARATOR
+            + req.getModelId()
+            + TsFileConstant.PATH_SEPARATOR
+            + MULTI_LEVEL_PATH_WILDCARD;
+    return new DeleteTimeSeriesStatement(Collections.singletonList(new PartialPath(path)));
   }
 }

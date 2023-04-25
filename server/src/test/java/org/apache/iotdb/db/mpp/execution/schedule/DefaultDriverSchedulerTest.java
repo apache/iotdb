@@ -79,7 +79,7 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.RUNNING,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle);
+      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle, 0);
       manager.getBlockedTasks().add(testTask);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
@@ -96,7 +96,7 @@ public class DefaultDriverSchedulerTest {
       clear();
     }
     DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle);
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle, 0);
     manager.getBlockedTasks().add(testTask);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
@@ -140,7 +140,7 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.RUNNING,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle);
+      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle, 0);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -156,7 +156,7 @@ public class DefaultDriverSchedulerTest {
       clear();
     }
     DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, driverTaskHandle);
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, driverTaskHandle, 0);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -198,7 +198,7 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.READY,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle);
+      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle, 0);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -214,7 +214,7 @@ public class DefaultDriverSchedulerTest {
       clear();
     }
     DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle);
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle, 0);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -260,7 +260,7 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.READY,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle);
+      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle, 0);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -276,7 +276,7 @@ public class DefaultDriverSchedulerTest {
       clear();
     }
     DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle);
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle, 0);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -322,7 +322,7 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.READY,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle);
+      DriverTask testTask = new DriverTask(mockDriver, 100L, status, driverTaskHandle, 0);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
       Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -338,7 +338,7 @@ public class DefaultDriverSchedulerTest {
       clear();
     }
     DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle);
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING, driverTaskHandle, 0);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
@@ -387,9 +387,9 @@ public class DefaultDriverSchedulerTest {
           DriverTaskStatus.FINISHED, DriverTaskStatus.ABORTED,
         };
     for (DriverTaskStatus status : invalidStates) {
-      DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status, driverTaskHandle);
+      DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status, driverTaskHandle, 0);
       DriverTask testTask2 =
-          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle);
+          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle, 0);
 
       Set<DriverTask> taskSet1 = new HashSet<>();
       taskSet1.add(testTask1);
@@ -428,10 +428,10 @@ public class DefaultDriverSchedulerTest {
       Mockito.reset(mockDriver2);
       Mockito.when(mockDriver2.getDriverTaskId()).thenReturn(driverTaskId2);
 
-      DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status, driverTaskHandle);
+      DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status, driverTaskHandle, 0);
 
       DriverTask testTask2 =
-          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle);
+          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle, 0);
       Set<DriverTask> taskSet1 = new HashSet<>();
       taskSet1.add(testTask1);
       Set<DriverTask> taskSet2 = new HashSet<>();

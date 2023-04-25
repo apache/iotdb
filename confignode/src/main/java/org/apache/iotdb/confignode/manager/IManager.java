@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -30,8 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -40,17 +39,18 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -75,12 +75,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
@@ -168,13 +168,6 @@ public interface IManager {
   TriggerManager getTriggerManager();
 
   /**
-   * Get SyncManager
-   *
-   * @return SyncManager instance
-   */
-  SyncManager getSyncManager();
-
-  /**
    * Get ProcedureManager
    *
    * @return ProcedureManager instance
@@ -189,11 +182,25 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get ModelManager
+   *
+   * @return ModelManager instance
+   */
+  ModelManager getModelManager();
+
+  /**
    * Get PipeManager
    *
    * @return PipeManager instance
    */
   PipeManager getPipeManager();
+
+  /**
+   * Get ClusterQuotaManager
+   *
+   * @return ClusterQuotaManager instance
+   */
+  ClusterQuotaManager getClusterQuotaManager();
 
   /**
    * Get RetryFailedTasksThread
@@ -535,35 +542,13 @@ public interface IManager {
   /** Drop schema template */
   TSStatus dropSchemaTemplate(String templateName);
 
+  TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
+
   /*
    * delete timeseries
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
-
-  /**
-   * Create PipeSink
-   *
-   * @param plan Info about PipeSink
-   * @return TSStatus
-   */
-  TSStatus createPipeSink(CreatePipeSinkPlan plan);
-
-  /**
-   * Drop PipeSink
-   *
-   * @param plan Name of PipeSink
-   * @return TSStatus
-   */
-  TSStatus dropPipeSink(DropPipeSinkPlan plan);
-
-  /**
-   * Get PipeSink by name. If pipeSinkName is empty, get all PipeSinks.
-   *
-   * @param req specify the pipeSinkName
-   * @return TGetPipeSinkResp contains the PipeSink
-   */
-  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req);
 
   /**
    * Create Pipe
@@ -619,11 +604,36 @@ public interface IManager {
    */
   TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
+  /**
+   * Get RegionId。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetRegionIdResp.
+   */
   TGetRegionIdResp getRegionId(TGetRegionIdReq req);
 
-  TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
+  /**
+   * Get timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetTimeSlotListResp.
+   */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req);
+  /**
+   * Count timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TCountTimeSlotListResp.
+   */
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req);
 
-  TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+  /**
+   * Get seriesSlot。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetSeriesSlotListResp.
+   */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
 
@@ -654,4 +664,7 @@ public interface IManager {
 
   /** Update the model state */
   TSStatus updateModelState(TUpdateModelStateReq req);
+
+  /** Set space quota */
+  TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 }

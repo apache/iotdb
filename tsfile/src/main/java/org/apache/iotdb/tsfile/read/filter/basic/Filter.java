@@ -32,11 +32,18 @@ import java.util.List;
 public interface Filter {
 
   /**
-   * To examine whether the statistics is satisfied with the filter.
+   * To examine whether there are data points satisfied with the filter.
    *
    * @param statistics statistics with min time, max time, min value, max value.
    */
   boolean satisfy(Statistics statistics);
+
+  /**
+   * To examine whether all data points are satisfied with the filter.
+   *
+   * @param statistics statistics with min time, max time, min value, max value.
+   */
+  boolean allSatisfy(Statistics statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.
@@ -80,4 +87,6 @@ public interface Filter {
   default List<TimeRange> getTimeRanges() {
     return Collections.emptyList();
   }
+
+  Filter reverse();
 }

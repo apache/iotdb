@@ -159,6 +159,10 @@ public class SeriesScanNode extends SeriesSourceNode {
     return valueFilter;
   }
 
+  public void setValueFilter(@Nullable Filter valueFilter) {
+    this.valueFilter = valueFilter;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of();

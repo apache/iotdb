@@ -92,7 +92,8 @@ export const zhSidebar = {
         { text: 'Go 原生接口', link: 'Programming-Go-Native-API' },
         { text: 'JDBC (不推荐)', link: 'Programming-JDBC' },
         { text: 'MQTT', link: 'Programming-MQTT' },
-        { text: 'REST API', link: 'RestService' },
+        { text: 'REST API V1 (不推荐)', link: 'RestServiceV1' },
+        { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
         { text: 'InfluxDB 协议适配器', link: 'InfluxDB-Protocol' },
         { text: '原生接口对比', link: 'Interface-Comparison' },
@@ -275,7 +276,6 @@ export const zhSidebar = {
         { text: '分布式部署', link: 'Cluster-Setup' },
         { text: '分布式运维命令', link: 'Cluster-Maintenance' },
         { text: '部署推荐', link: 'Deployment-Recommendation' },
-        { text: '集群部署工具', link: 'IoTDB-Deploy' },
       ],
     },
     {

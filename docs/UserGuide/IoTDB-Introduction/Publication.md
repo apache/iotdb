@@ -37,4 +37,4 @@ The research papers related are as follows:
 
 We also developed Benchmark tools for time series databases 
 
-https://github.com/thulab/iotdb-benchmark
+[https://github.com/thulab/iot-benchmark](https://github.com/thulab/iot-benchmark)

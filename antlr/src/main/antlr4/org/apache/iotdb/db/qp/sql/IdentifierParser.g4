@@ -23,6 +23,7 @@ options { tokenVocab=SqlLexer; }
 
 identifier
      : keyWords
+     | DURATION_LITERAL
      | ID
      | QUOTED_ID
      ;
@@ -43,6 +44,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AUTO
     | BEFORE
     | BEGIN
     | BLOCKED
@@ -81,6 +83,7 @@ keyWords
     | DISCARD
     | DROP
     | ELAPSEDTIME
+    | ELSE
     | END
     | ENDTIME
     | EVERY
@@ -116,6 +119,8 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MODEL
+    | MODELS
     | NODES
     | NONE
     | NOW
@@ -139,12 +144,14 @@ keyWords
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
+    | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROPERTY
     | PRUNE
     | QUERIES
     | QUERY
     | QUERYID
+    | QUOTA
     | RANGE
     | READONLY
     | REGEXP
@@ -169,6 +176,7 @@ keyWords
     | SHOW
     | SLIMIT
     | SOFFSET
+    | SPACE
     | STORAGE
     | START
     | STARTTIME
@@ -181,6 +189,8 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | THEN
+    | THROTTLE
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID
@@ -188,6 +198,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
+    | TRAILS
     | TRIGGER
     | TRIGGERS
     | TTL
@@ -203,9 +214,9 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
-    | PRIVILEGE_VALUE
     ;

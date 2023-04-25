@@ -44,7 +44,7 @@ class MLNodeConfig(object):
         self.__mn_target_config_node: TEndPoint = TEndPoint("127.0.0.1", 10710)
 
         # Target DataNode to be connected by MLNode
-        self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10730)
+        self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10780)
 
     def get_mn_rpc_address(self) -> str:
         return self.__mn_rpc_address
@@ -61,13 +61,13 @@ class MLNodeConfig(object):
     def get_mn_model_storage_dir(self) -> str:
         return self.__mn_model_storage_dir
 
-    def set_mn_model_storage_dir(self, mn_model_storage_dir: str):
+    def set_mn_model_storage_dir(self, mn_model_storage_dir: str) -> None:
         self.__mn_model_storage_dir = mn_model_storage_dir
 
     def get_mn_model_storage_cache_size(self) -> int:
         return self.__mn_model_storage_cache_size
 
-    def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int):
+    def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int) -> None:
         self.__mn_model_storage_cache_size = mn_model_storage_cache_size
 
     def get_mn_target_config_node(self) -> TEndPoint:
@@ -86,9 +86,8 @@ class MLNodeConfig(object):
 class MLNodeDescriptor(object):
     def __init__(self):
         self.__config = MLNodeConfig()
-        self.__load_config_from_file()
 
-    def __load_config_from_file(self) -> None:
+    def load_config_from_file(self) -> None:
         conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_CONF_FILE_NAME)
         if not os.path.exists(conf_file):
             logger.info("Cannot find MLNode config file '{}', use default configuration.".format(conf_file))
@@ -113,7 +112,7 @@ class MLNodeDescriptor(object):
                 self.__config.set_mn_model_storage_dir(file_configs.mn_model_storage_dir)
 
             if file_configs.mn_model_storage_cache_size is not None:
-                self.__config.set_mn_model_storage_cachesize(file_configs.mn_model_storage_cache_size)
+                self.__config.set_mn_model_storage_cache_size(file_configs.mn_model_storage_cache_size)
 
             if file_configs.mn_target_config_node is not None:
                 self.__config.set_mn_target_config_node(file_configs.mn_target_config_node)
@@ -129,4 +128,5 @@ class MLNodeDescriptor(object):
         return self.__config
 
 
-config = MLNodeDescriptor().get_config()
+# initialize a singleton
+descriptor = MLNodeDescriptor()

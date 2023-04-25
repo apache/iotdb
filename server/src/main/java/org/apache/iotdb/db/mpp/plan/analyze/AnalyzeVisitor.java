@@ -146,6 +146,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -243,7 +244,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (queryStatement.isGroupByTag()) {
         schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
       } else {
-        schemaTree = schemaFetcher.fetchSchema(patternTree);
+        schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       }
       QueryMetricsManager.getInstance()
           .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
@@ -375,6 +376,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Pair<Filter, Boolean> resultPair =
           ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
       globalTimeFilter = resultPair.left;
+      if (globalTimeFilter != null) {
+        globalTimeFilter = PredicateRemoveNotRewriter.rewrite(globalTimeFilter);
+      }
       hasValueFilter = resultPair.right;
 
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
@@ -432,26 +436,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
+
     boolean isGroupByLevel = queryStatement.isGroupByLevel();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
             queryStatement.isLastQuery() || isGroupByLevel);
+
+    Set<String> aliasSet = new HashSet<>();
+
     int columnIndex = 0;
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-      if (hasAlias
-          && !queryStatement.isGroupByLevel()
-          && !queryStatement.isGroupByTag()
-          && resultExpressions.size() > 1) {
-        throw new SemanticException(
-            String.format(
-                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-      }
       for (Expression expression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
@@ -472,6 +473,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     ? expression.getExpressionString()
                     : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
+            if (hasAlias) {
+              if (aliasSet.contains(alias)) {
+                throw new SemanticException(
+                    String.format("alias '%s' can only be matched with one time series", alias));
+              }
+              aliasSet.add(alias);
+            }
             analyzeExpression(analysis, expressionWithoutAlias);
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
           }
@@ -1123,19 +1131,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
     analysis.setDeviceViewSpecialProcess(
-        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement));
+        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
   private boolean analyzeDeviceViewSpecialProcess(
-      Set<Expression> deviceViewOutputExpressions, QueryStatement queryStatement) {
+      Set<Expression> deviceViewOutputExpressions,
+      QueryStatement queryStatement,
+      Analysis analysis) {
     if (queryStatement.isAggregationQuery()
         || queryStatement.hasWhere()
             && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
-                queryStatement.getWhereCondition().getPredicate())) {
+                queryStatement.getWhereCondition().getPredicate(), analysis)) {
       return true;
     }
     for (Expression expression : deviceViewOutputExpressions) {
-      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression)) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression, analysis)) {
         return true;
       }
     }
@@ -1560,7 +1570,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
     QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
 
@@ -1613,7 +1623,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
     QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
 
@@ -1719,51 +1729,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkIsTemplateCompatible(PartialPath timeseriesPath, String alias) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(timeseriesPath);
+    Pair<Template, PartialPath> templateInfo =
+        schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
-      if (templateInfo.left.hasSchema(timeseriesPath.getMeasurement())) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getFullPath(),
-                templateInfo.left.getName(),
-                timeseriesPath.getMeasurement()));
-      }
-
-      if (alias != null && templateInfo.left.hasSchema(alias)) {
-        throw new RuntimeException(
-            new TemplateImcompatibeException(
-                timeseriesPath.getDevicePath().concatNode(alias).getFullPath(),
-                templateInfo.left.getName(),
-                alias));
-      }
+      throw new RuntimeException(
+          new TemplateImcompatibeException(
+              timeseriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
     }
   }
 
   private void checkIsTemplateCompatible(
       PartialPath devicePath, List<String> measurements, List<String> aliasList) {
-    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
-    if (templateInfo != null) {
-      Template template = templateInfo.left;
-      for (String measurement : measurements) {
-        if (template.hasSchema(measurement)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(measurement).getFullPath(),
-                  templateInfo.left.getName(),
-                  measurement));
-        }
-      }
-
-      if (aliasList == null) {
-        return;
-      }
-
-      for (String alias : aliasList) {
-        if (template.hasSchema(alias)) {
-          throw new RuntimeException(
-              new TemplateImcompatibeException(
-                  devicePath.concatNode(alias).getFullPath(), templateInfo.left.getName(), alias));
-        }
+    for (int i = 0; i < measurements.size(); i++) {
+      Pair<Template, PartialPath> templateInfo =
+          schemaFetcher.checkTemplateSetAndPreSetInfo(
+              devicePath.concatNode(measurements.get(i)),
+              aliasList == null ? null : aliasList.get(i));
+      if (templateInfo != null) {
+        throw new RuntimeException(
+            new TemplateImcompatibeException(
+                devicePath.getFullPath() + measurements,
+                templateInfo.left.getName(),
+                templateInfo.right));
       }
     }
   }
@@ -2372,6 +2359,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
     Map<Integer, Template> templateMap =
@@ -2382,7 +2370,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
-      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
@@ -2610,7 +2598,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();

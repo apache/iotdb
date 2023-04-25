@@ -97,7 +97,8 @@ export const enSidebar = sidebar({
         { text: 'Go Native API', link: 'Programming-Go-Native-API' },
         { text: 'JDBC (Not Recommend)', link: 'Programming-JDBC' },
         { text: 'MQTT', link: 'Programming-MQTT' },
-        { text: 'REST API', link: 'RestService' },
+        { text: 'REST API V1 (Not Recommend)', link: 'RestServiceV1' },
+        { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
         { text: 'InfluxDB Protocol', link: 'InfluxDB-Protocol' },
         { text: 'Interface Comparison', link: 'Interface-Comparison' },
@@ -179,6 +180,7 @@ export const enSidebar = sidebar({
         { text: 'Sample', link: 'Sample' },
         { text: 'Time-Series', link: 'Time-Series' },
         { text: 'Lambda', link: 'Lambda' },
+        { text: 'Conditional Expression', link: 'Conditional' },
 
         // IoTDB-Quality
         { text: 'Data Profiling', link: 'Data-Profiling' },

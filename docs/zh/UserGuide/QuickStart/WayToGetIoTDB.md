@@ -92,7 +92,7 @@ Apache IoTDB 的配置项以环境变量形式添加到容器内。
 #### 简单尝试
 ```shell
 # 获取镜像
-docker pull apache/iotdb:1.0.1-standalone
+docker pull apache/iotdb:1.1.0-standalone
 # 创建 docker bridge 网络
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # 创建 docker 容器
@@ -113,7 +113,7 @@ docker run -d --name iotdb-service \
               -e dn_schema_region_consensus_port=10750 \
               -e dn_data_region_consensus_port=10760 \
               -e dn_rpc_port=6667 \
-              apache/iotdb:1.0.1-standalone              
+              apache/iotdb:1.1.0-standalone              
 # 尝试使用命令行执行SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
@@ -127,7 +127,7 @@ $IOTDB_HOME/sbin/start-cli.sh -h <主机IP/hostname> -p 6667
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.1-standalone
+    image: apache/iotdb:1.1.0-standalone
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
@@ -138,6 +138,7 @@ services:
       - cn_consensus_port=10720
       - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
+      - dn_internal_address=iotdb-service
       - dn_rpc_port=6667
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
@@ -163,7 +164,7 @@ networks:
 version: "3"
 services:
   iotdb-confignode:
-    image: apache/iotdb:1.0.1-confignode
+    image: apache/iotdb:1.1.0-confignode
     container_name: iotdb-confignode
     environment:
       - cn_internal_address=iotdb-2
@@ -182,7 +183,7 @@ services:
     network_mode: "host"
 
   iotdb-datanode:
-    image: apache/iotdb:1.0.1-datanode
+    image: apache/iotdb:1.1.0-datanode
     container_name: iotdb-datanode
     environment:
       - dn_rpc_address=iotdb-2

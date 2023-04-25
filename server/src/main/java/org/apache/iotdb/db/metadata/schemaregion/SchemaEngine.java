@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -253,16 +254,14 @@ public class SchemaEngine {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      if (schemaRegion.getStorageGroupFullPath().equals(storageGroup.getFullPath())) {
+      if (schemaRegion.getDatabaseFullPath().equals(storageGroup.getFullPath())) {
         return;
       } else {
         throw new MetadataException(
             String.format(
                 "SchemaRegion [%s] is duplicated between [%s] and [%s], "
                     + "and the former one has been recovered.",
-                schemaRegionId,
-                schemaRegion.getStorageGroupFullPath(),
-                storageGroup.getFullPath()));
+                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup.getFullPath()));
       }
     }
     schemaRegionMap.put(
@@ -316,7 +315,7 @@ public class SchemaEngine {
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getStorageGroupFullPath());
+    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
     File[] regionDirList =
         sgDir.listFiles(
             (dir, name) -> {
@@ -341,6 +340,35 @@ public class SchemaEngine {
 
   public int getSchemaRegionNumber() {
     return schemaRegionMap == null ? 0 : schemaRegionMap.size();
+  }
+
+  public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Long> deviceNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          deviceNum.put(entry.getKey().getId(), entry.getValue().countDeviceNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return deviceNum;
+  }
+
+  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          timeSeriesNum.put(
+              entry.getKey().getId(), entry.getValue().countTimeSeriesNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return timeSeriesNum;
   }
 
   @TestOnly

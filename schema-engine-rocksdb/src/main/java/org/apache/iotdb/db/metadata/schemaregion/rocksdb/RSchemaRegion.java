@@ -209,7 +209,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -1531,6 +1531,16 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countDeviceNumBySchemaRegion() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

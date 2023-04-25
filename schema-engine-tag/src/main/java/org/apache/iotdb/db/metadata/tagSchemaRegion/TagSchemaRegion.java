@@ -172,7 +172,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -581,6 +581,16 @@ public class TagSchemaRegion implements ISchemaRegion {
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countDeviceNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException("countDeviceNumBySchemaRegion");
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException("countTimeSeriesNumBySchemaRegion");
   }
 
   @Override

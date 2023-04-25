@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -34,9 +35,17 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.DISPLAY_WINDOW_BEGIN_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.DISPLAY_WINDOW_END_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.SLIDING_STEP_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.TIME_INTERVAL_KEY;
+import static org.apache.iotdb.commons.udf.builtin.UDTFM4.WINDOW_SIZE_KEY;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -52,6 +61,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (4, 2, 2, 2, 2, false, '2', 2)",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (6, 3, 3, 3, 3, true, '3', 3)",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (8, 4, 4, 4, 4, true, '4', 4)",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (10000000000, 5, 5, 5, 5, false, '5', 5)"
   };
 
   private static final double E = 0.0001;
@@ -144,6 +154,25 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         }
       }
       resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  functionName, functionName, functionName, functionName));
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 4, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        for (int j = 0; j < 4; ++j) {
+          double expected = functionProxy.invoke(i);
+          double actual = Double.parseDouble(resultSet.getString(3 + j));
+          assertEquals(expected, actual, E);
+        }
+      }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -173,6 +202,23 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         }
       }
       resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = INSERTION_SQLS.length - 2; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        for (int j = 0; j < 5; ++j) {
+          assertEquals(i, Double.parseDouble(resultSet.getString(3 + j)), E);
+        }
+      }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -192,6 +238,23 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         resultSet.next();
         for (int j = 0; j < 5; ++j) {
           assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
+        }
+      }
+      resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K));
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = 0; i < 2; ++i) {
+        resultSet.next();
+        for (int j = 0; j < 5; ++j) {
+          assertEquals(i, Double.parseDouble(resultSet.getString(3 + j)), E);
         }
       }
       resultSet.close();
@@ -221,6 +284,24 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         assertTrue(Boolean.parseBoolean(resultSet.getString(2 + 1)));
       }
       resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1 align by device");
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 2, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        if (i == 0) {
+          assertTrue(Boolean.parseBoolean(resultSet.getString(3)));
+        } else {
+          assertFalse(Boolean.parseBoolean(resultSet.getString(3)));
+        }
+        assertTrue(Boolean.parseBoolean(resultSet.getString(3 + 1)));
+      }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -228,14 +309,15 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
 
   @Test
   public void testVariationTrendCalculationFunctions() {
-    testVariationTrendCalculationFunction("TIME_DIFFERENCE", 2);
-    testVariationTrendCalculationFunction("DIFFERENCE", 1);
-    testVariationTrendCalculationFunction("NON_NEGATIVE_DIFFERENCE", 1);
-    testVariationTrendCalculationFunction("DERIVATIVE", 0.5);
-    testVariationTrendCalculationFunction("NON_NEGATIVE_DERIVATIVE", 0.5);
+    testVariationTrendCalculationFunction("TIME_DIFFERENCE", 2, 9999999992L);
+    testVariationTrendCalculationFunction("DIFFERENCE", 1, 1);
+    testVariationTrendCalculationFunction("NON_NEGATIVE_DIFFERENCE", 1, 1);
+    testVariationTrendCalculationFunction("DERIVATIVE", 0.5, 1.0 / 9999999992.0);
+    testVariationTrendCalculationFunction("NON_NEGATIVE_DERIVATIVE", 0.5, 1.0 / 9999999992.0);
   }
 
-  public void testVariationTrendCalculationFunction(String functionName, double expected) {
+  public void testVariationTrendCalculationFunction(
+      String functionName, double expected1, double expected2) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
@@ -247,11 +329,36 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 4, columnCount);
 
-      for (int i = 0; i < INSERTION_SQLS.length - 1; ++i) {
+      for (int i = 0; i < INSERTION_SQLS.length - 2; ++i) {
         resultSet.next();
         for (int j = 0; j < 4; ++j) {
-          assertEquals(expected, Double.parseDouble(resultSet.getString(2 + j)), E);
+          assertEquals(expected1, Double.parseDouble(resultSet.getString(2 + j)), E);
         }
+      }
+      resultSet.next();
+      for (int j = 0; j < 4; ++j) {
+        assertEquals(expected2, Double.parseDouble(resultSet.getString(2 + j)), E);
+      }
+      resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  functionName, functionName, functionName, functionName));
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 4, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length - 2; ++i) {
+        resultSet.next();
+        for (int j = 0; j < 4; ++j) {
+          assertEquals(expected1, Double.parseDouble(resultSet.getString(3 + j)), E);
+        }
+      }
+      resultSet.next();
+      for (int j = 0; j < 4; ++j) {
+        assertEquals(expected2, Double.parseDouble(resultSet.getString(3 + j)), E);
       }
       resultSet.close();
     } catch (SQLException throwable) {
@@ -267,6 +374,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       "4, 2.0, null, 1024, 3.141592653589793, 2.718281828459045, ",
       "6, null, 3.0, null, null, 2.718281828459045, ",
       "8, null, 4.0, null, null, 2.718281828459045, ",
+      "10000000000, null, 5.0, null, null, 2.718281828459045, "
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
@@ -282,6 +390,25 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           StringBuilder actual = new StringBuilder();
           for (int j = 0; j < 1 + 5; ++j) {
             actual.append(resultSet.getString(1 + j)).append(", ");
+          }
+          assertEquals(expected[i], actual.toString());
+        }
+
+        assertFalse(resultSet.next());
+      }
+
+      try (Statement statement = connection.createStatement();
+          ResultSet resultSet =
+              statement.executeQuery(
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1 align by device")) {
+        assertEquals(2 + 5, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          StringBuilder actual = new StringBuilder();
+          actual.append(resultSet.getString(1)).append(", ");
+          for (int j = 1; j < 1 + 5; ++j) {
+            actual.append(resultSet.getString(2 + j)).append(", ");
           }
           assertEquals(expected[i], actual.toString());
         }
@@ -335,6 +462,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       "4, 2, 2.0, 0, 2.0, ",
       "6, 3, 3.0, 1, null, ",
       "8, 4, 4.0, 1, null, ",
+      "10000000000, 5, 5.0, 0, null, "
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -350,6 +478,24 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         StringBuilder actual = new StringBuilder();
         for (int j = 0; j < 1 + 4; ++j) {
           actual.append(resultSet.getString(1 + j)).append(", ");
+        }
+        assertEquals(expected[i], actual.toString());
+      }
+      resultSet.close();
+
+      resultSet =
+          statement.executeQuery(
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1 align by device");
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(6, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        StringBuilder actual = new StringBuilder();
+        actual.append(resultSet.getString(1)).append(", ");
+        for (int j = 1; j < 1 + 4; ++j) {
+          actual.append(resultSet.getString(2 + j)).append(", ");
         }
         assertEquals(expected[i], actual.toString());
       }
@@ -382,6 +528,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
       "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
       "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (7, 1, 1, 1, 1, true)",
+      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (10000000000, 0, 0, 0, 0, false)",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -397,8 +544,8 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     // result should be (0,0),(3,0),(5,1)
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      int[] timestamps = {0, 3, 5};
-      int[] durations = {0, 0, 1};
+      long[] timestamps = {0, 3, 5, 10000000000L};
+      int[] durations = {0, 0, 1, 0};
       String functionName = "zero_duration";
       ResultSet resultSet =
           statement.executeQuery(
@@ -417,6 +564,27 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         long expectedDuration = durations[i];
         for (int j = 0; j < 5; ++j) {
           long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  functionName, functionName, functionName, functionName, functionName));
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(3 + j));
           assertEquals(expectedDuration, actualDuration);
         }
       }
@@ -452,6 +620,28 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           assertEquals(expectedDuration, actualDuration);
         }
       }
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  functionName, functionName, functionName, functionName, functionName));
+
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(3 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -480,6 +670,27 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         long expectedDuration = durations[i];
         for (int j = 0; j < 5; ++j) {
           long actualDuration = Long.parseLong(resultSet.getString(2 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  functionName, functionName, functionName, functionName, functionName));
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(3 + j));
           assertEquals(expectedDuration, actualDuration);
         }
       }
@@ -514,6 +725,27 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           assertEquals(expectedDuration, actualDuration);
         }
       }
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  functionName, functionName, functionName, functionName, functionName));
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 5, columnCount);
+
+      for (int i = 0; i < timestamps.length; ++i) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        long expectedDuration = durations[i];
+        for (int j = 0; j < 5; ++j) {
+          long actualDuration = Long.parseLong(resultSet.getString(3 + j));
+          assertEquals(expectedDuration, actualDuration);
+        }
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -539,6 +771,25 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           for (int j = 0; j < 4; ++j) {
             Boolean expected = i >= threshold;
             Boolean actual = Boolean.parseBoolean(resultSet.getString(2 + j));
+            assertEquals(expected, actual);
+          }
+        }
+        resultSet.close();
+
+        resultSet =
+            statement.executeQuery(
+                String.format(
+                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1 align by device",
+                    threshold, threshold, threshold, threshold));
+
+        columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(2 + 4, columnCount);
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          for (int j = 0; j < 4; ++j) {
+            Boolean expected = i >= threshold;
+            Boolean actual = Boolean.parseBoolean(resultSet.getString(3 + j));
             assertEquals(expected, actual);
           }
         }
@@ -573,6 +824,26 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           for (int j = 0; j < 4; ++j) {
             Boolean expected = (i >= lower && i <= upper);
             Boolean actual = Boolean.parseBoolean(resultSet.getString(2 + j));
+            assertEquals(expected, actual);
+          }
+        }
+        resultSet.close();
+
+        resultSet =
+            statement.executeQuery(
+                String.format(
+                    "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
+                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1 align by device",
+                    upper, lower, upper, lower, upper, lower, upper, lower));
+
+        columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(2 + 4, columnCount);
+
+        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+          resultSet.next();
+          for (int j = 0; j < 4; ++j) {
+            Boolean expected = (i >= lower && i <= upper);
+            Boolean actual = Boolean.parseBoolean(resultSet.getString(3 + j));
             assertEquals(expected, actual);
           }
         }
@@ -912,6 +1183,188 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
   }
 
   @Test
+  public void testM4Function() {
+    // create timeseries
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.m4");
+      statement.execute("CREATE TIMESERIES root.m4.d1.s1 with datatype=double,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.m4.d1.s2 with datatype=INT32,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // insert data
+    String insertTemplate = "INSERT INTO root.m4.d1(timestamp,%s)" + " VALUES(%d,%d)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // "root.m4.d1.s1" data illustration:
+      // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 1, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 2, 15));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 20, 1));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 25, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 54, 3));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 120, 8));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 5, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 8, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 10, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 20, 20));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 27, 20));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 30, 40));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 35, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 40, 20));
+      statement.execute("FLUSH");
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 33, 9));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 45, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 52, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 54, 18));
+      statement.execute("FLUSH");
+
+      // "root.m4.d1.s2" data: constant value 1
+      for (int i = 0; i < 100; i++) {
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s2", i, 1));
+      }
+      statement.execute("FLUSH");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    // query tests
+    test_M4_firstWindowEmpty();
+    test_M4_slidingTimeWindow();
+    test_M4_slidingSizeWindow();
+    test_M4_constantTimeSeries();
+  }
+
+  private void test_M4_firstWindowEmpty() {
+    String[] res = new String[] {"120,8.0"};
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            75,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingTimeWindow() {
+    String[] res =
+        new String[] {
+          "1,5.0", "10,30.0", "20,20.0", "25,8.0", "30,40.0", "45,30.0", "52,8.0", "54,18.0",
+          "120,8.0"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingSizeWindow() {
+    String[] res = new String[] {"1,5.0", "30,40.0", "33,9.0", "35,10.0", "45,30.0", "120,8.0"};
+
+    String sql =
+        String.format(
+            "select M4(s1,'%s'='%s','%s'='%s') from root.m4.d1",
+            WINDOW_SIZE_KEY, 10, SLIDING_STEP_KEY, 10);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_constantTimeSeries() {
+    /* Result: 0,1 24,1 25,1 49,1 50,1 74,1 75,1 99,1 */
+    String sql =
+        String.format(
+            "select M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            100);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String expStr;
+        if (count % 2 == 0) {
+          expStr = 25 * (count / 2) + ",1";
+        } else {
+          expStr = 25 * (count / 2) + 24 + ",1";
+        }
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(expStr, str);
+        count++;
+      }
+      Assert.assertEquals(8, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void testUDTFJexl() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -927,15 +1380,15 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
-    String[] SQL_FOR_SAMPLE_1 = new String[5];
-    String[] SQL_FOR_SAMPLE_2 = new String[5];
-    String[] SQL_FOR_SAMPLE_3 = new String[5];
-    String[] SQL_FOR_SAMPLE_4 = new String[5];
-    String[] SQL_FOR_SAMPLE_5 = new String[5];
-    String[] SQL_FOR_SAMPLE_6 = new String[5];
-    String[] SQL_FOR_SAMPLE_7 = new String[5];
-    String[] SQL_FOR_SAMPLE_8 = new String[5];
-    String[] SQL_FOR_SAMPLE_9 = new String[5];
+    String[] SQL_FOR_SAMPLE_1 = new String[6];
+    String[] SQL_FOR_SAMPLE_2 = new String[6];
+    String[] SQL_FOR_SAMPLE_3 = new String[6];
+    String[] SQL_FOR_SAMPLE_4 = new String[6];
+    String[] SQL_FOR_SAMPLE_5 = new String[6];
+    String[] SQL_FOR_SAMPLE_6 = new String[6];
+    String[] SQL_FOR_SAMPLE_7 = new String[6];
+    String[] SQL_FOR_SAMPLE_8 = new String[6];
+    String[] SQL_FOR_SAMPLE_9 = new String[6];
     for (int i = 0; i < 5; i++) {
       SQL_FOR_SAMPLE_1[i] =
           String.format("insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
@@ -955,13 +1408,32 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       SQL_FOR_SAMPLE_9[i] =
           String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
     }
-    double[] ANSWER1 = new double[] {2, 4, 6, 8, 10};
-    double[] ANSWER2 = new double[] {2, 4, 6, 8, 10};
-    double[] ANSWER3 = new double[] {4, 7, 10, 13, 16};
-    String[] ANSWER4 = new String[] {"string2", "string2", "string2", "string2", "string2"};
-    double[] ANSWER7 = new double[] {1, 4, 9, 16, 25};
-    String[] ANSWER8 = new String[] {"string1", "string4", "string9", "string16", "string25"};
-    double[] ANSWER9 = new double[] {2, 9, 28, 65, 126};
+    SQL_FOR_SAMPLE_1[5] =
+        String.format("insert into root.sg.d7(time, s1) values (%d, %d)", 10000000000L, 5 + 1);
+    SQL_FOR_SAMPLE_2[5] =
+        String.format("insert into root.sg.d7(time, s2) values (%d, %f)", 10000000000L, 5 + 1.0);
+    SQL_FOR_SAMPLE_3[5] =
+        String.format("insert into root.sg.d7(time, s3) values (%d, %f)", 10000000000L, 5 + 1.0);
+    SQL_FOR_SAMPLE_4[5] =
+        String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", 10000000000L, "string");
+    SQL_FOR_SAMPLE_5[5] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", 5);
+    SQL_FOR_SAMPLE_6[5] =
+        String.format("insert into root.sg.d7(time, s6) values (%d, %d)", 10000000000L, 5 + 8);
+    SQL_FOR_SAMPLE_7[5] =
+        String.format("insert into root.sg.d7(time, s7) values (%d, %d)", 10000000000L, 5 + 1);
+    SQL_FOR_SAMPLE_8[5] =
+        String.format("insert into root.sg.d7(time, s8) values (%d, %f)", 10000000000L, 5 + 1.0);
+    SQL_FOR_SAMPLE_9[5] =
+        String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", 10000000000L, "string");
+    double[] ANSWER1 = new double[] {2, 4, 6, 8, 10, 12};
+    double[] ANSWER2 = new double[] {2, 4, 6, 8, 10, 12};
+    double[] ANSWER3 = new double[] {4, 7, 10, 13, 16, 19};
+    String[] ANSWER4 =
+        new String[] {"string2", "string2", "string2", "string2", "string2", "string2"};
+    double[] ANSWER7 = new double[] {1, 4, 9, 16, 25, 36};
+    String[] ANSWER8 =
+        new String[] {"string1", "string4", "string9", "string16", "string25", "string36"};
+    double[] ANSWER9 = new double[] {2, 9, 28, 65, 126, 469};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 5; i++) {
@@ -1036,6 +1508,52 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         assertEquals(ANSWER8[i], resultSet.getString(9));
         assertEquals(ANSWER9[i], resultSet.getDouble(10), 0.01);
       }
+
+      resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, 'expr'='%s'), "
+                      + "%s(s2, 'expr'='%s'), "
+                      + "%s(s3, 'expr'='%s'), "
+                      + "%s(s4, 'expr'='%s'), "
+                      + "%s(s5, 'expr'='%s'), "
+                      + "%s(s6, 'expr'='%s'), "
+                      + "%s(s7, s8, 'expr'='%s'), "
+                      + "%s(s4, s7, s1, 'expr'='%s'), "
+                      + "%s(s1, s7, s8, s5, 'expr'='%s') "
+                      + "from root.sg.d7 align by device",
+                  functionName,
+                  expr1,
+                  functionName,
+                  expr2,
+                  functionName,
+                  expr3,
+                  functionName,
+                  expr4,
+                  functionName,
+                  expr5,
+                  functionName,
+                  expr6,
+                  functionName,
+                  expr7,
+                  functionName,
+                  expr8,
+                  functionName,
+                  expr9));
+      columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(2 + 9, columnCount);
+      for (int i = 0; i < 5; i++) {
+        resultSet.next();
+        assertEquals(ANSWER1[i], resultSet.getDouble(2 + 1), 0.01);
+        assertEquals(ANSWER2[i], resultSet.getDouble(3 + 1), 0.01);
+        assertEquals(ANSWER3[i], resultSet.getDouble(4 + 1), 0.01);
+        assertEquals(ANSWER4[i], resultSet.getString(5 + 1));
+        assertTrue(resultSet.getBoolean(6 + 1));
+        assertTrue(resultSet.getBoolean(7 + 1));
+        assertEquals(ANSWER7[i], resultSet.getDouble(8 + 1), 0.01);
+        assertEquals(ANSWER8[i], resultSet.getString(9 + 1));
+        assertEquals(ANSWER9[i], resultSet.getDouble(10 + 1), 0.01);
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -1053,7 +1571,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     String[] insertSQLs =
         new String[] {
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1,s2) values(1, \"1111test1111\", \"  1111test1111 \")",
-          "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(2, \"2222test2222\")"
+          "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(10000000000, \"2222test2222\")"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1094,6 +1612,17 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       }
       assertEquals(resultSet.getString(2).trim(), resultSet.getString(3));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s2, trim(s2) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      s2 = resultSet.getString(3);
+      if (s2 == null) {
+        continue;
+      }
+      assertEquals(resultSet.getString(3).trim(), resultSet.getString(4));
+    }
   }
 
   private void testStrCmp(Statement statement) throws SQLException {
@@ -1110,6 +1639,18 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       }
       assertEquals(s1.compareTo(s2), resultSet.getInt(4));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, s2, strcmp(s1, s2) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      s1 = resultSet.getString(3);
+      s2 = resultSet.getString(4);
+      if (s1 == null || s2 == null) {
+        continue;
+      }
+      assertEquals(s1.compareTo(s2), resultSet.getInt(5));
+    }
   }
 
   private void testLower(Statement statement) throws SQLException {
@@ -1117,6 +1658,13 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         statement.executeQuery("select s1, lower(s1) " + "from root.testStringFunctions.d1");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).toLowerCase(), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, lower(s1) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).toLowerCase(), resultSet.getString(4));
     }
   }
 
@@ -1126,6 +1674,13 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).toUpperCase(), resultSet.getString(3));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, upper(s1) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).toUpperCase(), resultSet.getString(4));
+    }
   }
 
   private void testSubStr(Statement statement) throws SQLException {
@@ -1134,6 +1689,13 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
             "select s1, substring(s1, 3, 7) " + "from root.testStringFunctions.d1");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).substring(2, 9), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, substring(s1, 3, 7) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).substring(2, 9), resultSet.getString(4));
     }
   }
 
@@ -1152,6 +1714,21 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           ("IoTDB" + (resultSet.getString(2) + resultSet.getString(3))).replace("null", ""),
           resultSet.getString(5));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, s2, "
+                + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\"), "
+                + "concat(s1, s2, \"target1\"=\"IoT\", \"target2\"=\"DB\", \"series_behind\"=\"true\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(
+          (resultSet.getString(3) + resultSet.getString(4) + "IoTDB").replace("null", ""),
+          resultSet.getString(5));
+      assertEquals(
+          ("IoTDB" + (resultSet.getString(3) + resultSet.getString(4))).replace("null", ""),
+          resultSet.getString(6));
+    }
   }
 
   private void testEndsWith(Statement statement) throws SQLException {
@@ -1161,6 +1738,14 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).endsWith("1111"), resultSet.getBoolean(3));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, endsWith(s1, \"target\"=\"1111\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).endsWith("1111"), resultSet.getBoolean(4));
+    }
   }
 
   private void testStartsWith(Statement statement) throws SQLException {
@@ -1169,6 +1754,14 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
             "select s1, startsWith(s1, \"target\"=\"1111\") " + "from root.testStringFunctions.d1");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).startsWith("1111"), resultSet.getBoolean(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, startsWith(s1, \"target\"=\"1111\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).startsWith("1111"), resultSet.getBoolean(4));
     }
   }
 
@@ -1180,6 +1773,14 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       assertEquals(resultSet.getString(2).indexOf("1111"), resultSet.getInt(3));
       assertEquals(resultSet.getString(2).lastIndexOf("1111"), resultSet.getInt(4));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, locate(s1, \"target\"=\"1111\"), locate(s1, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).indexOf("1111"), resultSet.getInt(4));
+      assertEquals(resultSet.getString(3).lastIndexOf("1111"), resultSet.getInt(5));
+    }
   }
 
   private void testStrLength(Statement statement) throws SQLException {
@@ -1187,6 +1788,13 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
         statement.executeQuery("select s1, length(s1) from root.testStringFunctions.d1");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(2).length(), resultSet.getInt(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s1, length(s1) from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).length(), resultSet.getInt(4));
     }
   }
 
@@ -1379,7 +1987,8 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
           "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
           "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
           "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
-          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(10000000000, false, 2, 2, 2.0, 1.0, \"2test2\")"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1409,13 +2018,34 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
             "1,true,1,1,1.0,1.0,1test1,",
             "2,null,2,2,2.0,null,2test2,",
             "3,false,1,null,1.0,null,null,",
-            "4,true,null,3,null,null,1test1,"
+            "4,true,null,3,null,null,1test1,",
+            "10000000000,false,2,2,2.0,null,2test2,"
           };
 
       resultSetEqualTest(
           "select change_points(s1), change_points(s2), change_points(s3), change_points(s4), change_points(s5), change_points(s6) from root.testChangePoints.d1",
           expectedHeader,
           retArray);
+
+      expectedHeader =
+          new String[] {
+            TIMESTAMP_STR,
+            DEVICE,
+            "change_points(root.testChangePoints.d1.s1)",
+            "change_points(root.testChangePoints.d1.s2)",
+            "change_points(root.testChangePoints.d1.s3)",
+            "change_points(root.testChangePoints.d1.s4)",
+            "change_points(root.testChangePoints.d1.s5)",
+            "change_points(root.testChangePoints.d1.s6)"
+          };
+      retArray =
+          new String[] {
+            "1,root.testChangePoints.d1,true,1,1,1.0,1.0,1test1,",
+            "2,root.testChangePoints.d1,null,2,2,2.0,null,2test2,",
+            "3,root.testChangePoints.d1,false,1,null,1.0,null,null,",
+            "4,root.testChangePoints.d1,true,null,3,null,null,1test1,",
+            "10000000000,root.testChangePoints.d1,false,2,2,2.0,null,2test2,"
+          };
     } catch (Exception e) {
       e.printStackTrace();
     }
