@@ -21,5 +21,6 @@ package org.apache.iotdb.pipe.api.event;
 
 public enum EventType {
   TABLET_INSERTION,
-  TSFILE_INSERTION
+  TSFILE_INSERTION,
+  DELETION,
 }

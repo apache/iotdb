@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event.deletion;
+package org.apache.iotdb.pipe.api.event.dml.deletion;
 
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.EventType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
@@ -39,4 +40,9 @@ public interface DeletionEvent extends Event {
    * @return TimeRange
    */
   TimeRange getTimeRange();
+
+  @Override
+  default EventType getType() {
+    return EventType.DELETION;
+  }
 }
