@@ -23,6 +23,8 @@ from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
+import threading
+
 from pylru import lrucache
 
 from iotdb.mlnode.config import descriptor
@@ -39,7 +41,7 @@ class ModelStorage(object):
             except PermissionError as e:
                 logger.error(e)
                 raise e
-
+        self.lock = threading.RLock()
         self.__model_cache = lrucache(descriptor.get_config().get_mn_model_storage_cache_size())
 
     def save_model(self,
@@ -56,9 +58,11 @@ class ModelStorage(object):
         model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
 
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
+        self.lock.acquire()
         torch.jit.save(torch.jit.trace(model, sample_input),
                        model_file_path,
                        _extra_files={'model_config': json.dumps(model_config)})
+        self.lock.release()
         return os.path.abspath(model_file_path)
 
     def load_model(self, model_id: str, trial_id: str) -> Tuple[torch.jit.ScriptModule, Dict]:
