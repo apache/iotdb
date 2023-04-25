@@ -43,12 +43,24 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) > statistics.getStartTime();
+      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
       return value.compareTo((T) statistics.getMinValue()) > 0;
+    }
+  }
+
+  @Override
+  public boolean allSatisfy(Statistics statistics) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return value.compareTo((T) statistics.getMaxValue()) > 0;
     }
   }
 
@@ -74,13 +86,13 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
       long time = (Long) value;
       return endTime < time;
     } else {
-      return true;
+      return false;
     }
   }
 
   @Override
   public Filter copy() {
-    return new Lt(value, filterType);
+    return new Lt<>(value, filterType);
   }
 
   @Override
@@ -91,5 +103,10 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.LT;
+  }
+
+  @Override
+  public Filter reverse() {
+    return new GtEq<>(value, filterType);
   }
 }

@@ -596,6 +596,17 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  public void updateTemplateInfo(byte[] templateInfo) {
+    readWriteLock.writeLock().lock();
+    try {
+      Template template =
+          TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
+      templateIdMap.put(template.getId(), template);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   @TestOnly
   public void putTemplate(Template template) {
     templateIdMap.put(template.getId(), template);

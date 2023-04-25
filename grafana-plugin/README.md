@@ -25,8 +25,8 @@
 Grafana is an open source volume metrics monitoring and visualization tool, which can be used to present time series data and analyze application runtime status.
 
 We developed the Grafana-Plugin for IoTDB, using the IoTDB REST service to present time series data and providing many visualization methods for time series data.
-Compared with previous IoTDB-Grafana-Connector, current Grafana-Plugin performs more efficiently and supports more query types. So, **we recommend using Grafana-Plugin instead of IoTDB-Grafana-Connector**.
 
+Iotdb grafana plugin supports grafana version 9.3.0 and above
 
 ### How to use Grafana-Plugin
 
@@ -174,63 +174,4 @@ Tip: If the query field contains Boolean data, the result value will be converte
 
 This plugin supports Grafana alert function.
 
-1. In the Grafana sidebar, hover over the `Alerting` icon and click `Notification channels`.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting1.png?raw=true">
-
-2. Click Add Channel.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting2.png?raw=true">
-
-3. Fill in the fields described below or select options. There are many types of Type, including DingDing, Email, Slack, WebHook, Prometheus Alertmanager, etc.
-   This sample Type uses `Prometheus Alertmanager`. Prometheus Alertmanager needs to be installed in advance. For more detailed configuration and parameter introduction, please refer to the official documentation: https://grafana.com/docs/grafana/v8.0/alerting/old- alerting/notifications/.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting3.png?raw=true">
-
-4. Click the `Test` button, the `Test notification sent` appears, click the `Save` button to save
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alerting4.png?raw=true">
-
-5. After creating a new Panel, enter the query parameters and click Save, then select `Alert` and click `Create Alert`, as shown in the following figure:
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle1.png?raw=true">
-
-6、Fill out the fields described below or select an option， `Name`- Enter a descriptive name. The name will be displayed in the Alert Rules list. This field supports templating.
-`Evaluate every` - Specify how often the scheduler should evaluate the alert rule. This is referred to as the evaluation interval.
-`For` - Specify how long the query needs to violate the configured thresholds before the alert notification triggers.。`Conditions`- Represents query criteria. Multiple combined query criteria can be configured.
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanle2.jpg?raw=true">
-
-Query conditions in the figure：avg() OF query(A,5m,now) IS ABOVE -1
-
-avg() Controls how the values for each series should be reduced to a value that can be compared against the threshold. Click on the function to change it to another aggregation function
-query(A, 15m, now) The letter defines what query to execute from the Metrics tab. The second two parameters define the time range, 15m, now means 15 minutes ago to now. You can also do 10m
-IS ABOVE -1 Defines the type of threshold and the threshold value. You can click on  IS ABOVE to change the type of threshold
-
-Tips:The query used in an alert rule cannot contain any template variables. Currently we only support AND and OR operators between conditions and they are executed serially.
-
-For example, we have 3 conditions in the following order: condition:A(evaluates to: TRUE) OR condition:B(evaluates to: FALSE) AND condition:C(evaluates to: TRUE) so the result will be calculated as ((TRUE OR FALSE) AND TRUE) = TRUE.
-
-More details can be found in the official documents:https://grafana.com/docs/grafana/latest/alerting/old-alerting/create-alerts/
-
-
-7、Click the `Test rule` button and the `firing: true` appears, the configuration is successful, click the `save` button
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel3.png?raw=true">
-
-8、The following figure shows the alarm displayed in the grafana panel
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel4.png?raw=true">
-
-9、View alert rules
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertPanel5.png?raw=true">
-
-10、View alert records in promehthus alertmanager
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel6.png?raw=true">
-
-
-### More Details about Grafana
-
-For more details about Grafana operation, please refer to the official Grafana documentation: http://docs.grafana.org/guides/getting_started/.
+For more details about Grafana operation, please refer to the official Grafana documentation:https://grafana.com/docs/grafana/latest/alerting/

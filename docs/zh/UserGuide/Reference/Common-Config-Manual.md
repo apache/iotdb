@@ -847,6 +847,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 1                               |
 | 改后生效方式 | 重启服务生效                          |
 
+* device\_path\_cache\_size
+
+|     名字     | device\_path\_cache\_size                             |
+| :----------: |:------------------------------------------------------|
+|     描述     | Device Path 缓存的最大数量，这个缓存可以避免写入过程中重复的 Device Path 对象创建 |
+|     类型     | Int32                                                 |
+|    默认值    | 500000                                                |
+| 改后生效方式 | 重启服务生效                                                |
+
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
 |     名字     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold |

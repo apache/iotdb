@@ -165,7 +165,7 @@ public class LoadCache {
           if (nodeCache.periodicUpdate()) {
             // Update and record the changed NodeStatistics
             differentNodeStatisticsMap.put(
-                nodeId, new Pair<>(nodeCache.getStatistics(), preNodeStatistics));
+                nodeId, new Pair<>(preNodeStatistics, nodeCache.getStatistics()));
           }
         });
     return differentNodeStatisticsMap;
@@ -176,14 +176,19 @@ public class LoadCache {
    *
    * @return a map of changed RegionGroupStatistics
    */
-  public Map<TConsensusGroupId, RegionGroupStatistics> updateRegionGroupStatistics() {
-    Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap =
-        new ConcurrentHashMap<>();
+  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      updateRegionGroupStatistics() {
+    Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+        differentRegionGroupStatisticsMap = new ConcurrentHashMap<>();
     regionGroupCacheMap.forEach(
         (regionGroupId, regionGroupCache) -> {
+          RegionGroupStatistics preRegionGroupStatistics =
+              regionGroupCache.getPreviousStatistics().deepCopy();
           if (regionGroupCache.periodicUpdate()) {
             // Update and record the changed RegionGroupStatistics
-            differentRegionGroupStatisticsMap.put(regionGroupId, regionGroupCache.getStatistics());
+            differentRegionGroupStatisticsMap.put(
+                regionGroupId,
+                new Pair<>(preRegionGroupStatistics, regionGroupCache.getStatistics()));
           }
         });
     return differentRegionGroupStatisticsMap;

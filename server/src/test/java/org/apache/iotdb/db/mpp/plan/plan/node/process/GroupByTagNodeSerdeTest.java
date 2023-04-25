@@ -34,6 +34,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregatio
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -102,7 +104,8 @@ public class GroupByTagNodeSerdeTest {
                     new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
                     Arrays.asList(s1MaxTimePartial, s1AvgTimePartial),
                     Ordering.ASC,
-                    null,
+                    TimeFilter.gt(100L),
+                    ValueFilter.gt(100),
                     groupByTimeParameter,
                     null)),
             groupByTimeParameter,

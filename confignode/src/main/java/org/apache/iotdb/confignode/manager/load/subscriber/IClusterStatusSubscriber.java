@@ -17,6 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.task;
+package org.apache.iotdb.confignode.manager.load.subscriber;
 
-public class PipeTaskRegionAgent {}
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
+
+public interface IClusterStatusSubscriber {
+
+  @Subscribe
+  @AllowConcurrentEvents
+  void onClusterStatisticsChanged(StatisticsChangeEvent event);
+
+  @Subscribe
+  @AllowConcurrentEvents
+  void onRegionGroupLeaderChanged(RouteChangeEvent event);
+}
