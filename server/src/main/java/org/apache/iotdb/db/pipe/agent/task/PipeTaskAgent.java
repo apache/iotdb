@@ -19,20 +19,19 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+
 public class PipeTaskAgent {
 
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
+  private final PipeMetaKeeper pipeMetaKeeper;
 
-  private PipeTaskAgent() {}
-
-  private static class PipeTaskAgentHolder {
-    private static PipeTaskAgent instance = null;
+  public PipeTaskAgent() {
+    pipeMetaKeeper = new PipeMetaKeeper();
   }
 
-  public static PipeTaskAgent setupAndGetInstance() {
-    if (PipeTaskAgentHolder.instance == null) {
-      PipeTaskAgentHolder.instance = new PipeTaskAgent();
-    }
-    return PipeTaskAgentHolder.instance;
+  // TODO: remove this method
+  public PipeMeta getPipeMeta(String pipeName) {
+    return pipeMetaKeeper.getPipeMeta(pipeName);
   }
 }

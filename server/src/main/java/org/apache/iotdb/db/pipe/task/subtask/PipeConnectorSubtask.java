@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.connector;
+package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -29,29 +29,37 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 
-public class PipeConnectorPluginRuntimeWrapper {
+public class PipeConnectorSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConnectorPluginRuntimeWrapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  private final Queue<Event> inputEventQueue;
+  // input
+  private final ArrayBlockingQueue<Event> pendingQueue;
+  // output
   private final PipeConnector pipeConnector;
 
-  public PipeConnectorPluginRuntimeWrapper(
-      Queue<Event> inputEventQueue, PipeConnector pipeConnector) {
-    this.inputEventQueue = inputEventQueue;
+  /** @param taskID connectorAttributeSortedString */
+  public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
+    super(taskID);
+    // TODO: make the size of the queue size reasonable and configurable
+    this.pendingQueue = new ArrayBlockingQueue<>(1024 * 1024);
     this.pipeConnector = pipeConnector;
   }
 
+  public ArrayBlockingQueue<Event> getInputPendingQueue() {
+    return pendingQueue;
+  }
+
   // TODO: for a while
-  public void executeForAWhile() {
-    if (inputEventQueue.isEmpty()) {
+  @Override
+  protected void executeForAWhile() {
+    if (pendingQueue.isEmpty()) {
       return;
     }
 
-    final Event event = inputEventQueue.poll();
+    final Event event = pendingQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {
@@ -67,6 +75,18 @@ public class PipeConnectorPluginRuntimeWrapper {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          e);
+    }
+  }
+
+  @Override
+  public void close() {
+    try {
+      pipeConnector.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOGGER.info(
+          "Error occurred during closing PipeConnector, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
   }

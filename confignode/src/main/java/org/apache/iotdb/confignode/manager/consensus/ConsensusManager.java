@@ -64,7 +64,7 @@ public class ConsensusManager {
   private static final int SEED_CONFIG_NODE_ID = 0;
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
-      new ConfigRegionId(CONF.getConfigRegionId());;
+      new ConfigRegionId(CONF.getConfigRegionId());
 
   private final IManager configManager;
   private IConsensus consensusImpl;
@@ -225,12 +225,10 @@ public class ConsensusManager {
     File consensusDir = new File(CONF.getConsensusDir());
     if (consensusDir.exists()) {
       File oldWalDir = new File(consensusDir, "simple");
-      if (oldWalDir.exists()) {
-        if (!oldWalDir.renameTo(new File(getConfigRegionDir()))) {
-          LOGGER.warn(
-              "upgrade ConfigNode consensus wal dir for SimpleConsensus from version/1.0 to version/1.1 failed, "
-                  + "you maybe need to rename the simple dir to 0_0 manually.");
-        }
+      if (oldWalDir.exists() && !oldWalDir.renameTo(new File(getConfigRegionDir()))) {
+        LOGGER.warn(
+            "upgrade ConfigNode consensus wal dir for SimpleConsensus from version/1.0 to version/1.1 failed, "
+                + "you maybe need to rename the simple dir to 0_0 manually.");
       }
     }
   }

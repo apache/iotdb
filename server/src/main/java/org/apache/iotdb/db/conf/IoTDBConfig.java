@@ -159,6 +159,8 @@ public class IoTDBConfig {
   /** The proportion of write memory for loading TsFile */
   private double loadTsFileProportion = 0.125;
 
+  private final int maxLoadingDeviceNumber = 10000;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -3349,6 +3351,10 @@ public class IoTDBConfig {
 
   public double getLoadTsFileProportion() {
     return loadTsFileProportion;
+  }
+
+  public int getMaxLoadingDeviceNumber() {
+    return maxLoadingDeviceNumber;
   }
 
   public static String getEnvironmentVariables() {

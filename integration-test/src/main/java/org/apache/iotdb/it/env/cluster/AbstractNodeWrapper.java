@@ -127,6 +127,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     // these properties can't be mutated.
     immutableCommonProperties.setProperty("udf_lib_dir", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("trigger_lib_dir", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("pipe_lib_dir", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("mqtt_host", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("mqtt_port", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("rest_service_port", MppBaseConfig.NULL_VALUE);

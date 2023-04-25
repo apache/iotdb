@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -52,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
@@ -72,7 +74,10 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -817,27 +822,52 @@ public class PartitionManager {
   }
 
   public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    GetRegionIdPlan plan =
-        new GetRegionIdPlan(
-            req.getDatabase(),
-            req.getType(),
-            req.isSetSeriesSlotId()
-                ? req.getSeriesSlotId()
-                : executor.getSeriesPartitionSlot(req.getDeviceId()),
-            req.isSetTimeSlotId()
-                ? req.getTimeSlotId()
-                : (req.isSetTimeStamp()
-                    ? new TTimePartitionSlot(
-                        req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval())
-                    : null));
+    GetRegionIdPlan plan = new GetRegionIdPlan(req.getType());
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    }
+    if (req.isSetTimeStamp()) {
+      plan.setTimeSlotId(
+          new TTimePartitionSlot(
+              req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval()));
+    }
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }
 
-  public GetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
+  public GetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
+    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+    GetTimeSlotListPlan plan = new GetTimeSlotListPlan(startTime, endTime);
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else if (req.isSetDevice()) {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    } else {
+      plan.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
+    }
     return (GetTimeSlotListResp) getConsensusManager().read(plan).getDataset();
   }
 
-  public GetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
+  public CountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
+    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+    CountTimeSlotListPlan plan = new CountTimeSlotListPlan(startTime, endTime);
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else if (req.isSetDevice()) {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    } else {
+      plan.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
+    }
+    return (CountTimeSlotListResp) getConsensusManager().read(plan).getDataset();
+  }
+
+  public GetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), req.getType());
     return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
   }
 

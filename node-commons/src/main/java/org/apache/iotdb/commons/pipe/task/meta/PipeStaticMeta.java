@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,6 +38,10 @@ public class PipeStaticMeta {
   private Map<String, String> processorAttributes = new HashMap<>();
   private Map<String, String> connectorAttributes = new HashMap<>();
 
+  private PipeParameters collectorParameters;
+  private PipeParameters processorParameters;
+  private PipeParameters connectorParameters;
+
   private PipeStaticMeta() {}
 
   public PipeStaticMeta(
@@ -50,6 +55,9 @@ public class PipeStaticMeta {
     this.collectorAttributes = collectorAttributes;
     this.processorAttributes = processorAttributes;
     this.connectorAttributes = connectorAttributes;
+    collectorParameters = new PipeParameters(collectorAttributes);
+    processorParameters = new PipeParameters(processorAttributes);
+    connectorParameters = new PipeParameters(connectorAttributes);
   }
 
   public String getPipeName() {
@@ -60,16 +68,16 @@ public class PipeStaticMeta {
     return createTime;
   }
 
-  public Map<String, String> getCollectorAttributes() {
-    return collectorAttributes;
+  public PipeParameters getCollectorParameters() {
+    return collectorParameters;
   }
 
-  public Map<String, String> getProcessorAttributes() {
-    return processorAttributes;
+  public PipeParameters getProcessorParameters() {
+    return processorParameters;
   }
 
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
+  public PipeParameters getConnectorParameters() {
+    return connectorParameters;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -126,6 +134,10 @@ public class PipeStaticMeta {
       pipeStaticMeta.connectorAttributes.put(
           ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
+
+    pipeStaticMeta.collectorParameters = new PipeParameters(pipeStaticMeta.collectorAttributes);
+    pipeStaticMeta.processorParameters = new PipeParameters(pipeStaticMeta.processorAttributes);
+    pipeStaticMeta.connectorParameters = new PipeParameters(pipeStaticMeta.connectorAttributes);
 
     return pipeStaticMeta;
   }
