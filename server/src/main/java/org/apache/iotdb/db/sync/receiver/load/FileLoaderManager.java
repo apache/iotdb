@@ -24,17 +24,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -139,9 +139,14 @@ public class FileLoaderManager {
 
   private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
       throws IOException, ClassNotFoundException {
-    try (FileInputStream fis = new FileInputStream(deviceOwnerFile);
-        ObjectInputStream deviceOwnerInput = new ObjectInputStream(fis)) {
-      deviceOwnerMap = (Map<String, String>) deviceOwnerInput.readObject();
+    try (InputStream stream = Files.newInputStream(deviceOwnerFile.toPath())) {
+      while (stream.available() > 0) {
+        String k = ReadWriteIOUtils.readString(stream);
+        String v = ReadWriteIOUtils.readString(stream);
+        deviceOwnerMap.put(k, v);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Deserialize owner map %s error.", deviceOwnerFile), e);
     }
   }
 
@@ -152,9 +157,13 @@ public class FileLoaderManager {
     if (!deviceOwnerFile.exists()) {
       deviceOwnerFile.createNewFile();
     }
-    try (FileOutputStream fos = new FileOutputStream(deviceOwnerFile, false);
-        ObjectOutputStream deviceOwnerOutput = new ObjectOutputStream(fos)) {
-      deviceOwnerOutput.writeObject(deviceOwnerMap);
+    try (OutputStream stream = Files.newOutputStream(deviceOwnerFile.toPath())) {
+      for (Map.Entry<String, String> entry : deviceOwnerMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Serialize owner map %s error.", deviceOwnerMap), e);
     }
   }
 
