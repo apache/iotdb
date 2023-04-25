@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -30,111 +29,86 @@ import java.util.concurrent.TimeUnit;
 
 public class QueryMetricsManager {
 
-  private static final boolean QUERY_METRICS_ENABLE =
-      IoTDBDescriptor.getInstance().getConfig().isQueryMetricsEnable();
-
   private final MetricService metricService = MetricService.getInstance();
 
   public void recordPlanCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      metricService.timer(
-          costTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          Metric.QUERY_PLAN_COST.toString(),
-          MetricLevel.IMPORTANT,
-          Tag.STAGE.toString(),
-          stage);
-    }
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.QUERY_PLAN_COST.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        stage);
   }
 
   public void recordOperatorExecutionCost(String operatorType, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      metricService.timer(
-          costTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          Metric.OPERATOR_EXECUTION_COST.toString(),
-          MetricLevel.IMPORTANT,
-          Tag.NAME.toString(),
-          operatorType);
-    }
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.OPERATOR_EXECUTION_COST.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        operatorType);
   }
 
   public void recordOperatorExecutionCount(String operatorType, long count) {
-    if (QUERY_METRICS_ENABLE) {
-      metricService.count(
-          count,
-          Metric.OPERATOR_EXECUTION_COUNT.toString(),
-          MetricLevel.IMPORTANT,
-          Tag.NAME.toString(),
-          operatorType);
-    }
+    metricService.count(
+        count,
+        Metric.OPERATOR_EXECUTION_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        operatorType);
   }
 
   public void recordSeriesScanCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      MetricInfo metricInfo = SeriesScanCostMetricSet.metricInfoMap.get(stage);
-      metricService.timer(
-          costTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          metricInfo.getName(),
-          MetricLevel.IMPORTANT,
-          metricInfo.getTagsInArray());
-    }
+    MetricInfo metricInfo = SeriesScanCostMetricSet.metricInfoMap.get(stage);
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        metricInfo.getName(),
+        MetricLevel.IMPORTANT,
+        metricInfo.getTagsInArray());
   }
 
   public void recordExecutionCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      MetricInfo metricInfo = QueryExecutionMetricSet.metricInfoMap.get(stage);
-      metricService.timer(
-          costTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          metricInfo.getName(),
-          MetricLevel.IMPORTANT,
-          metricInfo.getTagsInArray());
-    }
+    MetricInfo metricInfo = QueryExecutionMetricSet.metricInfoMap.get(stage);
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        metricInfo.getName(),
+        MetricLevel.IMPORTANT,
+        metricInfo.getTagsInArray());
   }
 
   public void recordQueryResourceNum(String type, int count) {
-    if (QUERY_METRICS_ENABLE) {
-      metricService.histogram(
-          count,
-          Metric.QUERY_RESOURCE.toString(),
-          MetricLevel.IMPORTANT,
-          Tag.TYPE.toString(),
-          type);
-    }
+    metricService.histogram(
+        count, Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);
   }
 
   public void recordDataExchangeCost(String stage, long costTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      MetricInfo metricInfo = DataExchangeCostMetricSet.metricInfoMap.get(stage);
-      metricService.timer(
-          costTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          metricInfo.getName(),
-          MetricLevel.IMPORTANT,
-          metricInfo.getTagsInArray());
-    }
+    MetricInfo metricInfo = DataExchangeCostMetricSet.metricInfoMap.get(stage);
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        metricInfo.getName(),
+        MetricLevel.IMPORTANT,
+        metricInfo.getTagsInArray());
   }
 
   public void recordDataBlockNum(String type, int num) {
-    if (QUERY_METRICS_ENABLE) {
-      MetricInfo metricInfo = DataExchangeCountMetricSet.metricInfoMap.get(type);
-      metricService.histogram(
-          num, metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
-    }
+    MetricInfo metricInfo = DataExchangeCountMetricSet.metricInfoMap.get(type);
+    metricService.histogram(
+        num, metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
   }
 
   public void recordTaskQueueTime(String name, long queueTimeInNanos) {
-    if (QUERY_METRICS_ENABLE) {
-      metricService.timer(
-          queueTimeInNanos,
-          TimeUnit.NANOSECONDS,
-          Metric.DRIVER_SCHEDULER.toString(),
-          MetricLevel.IMPORTANT,
-          Tag.NAME.toString(),
-          name);
-    }
+    metricService.timer(
+        queueTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        name);
   }
 
   public static QueryMetricsManager getInstance() {
