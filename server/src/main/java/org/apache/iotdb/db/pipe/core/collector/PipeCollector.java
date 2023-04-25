@@ -21,12 +21,26 @@ package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-public interface PipeCollector {
+// TODO: move to pipe-api
+public interface PipeCollector extends AutoCloseable {
+
+  /** Start the collector. */
+  // TODO: what's the difference between start() and supply()?
   void start();
 
+  /**
+   * Check if the collector has been started.
+   *
+   * @return true if the collector has been started, false otherwise.
+   */
+  // TODO: check if this method is necessary. maybe close() is enough.
   boolean hasBeenStarted();
 
+  /**
+   * Supply the event to the collector.
+   *
+   * @return the event to be supplied.
+   */
+  // TODO: check() may be a better name.
   Event supply();
-
-  void close();
 }

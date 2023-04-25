@@ -33,20 +33,22 @@ public class PipeEventFactory {
       new PipeRealtimeCollectEventManager();
 
   public static PipeTabletInsertionEvent createTabletInsertEvent(InsertNode planNode) {
-    return new PipeTabletInsertionEvent(planNode);
+    return new PipeTabletInsertionEvent(planNode); // resource control here?
   }
 
   public static PipeTsFileInsertionEvent createTsFileInsertionEvent(File tsFile) {
-    return new PipeTsFileInsertionEvent(tsFile);
+    return new PipeTsFileInsertionEvent(tsFile); // resource control here?
   }
 
   public static PipeRealtimeCollectEvent createCollectEvent(
       PipeTsFileInsertionEvent event, TsFileResource resource) {
-    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromTsFile(event, resource);
+    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromTsFile(
+        event, resource); // resource control here?
   }
 
   public static PipeRealtimeCollectEvent createCollectEvent(
       PipeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
-    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromInsertNode(event, node, resource);
+    return COLLECT_EVENT_MANAGER.createRealtimeCollectEventFromInsertNode(
+        event, node, resource); // resource control here?
   }
 }
