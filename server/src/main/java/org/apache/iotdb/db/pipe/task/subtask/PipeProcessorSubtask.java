@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.processor;
+package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -30,32 +30,34 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 
-public class PipeProcessorPluginRuntimeWrapper {
+public class PipeProcessorSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeProcessorPluginRuntimeWrapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
-  private final Queue<Event> inputEventQueue;
+  private final ArrayBlockingQueue<Event> pendingEventQueue;
   private final PipeProcessor pipeProcessor;
   private final EventCollector outputEventCollector;
 
-  public PipeProcessorPluginRuntimeWrapper(
-      Queue<Event> inputEventQueue,
+  public PipeProcessorSubtask(
+      String taskID,
+      ArrayBlockingQueue<Event> pendingEventQueue,
       PipeProcessor pipeProcessor,
       EventCollector outputEventCollector) {
-    this.inputEventQueue = inputEventQueue;
+    super(taskID);
     this.pipeProcessor = pipeProcessor;
+    this.pendingEventQueue = pendingEventQueue;
     this.outputEventCollector = outputEventCollector;
   }
 
-  public void executeForAWhile() {
-    if (inputEventQueue.isEmpty()) {
+  @Override
+  protected void executeForAWhile() {
+    if (pendingEventQueue.isEmpty()) {
       return;
     }
 
-    final Event event = inputEventQueue.poll();
+    final Event event = pendingEventQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {
@@ -71,6 +73,18 @@ public class PipeProcessorPluginRuntimeWrapper {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          e);
+    }
+  }
+
+  @Override
+  public void close() {
+    try {
+      pipeProcessor.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOGGER.info(
+          "Error occurred during closing PipeProcessor, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
   }

@@ -17,16 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.callable;
+package org.apache.iotdb.db.pipe.task.subtask;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+import java.util.concurrent.atomic.AtomicBoolean;
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
+public class DecoratingLock {
+  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
+
+  public void waitForDecorated() {
+    while (isDecorating.get()) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
-  @Override
-  protected void executeForAWhile() {
-    // do nothing
+  public void markAsDecorating() {
+    isDecorating.set(true);
+  }
+
+  public void markAsDecorated() {
+    isDecorating.set(false);
   }
 }
