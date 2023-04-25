@@ -81,7 +81,7 @@ public class IoTDBClusterAuthorityIT {
             "",
             "",
             new HashSet<>(),
-            AuthUtils.serializePartialPathList(Collections.singletonList(new PartialPath(""))));
+            AuthUtils.serializePartialPathList(new ArrayList<>()));
     TAuthorizerResp authorizerResp = client.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -97,7 +97,7 @@ public class IoTDBClusterAuthorityIT {
                 "",
                 "",
                 new HashSet<>(),
-                AuthUtils.serializePartialPathList(Collections.singletonList(new PartialPath(""))));
+                AuthUtils.serializePartialPathList(new ArrayList<>()));
         status = client.operatePermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
