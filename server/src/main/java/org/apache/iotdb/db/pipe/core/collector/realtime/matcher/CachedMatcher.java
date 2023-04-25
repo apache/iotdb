@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
 
-import org.apache.iotdb.db.pipe.PipeConfig;
+import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 

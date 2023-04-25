@@ -17,10 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe;
+package org.apache.iotdb.db.pipe.config;
 
+// TODO: make these parameters configurable
+// TODO: make all pipe related parameters in one place
+// TODO: set the default value of the parameters in IoTDBDescriptor
 public class PipeConfig {
-  private PipeConfig() {}
 
   private final int defaultRingBufferSize = 65536;
   private final int matcherCacheSize = 1024;
@@ -43,6 +45,10 @@ public class PipeConfig {
   public int getRealtimeCollectorPendingQueueTabletLimit() {
     return realtimeCollectorPendingQueueTabletLimit;
   }
+
+  /////////////////////////////// Singleton ///////////////////////////////
+
+  private PipeConfig() {}
 
   public static PipeConfig getInstance() {
     return PipeConfigHolder.INSTANCE;

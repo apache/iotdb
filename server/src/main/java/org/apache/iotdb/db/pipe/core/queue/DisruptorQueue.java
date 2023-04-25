@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.queue;
 
-import org.apache.iotdb.db.pipe.PipeConfig;
+import org.apache.iotdb.db.pipe.config.PipeConfig;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;

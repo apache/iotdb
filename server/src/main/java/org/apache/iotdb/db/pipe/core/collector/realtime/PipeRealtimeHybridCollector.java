@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
-import org.apache.iotdb.db.pipe.PipeConfig;
+import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
