@@ -233,9 +233,10 @@ public class TimeSeriesSchemaCache {
             }
             if (value == null) {
               missingMeasurements.add(index);
+            } else {
+              DataNodeLastCacheManager.updateLastCache(
+                  value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
             }
-            DataNodeLastCacheManager.updateLastCache(
-                value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
           }
         });
 
