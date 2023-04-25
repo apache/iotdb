@@ -32,9 +32,9 @@ public class PipeAgent {
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
-    pipePluginAgent = PipePluginAgent.setupAndGetInstance();
-    pipeTaskAgent = PipeTaskAgent.setupAndGetInstance();
-    pipeRuntimeAgent = PipeRuntimeAgent.setupAndGetInstance();
+    pipePluginAgent = new PipePluginAgent();
+    pipeTaskAgent = new PipeTaskAgent();
+    pipeRuntimeAgent = new PipeRuntimeAgent();
   }
 
   /** The singleton holder of PipeAgent. */

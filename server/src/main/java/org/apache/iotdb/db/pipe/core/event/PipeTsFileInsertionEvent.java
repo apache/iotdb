@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.File;
 
