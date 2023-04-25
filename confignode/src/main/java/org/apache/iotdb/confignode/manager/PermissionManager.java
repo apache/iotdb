@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -86,7 +87,7 @@ public class PermissionManager {
   }
 
   public TPermissionInfoResp checkUserPrivileges(
-      String username, List<String> paths, int permission) {
+      String username, List<PartialPath> paths, int permission) {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 
