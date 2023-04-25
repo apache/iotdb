@@ -166,10 +166,10 @@ public class RaftConsensus implements IConsensus {
   @Override
   public void stop() throws IOException {
     reportThread.shutdownNow();
-    clientManager.close();
     stateMachineMap.values().parallelStream().forEach(RaftMember::stop);
-    registerManager.deregisterAll();
     FlowMonitorManager.INSTANCE.close();
+    clientManager.close();
+    registerManager.deregisterAll();
   }
 
   @Override

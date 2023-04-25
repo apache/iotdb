@@ -103,7 +103,7 @@ public class HeartbeatThread implements Runnable {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    while (!Thread.interrupted()) {
+    while (!Thread.interrupted() && !localMember.isStopped()) {
       try {
         switch (localMember.getRole()) {
           case LEADER:
@@ -165,7 +165,9 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: End elections", memberName);
   }
 
-  /** Send each node (except the local node) in the group of the member a heartbeat. */
+  /**
+   * Send each node (except the local node) in the group of the member a heartbeat.
+   */
   protected void sendHeartbeats() {
     try {
       localMember.getLogManager().getLock().readLock().lock();
@@ -181,7 +183,9 @@ public class HeartbeatThread implements Runnable {
     sendHeartbeats(localMember.getAllNodes());
   }
 
-  /** Send each node (except the local node) in list a heartbeat. */
+  /**
+   * Send each node (except the local node) in list a heartbeat.
+   */
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Peer> nodes) {
     logger.debug(
@@ -240,7 +244,8 @@ public class HeartbeatThread implements Runnable {
     }
 
     // the election goes on until this node becomes a follower or a leader
-    while (localMember.getRole() == RaftRole.CANDIDATE && !Thread.interrupted()) {
+    while (localMember.getRole() == RaftRole.CANDIDATE && !Thread.interrupted()
+        && !localMember.isStopped()) {
       startElection();
       if (localMember.getRole() == RaftRole.CANDIDATE) {
         // sleep random time to reduce election conflicts

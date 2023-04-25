@@ -373,21 +373,18 @@ public class RaftMember {
    */
   public void stop() {
     setStopped(true);
-    closeLogManager();
-    if (clientManager != null) {
-      clientManager.close();
-    }
-    if (logSequencer != null) {
-      logSequencer.close();
-    }
-
     if (heartbeatThread == null) {
       return;
     }
+    closeLogManager();
 
     logDispatcher.stop();
     heartbeatThread.stop();
     catchUpManager.stop();
+
+    if (logSequencer != null) {
+      logSequencer.close();
+    }
 
     if (commitLogPool != null) {
       commitLogPool.shutdownNow();
@@ -398,7 +395,6 @@ public class RaftMember {
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
-
     status.leader.set(null);
     catchUpManager = null;
     heartbeatThread = null;
