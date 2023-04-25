@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -171,6 +173,28 @@ public class DataNodeSchemaCache {
       Long latestFlushedTime) {
     timeSeriesSchemaCache.updateLastCache(
         devicePath, measurement, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public void updateLastCache(
+      String database,
+      PartialPath devicePath,
+      String[] measurements,
+      MeasurementSchema[] measurementSchemas,
+      boolean isAligned,
+      Function<Integer, TimeValuePair> timeValuePairProvider,
+      Function<Integer, Boolean> shouldUpdateProvider,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    timeSeriesSchemaCache.updateLastCache(
+        database,
+        devicePath,
+        measurements,
+        measurementSchemas,
+        isAligned,
+        timeValuePairProvider,
+        shouldUpdateProvider,
+        highPriorityUpdate,
+        latestFlushedTime);
   }
 
   /**

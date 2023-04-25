@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 public class TimeSeriesSchemaCache {
 
@@ -198,6 +199,38 @@ public class TimeSeriesSchemaCache {
 
     DataNodeLastCacheManager.updateLastCache(
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  /** get SchemaCacheEntry and update last cache by device */
+  public void updateLastCache(
+      String database,
+      PartialPath devicePath,
+      String[] measurements,
+      MeasurementSchema[] measurementSchemas,
+      boolean isAligned,
+      Function<Integer, TimeValuePair> timeValuePairProvider,
+      Function<Integer, Boolean> shouldUpdateProvider,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    SchemaCacheEntry entry;
+    for (int i = 0; i < measurements.length; i++) {
+      if (!shouldUpdateProvider.apply(i)) {
+        continue;
+      }
+      entry = dualKeyCache.get(devicePath, measurements[i]);
+      if (entry == null) {
+        synchronized (dualKeyCache) {
+          entry = dualKeyCache.get(devicePath, measurements[i]);
+          if (null == entry) {
+            entry = new SchemaCacheEntry(database, measurementSchemas[i], null, isAligned);
+            dualKeyCache.put(devicePath, measurements[i], entry);
+          }
+        }
+      }
+
+      DataNodeLastCacheManager.updateLastCache(
+          entry, timeValuePairProvider.apply(i), highPriorityUpdate, latestFlushedTime);
+    }
   }
 
   /**
