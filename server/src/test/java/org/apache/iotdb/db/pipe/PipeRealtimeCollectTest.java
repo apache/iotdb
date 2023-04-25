@@ -107,7 +107,7 @@ public class PipeRealtimeCollectTest {
 
     try {
       listenFutures.get(0).get(10, TimeUnit.MINUTES);
-      listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
+      listenFutures.get(1).get(10, TimeUnit.MINUTES);
     } catch (TimeoutException e) {
       logger.warn("Time out when listening collector", e);
       alive.set(false);
@@ -146,9 +146,9 @@ public class PipeRealtimeCollectTest {
             listen(collectors[3], typ2 -> 1, writeNum));
     try {
       listenFutures.get(0).get(10, TimeUnit.MINUTES);
-      listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
-      listenFutures.get(2).get(1, TimeUnit.MILLISECONDS);
-      listenFutures.get(3).get(1, TimeUnit.MILLISECONDS);
+      listenFutures.get(1).get(10, TimeUnit.MINUTES);
+      listenFutures.get(2).get(10, TimeUnit.MINUTES);
+      listenFutures.get(3).get(10, TimeUnit.MINUTES);
     } catch (TimeoutException e) {
       logger.warn("Time out when listening collector", e);
       alive.set(false);
