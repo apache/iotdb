@@ -17,6 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.historical;
+package org.apache.iotdb.db.pipe.core.collector;
 
-public class PipeHistoricalCollector {}
+import org.apache.iotdb.pipe.api.event.Event;
+
+public interface PipeCollector {
+  void start();
+
+  boolean hasBeenStarted();
+
+  Event supply();
+
+  void close();
+}
