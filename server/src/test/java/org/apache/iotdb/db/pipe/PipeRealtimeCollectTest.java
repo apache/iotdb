@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class PipeRealtimeCollectTest {
@@ -56,7 +57,7 @@ public class PipeRealtimeCollectTest {
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
-  private static volatile boolean alive;
+  private AtomicBoolean alive = new AtomicBoolean();
 
   private ExecutorService writeService;
   private ExecutorService listenerService;
@@ -71,6 +72,7 @@ public class PipeRealtimeCollectTest {
   @After
   public void tearDown() {
     writeService.shutdownNow();
+    listenerService.shutdownNow();
   }
 
   @Test
@@ -94,20 +96,21 @@ public class PipeRealtimeCollectTest {
         Arrays.asList(
             write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
 
-    Function<EventType, Integer> weight1 = type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2;
-    Function<EventType, Integer> weight2 = typ2 -> 1;
-    alive = true;
+    alive.set(true);
     List<Future<?>> listenFutures =
         Arrays.asList(
-            listen(collectors[0], weight1, writeNum << 1),
-            listen(collectors[1], weight2, writeNum));
+            listen(
+                collectors[0],
+                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                writeNum << 1),
+            listen(collectors[1], typ2 -> 1, writeNum));
 
     try {
       listenFutures.get(0).get(10, TimeUnit.MINUTES);
       listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
     } catch (TimeoutException e) {
       logger.warn("Time out when listening collector", e);
-      alive = false;
+      alive.set(false);
       Assert.fail();
     }
     writeFutures.forEach(
@@ -128,13 +131,19 @@ public class PipeRealtimeCollectTest {
         Arrays.asList(
             write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
 
-    alive = true;
+    alive.set(true);
     listenFutures =
         Arrays.asList(
-            listen(collectors[0], weight1, writeNum << 1),
-            listen(collectors[1], weight2, writeNum),
-            listen(collectors[2], weight1, writeNum << 1),
-            listen(collectors[3], weight2, writeNum));
+            listen(
+                collectors[0],
+                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                writeNum << 1),
+            listen(collectors[1], typ2 -> 1, writeNum),
+            listen(
+                collectors[2],
+                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                writeNum << 1),
+            listen(collectors[3], typ2 -> 1, writeNum));
     try {
       listenFutures.get(0).get(10, TimeUnit.MINUTES);
       listenFutures.get(1).get(1, TimeUnit.MILLISECONDS);
@@ -142,7 +151,7 @@ public class PipeRealtimeCollectTest {
       listenFutures.get(3).get(1, TimeUnit.MILLISECONDS);
     } catch (TimeoutException e) {
       logger.warn("Time out when listening collector", e);
-      alive = false;
+      alive.set(false);
       Assert.fail();
     }
     writeFutures.forEach(
@@ -200,7 +209,7 @@ public class PipeRealtimeCollectTest {
         () -> {
           int eventNum = 0;
           try {
-            while (alive && eventNum < expectNum) {
+            while (alive.get() && eventNum < expectNum) {
               Event event = collector.supply();
               if (event != null) {
                 eventNum += weight.apply(event.getType());
