@@ -84,6 +84,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   /////////////////////////////// Validator ///////////////////////////////
 
   public void validateBeforeCreatingPipePlugin(String pluginName, String jarName, String jarMD5) {
+    // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       throw new PipeManagementException(
           String.format(
@@ -100,12 +101,13 @@ public class PipePluginInfo implements SnapshotProcessor {
   }
 
   public void validateBeforeDroppingPipePlugin(String pluginName) {
-    if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      return;
+    if (pipePluginMetaKeeper.containsPipePlugin(pluginName)
+        && pipePluginMetaKeeper.getPipePluginMeta(pluginName).isBuiltin()) {
+      throw new PipeManagementException(
+          String.format(
+              "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
+              pluginName));
     }
-
-    throw new PipeManagementException(
-        String.format("Failed to drop PipePlugin [%s], the PipePlugin does not exist", pluginName));
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(String jarName) {
@@ -119,32 +121,37 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public TSStatus createPipePlugin(CreatePipePluginPlan physicalPlan) {
+  public TSStatus createPipePlugin(CreatePipePluginPlan createPipePluginPlan) {
     try {
-      final PipePluginMeta pipePluginMeta = physicalPlan.getPipePluginMeta();
+      final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
+
+      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
+      dropPipePlugin(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+
       pipePluginMetaKeeper.addPipePluginMeta(pipePluginMeta.getPluginName(), pipePluginMeta);
       pipePluginMetaKeeper.addJarNameAndMd5(
           pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
 
-      if (physicalPlan.getJarFile() != null) {
+      if (createPipePluginPlan.getJarFile() != null) {
         pipePluginExecutableManager.saveToInstallDir(
-            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), pipePluginMeta.getJarName());
+            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
+            pipePluginMeta.getJarName());
       }
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to add PipePlugin [%s] in PipePlugin_Table on Config Nodes, because of %s",
-              physicalPlan.getPipePluginMeta().getPluginName(), e);
+              "Failed to execute createPipePlugin(%s) on config nodes, because of %s",
+              createPipePluginPlan.getPipePluginMeta().getPluginName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
   }
 
-  public TSStatus dropPipePlugin(DropPipePluginPlan physicalPlan) {
-    final String pluginName = physicalPlan.getPluginName();
+  public TSStatus dropPipePlugin(DropPipePluginPlan dropPipePluginPlan) {
+    final String pluginName = dropPipePluginPlan.getPluginName();
 
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(
@@ -161,10 +168,10 @@ public class PipePluginInfo implements SnapshotProcessor {
         Arrays.asList(pipePluginMetaKeeper.getAllPipePluginMeta()));
   }
 
-  public JarResp getPipePluginJar(GetPipePluginJarPlan physicalPlan) {
+  public JarResp getPipePluginJar(GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       List<ByteBuffer> jarList = new ArrayList<>();
-      for (String jarName : physicalPlan.getJarNames()) {
+      for (String jarName : getPipePluginJarPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
                 PipePluginExecutableManager.getInstance()

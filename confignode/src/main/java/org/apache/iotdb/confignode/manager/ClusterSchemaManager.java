@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
@@ -59,7 +60,6 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
@@ -70,12 +70,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -726,16 +729,75 @@ public class ClusterSchemaManager {
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
   }
 
-  /**
-   * When some Nodes' states changed during a heartbeat loop, the eventbus in LoadManager will post
-   * the different NodeStatstics event to SyncManager and ClusterSchemaManager.
-   *
-   * @param nodeStatisticsEvent nodeStatistics that changed in a heartbeat loop
-   */
-  @Subscribe
-  @AllowConcurrentEvents
-  public void handleNodeStatistics(NodeStatisticsEvent nodeStatisticsEvent) {
-    // TODO
+  public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+    if (templateExtendInfo.getEncodings() != null) {
+      for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
+        try {
+          SchemaUtils.checkDataTypeWithEncoding(
+              templateExtendInfo.getDataTypes().get(i), templateExtendInfo.getEncodings().get(i));
+        } catch (MetadataException e) {
+          return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        }
+      }
+    }
+
+    Template template =
+        clusterSchemaInfo
+            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
+            .getTemplateList()
+            .get(0);
+    boolean needExtend = false;
+    for (String measurement : templateExtendInfo.getMeasurements()) {
+      if (!template.hasSchema(measurement)) {
+        needExtend = true;
+        break;
+      }
+    }
+
+    if (!needExtend) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
+        new ExtendSchemaTemplatePlan(templateExtendInfo);
+    TSStatus status = getConsensusManager().write(extendSchemaTemplatePlan).getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    template =
+        clusterSchemaInfo
+            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
+            .getTemplateList()
+            .get(0);
+
+    TUpdateTemplateReq updateTemplateReq = new TUpdateTemplateReq();
+    updateTemplateReq.setType(TemplateInternalRPCUpdateType.UPDATE_TEMPLATE_INFO.toByte());
+    updateTemplateReq.setTemplateInfo(
+        TemplateInternalRPCUtil.generateUpdateTemplateInfoBytes(template));
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+
+    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
+      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to sync template {} extension info to DataNode {}",
+            template.getName(),
+            dataNodeLocationMap.get(entry.getKey()));
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+            String.format(
+                "Failed to sync template %s extension info to DataNode %s",
+                template.getName(), dataNodeLocationMap.get(entry.getKey())));
+      }
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   private NodeManager getNodeManager() {

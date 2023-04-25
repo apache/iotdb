@@ -226,10 +226,6 @@ DEVICE
     : D E V I C E
     ;
 
-DEVICEID
-    : D E V I C E I D
-    ;
-
 DEVICES
     : D E V I C E S
     ;
@@ -708,6 +704,10 @@ TIMESERIES
 
 TIMESLOTID
     : T I M E S L O T I D
+    ;
+
+TIMEPARTITION
+    : T I M E P A R T I T I O N
     ;
 
 TIMESTAMP

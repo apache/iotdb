@@ -60,6 +60,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -412,8 +413,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
-    DataNodeSchemaCache.getInstance().invalidateAll();
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().invalidateAll();
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+    }
   }
 
   @Override
@@ -1235,6 +1241,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case COMMIT_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().commitTemplatePreSetInfo(req.getTemplateInfo());
         break;
+      case UPDATE_TEMPLATE_INFO:
+        ClusterTemplateManager.getInstance().updateTemplateInfo(req.getTemplateInfo());
+        break;
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1617,6 +1626,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // TODO what need to clean?
     ClusterPartitionFetcher.getInstance().invalidAllCache();
     DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeDevicePathCache.getInstance().cleanUp();
     return status;
   }
 

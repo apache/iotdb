@@ -447,31 +447,23 @@ The cluster slots information can be shown by the following SQLs:
 
 ### Show the DataRegion where a DataPartition resides in
 
-Show the DataRegion where a DataPartition(or all DataPartitions under a same series slot) resides in:
-- `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+Show the DataRegion where a DataPartition of a certain database or device resides in:
+
+- `SHOW DATA REGIONID WHERE (DATABASE=root.xxx |DEVICE=root.xxx.xxx) (AND TIME=xxxxx)?`
 
 Specifications:
 
-1. The s0, t0 must be numbers. 
+1. "DEVICE" corresponds to a unique SeriesSlot for the device path, while "TIME" corresponds to a unique SeriesTimeSlot for either a timestamp or a universal time.
    
-2. The "TimeSlotId" is short for "SeriesTimeSlotId".
+2. "DATABASE" and "DEVICE" must begin with "root". If the path does not exist, it will return empty instead of reporting an error, as will be seen below.
 
-3. The "SERIESSLOTID=s0" can be substituted by "DEVICEID=xxx.xx.xx". Using this, the sql will calculate the seriesSlot corresponding to that deviceId.
+3. Currently, "DATABASE" and "DEVICE" do not support wildcard matching or multiple queries. If it contains a wildcard character(such as * or **) or multiple DATABASE and DEVICE, an error will be reported, as will be seen below.
 
-4. The "TIMESLOTID=t0" can be replaced by "TIMESTAMP=t1". In this case, the sql will calculate the timeSlot the timestamp belongs to, which starts before the timeStamp and (implicitly) ends after it.
+4. "TIME" supports both timestamps and universal dates. For timestamp, it must be greater than or equal to 0. For universal time, it need to be no earlier than 1970-01-01 00:00:00.
 
 Eg:
 ```
-IoTDB> show data regionid of root.sg where seriesslotid=5286 and timeslotid=0
-+--------+
-|RegionId|
-+--------+
-|       1|
-+--------+
-Total line number = 1
-It costs 0.006s
-
-IoTDB> show data regionid of root.sg where seriesslotid=5286
+IoTDB> show data regionid where device=root.sg.m1.d1
 +--------+
 |RegionId|
 +--------+
@@ -480,18 +472,72 @@ IoTDB> show data regionid of root.sg where seriesslotid=5286
 +--------+
 Total line number = 2
 It costs 0.006s
+
+IoTDB> show data regionid where device=root.sg.m1.d1 and time=604800000
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show data regionid where device=root.sg.m1.d1 and time=1970-01-08T00:00:00.000
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show data regionid where database=root.sg
++--------+
+|RegionId|
++--------+
+|       1|
+|       2|
++--------+
+Total line number = 2
+It costs 0.006s
+
+IoTDB> show data regionid where database=root.sg and time=604800000
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
+
+IoTDB> show data regionid where database=root.sg and time=1970-01-08T00:00:00.000
++--------+
+|RegionId|
++--------+
+|       1|
++--------+
+Total line number = 1
+It costs 0.006s
 ```
 
 ### Show the SchemaRegion where a SchemaPartition resides in
 
-Show the SchemaRegion where a SchemaPartition resides in:
-- `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+Show the SchemaRegion where a DataPartition of a certain database or device resides in:
 
-As is illustrated above, the SeriesSlotID and TimeSlotID are both replaceable.
+- `SHOW SCHEMA REGIONID WHERE (DATABASE=root.xxx | DEVICE=root.xxx.xxx)`
 
 Eg:
 ```
-IoTDB> show schema regionid of root.sg where seriesslotid=5286
+IoTDB> show schema regionid where device=root.sg.m1.d2
++--------+
+|RegionId|
++--------+
+|       0|
++--------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> show schema regionid where database=root.sg
 +--------+
 |RegionId|
 +--------+
@@ -501,32 +547,14 @@ Total line number = 1
 It costs 0.007s
 ```
 
-### Show the time slots of a series slot
-
-Show the time slots under a particular series slot.
-- `SHOW TIMESLOTID OF root.sg WHERE SERIESLOTID=s0 (AND STARTTIME=t1) (AND ENDTIME=t2)`
-
-Eg:
-```
-IoTDB> show timeslotid of root.sg where seriesslotid=5286
-+----------+
-|TimeSlotId|
-+----------+
-|         0|
-|      1000|
-+----------+
-Total line number = 1
-It costs 0.007s
-```
-
 ### Show Database's series slots
 
-Show the data/schema/all series slots related to a database:
-- `SHOW (DATA|SCHEMA)? SERIESSLOTID OF root.sg`
+Show the data/schema series slots related to a database:
+- `SHOW (DATA|SCHEMA) SERIESSLOTID WHERE DATABASE=root.xxx`
 
 Eg:
 ```
-IoTDB> show data seriesslotid of root.sg
+IoTDB> show data seriesslotid where database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -535,16 +563,7 @@ IoTDB> show data seriesslotid of root.sg
 Total line number = 1
 It costs 0.007s
 
-IoTDB> show schema seriesslotid of root.sg
-+------------+
-|SeriesSlotId|
-+------------+
-|        5286|
-+------------+
-Total line number = 1
-It costs 0.006s
-
-IoTDB> show seriesslotid of root.sg
+IoTDB> show schema seriesslotid where database = root.sg
 +------------+
 |SeriesSlotId|
 +------------+
@@ -553,6 +572,87 @@ IoTDB> show seriesslotid of root.sg
 Total line number = 1
 It costs 0.006s
 ```
+
+### Show the time partition under filtering conditions.
+
+Show the TimePartition of a certain device, database, or DataRegion.
+
+- `SHOW TIMEPARTITION WHERE (DEVICE=root.a.b |REGIONID = r0 | DATABASE=root.xxx) (AND STARTTIME=t1)?(AND ENDTIME=t2)?`
+
+Specifications:
+
+1. TimePartition is short for SeriesTimeSlotId.
+2. If REGIONID is the Id of schemaRegion, return empty instead of reporting an error. 
+3. REGIONID do not support multiple queries. If it contains multiple REGIONID, an error will be reported, as will be seen below.
+4. "STARTTIME" and "ENDTIME" support both timestamps and universal dates. For timestamp, it must be greater than or equal to 0. For universal time, it need to be no earlier than 1970-01-01 00:00:00.
+5. The StartTime in the returned result is the starting time of the TimePartition's corresponding time interval.
+
+Eg:
+```
+IoTDB> show timePartition where device=root.sg.m1.d1
++-------------------------------------+
+|TimePartition|              StartTime|
++-------------------------------------+
+|            0|1970-01-01T00:00:00.000|
++-------------------------------------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> show timePartition where regionId = 1
++-------------------------------------+
+|TimePartition|              StartTime|
++-------------------------------------+
+|            0|1970-01-01T00:00:00.000|
++-------------------------------------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> show timePartition where database = root.sg 
++-------------------------------------+
+|TimePartition|              StartTime|
++-------------------------------------+
+|            0|1970-01-01T00:00:00.000|
++-------------------------------------+
+|            1|1970-01-08T00:00:00.000|
++-------------------------------------+
+Total line number = 2
+It costs 0.007s
+```
+#### Count the time partition under filtering conditions.
+
+Count the TimePartition of a certain device, database, or DataRegion.
+
+- `COUNT TIMEPARTITION WHERE (DEVICE=root.a.b |REGIONID = r0 | DATABASE=root.xxx) (AND STARTTIME=t1)?(AND ENDTIME=t2)?`
+
+```
+IoTDB> count timePartition where device=root.sg.m1.d1
++--------------------+
+|count(timePartition)|
++--------------------+
+|                   1|
++--------------------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> count timePartition where regionId = 1
++--------------------+
+|count(timePartition)|
++--------------------+
+|                   1|
++--------------------+
+Total line number = 1
+It costs 0.007s
+
+IoTDB> count timePartition where database = root.sg 
++--------------------+
+|count(timePartition)|
++--------------------+
+|                   2|
++--------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 
 ## Migrate Region
 The following sql can be applied to manually migrate a region, for load balancing or other purposes.

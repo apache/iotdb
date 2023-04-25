@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
@@ -83,6 +84,9 @@ public class LocalSinkChannel implements ISinkChannel {
   @Override
   public synchronized ListenableFuture<?> isFull() {
     checkState();
+    if (closed) {
+      return immediateVoidFuture();
+    }
     return nonCancellationPropagating(blocked);
   }
 
@@ -115,6 +119,9 @@ public class LocalSinkChannel implements ISinkChannel {
       Validate.notNull(tsBlock, "tsBlocks is null");
       synchronized (this) {
         checkState();
+        if (closed) {
+          return;
+        }
         if (!blocked.isDone()) {
           throw new IllegalStateException("Sink handle is blocked.");
         }

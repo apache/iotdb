@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabase
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -1098,7 +1099,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void CreatePipePluginPlanTest() throws IOException {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
-            new PipePluginMeta("testPlugin", "org.apache.iotdb.testJar", "testJar", "???"),
+            new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123"));
     CreatePipePluginPlan createPipePluginPlan1 =
         (CreatePipePluginPlan)
@@ -1271,9 +1272,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetRegionIdPlanTest() throws IOException {
-    GetRegionIdPlan getRegionIdPlan0 =
-        new GetRegionIdPlan(
-            "root.test", ConfigRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+    GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
     GetRegionIdPlan getRegionIdPlan1 =
         (GetRegionIdPlan)
             ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
@@ -1282,12 +1281,20 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTimeSlotListPlanTest() throws IOException {
-    GetTimeSlotListPlan getTimeSlotListPlan0 =
-        new GetTimeSlotListPlan("root.test", new TSeriesPartitionSlot(1), 0, Long.MAX_VALUE);
+    GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
     GetTimeSlotListPlan getTimeSlotListPlan1 =
         (GetTimeSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
+  }
+
+  @Test
+  public void CountTimeSlotListPlanTest() throws IOException {
+    CountTimeSlotListPlan countTimeSlotListPlan0 = new CountTimeSlotListPlan(0, Long.MAX_VALUE);
+    CountTimeSlotListPlan countTimeSlotListPlan1 =
+        (CountTimeSlotListPlan)
+            ConfigPhysicalPlan.Factory.create(countTimeSlotListPlan0.serializeToByteBuffer());
+    Assert.assertEquals(countTimeSlotListPlan0, countTimeSlotListPlan1);
   }
 
   @Test
