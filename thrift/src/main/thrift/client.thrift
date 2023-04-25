@@ -347,6 +347,7 @@ struct TSAggregationQueryReq {
   8: optional i64 slidingStep
   9: optional i32 fetchSize
   10: optional i64 timeout
+  11: optional bool legalPathNodes
 }
 
 struct TSCreateMultiTimeseriesReq {
