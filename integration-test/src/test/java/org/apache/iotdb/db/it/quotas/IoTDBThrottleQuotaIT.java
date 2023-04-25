@@ -62,121 +62,121 @@ public class IoTDBThrottleQuotaIT {
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("set throttle quota request='10req/sec' on user1;");
       ResultSet resultSet1 = adminStmt.executeQuery("show throttle quota user1;");
-      String ans1 = "user1,request,10req\\sec," + ",\n";
+      String ans1 = "user1,request,10req/sec," + ",\n";
       validateResultSet(resultSet1, ans1);
 
       adminStmt.execute("set throttle quota request='10req/min',type='read' on user1;");
       ResultSet resultSet2 = adminStmt.executeQuery("show throttle quota;");
-      String ans2 = "user1,request,10req\\sec," + ",\n" + "user1,request,10req\\min,read" + ",\n";
+      String ans2 = "user1,request,10req/sec," + ",\n" + "user1,request,10req/min,read" + ",\n";
       validateResultSet(resultSet2, ans2);
 
       adminStmt.execute("set throttle quota request='10req/hour',type='write' on user1;");
       ResultSet resultSet3 = adminStmt.executeQuery("show throttle quota;");
       String ans3 =
-          "user1,request,10req\\sec,"
+          "user1,request,10req/sec,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n";
       validateResultSet(resultSet3, ans3);
 
       adminStmt.execute("set throttle quota request='10req/day' on user1;");
       ResultSet resultSet4 = adminStmt.executeQuery("show throttle quota;");
       String ans4 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n";
       validateResultSet(resultSet4, ans4);
 
       adminStmt.execute("set throttle quota size='1B/min' on user1;");
       ResultSet resultSet5 = adminStmt.executeQuery("show throttle quota;");
       String ans5 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1B\\min,"
+              + "user1,size,1B/min,"
               + ",\n";
       validateResultSet(resultSet5, ans5);
 
       adminStmt.execute("set throttle quota size='1K/sec',type='read' on user1;");
       ResultSet resultSet6 = adminStmt.executeQuery("show throttle quota;");
       String ans6 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1B\\min,"
+              + "user1,size,1B/min,"
               + ",\n"
-              + "user1,size,1K\\sec,read"
+              + "user1,size,1K/sec,read"
               + ",\n";
       validateResultSet(resultSet6, ans6);
 
       adminStmt.execute("set throttle quota size='1M/hour' on user1;");
       ResultSet resultSet7 = adminStmt.executeQuery("show throttle quota;");
       String ans7 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1M\\hour,"
+              + "user1,size,1M/hour,"
               + ",\n"
-              + "user1,size,1K\\sec,read"
+              + "user1,size,1K/sec,read"
               + ",\n";
       validateResultSet(resultSet7, ans7);
 
       adminStmt.execute("set throttle quota size='1G/min' on user1;");
       ResultSet resultSet8 = adminStmt.executeQuery("show throttle quota;");
       String ans8 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1024M\\min,"
+              + "user1,size,1024M/min,"
               + ",\n"
-              + "user1,size,1K\\sec,read"
+              + "user1,size,1K/sec,read"
               + ",\n";
       validateResultSet(resultSet8, ans8);
 
       adminStmt.execute("set throttle quota size='1T/hour' on user1;");
       ResultSet resultSet9 = adminStmt.executeQuery("show throttle quota;");
       String ans9 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1048576M\\hour,"
+              + "user1,size,1048576M/hour,"
               + ",\n"
-              + "user1,size,1K\\sec,read"
+              + "user1,size,1K/sec,read"
               + ",\n";
       validateResultSet(resultSet9, ans9);
 
       adminStmt.execute("set throttle quota size='1P/min' on user1;");
       ResultSet resultSet10 = adminStmt.executeQuery("show throttle quota;");
       String ans10 =
-          "user1,request,10req\\day,"
+          "user1,request,10req/day,"
               + ",\n"
-              + "user1,request,10req\\min,read"
+              + "user1,request,10req/min,read"
               + ",\n"
-              + "user1,request,10req\\hour,write"
+              + "user1,request,10req/hour,write"
               + ",\n"
-              + "user1,size,1073741824M\\min,"
+              + "user1,size,1073741824M/min,"
               + ",\n"
-              + "user1,size,1K\\sec,read"
+              + "user1,size,1K/sec,read"
               + ",\n";
       validateResultSet(resultSet10, ans10);
     } catch (SQLException throwables) {
