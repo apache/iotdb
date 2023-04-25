@@ -161,25 +161,22 @@ public class StatisticsService implements IClusterStatusSubscriber {
                 dataNodeLocationMap.put(
                     onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("[UpdateLoadStatistics] Begin to broadcast RegionRouteMap:");
     long broadcastTime = System.currentTimeMillis();
-
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, regionPriorityMap),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    LOGGER.info("[UpdateLoadStatistics] Broadcast the latest RegionRouteMap finished.");
   }
 
   private void recordNodeStatistics(
       Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
+    LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
+          "[NodeStatistics]\t {}={}",
           "nodeId{" + nodeCacheEntry.getKey() + "}",
           nodeCacheEntry.getValue().getRight());
     }
@@ -188,15 +185,15 @@ public class StatisticsService implements IClusterStatusSubscriber {
   private void recordRegionGroupStatistics(
       Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
           differentRegionGroupStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
+    LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
-      LOGGER.info("[UpdateLoadStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
-      LOGGER.info("[UpdateLoadStatistics]\t {}", regionGroupStatisticsEntry.getValue());
+      LOGGER.info("[RegionGroupStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
+      LOGGER.info("[RegionGroupStatistics]\t {}", regionGroupStatisticsEntry.getValue());
       for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
           regionGroupStatisticsEntry.getValue().getRight().getRegionStatisticsMap().entrySet()) {
         LOGGER.info(
-            "[UpdateLoadStatistics]\t dataNodeId{}={}",
+            "[RegionGroupStatistics]\t dataNodeId{}={}",
             regionStatisticsEntry.getKey(),
             regionStatisticsEntry.getValue());
       }
@@ -210,11 +207,11 @@ public class StatisticsService implements IClusterStatusSubscriber {
   }
 
   private void recordRegionLeaderMap(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
+    LOGGER.info("[RegionLeader] RegionLeaderMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> regionLeaderEntry :
         leaderMap.entrySet()) {
       LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
+          "[RegionLeader]\t {}={}",
           regionLeaderEntry.getKey(),
           regionLeaderEntry.getValue().getRight());
     }
@@ -222,11 +219,11 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   private void recordRegionPriorityMap(
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
+    LOGGER.info("[RegionPriority] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
       LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
+          "[RegionPriority]\t {}={}",
           regionPriorityEntry.getKey(),
           regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
               .map(TDataNodeLocation::getDataNodeId)
