@@ -53,7 +53,7 @@ class MLNodeConfig(object):
         self.__mn_target_config_node: TEndPoint = TEndPoint("127.0.0.1", 10710)
 
         # Target DataNode to be connected by MLNode
-        self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10730)
+        self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10780)
 
     def get_mn_rpc_address(self) -> str:
         return self.__mn_rpc_address
