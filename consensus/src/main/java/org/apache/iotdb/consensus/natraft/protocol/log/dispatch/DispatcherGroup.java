@@ -64,6 +64,7 @@ public class DispatcherGroup {
 
   public void close() {
     try {
+      dynamicThreadGroup.cancelAll();
       dynamicThreadGroup.join();
     } catch (ExecutionException | InterruptedException e) {
       logger.error("Failed to stop threads in {}", dynamicThreadGroup);

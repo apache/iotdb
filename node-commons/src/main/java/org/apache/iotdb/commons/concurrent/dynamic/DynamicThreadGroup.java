@@ -66,14 +66,16 @@ public class DynamicThreadGroup {
   }
 
   /** Add a thread to this group if the number of threads does not reach the maximum. */
-  public void addThread() {
+  public boolean addThread() {
     int afterCnt = threadCnt.incrementAndGet();
     if (afterCnt <= maxThreadCnt) {
       DynamicThread dynamicThread = threadFactory.get();
       Future<?> submit = poolSubmitter.apply(dynamicThread);
       threadFutureMap.put(dynamicThread, submit);
+      return true;
     } else {
       threadCnt.decrementAndGet();
+      return false;
     }
   }
 
@@ -93,7 +95,8 @@ public class DynamicThreadGroup {
   public void onThreadExit(DynamicThread dynamicThread) {
     threadCnt.decrementAndGet();
     threadFutureMap.remove(dynamicThread);
-    logger.info("A dynamic thread exits: {}", dynamicThread);
+    logger.info(
+        "A dynamic thread exits: {}, idle ratio： {}", dynamicThread, dynamicThread.idleRatio());
   }
 
   public void cancelAll() {

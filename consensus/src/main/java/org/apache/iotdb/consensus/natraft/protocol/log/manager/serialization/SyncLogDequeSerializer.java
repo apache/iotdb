@@ -159,6 +159,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     maxPersistRaftLogNumberOnDisk = config.getMaxPersistRaftLogNumberOnDisk();
     maxRaftLogPersistDataSizePerFile = config.getMaxRaftLogPersistDataSizePerFile();
 
+    compressor = ICompressor.getCompressor(config.getLogPersistCompressor());
+    unCompressor = IUnCompressor.getUnCompressor(config.getLogPersistCompressor());
+
     this.logDataFileList = new ArrayList<>();
     this.logIndexFileList = new ArrayList<>();
     this.logIndexOffsetList = new ArrayList<>(maxRaftLogIndexSizeInMemory);

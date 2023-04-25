@@ -37,6 +37,7 @@ struct AppendCompressedEntriesRequest {
   5: required common.TConsensusGroupId groupId
   6: required i32 leaderId
   7: required i8 compressionType
+  8: required i32 uncompressedSize
 }
 
 struct AppendEntryResult {

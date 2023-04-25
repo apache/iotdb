@@ -196,7 +196,7 @@ class DispatcherThread extends DynamicThread {
     request.setLeaderId(logDispatcher.member.getThisNode().getNodeId());
     request.setLeaderCommit(logDispatcher.member.getLogManager().getCommitLogIndex());
     request.setTerm(logDispatcher.member.getStatus().getTerm().get());
-    request.setEntryBytes(LogUtils.compressEntries(logList, logDispatcher.compressor));
+    request.setEntryBytes(LogUtils.compressEntries(logList, logDispatcher.compressor, request));
     request.setCompressionType((byte) logDispatcher.compressor.getType().ordinal());
     return request;
   }

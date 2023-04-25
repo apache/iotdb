@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -81,8 +82,11 @@ public class LogUtils {
     return sendLogRequest;
   }
 
-  public static ByteBuffer compressEntries(List<ByteBuffer> entryByteList, ICompressor compressor) {
-    PublicBAOS baos = new PublicBAOS();
+  public static ByteBuffer compressEntries(
+      List<ByteBuffer> entryByteList,
+      ICompressor compressor,
+      AppendCompressedEntriesRequest request) {
+    PublicBAOS baos = new PublicBAOS(entryByteList.size() * 16 * 1024);
     DataOutputStream dataOutputStream = new DataOutputStream(baos);
     try {
       dataOutputStream.writeInt(entryByteList.size());
@@ -94,6 +98,7 @@ public class LogUtils {
             byteBuffer.remaining());
       }
       Statistic.LOG_DISPATCHER_RAW_SIZE.add(baos.size());
+      request.setUncompressedSize(baos.size());
       byte[] compressed = compressor.compress(baos.getBuf(), 0, baos.size());
       Statistic.LOG_DISPATCHER_COMPRESSED_SIZE.add(compressed.length);
       return ByteBuffer.wrap(compressed);
@@ -103,12 +108,9 @@ public class LogUtils {
     return null;
   }
 
-  public static List<ByteBuffer> decompressEntries(ByteBuffer buffer, IUnCompressor unCompressor)
-      throws IOException {
-    int uncompressedLength =
-        unCompressor.getUncompressedLength(
-            buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
-    byte[] uncompressed = new byte[uncompressedLength];
+  public static List<ByteBuffer> decompressEntries(
+      ByteBuffer buffer, IUnCompressor unCompressor, int uncompressedSize) throws IOException {
+    byte[] uncompressed = new byte[uncompressedSize];
     unCompressor.uncompress(
         buffer.array(),
         buffer.arrayOffset() + buffer.position(),

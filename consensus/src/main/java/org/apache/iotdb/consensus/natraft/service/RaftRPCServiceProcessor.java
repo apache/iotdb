@@ -169,7 +169,8 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       List<ByteBuffer> buffers =
           LogUtils.decompressEntries(
               request.entryBytes,
-              IUnCompressor.getUnCompressor(CompressionType.values()[request.compressionType]));
+              IUnCompressor.getUnCompressor(CompressionType.values()[request.compressionType]),
+              request.uncompressedSize);
       decompressedRequest.setEntries(buffers);
       Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.calOperationCostTimeFromStart(compressionStartTime);
 

@@ -68,6 +68,7 @@ public class RaftConfig {
   private int maxNumberOfPersistRaftLogFiles = 128;
   private int maxPersistRaftLogNumberOnDisk = 10_000_000;
   private int flushRaftLogThreshold = 100_000;
+  private CompressionType logPersistCompressor = CompressionType.SNAPPY;
   private long maxSyncLogLag = 100_000;
   private int syncLeaderMaxWaitMs = 30_000;
   private boolean enableCompressedDispatching = true;
@@ -445,6 +446,14 @@ public class RaftConfig {
     this.entryDefaultSerializationBufferSize = entryDefaultSerializationBufferSize;
   }
 
+  public CompressionType getLogPersistCompressor() {
+    return logPersistCompressor;
+  }
+
+  public void setLogPersistCompressor(CompressionType logPersistCompressor) {
+    this.logPersistCompressor = logPersistCompressor;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -572,6 +581,12 @@ public class RaftConfig {
                 "enable_use_persist_log_on_disk_to_catch_up",
                 String.valueOf(this.isEnableUsePersistLogOnDiskToCatchUp()))));
 
+    this.setLogPersistCompressor(
+        CompressionType.valueOf(
+            CompressionType.class,
+            properties.getProperty(
+                "log_persist_compressor", this.getLogPersistCompressor().toString())));
+
     this.setMaxSyncLogLag(
         Long.parseLong(
             properties.getProperty("max_sync_log_lag", String.valueOf(this.getMaxSyncLogLag()))));
@@ -631,7 +646,7 @@ public class RaftConfig {
         CompressionType.valueOf(
             CompressionType.class,
             properties.getProperty(
-                "default_boolean_encoding", this.getDispatchingCompressionType().toString())));
+                "dispatch_encoding", this.getDispatchingCompressionType().toString())));
 
     this.setIgnoreStateMachine(
         Boolean.parseBoolean(
