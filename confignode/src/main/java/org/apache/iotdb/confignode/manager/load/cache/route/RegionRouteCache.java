@@ -56,7 +56,6 @@ public class RegionRouteCache {
   private final AtomicReference<TRegionReplicaSet> regionPriority;
 
   public RegionRouteCache(TConsensusGroupId consensusGroupId) {
-    LOGGER.info("[RouteCache] Create a new RegionRouteCache for {}", consensusGroupId);
     this.consensusGroupId = consensusGroupId;
     switch (consensusGroupId.getType()) {
       case SchemaRegion:
@@ -105,10 +104,6 @@ public class RegionRouteCache {
       case ConsensusFactory.RATIS_CONSENSUS:
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
-          LOGGER.info(
-              "[RouteCache] Update leaderId of: {}, {}",
-              consensusGroupId,
-              leaderSample.get().getRight());
           leaderId.set(leaderSample.get().getRight());
           return true;
         }
@@ -118,9 +113,6 @@ public class RegionRouteCache {
         // The leader of iot consensus protocol is selected by ConfigNode-leader.
         // The leaderId is initialized to -1, in this case return ture will trigger the leader
         // selection.
-        if (leaderId.get() == -1) {
-          LOGGER.info("[RouteCache] {} should trigger election", consensusGroupId);
-        }
         return leaderId.get() == -1;
     }
   }

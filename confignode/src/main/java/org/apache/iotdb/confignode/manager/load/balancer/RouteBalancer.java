@@ -122,15 +122,12 @@ public class RouteBalancer {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         new ConcurrentHashMap<>();
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
-      LOGGER.info("[RouteCache] Start leader balance for SchemaRegionGroups");
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.SchemaRegion));
     }
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
-      LOGGER.info("[RouteCache] Start leader balance for DataRegionGroups");
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.DataRegion));
     }
 
-    LOGGER.info("[RouteCache] Leader balance result: {}", differentRegionLeaderMap);
     return differentRegionLeaderMap;
   }
 
@@ -153,8 +150,6 @@ public class RouteBalancer {
                 .map(TDataNodeLocation::getDataNodeId)
                 .collect(Collectors.toSet()));
 
-    LOGGER.info("[RouteCache] Origin leader distribution: {}", currentLeaderMap);
-    LOGGER.info("[RouteCache] Optimal leader distribution: {}", optimalLeadderMap);
     // Transfer leader to the optimal distribution
     AtomicInteger requestId = new AtomicInteger(0);
     AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler =
