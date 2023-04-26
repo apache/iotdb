@@ -293,7 +293,6 @@ public class LastQueryMergeOperator implements ProcessOperator {
                   getTimeSeries(inputTsBlocks[i], inputTsBlocks[i].getPositionCount() - 1),
                   endTimeSeries)
               == 0) {
-        int d = i;
         inputTsBlocks[i] = null;
       }
     }
