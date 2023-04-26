@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
+import org.apache.iotdb.db.wal.utils.WALInsertNodeCache;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +86,15 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
+  private List<MemTableInfo> snapshotMemTableInfos() {
+    infoLock.lock();
+    try {
+      return new ArrayList<>(memTableId2Info.values());
+    } finally {
+      infoLock.unlock();
+    }
+  }
+
   private void logHeader() {
     infoLock.lock();
     try {
@@ -108,9 +119,9 @@ public class CheckpointManager implements AutoCloseable {
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
-    Checkpoint checkpoint =
-        new Checkpoint(
-            CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    memTableInfos.removeIf(MemTableInfo::isFlushed);
+    Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
     WRITING_METRICS.recordMakeCheckpointCost(checkpoint.getType(), System.nanoTime() - start);
   }
@@ -138,9 +149,13 @@ public class CheckpointManager implements AutoCloseable {
     infoLock.lock();
     long start = System.nanoTime();
     try {
-      MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
+      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       if (memTableInfo == null) {
         return;
+      }
+      memTableInfo.setFlushed();
+      if (!memTableInfo.isPinned()) {
+        memTableId2Info.remove(memTableId);
       }
       Checkpoint checkpoint =
           new Checkpoint(
@@ -224,16 +239,70 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
-  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest */
-  public MemTableInfo getOldestMemTableInfo() {
-    // find oldest memTable
-    List<MemTableInfo> memTableInfos;
+  // region methods for pipe
+  /**
+   * Pin the wal files of the given memory table. Notice: cannot pin one memTable too long,
+   * otherwise the wal disk usage may too large.
+   *
+   * @throws MemTablePinException If the memTable has been flushed
+   */
+  public void pinMemTable(long memTableId) throws MemTablePinException {
     infoLock.lock();
     try {
-      memTableInfos = new ArrayList<>(memTableId2Info.values());
+      if (!memTableId2Info.containsKey(memTableId)) {
+        throw new MemTablePinException(
+            String.format(
+                "Fail to pin memTable-%d because this memTable doesn't exist in the wal.",
+                memTableId));
+      }
+      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
+      if (!memTableInfo.isPinned()) {
+        WALInsertNodeCache.getInstance().addMemTable(memTableId);
+      }
+      memTableInfo.pin();
     } finally {
       infoLock.unlock();
     }
+  }
+
+  /**
+   * Unpin the wal files of the given memory table.
+   *
+   * @throws MemTablePinException If the memTable has been flushed or cannot find corresponding pin
+   *     operation
+   */
+  public void unpinMemTable(long memTableId) throws MemTablePinException {
+    infoLock.lock();
+    try {
+      if (!memTableId2Info.containsKey(memTableId)) {
+        throw new MemTablePinException(
+            String.format(
+                "Fail to unpin memTable-%d because this memTable doesn't exist in the wal.",
+                memTableId));
+      }
+      if (!memTableId2Info.get(memTableId).isPinned()) {
+        throw new MemTablePinException(
+            String.format(
+                "Fail to unpin memTable-%d because this memTable hasn't been pinned.", memTableId));
+      }
+      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
+      memTableInfo.unpin();
+      if (!memTableInfo.isPinned()) {
+        WALInsertNodeCache.getInstance().removeMemTable(memTableId);
+        if (memTableInfo.isFlushed()) {
+          memTableId2Info.remove(memTableId);
+        }
+      }
+    } finally {
+      infoLock.unlock();
+    }
+  }
+  // endregion
+
+  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest */
+  public MemTableInfo getOldestMemTableInfo() {
+    // find oldest memTable
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     if (memTableInfos.isEmpty()) {
       return null;
     }
@@ -252,13 +321,7 @@ public class CheckpointManager implements AutoCloseable {
    * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
   public long getFirstValidWALVersionId() {
-    List<MemTableInfo> memTableInfos;
-    infoLock.lock();
-    try {
-      memTableInfos = new ArrayList<>(memTableId2Info.values());
-    } finally {
-      infoLock.unlock();
-    }
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -268,25 +331,17 @@ public class CheckpointManager implements AutoCloseable {
 
   /** Get total cost of active memTables */
   public long getTotalCostOfActiveMemTables() {
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     long totalCost = 0;
-
-    if (!config.isEnableMemControl()) {
-      infoLock.lock();
-      try {
-        totalCost = memTableId2Info.size();
-      } finally {
-        infoLock.unlock();
+    for (MemTableInfo memTableInfo : memTableInfos) {
+      // flushed memTables are not active
+      if (memTableInfo.isFlushed()) {
+        continue;
       }
-    } else {
-      List<MemTableInfo> memTableInfos;
-      infoLock.lock();
-      try {
-        memTableInfos = new ArrayList<>(memTableId2Info.values());
-      } finally {
-        infoLock.unlock();
-      }
-      for (MemTableInfo memTableInfo : memTableInfos) {
+      if (config.isEnableMemControl()) {
         totalCost += memTableInfo.getMemTable().getTVListsRamCost();
+      } else {
+        totalCost++;
       }
     }
 

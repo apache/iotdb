@@ -28,7 +28,8 @@ import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 /** This class provides fake wal node when wal is disabled or exception happens. */
 public class WALFakeNode implements IWALNode {
   private final WALFlushListener.Status status;
-  private final Exception cause;
+  private final WALFlushListener successListener;
+  private final WALFlushListener failListener;
 
   private WALFakeNode(WALFlushListener.Status status) {
     this(status, null);
@@ -36,7 +37,10 @@ public class WALFakeNode implements IWALNode {
 
   public WALFakeNode(WALFlushListener.Status status, Exception cause) {
     this.status = status;
-    this.cause = cause;
+    this.successListener = new WALFlushListener(false, null);
+    this.successListener.succeed();
+    this.failListener = new WALFlushListener(false, null);
+    this.failListener.fail(cause);
   }
 
   @Override
@@ -56,18 +60,13 @@ public class WALFakeNode implements IWALNode {
   }
 
   private WALFlushListener getResult() {
-    WALFlushListener walFlushListener = new WALFlushListener(false);
     switch (status) {
       case SUCCESS:
-        walFlushListener.succeed();
-        break;
+        return successListener;
       case FAILURE:
-        walFlushListener.fail(cause);
-        break;
       default:
-        break;
+        return failListener;
     }
-    return walFlushListener;
   }
 
   @Override

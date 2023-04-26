@@ -70,14 +70,14 @@ public abstract class WALEntry implements SerializedSize {
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }
-    walFlushListener = new WALFlushListener(wait);
+    walFlushListener = new WALFlushListener(wait, value);
   }
 
   protected WALEntry(WALEntryType type, long memTableId, WALEntryValue value, boolean wait) {
     this.type = type;
     this.memTableId = memTableId;
     this.value = value;
-    this.walFlushListener = new WALFlushListener(wait);
+    this.walFlushListener = new WALFlushListener(wait, value);
   }
 
   public abstract void serialize(IWALByteBufferView buffer);
