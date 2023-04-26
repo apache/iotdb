@@ -44,8 +44,8 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBLastQueryWithoutLastCacheIT {
-  private static final String[] SQLs =
+public class IoTDBLastQueryLastCacheIT {
+  protected static final String[] SQLs =
       new String[] {
         "create aligned timeseries root.ln_1.tb_6141(风机退出_BOOLEAN BOOLEAN encoding=RLE,`出水NH4-N_DOUBLE` DOUBLE encoding=GORILLA,膜产水状态_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,产水间歇运行时间设置_DOUBLE DOUBLE encoding=GORILLA,文本_TEXT TEXT encoding=PLAIN, 风机投入_BOOLEAN BOOLEAN encoding=RLE,枚举_INT32 INT32 encoding=RLE,出水TP_DOUBLE DOUBLE encoding=GORILLA,水管流速_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`开关量-运行_BOOLEAN` BOOLEAN encoding=RLE,功能码_DOUBLE DOUBLE encoding=GORILLA);",
         "alter timeseries root.ln_1.tb_6141.风机退出_BOOLEAN upsert alias=风机退出;",
@@ -79,6 +79,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // without lastCache
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -96,7 +97,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
   }
 
   @Test
-  public void testLastWithoutLastCache() {
+  public void testLastQuery() {
     // cast to int
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
