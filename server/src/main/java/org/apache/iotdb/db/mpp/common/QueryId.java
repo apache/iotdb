@@ -52,7 +52,7 @@ public class QueryId {
   }
 
   public PlanNodeId genPlanNodeId() {
-    return new PlanNodeId(String.format("%d", nextPlanNodeIndex++));
+    return new PlanNodeId(String.valueOf(nextPlanNodeIndex++));
   }
 
   public PlanFragmentId genPlanFragmentId() {
