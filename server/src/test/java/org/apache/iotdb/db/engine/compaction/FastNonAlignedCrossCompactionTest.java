@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -284,6 +285,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -534,6 +548,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -782,6 +809,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -1049,6 +1089,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -1415,6 +1468,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -1788,6 +1854,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -2172,6 +2251,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -2539,6 +2631,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -2908,6 +3013,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -3287,6 +3405,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -3721,6 +3852,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -4159,6 +4303,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -4595,6 +4752,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -5085,6 +5255,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -5519,6 +5702,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -5736,6 +5932,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -6016,6 +6225,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -6424,6 +6646,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -6793,6 +7028,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -7047,6 +7295,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
+    validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
   @Test
@@ -7186,6 +7447,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -7377,6 +7651,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
@@ -7598,6 +7885,19 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
     validateSeqFiles(true);
 
+    validateTargetDatas(sourceDatas, tsDataTypes);
+
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true),
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    innerTask.start();
+    validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
 
