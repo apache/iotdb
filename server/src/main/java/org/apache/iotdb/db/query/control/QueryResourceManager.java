@@ -66,13 +66,10 @@ public class QueryResourceManager {
    * query tokens created by this jdbc request must be cleared.
    */
   // Suppress high Cognitive Complexity warning
+  // attention: Since V1.0, Query Module does not use this method for cleaning
   public void endQuery(long queryId) {
-
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForQuery(queryId);
-
-    // close and delete UDF temp files
-    // TemporaryQueryDataFileService.getInstance().deregister(queryId);
   }
 
   public QueryFileManager getQueryFileManager() {
