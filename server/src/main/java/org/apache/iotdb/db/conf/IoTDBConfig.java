@@ -185,19 +185,16 @@ public class IoTDBConfig {
   private int maxWalNodesNum = 0;
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 3;
+  private volatile long fsyncWalDelayInMs = 1_000;
 
   /** Buffer size of each wal node. Unit: byte */
-  private int walBufferSize = 16 * 1024 * 1024;
-
-  /** Buffer entry size of each wal buffer. Unit: byte */
-  private int walBufferEntrySize = 16 * 1024;
+  private int walBufferSize = 32 * 1024 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 50;
+  private int walBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024L;
+  private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
@@ -1728,14 +1725,6 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
-  }
-
-  public int getWalBufferEntrySize() {
-    return walBufferEntrySize;
-  }
-
-  void setWalBufferEntrySize(int walBufferEntrySize) {
-    this.walBufferEntrySize = walBufferEntrySize;
   }
 
   public int getWalBufferQueueCapacity() {

@@ -1091,14 +1091,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferEntrySize =
-        Integer.parseInt(
-            properties.getProperty(
-                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
-    if (walBufferEntrySize > 0) {
-      conf.setWalBufferEntrySize(walBufferEntrySize);
-    }
-
     int walBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
