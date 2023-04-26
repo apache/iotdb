@@ -94,6 +94,7 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
+    // use UDTFQueryIdAssigner to generate unique id for each TransformOperator
     this.udtfQueryId = UDTFQueryIdAssigner.getInstance().getNextId();
 
     initInputLayer(inputDataTypes);
