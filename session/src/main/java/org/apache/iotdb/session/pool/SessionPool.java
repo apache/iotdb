@@ -131,10 +131,6 @@ public class SessionPool implements ISessionPool {
         port,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -144,8 +140,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
@@ -153,10 +148,6 @@ public class SessionPool implements ISessionPool {
         nodeUrls,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -166,8 +157,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -207,10 +197,6 @@ public class SessionPool implements ISessionPool {
         port,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -220,8 +206,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -230,10 +215,6 @@ public class SessionPool implements ISessionPool {
         nodeUrls,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -243,8 +224,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -291,10 +271,6 @@ public class SessionPool implements ISessionPool {
         port,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -304,8 +280,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -319,10 +294,6 @@ public class SessionPool implements ISessionPool {
         nodeUrls,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -332,8 +303,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -375,10 +345,6 @@ public class SessionPool implements ISessionPool {
         port,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -388,8 +354,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -398,10 +363,6 @@ public class SessionPool implements ISessionPool {
         nodeUrls,
         user,
         password,
-        null,
-        null,
-        null,
-        null,
         maxSize,
         SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
@@ -411,8 +372,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -2709,6 +2669,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @Override
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
