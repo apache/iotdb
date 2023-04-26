@@ -385,18 +385,17 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
-
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
-    tsFileResource.updateStartTime(
-        insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
 
     // collect plan node in pipe
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
 
+    tsFileResource.updateStartTime(
+        insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
@@ -856,6 +855,7 @@ public class TsFileProcessor {
         }
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
+
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
