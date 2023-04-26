@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -43,7 +45,7 @@ public class LocalFileAuthorizerTest {
 
   IAuthorizer authorizer;
   User user;
-  String nodeName = "root.laptop.d1";
+  PartialPath nodeName;
   String roleName = "role";
 
   @Before
@@ -51,6 +53,7 @@ public class LocalFileAuthorizerTest {
     EnvironmentUtils.envSetUp();
     authorizer = AuthorizerManager.getInstance();
     user = new User("user", "password");
+    nodeName = new PartialPath("root.laptop.d1");
   }
 
   @After
@@ -136,8 +139,8 @@ public class LocalFileAuthorizerTest {
     }
 
     try {
-      authorizer.revokePrivilegeFromUser("root", "root", 1);
-    } catch (AuthException e) {
+      authorizer.revokePrivilegeFromUser("root", new PartialPath("root"), 1);
+    } catch (AuthException | MetadataException e) {
       Assert.assertEquals(
           "Invalid operation, administrator must have all privileges", e.getMessage());
     }

@@ -80,13 +80,13 @@ public class AuthorityChecker {
       return true;
     }
 
-    List<String> allPath = new ArrayList<>();
+    List<PartialPath> allPath = new ArrayList<>();
     if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
-        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath());
+        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
       }
     } else {
-      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
+      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
@@ -96,8 +96,8 @@ public class AuthorityChecker {
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {
-      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
-      if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
+      PartialPath newPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path;
+      if (authorizerManager.checkUserPrivileges(username, newPath, permission)) {
         return true;
       }
     } catch (AuthException e) {
