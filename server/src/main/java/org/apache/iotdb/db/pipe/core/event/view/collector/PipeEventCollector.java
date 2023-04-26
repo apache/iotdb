@@ -17,30 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector;
+package org.apache.iotdb.db.pipe.core.event.view.collector;
 
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-// TODO: move to pipe-api
-public interface PipeCollector extends AutoCloseable {
+import java.io.IOException;
 
-  /** Start the collector. */
-  // TODO: what's the difference between start() and supply()?
-  void start();
+public class PipeEventCollector implements EventCollector {
 
-  /**
-   * Check if the collector has been started.
-   *
-   * @return true if the collector has been started, false otherwise.
-   */
-  // TODO: check if this method is necessary. maybe close() is enough.
-  boolean hasBeenStarted();
+  @Override
+  public void collectTabletInsertionEvent(TabletInsertionEvent event) throws IOException {}
 
-  /**
-   * Supply the event to the collector.
-   *
-   * @return the event to be supplied.
-   */
-  // TODO: check() may be a better name.
-  Event supply();
+  @Override
+  public void collectTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException {}
+
+  @Override
+  public void collectDeletionEvent(DeletionEvent event) throws IOException {}
 }

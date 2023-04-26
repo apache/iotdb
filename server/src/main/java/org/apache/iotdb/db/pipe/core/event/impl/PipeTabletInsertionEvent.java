@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.tablet;
+package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.function.BiConsumer;
 
 public class PipeTabletInsertionEvent implements TabletInsertionEvent {
+
   private final InsertNode insertNode;
 
   public PipeTabletInsertionEvent(InsertNode insertNode) {
@@ -37,17 +38,17 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    return null;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override
   public TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer) {
-    return null;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    return null;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override

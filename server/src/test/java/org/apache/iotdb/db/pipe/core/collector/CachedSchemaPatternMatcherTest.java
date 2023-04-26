@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollectorManager;
-import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedMatcher;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -34,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,34 +40,34 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class CachedMatcherTest {
-  private PipeRealtimeCollectorManager manager;
-  private CachedMatcher matcher;
+public class CachedSchemaPatternMatcherTest {
+
+  private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
-  private List<PipeRealtimeCollector> collectorList;
+  private List<PipeRealtimeDataRegionCollector> collectorList;
 
   @Before
   public void setUp() {
-    manager = new PipeRealtimeCollectorManager();
-    matcher = new CachedMatcher();
+    matcher = new CachedSchemaPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     collectorList = new ArrayList<>();
   }
 
   @Test
   public void testCachedMatcher() throws ExecutionException, InterruptedException {
-    PipeRealtimeCollector databaseCollector = new PipeRealtimeFakeCollector("root", "1", manager);
+    PipeRealtimeDataRegionCollector databaseCollector =
+        new PipeRealtimeFakeDataRegionCollector("root", "1");
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
     int seriesCollectorNum = 10;
     for (int i = 0; i < deviceCollectorNum; i++) {
-      PipeRealtimeCollector deviceCollector =
-          new PipeRealtimeFakeCollector("root." + i, "1", manager);
+      PipeRealtimeDataRegionCollector deviceCollector =
+          new PipeRealtimeFakeDataRegionCollector("root." + i, "1");
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
-        PipeRealtimeCollector seriesCollector =
-            new PipeRealtimeFakeCollector("root." + i + "." + j, "1", manager);
+        PipeRealtimeDataRegionCollector seriesCollector =
+            new PipeRealtimeFakeDataRegionCollector("root." + i + "." + j, "1");
         collectorList.add(seriesCollector);
       }
     }
@@ -96,17 +94,15 @@ public class CachedMatcherTest {
       for (int j = 0; j < deviceNum; j++) {
         PipeRealtimeCollectEvent event =
             new PipeRealtimeCollectEvent(
-                null, Collections.singletonMap("root." + i, measurements), null);
+                null, null, Collections.singletonMap("root." + i, measurements));
         long startTime = System.currentTimeMillis();
-        Set<PipeRealtimeCollector> collectorSet = matcher.match(event.getSchemaInfo());
+        matcher.match(event);
         totalTime += (System.currentTimeMillis() - startTime);
-        collectorSet.forEach(collector -> collector.collectEvent(event));
       }
-      PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, deviceMap, null);
+      PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, null, deviceMap);
       long startTime = System.currentTimeMillis();
-      Set<PipeRealtimeCollector> collectorSet = matcher.match(event.getSchemaInfo());
+      matcher.match(event);
       totalTime += (System.currentTimeMillis() - startTime);
-      collectorSet.forEach(collector -> collector.collectEvent(event));
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());
     System.out.println("totalTime = " + totalTime);
@@ -117,11 +113,10 @@ public class CachedMatcherTest {
     future.get();
   }
 
-  public static class PipeRealtimeFakeCollector extends PipeRealtimeCollector {
+  public static class PipeRealtimeFakeDataRegionCollector extends PipeRealtimeDataRegionCollector {
 
-    public PipeRealtimeFakeCollector(
-        String pattern, String dataRegionId, PipeRealtimeCollectorManager manager) {
-      super(pattern, dataRegionId, manager);
+    public PipeRealtimeFakeDataRegionCollector(String pattern, String dataRegionId) {
+      super(pattern, dataRegionId);
     }
 
     @Override
@@ -130,7 +125,7 @@ public class CachedMatcherTest {
     }
 
     @Override
-    public void collectEvent(PipeRealtimeCollectEvent event) {
+    public void collect(PipeRealtimeCollectEvent event) {
       final boolean[] match = {false};
       event
           .getSchemaInfo()

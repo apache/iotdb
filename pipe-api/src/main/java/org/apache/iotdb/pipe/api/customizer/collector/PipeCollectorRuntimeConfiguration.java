@@ -17,23 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.operate.collector;
+package org.apache.iotdb.pipe.api.customizer.collector;
 
-import org.apache.iotdb.pipe.api.collector.EventCollector;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.io.IOException;
-
-public class PipeEventCollector implements EventCollector {
+// TODO: complete this class
+public class PipeCollectorRuntimeConfiguration implements PipeRuntimeConfiguration {
 
   @Override
-  public void collectTabletInsertionEvent(TabletInsertionEvent event) throws IOException {}
-
-  @Override
-  public void collectTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException {}
-
-  @Override
-  public void collectDeletionEvent(DeletionEvent event) throws IOException {}
+  public void check() throws PipeException {}
 }

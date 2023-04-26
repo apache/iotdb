@@ -22,11 +22,16 @@ package org.apache.iotdb.db.pipe.config;
 // TODO: make these parameters configurable
 // TODO: make all pipe related parameters in one place
 // TODO: set the default value of the parameters in IoTDBDescriptor
+// TODO: move it to common module?
 public class PipeConfig {
 
   private final int defaultRingBufferSize = 65536;
+
   private final int matcherCacheSize = 1024;
+
   private final int realtimeCollectorPendingQueueCapacity = 65536;
+
+  // this should be less than or equals to realtimeCollectorPendingQueueCapacity
   private final int realtimeCollectorPendingQueueTabletLimit =
       realtimeCollectorPendingQueueCapacity / 2;
 

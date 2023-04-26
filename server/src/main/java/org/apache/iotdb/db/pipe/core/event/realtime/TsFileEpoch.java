@@ -19,31 +19,34 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileEpoch {
+
   private final String filePath;
-  private final ConcurrentMap<PipeRealtimeCollector, AtomicReference<State>> collector2State;
+  private final ConcurrentMap<PipeRealtimeDataRegionCollector, AtomicReference<State>>
+      dataRegionCollector2State;
 
   public TsFileEpoch(String filePath) {
     this.filePath = filePath;
-    this.collector2State = new ConcurrentHashMap<>();
+    this.dataRegionCollector2State = new ConcurrentHashMap<>();
   }
 
-  public TsFileEpoch.State getState(PipeRealtimeCollector collector) {
-    return collector2State
+  public TsFileEpoch.State getState(PipeRealtimeDataRegionCollector collector) {
+    return dataRegionCollector2State
         .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
         .get();
   }
 
-  public void visit(PipeRealtimeCollector collector, TsFileEpochVisitor visitor) {
-    collector2State
+  public void migrateState(
+      PipeRealtimeDataRegionCollector collector, TsFileEpochStateMigrator visitor) {
+    dataRegionCollector2State
         .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
-        .getAndUpdate(visitor::executeFromState);
+        .getAndUpdate(visitor::migrate);
   }
 
   @Override
@@ -52,14 +55,14 @@ public class TsFileEpoch {
         + "filePath='"
         + filePath
         + '\''
-        + ", collector2State="
-        + collector2State
+        + ", dataRegionCollector2State="
+        + dataRegionCollector2State
         + '}';
   }
 
   public enum State {
     EMPTY,
-    USING_WAL,
+    USING_TABLET,
     USING_TSFILE
   }
 }

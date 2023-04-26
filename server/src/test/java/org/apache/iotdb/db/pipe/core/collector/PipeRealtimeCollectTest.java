@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollector;
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeCollectorManager;
-import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeChangeDataCaptureListener;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeHybridDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.EventType;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -51,7 +51,7 @@ import java.util.function.Function;
 
 public class PipeRealtimeCollectTest {
   private static final Logger logger = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
-  private PipeRealtimeCollectorManager collectorManager;
+
   private final String dataRegion1 = "dataRegion-1";
   private final String dataRegion2 = "dataRegion-2";
   private final String pattern1 = "root.sg.d";
@@ -64,7 +64,6 @@ public class PipeRealtimeCollectTest {
 
   @Before
   public void setUp() {
-    collectorManager = new PipeRealtimeCollectorManager();
     writeService = Executors.newFixedThreadPool(2);
     listenerService = Executors.newFixedThreadPool(4);
   }
@@ -78,12 +77,12 @@ public class PipeRealtimeCollectTest {
   @Test
   public void testRealtimeCollectProcess() throws ExecutionException, InterruptedException {
     // set up realtime collector
-    PipeRealtimeCollector[] collectors =
-        new PipeRealtimeCollector[] {
-          collectorManager.createPipeRealtimeCollector(pattern1, dataRegion1),
-          collectorManager.createPipeRealtimeCollector(pattern2, dataRegion1),
-          collectorManager.createPipeRealtimeCollector(pattern1, dataRegion2),
-          collectorManager.createPipeRealtimeCollector(pattern2, dataRegion2)
+    PipeRealtimeDataRegionCollector[] collectors =
+        new PipeRealtimeDataRegionCollector[] {
+          new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion1),
+          new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion1),
+          new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion2),
+          new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion2)
         };
 
     // start collector 0, 1
@@ -172,8 +171,8 @@ public class PipeRealtimeCollectTest {
                 new TsFileResource(new File(dataRegionId, String.format("%s-%s-0-0.tsfile", i, i)));
             resource.updateStartTime(String.join(TsFileConstant.PATH_SEPARATOR, device), 0);
 
-            PipeChangeDataCaptureListener.getInstance()
-                .collectPlanNode(
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToInsertNode(
                     dataRegionId,
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
@@ -185,8 +184,8 @@ public class PipeRealtimeCollectTest {
                         null,
                         false),
                     resource);
-            PipeChangeDataCaptureListener.getInstance()
-                .collectPlanNode(
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToInsertNode(
                     dataRegionId,
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
@@ -198,19 +197,26 @@ public class PipeRealtimeCollectTest {
                         null,
                         false),
                     resource);
-            PipeChangeDataCaptureListener.getInstance().collectTsFile(dataRegionId, resource);
+            PipeInsertionDataNodeListener.getInstance().listenToTsFile(dataRegionId, resource);
           }
         });
   }
 
   private Future<?> listen(
-      PipeRealtimeCollector collector, Function<EventType, Integer> weight, int expectNum) {
+      PipeRealtimeDataRegionCollector collector,
+      Function<EventType, Integer> weight,
+      int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;
           try {
             while (alive.get() && eventNum < expectNum) {
-              Event event = collector.supply();
+              Event event = null;
+              try {
+                event = collector.supply();
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
               if (event != null) {
                 eventNum += weight.apply(event.getType());
               }

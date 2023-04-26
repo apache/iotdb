@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.core.event.realtime;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.core.event.tablet.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,33 +32,39 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PipeRealtimeCollectEventManager {
-  private static final Logger logger =
-      LoggerFactory.getLogger(PipeRealtimeCollectEventManager.class);
-  private final Map<String, TsFileEpoch> filePath2Epoch;
+public class TsFileEpochManager {
 
-  public PipeRealtimeCollectEventManager() {
-    this.filePath2Epoch = new HashMap<>();
-  }
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileEpochManager.class);
 
-  public PipeRealtimeCollectEvent createRealtimeCollectEventFromTsFile(
+  private static final String[] EMPTY_MEASUREMENT_ARRAY = new String[0];
+
+  private final Map<String, TsFileEpoch> filePath2Epoch = new HashMap<>();
+
+  public PipeRealtimeCollectEvent bindPipeTsFileInsertionEvent(
       PipeTsFileInsertionEvent event, TsFileResource resource) {
-    String filePath = resource.getTsFilePath();
+    final String filePath = resource.getTsFilePath();
+
+    // this would not happen, but just in case
     if (!filePath2Epoch.containsKey(filePath)) {
-      logger.warn(String.format("Can not find TsFileEpoch for TsFile %s", filePath));
+      LOGGER.warn(
+          String.format("PipeEngine: can not find TsFileEpoch for TsFile %s, create it", filePath));
       filePath2Epoch.put(filePath, new TsFileEpoch(filePath));
     }
+
     return new PipeRealtimeCollectEvent(
         event,
-        resource.getDevices().stream().collect(Collectors.toMap(s -> s, s -> new String[0])),
-        filePath2Epoch.remove(filePath));
+        // TODO: we have to make sure that the TsFileInsertionEvent is the last event of the
+        // TsFileEpoch's life cycle
+        filePath2Epoch.remove(filePath),
+        resource.getDevices().stream()
+            .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)));
   }
 
-  public PipeRealtimeCollectEvent createRealtimeCollectEventFromInsertNode(
+  public PipeRealtimeCollectEvent bindPipeTabletInsertionEvent(
       PipeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
     return new PipeRealtimeCollectEvent(
         event,
-        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
-        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new));
+        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),
+        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()));
   }
 }

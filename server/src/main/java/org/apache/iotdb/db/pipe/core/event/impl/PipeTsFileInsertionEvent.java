@@ -17,29 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event;
+package org.apache.iotdb.db.pipe.core.event.impl;
 
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.File;
 
 public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
+
   private final File tsFile;
 
   public PipeTsFileInsertionEvent(File tsFile) {
-    this.tsFile = PipeResourceManager.getInstance().addFileReference(tsFile);
+    this.tsFile = tsFile;
   }
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return null;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override
   public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
-    return null;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override

@@ -20,6 +20,6 @@
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
 @FunctionalInterface
-public interface TsFileEpochVisitor {
-  TsFileEpoch.State executeFromState(final TsFileEpoch.State state);
+public interface TsFileEpochStateMigrator {
+  TsFileEpoch.State migrate(final TsFileEpoch.State state);
 }

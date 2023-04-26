@@ -25,31 +25,33 @@ import org.apache.iotdb.pipe.api.event.EventType;
 import java.util.Map;
 
 public class PipeRealtimeCollectEvent implements Event {
+
   private final Event event;
-  private Map<String, String[]> device2Measurements;
   private final TsFileEpoch tsFileEpoch;
 
+  private Map<String, String[]> device2Measurements;
+
   public PipeRealtimeCollectEvent(
-      Event event, Map<String, String[]> device2Measurements, TsFileEpoch tsFileEpoch) {
+      Event event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
     this.event = event;
-    this.device2Measurements = device2Measurements;
     this.tsFileEpoch = tsFileEpoch;
+    this.device2Measurements = device2Measurements;
   }
 
   public Event getEvent() {
     return event;
   }
 
+  public TsFileEpoch getTsFileEpoch() {
+    return tsFileEpoch;
+  }
+
   public Map<String, String[]> getSchemaInfo() {
     return device2Measurements;
   }
 
-  public void clearSchemaInfo() {
+  public void gcSchemaInfo() {
     device2Measurements = null;
-  }
-
-  public TsFileEpoch getTsFileEpoch() {
-    return tsFileEpoch;
   }
 
   @Override
