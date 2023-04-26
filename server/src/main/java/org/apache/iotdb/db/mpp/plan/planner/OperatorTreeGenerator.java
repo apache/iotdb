@@ -2148,8 +2148,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         lastQueryScan,
         unCachedPath,
         DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache(),
-        node.getComparator());
+        context.isNeedUpdateLastCache());
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(

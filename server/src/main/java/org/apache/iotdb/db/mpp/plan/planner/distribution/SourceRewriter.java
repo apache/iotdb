@@ -65,7 +65,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -555,10 +554,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setMergeOrderParameter(orderByParameter);
-      Comparator<Binary> comparator =
-          orderByParameter.getSortItemList().get(0).getOrdering().equals(Ordering.ASC)
-              ? Comparator.naturalOrder()
-              : Comparator.reverseOrder();
       // sort children node
       lastQueryNode.setChildren(
           lastQueryNode.getChildren().stream()
@@ -571,17 +566,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         } else if (child instanceof AlignedLastQueryScanNode) {
                           fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
                         }
-                        return new Binary(fullPath);
-                      },
-                      comparator))
+                        return fullPath;
+                      }))
               .collect(Collectors.toList()));
       lastQueryNode
           .getChildren()
           .forEach(
               child -> {
                 if (child instanceof AlignedLastQueryScanNode) {
-                  // set comparator
-                  ((AlignedLastQueryScanNode) child).setComparator(comparator);
+                  // sort the measurements of AlignedPath for LastQueryMergeOperator
+                  ((AlignedLastQueryScanNode) child)
+                      .getSeriesPath()
+                      .sortMeasurement(Comparator.naturalOrder());
                 }
               });
     } else {
