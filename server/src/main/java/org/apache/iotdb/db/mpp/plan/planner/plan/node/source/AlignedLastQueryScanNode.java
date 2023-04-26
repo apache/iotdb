@@ -28,12 +28,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,16 +48,22 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
+  private Comparator<Binary> comparator;
+
   public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
   }
 
   public AlignedLastQueryScanNode(
-      PlanNodeId id, AlignedPath seriesPath, TRegionReplicaSet regionReplicaSet) {
+      PlanNodeId id,
+      AlignedPath seriesPath,
+      TRegionReplicaSet regionReplicaSet,
+      Comparator<Binary> comparator) {
     super(id);
     this.seriesPath = seriesPath;
     this.regionReplicaSet = regionReplicaSet;
+    this.comparator = comparator;
   }
 
   @Override
@@ -79,6 +87,14 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     return ImmutableList.of();
   }
 
+  public Comparator<Binary> getComparator() {
+    return comparator;
+  }
+
+  public void setComparator(Comparator<Binary> comparator) {
+    this.comparator = comparator;
+  }
+
   @Override
   public void addChild(PlanNode child) {
     throw new UnsupportedOperationException("no child is allowed for SeriesScanNode");
@@ -86,7 +102,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new AlignedLastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new AlignedLastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet, comparator);
   }
 
   @Override

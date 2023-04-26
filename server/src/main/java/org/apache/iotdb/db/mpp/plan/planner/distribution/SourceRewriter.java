@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -533,10 +534,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
-      if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
+      if (newRoot instanceof LastQueryMergeNode) {
         OrderByParameter orderByParameter =
-            new OrderByParameter(
-                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
+            node.getMergeOrderParameter().isEmpty()
+                ? new OrderByParameter(
+                    Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)))
+                : node.getMergeOrderParameter();
         addSortForEachLastQueryNode(root, orderByParameter);
       }
       root.getChildren().forEach(newRoot::addChild);
@@ -552,6 +555,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setMergeOrderParameter(orderByParameter);
+      Comparator<Binary> comparator =
+          orderByParameter.getSortItemList().get(0).getOrdering().equals(Ordering.ASC)
+              ? Comparator.naturalOrder()
+              : Comparator.reverseOrder();
       // sort children node
       lastQueryNode.setChildren(
           lastQueryNode.getChildren().stream()
@@ -564,9 +571,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         } else if (child instanceof AlignedLastQueryScanNode) {
                           fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
                         }
-                        return fullPath;
-                      }))
+                        return new Binary(fullPath);
+                      },
+                      comparator))
               .collect(Collectors.toList()));
+      lastQueryNode
+          .getChildren()
+          .forEach(
+              child -> {
+                if (child instanceof AlignedLastQueryScanNode) {
+                  // set comparator
+                  ((AlignedLastQueryScanNode) child).setComparator(comparator);
+                }
+              });
     } else {
       for (PlanNode child : root.getChildren()) {
         addSortForEachLastQueryNode(child, orderByParameter);

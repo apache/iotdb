@@ -98,7 +98,6 @@ public class IoTDBLastQueryLastCacheIT {
 
   @Test
   public void testLastQuery() {
-    // cast to int
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
@@ -118,5 +117,29 @@ public class IoTDBLastQueryLastCacheIT {
           "1679365910000,root.ln_1.tb_6141.waterTP_DOUBLE,15.0,DOUBLE,",
         };
     resultSetEqualTest("select last * from root.ln_1.tb_6141;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testLastQueryOrderByTimeDesc() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "1679365910000,root.ln_1.tb_6141.waterTP_DOUBLE,15.0,DOUBLE,",
+          "1679365910000,root.ln_1.tb_6141.waterInterval_DOUBLE,10.0,DOUBLE,",
+          "1675995566000,root.ln_1.tb_6141.switch_BOOLEAN,false,BOOLEAN,",
+          "1677033625000,root.ln_1.tb_6141.status_BOOLEAN,true,BOOLEAN,",
+          "1675995566000,root.ln_1.tb_6141.machineOn_BOOLEAN,true,BOOLEAN,",
+          "1675995566000,root.ln_1.tb_6141.machineExit_BOOLEAN,false,BOOLEAN,",
+          "1679365910000,root.ln_1.tb_6141.fluidVelocity_DOUBLE,15.0,DOUBLE,",
+          "1675995566000,root.ln_1.tb_6141.enum_INT32,2,INT32,",
+          "1675995566000,root.ln_1.tb_6141.content_TEXT,52,TEXT,",
+          "1679477545000,root.ln_1.tb_6141.code_DOUBLE,2.0,DOUBLE,",
+          "1679365910000,root.ln_1.tb_6141.`waterNH4-N_DOUBLE`,12.0,DOUBLE,",
+          "1679365910000,root.ln_1.tb_6141.CO2_DOUBLE,12.0,DOUBLE,",
+          "1679365910000,root.ln_1.tb_6141.11_TEXT,13,TEXT,",
+        };
+    resultSetEqualTest(
+        "select last * from root.ln_1.tb_6141 order by timeseries desc;", expectedHeader, retArray);
   }
 }
