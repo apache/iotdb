@@ -272,8 +272,7 @@ public class TestUtils {
       for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
         builder.append(actualResultSet.getString(i)).append(",");
       }
-      System.out.println(builder.toString());
-      // assertEquals(expectedRetArray[cnt], builder.toString());
+      assertEquals(expectedRetArray[cnt], builder.toString());
       cnt++;
     }
     assertEquals(expectedRetArray.length, cnt);

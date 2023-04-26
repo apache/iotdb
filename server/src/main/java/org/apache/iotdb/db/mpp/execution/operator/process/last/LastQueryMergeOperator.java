@@ -28,13 +28,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.openjdk.jol.info.ClassLayout;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -73,8 +70,6 @@ public class LastQueryMergeOperator implements ProcessOperator {
   private final Comparator<Binary> comparator;
 
   private final TreeMap<Binary, Location> timeSeriesSelector;
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(LastQueryMergeOperator.class);
 
   public LastQueryMergeOperator(
       OperatorContext operatorContext, List<Operator> children, Comparator<Binary> comparator) {
@@ -178,12 +173,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
     while (!timeSeriesSelector.isEmpty()
         && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
-      Map.Entry<Binary, Location> entry = timeSeriesSelector.pollFirstEntry();
-      Location location = entry.getValue();
-      TsBlock tsBlock = inputTsBlocks[location.tsBlockIndex];
-      if (tsBlock == null) {
-        LOGGER.warn("Null TsBlock, location is: {},key is: {}", location, entry.getKey());
-      }
+      Location location = timeSeriesSelector.pollFirstEntry().getValue();
       appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
     }
 
