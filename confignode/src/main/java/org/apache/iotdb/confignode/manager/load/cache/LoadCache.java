@@ -502,7 +502,7 @@ public class LoadCache {
   /**
    * Safely get the latest RegionLeaderMap.
    *
-   * @return Map<RegionGroupId, leaderId>
+   * @return Map<RegionGroupId, leaderId>, leaderId will be -1 if the RegionGroup has no leader yet.
    */
   public Map<TConsensusGroupId, Integer> getRegionLeaderMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = new ConcurrentHashMap<>();
@@ -520,8 +520,12 @@ public class LoadCache {
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
     regionRouteCacheMap.forEach(
-        (regionGroupId, regionRouteCache) ->
-            regionPriorityMap.put(regionGroupId, regionRouteCache.getRegionPriority()));
+        (regionGroupId, regionRouteCache) -> {
+          if (!RegionRouteCache.unReadyRegionPriority.equals(
+              regionRouteCache.getRegionPriority())) {
+            regionPriorityMap.put(regionGroupId, regionRouteCache.getRegionPriority());
+          }
+        });
     return regionPriorityMap;
   }
 
@@ -550,12 +554,13 @@ public class LoadCache {
       try {
         TimeUnit.MILLISECONDS.sleep(HEARTBEAT_INTERVAL);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOGGER.warn("Interrupt when wait for leader election", e);
       }
     }
 
     LOGGER.warn(
-        "[RegionElection] The leader of RegionGroups: {} is not elected after 10 seconds. Some function might fail.",
+        "[RegionElection] The leader of RegionGroups: {} is not elected after 10 heartbeat interval. Some function might fail.",
         regionGroupIds);
   }
 

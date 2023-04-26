@@ -64,6 +64,7 @@ public class RouteBalancer {
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getSchemaRegionConsensusProtocolClass();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -121,11 +122,15 @@ public class RouteBalancer {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         new ConcurrentHashMap<>();
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
+      LOGGER.info("[RouteCache] Start leader balance for SchemaRegionGroups");
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.SchemaRegion));
     }
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
+      LOGGER.info("[RouteCache] Start leader balance for DataRegionGroups");
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.DataRegion));
     }
+
+    LOGGER.info("[RouteCache] Leader balance result: {}", differentRegionLeaderMap);
     return differentRegionLeaderMap;
   }
 
@@ -148,6 +153,8 @@ public class RouteBalancer {
                 .map(TDataNodeLocation::getDataNodeId)
                 .collect(Collectors.toSet()));
 
+    LOGGER.info("[RouteCache] Origin leader distribution: {}", currentLeaderMap);
+    LOGGER.info("[RouteCache] Optimal leader distribution: {}", optimalLeadderMap);
     // Transfer leader to the optimal distribution
     AtomicInteger requestId = new AtomicInteger(0);
     AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler =
@@ -241,7 +248,7 @@ public class RouteBalancer {
 
     Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentRegionPriorityMap =
         new ConcurrentHashMap<>();
-    for (TConsensusGroupId regionGroupId : currentPriorityMap.keySet()) {
+    for (TConsensusGroupId regionGroupId : optimalRegionPriorityMap.keySet()) {
       if (!optimalRegionPriorityMap
           .get(regionGroupId)
           .equals(currentPriorityMap.get(regionGroupId))) {

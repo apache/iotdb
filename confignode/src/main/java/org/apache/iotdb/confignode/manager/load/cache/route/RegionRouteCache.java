@@ -26,10 +26,15 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RegionRouteCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouteCache.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -51,6 +56,7 @@ public class RegionRouteCache {
   private final AtomicReference<TRegionReplicaSet> regionPriority;
 
   public RegionRouteCache(TConsensusGroupId consensusGroupId) {
+    LOGGER.info("[RouteCache] Create a new RegionRouteCache for {}", consensusGroupId);
     this.consensusGroupId = consensusGroupId;
     switch (consensusGroupId.getType()) {
       case SchemaRegion:
@@ -73,12 +79,17 @@ public class RegionRouteCache {
    * @param leaderSample the latest leader of a RegionGroup
    */
   public synchronized void cacheLeaderSample(Pair<Long, Integer> leaderSample) {
-    // The leader of other consensus protocol is selected by ConfigNode-leader.
-    if (consensusProtocolClass.equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      // Only the leader of ratis consensus is self-elected
-      if (leaderSample.getLeft() > this.leaderSample.get().getLeft()) {
-        this.leaderSample.set(leaderSample);
-      }
+    switch (consensusProtocolClass) {
+      case ConsensusFactory.SIMPLE_CONSENSUS:
+      case ConsensusFactory.RATIS_CONSENSUS:
+        // The leader of simple and ratis consensus is self-elected
+        if (leaderSample.getLeft() > this.leaderSample.get().getLeft()) {
+          this.leaderSample.set(leaderSample);
+        }
+        break;
+      case ConsensusFactory.IOT_CONSENSUS:
+      default:
+        // The leader of other consensus protocol is selected by ConfigNode-leader.
     }
   }
 
@@ -90,18 +101,26 @@ public class RegionRouteCache {
    */
   public boolean periodicUpdate() {
     switch (consensusProtocolClass) {
+      case ConsensusFactory.SIMPLE_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
-        // Only the leader of ratis consensus is self-elected
+        // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
+          LOGGER.info(
+              "[RouteCache] Update leaderId of: {}, {}",
+              consensusGroupId,
+              leaderSample.get().getRight());
           leaderId.set(leaderSample.get().getRight());
           return true;
         }
         return false;
       case ConsensusFactory.IOT_CONSENSUS:
       default:
-        // The leader of other consensus protocol is selected by ConfigNode-leader.
+        // The leader of iot consensus protocol is selected by ConfigNode-leader.
         // The leaderId is initialized to -1, in this case return ture will trigger the leader
         // selection.
+        if (leaderId.get() == -1) {
+          LOGGER.info("[RouteCache] {} should trigger election", consensusGroupId);
+        }
         return leaderId.get() == -1;
     }
   }

@@ -144,6 +144,7 @@ public class StatisticsService implements IClusterStatusSubscriber {
       differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
           differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
+      LOGGER.info("[RouteCache] Priority balance result: {}", differentRegionPriorityMap);
 
       eventBus.post(
           new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));

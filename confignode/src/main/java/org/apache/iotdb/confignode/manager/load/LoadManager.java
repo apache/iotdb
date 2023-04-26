@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
-import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
@@ -144,10 +143,6 @@ public class LoadManager {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     loadCache.clearHeartbeatCache();
-  }
-
-  public RouteBalancer getRouteBalancer() {
-    return routeBalancer;
   }
 
   /**
@@ -397,9 +392,5 @@ public class LoadManager {
    */
   public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
     loadCache.removeRegionRouteCache(regionGroupId);
-  }
-
-  private PartitionManager getPartitionManager() {
-    return configManager.getPartitionManager();
   }
 }
