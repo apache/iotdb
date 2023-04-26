@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,6 +54,11 @@ public class CachedSchemaPatternMatcherTest {
     collectorList = new ArrayList<>();
   }
 
+  @After
+  public void tearDown() {
+    executorService.shutdownNow();
+  }
+
   @Test
   public void testCachedMatcher() throws ExecutionException, InterruptedException {
     PipeRealtimeDataRegionCollector databaseCollector =
@@ -74,11 +80,7 @@ public class CachedSchemaPatternMatcherTest {
 
     Future<?> future =
         executorService.submit(
-            () -> {
-              collectorList.forEach(collector -> matcher.register(collector));
-              //                Thread.sleep(20000);
-              //                collectorList.forEach(collector -> matcher.deregister(collector));
-            });
+            () -> collectorList.forEach(collector -> matcher.register(collector)));
 
     int epochNum = 10000;
     int deviceNum = 1000;

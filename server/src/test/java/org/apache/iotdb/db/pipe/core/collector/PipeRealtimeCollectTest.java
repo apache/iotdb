@@ -50,14 +50,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class PipeRealtimeCollectTest {
-  private static final Logger logger = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
 
   private final String dataRegion1 = "dataRegion-1";
   private final String dataRegion2 = "dataRegion-2";
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
-  private AtomicBoolean alive = new AtomicBoolean();
+  private final AtomicBoolean alive = new AtomicBoolean();
 
   private ExecutorService writeService;
   private ExecutorService listenerService;
@@ -77,90 +78,96 @@ public class PipeRealtimeCollectTest {
   @Test
   public void testRealtimeCollectProcess() throws ExecutionException, InterruptedException {
     // set up realtime collector
-    PipeRealtimeDataRegionCollector[] collectors =
-        new PipeRealtimeDataRegionCollector[] {
-          new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion1),
-          new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion1),
-          new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion2),
-          new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion2)
-        };
 
-    // start collector 0, 1
-    collectors[0].start();
-    collectors[1].start();
+    try (PipeRealtimeHybridDataRegionCollector collector1 =
+            new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion1);
+        PipeRealtimeHybridDataRegionCollector collector2 =
+            new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion1);
+        PipeRealtimeHybridDataRegionCollector collector3 =
+            new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion2);
+        PipeRealtimeHybridDataRegionCollector collector4 =
+            new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion2)) {
 
-    // test result of collector 0, 1
-    int writeNum = 10;
-    List<Future<?>> writeFutures =
-        Arrays.asList(
-            write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
+      PipeRealtimeDataRegionCollector[] collectors =
+          new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};
 
-    alive.set(true);
-    List<Future<?>> listenFutures =
-        Arrays.asList(
-            listen(
-                collectors[0],
-                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
-                writeNum << 1),
-            listen(collectors[1], typ2 -> 1, writeNum));
+      // start collector 0, 1
+      collectors[0].start();
+      collectors[1].start();
 
-    try {
-      listenFutures.get(0).get(10, TimeUnit.MINUTES);
-      listenFutures.get(1).get(10, TimeUnit.MINUTES);
-    } catch (TimeoutException e) {
-      logger.warn("Time out when listening collector", e);
-      alive.set(false);
-      Assert.fail();
+      // test result of collector 0, 1
+      int writeNum = 10;
+      List<Future<?>> writeFutures =
+          Arrays.asList(
+              write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
+
+      alive.set(true);
+      List<Future<?>> listenFutures =
+          Arrays.asList(
+              listen(
+                  collectors[0],
+                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  writeNum << 1),
+              listen(collectors[1], typ2 -> 1, writeNum));
+
+      try {
+        listenFutures.get(0).get(10, TimeUnit.MINUTES);
+        listenFutures.get(1).get(10, TimeUnit.MINUTES);
+      } catch (TimeoutException e) {
+        LOGGER.warn("Time out when listening collector", e);
+        alive.set(false);
+        Assert.fail();
+      }
+      writeFutures.forEach(
+          future -> {
+            try {
+              future.get();
+            } catch (InterruptedException | ExecutionException e) {
+              throw new RuntimeException(e);
+            }
+          });
+
+      // start collector 2, 3
+      collectors[2].start();
+      collectors[3].start();
+
+      // test result of collector 0 - 3
+      writeFutures =
+          Arrays.asList(
+              write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
+
+      alive.set(true);
+      listenFutures =
+          Arrays.asList(
+              listen(
+                  collectors[0],
+                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  writeNum << 1),
+              listen(collectors[1], typ2 -> 1, writeNum),
+              listen(
+                  collectors[2],
+                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  writeNum << 1),
+              listen(collectors[3], typ2 -> 1, writeNum));
+      try {
+        listenFutures.get(0).get(10, TimeUnit.MINUTES);
+        listenFutures.get(1).get(10, TimeUnit.MINUTES);
+        listenFutures.get(2).get(10, TimeUnit.MINUTES);
+        listenFutures.get(3).get(10, TimeUnit.MINUTES);
+      } catch (TimeoutException e) {
+        LOGGER.warn("Time out when listening collector", e);
+        alive.set(false);
+        Assert.fail();
+      }
+      writeFutures.forEach(
+          future -> {
+            try {
+              future.get();
+            } catch (InterruptedException | ExecutionException e) {
+              throw new RuntimeException(e);
+            }
+          });
     }
-    writeFutures.forEach(
-        future -> {
-          try {
-            future.get();
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        });
-
-    // start collector 2, 3
-    collectors[2].start();
-    collectors[3].start();
-
-    // test result of collector 0 - 3
-    writeFutures =
-        Arrays.asList(
-            write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
-
-    alive.set(true);
-    listenFutures =
-        Arrays.asList(
-            listen(
-                collectors[0],
-                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
-                writeNum << 1),
-            listen(collectors[1], typ2 -> 1, writeNum),
-            listen(
-                collectors[2],
-                type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
-                writeNum << 1),
-            listen(collectors[3], typ2 -> 1, writeNum));
-    try {
-      listenFutures.get(0).get(10, TimeUnit.MINUTES);
-      listenFutures.get(1).get(10, TimeUnit.MINUTES);
-      listenFutures.get(2).get(10, TimeUnit.MINUTES);
-      listenFutures.get(3).get(10, TimeUnit.MINUTES);
-    } catch (TimeoutException e) {
-      logger.warn("Time out when listening collector", e);
-      alive.set(false);
-      Assert.fail();
-    }
-    writeFutures.forEach(
-        future -> {
-          try {
-            future.get();
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        });
   }
 
   private Future<?> write2DataRegion(int writeNum, String dataRegionId) {
@@ -211,7 +218,7 @@ public class PipeRealtimeCollectTest {
           int eventNum = 0;
           try {
             while (alive.get() && eventNum < expectNum) {
-              Event event = null;
+              Event event;
               try {
                 event = collector.supply();
               } catch (Exception e) {
