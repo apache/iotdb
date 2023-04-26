@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -227,7 +228,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               valueChunkWriter.getCompressionType(),
               valueChunkWriter.getDataType(),
               valueChunkWriter.getEncodingType(),
-              valueChunkWriter.getStatistics());
+              Statistics.getStatsByType(valueChunkWriter.getDataType()));
           continue;
         }
         CompactionTaskManager.mergeRateLimiterAcquire(

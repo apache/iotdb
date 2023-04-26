@@ -168,7 +168,8 @@ public class FastCompactionPerformer
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>, including
+    // empty value chunk metadata
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new LinkedHashMap<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
