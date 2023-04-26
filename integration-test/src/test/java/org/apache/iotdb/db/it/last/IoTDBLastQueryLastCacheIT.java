@@ -47,34 +47,34 @@ import static org.junit.Assert.fail;
 public class IoTDBLastQueryLastCacheIT {
   protected static final String[] SQLs =
       new String[] {
-        "create aligned timeseries root.ln_1.tb_6141(风机退出_BOOLEAN BOOLEAN encoding=RLE,`出水NH4-N_DOUBLE` DOUBLE encoding=GORILLA,膜产水状态_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,产水间歇运行时间设置_DOUBLE DOUBLE encoding=GORILLA,文本_TEXT TEXT encoding=PLAIN, 风机投入_BOOLEAN BOOLEAN encoding=RLE,枚举_INT32 INT32 encoding=RLE,出水TP_DOUBLE DOUBLE encoding=GORILLA,水管流速_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`开关量-运行_BOOLEAN` BOOLEAN encoding=RLE,功能码_DOUBLE DOUBLE encoding=GORILLA);",
-        "alter timeseries root.ln_1.tb_6141.风机退出_BOOLEAN upsert alias=风机退出;",
-        "alter timeseries root.ln_1.tb_6141.水管流速_DOUBLE upsert alias=水管流速;",
+        "create aligned timeseries root.ln_1.tb_6141(machineExit_BOOLEAN BOOLEAN encoding=RLE,`waterNH4-N_DOUBLE` DOUBLE encoding=GORILLA,status_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,waterInterval_DOUBLE DOUBLE encoding=GORILLA,content_TEXT TEXT encoding=PLAIN, machineOn_BOOLEAN BOOLEAN encoding=RLE,enum_INT32 INT32 encoding=RLE,waterTP_DOUBLE DOUBLE encoding=GORILLA,fluidVelocity _DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`switch_BOOLEAN` BOOLEAN encoding=RLE,code_DOUBLE DOUBLE encoding=GORILLA);",
+        "alter timeseries root.ln_1.tb_6141.machineExit_BOOLEAN upsert alias=machineExit;",
+        "alter timeseries root.ln_1.tb_6141.fluidVelocity _DOUBLE upsert alias=fluidVelocity ;",
         "alter timeseries root.ln_1.tb_6141.CO2_DOUBLE upsert alias=CO2;",
-        "alter timeseries root.ln_1.tb_6141.风机投入_BOOLEAN upsert alias=风机投入;",
-        "alter timeseries root.ln_1.tb_6141.产水间歇运行时间设置_DOUBLE upsert alias=产水间歇运行时间设置;",
-        "alter timeseries root.ln_1.tb_6141.膜产水状态_BOOLEAN upsert alias=膜产水状态;",
-        "alter timeseries root.ln_1.tb_6141.枚举_INT32 upsert alias=枚举;",
-        "alter timeseries root.ln_1.tb_6141.出水TP_DOUBLE upsert alias=出水TP;",
-        "alter timeseries root.ln_1.tb_6141.文本_TEXT upsert alias=文本;",
-        "alter timeseries root.ln_1.tb_6141.`出水NH4-N_DOUBLE` upsert alias=`出水NH4-N`;",
-        "alter timeseries root.ln_1.tb_6141.功能码_DOUBLE upsert alias=功能码;",
+        "alter timeseries root.ln_1.tb_6141.machineOn_BOOLEAN upsert alias=machineOn;",
+        "alter timeseries root.ln_1.tb_6141.waterInterval_DOUBLE upsert alias=waterInterval;",
+        "alter timeseries root.ln_1.tb_6141.status_BOOLEAN upsert alias=status;",
+        "alter timeseries root.ln_1.tb_6141.enum_INT32 upsert alias=enum;",
+        "alter timeseries root.ln_1.tb_6141.waterTP_DOUBLE upsert alias=waterTP;",
+        "alter timeseries root.ln_1.tb_6141.content_TEXT upsert alias=content;",
+        "alter timeseries root.ln_1.tb_6141.`waterNH4-N_DOUBLE` upsert alias=`waterNH4-N`;",
+        "alter timeseries root.ln_1.tb_6141.code_DOUBLE upsert alias=code;",
         "alter timeseries root.ln_1.tb_6141.11_TEXT upsert alias=`11`;",
-        "alter timeseries root.ln_1.tb_6141.`开关量-运行_BOOLEAN` upsert alias=`开关量-运行`;",
-        "insert into root.ln_1.tb_6141(time,产水间歇运行时间设置_DOUBLE) aligned values(1679365910000,10.0);",
-        "insert into root.ln_1.tb_6141(time,出水TP_DOUBLE) aligned values(1679365910000,15.0);",
-        "insert into root.ln_1.tb_6141(time,功能码_DOUBLE) aligned values(1679477545000,2.0);",
-        "insert into root.ln_1.tb_6141(time,文本_TEXT) aligned values(1675995566000,52);",
-        "insert into root.ln_1.tb_6141(time,枚举_INT32) aligned values(1675995566000,2);",
-        "insert into root.ln_1.tb_6141(time,水管流速_DOUBLE) aligned values(1679365910000,15.0);",
-        "insert into root.ln_1.tb_6141(time,膜产水状态_BOOLEAN) aligned values(1677033625000,true);",
-        "insert into root.ln_1.tb_6141(time,风机投入_BOOLEAN) aligned values(1675995566000,true);",
-        "insert into root.ln_1.tb_6141(time,风机退出_BOOLEAN) aligned values(1675995566000,false);",
+        "alter timeseries root.ln_1.tb_6141.`switch_BOOLEAN` upsert alias=`switch`;",
+        "insert into root.ln_1.tb_6141(time,waterInterval_DOUBLE) aligned values(1679365910000,10.0);",
+        "insert into root.ln_1.tb_6141(time,waterTP_DOUBLE) aligned values(1679365910000,15.0);",
+        "insert into root.ln_1.tb_6141(time,code_DOUBLE) aligned values(1679477545000,2.0);",
+        "insert into root.ln_1.tb_6141(time,content_TEXT) aligned values(1675995566000,52);",
+        "insert into root.ln_1.tb_6141(time,enum_INT32) aligned values(1675995566000,2);",
+        "insert into root.ln_1.tb_6141(time,fluidVelocity _DOUBLE) aligned values(1679365910000,15.0);",
+        "insert into root.ln_1.tb_6141(time,status_BOOLEAN) aligned values(1677033625000,true);",
+        "insert into root.ln_1.tb_6141(time,machineOn_BOOLEAN) aligned values(1675995566000,true);",
+        "insert into root.ln_1.tb_6141(time,machineExit_BOOLEAN) aligned values(1675995566000,false);",
         "insert into root.ln_1.tb_6141(time,11_TEXT) aligned values(1679365910000,13);",
         "insert into root.ln_1.tb_6141(time,CO2_DOUBLE) aligned values(1679365910000,12.0);",
-        "insert into root.ln_1.tb_6141(time,`出水NH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
-        "insert into root.ln_1.tb_6141(time,`出水NH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
-        "insert into root.ln_1.tb_6141(time,`开关量-运行_BOOLEAN`) aligned values(1675995566000,false);"
+        "insert into root.ln_1.tb_6141(time,`waterNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
+        "insert into root.ln_1.tb_6141(time,`waterNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
+        "insert into root.ln_1.tb_6141(time,`switch_BOOLEAN`) aligned values(1675995566000,false);"
       };
 
   @BeforeClass
@@ -103,19 +103,19 @@ public class IoTDBLastQueryLastCacheIT {
         new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
     String[] retArray =
         new String[] {
-          "1679365910000,root.ln_1.tb_6141.产水间歇运行时间设置_DOUBLE,10.0,DOUBLE,",
-          "1679365910000,root.ln_1.tb_6141.出水TP_DOUBLE,15.0,DOUBLE,",
-          "1679477545000,root.ln_1.tb_6141.功能码_DOUBLE,2.0,DOUBLE,",
-          "1675995566000,root.ln_1.tb_6141.文本_TEXT,52,TEXT,",
-          "1675995566000,root.ln_1.tb_6141.枚举_INT32,2,INT32,",
-          "1679365910000,root.ln_1.tb_6141.水管流速_DOUBLE,15.0,DOUBLE,",
-          "1677033625000,root.ln_1.tb_6141.膜产水状态_BOOLEAN,true,BOOLEAN,",
-          "1675995566000,root.ln_1.tb_6141.风机投入_BOOLEAN,true,BOOLEAN,",
-          "1675995566000,root.ln_1.tb_6141.风机退出_BOOLEAN,false,BOOLEAN,",
+          "1679365910000,root.ln_1.tb_6141.waterInterval_DOUBLE,10.0,DOUBLE,",
+          "1679365910000,root.ln_1.tb_6141.waterTP_DOUBLE,15.0,DOUBLE,",
+          "1679477545000,root.ln_1.tb_6141.code_DOUBLE,2.0,DOUBLE,",
+          "1675995566000,root.ln_1.tb_6141.content_TEXT,52,TEXT,",
+          "1675995566000,root.ln_1.tb_6141.enum_INT32,2,INT32,",
+          "1679365910000,root.ln_1.tb_6141.fluidVelocity _DOUBLE,15.0,DOUBLE,",
+          "1677033625000,root.ln_1.tb_6141.status_BOOLEAN,true,BOOLEAN,",
+          "1675995566000,root.ln_1.tb_6141.machineOn_BOOLEAN,true,BOOLEAN,",
+          "1675995566000,root.ln_1.tb_6141.machineExit_BOOLEAN,false,BOOLEAN,",
           "1679365910000,root.ln_1.tb_6141.11_TEXT,13,TEXT,",
           "1679365910000,root.ln_1.tb_6141.CO2_DOUBLE,12.0,DOUBLE,",
-          "1679365910000,root.ln_1.tb_6141.`出水NH4-N_DOUBLE`,12.0,DOUBLE,",
-          "1675995566000,root.ln_1.tb_6141.`开关量-运行_BOOLEAN`,false,BOOLEAN,"
+          "1679365910000,root.ln_1.tb_6141.`waterNH4-N_DOUBLE`,12.0,DOUBLE,",
+          "1675995566000,root.ln_1.tb_6141.`switch_BOOLEAN`,false,BOOLEAN,"
         };
     resultSetEqualTest("select last * from root.ln_1.tb_6141;", expectedHeader, retArray);
   }
