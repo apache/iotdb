@@ -66,6 +66,7 @@ public class NodeReport {
     long lastLogIndex;
     long commitIndex;
     long commitTerm;
+    long persistedIndex;
     boolean isReadOnly;
     long lastHeartbeatReceivedTime;
     long prevLastLogIndex;
@@ -79,6 +80,7 @@ public class NodeReport {
         long lastLogIndex,
         long commitIndex,
         long commitTerm,
+        long persistedIndex,
         boolean isReadOnly,
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
@@ -90,6 +92,7 @@ public class NodeReport {
       this.lastLogIndex = lastLogIndex;
       this.commitIndex = commitIndex;
       this.commitTerm = commitTerm;
+      this.persistedIndex = persistedIndex;
       this.isReadOnly = isReadOnly;
       this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
       this.prevLastLogIndex = prevLastLogIndex;
@@ -114,6 +117,8 @@ public class NodeReport {
           + commitIndex
           + ", commitTerm="
           + commitTerm
+          + ", persistedIndex="
+          + persistedIndex
           + ", appliedLogIndex="
           + maxAppliedLogIndex
           + ", readOnly="

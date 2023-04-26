@@ -1384,6 +1384,7 @@ public class RaftMember {
         lastReportIndex,
         logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(),
+        logManager.getPersistedLogIndex(),
         readOnly,
         heartbeatThread.getLastHeartbeatReceivedTime(),
         prevLastLogIndex,

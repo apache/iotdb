@@ -36,8 +36,8 @@ public abstract class DynamicThread implements Runnable {
   private long idleTimeSum;
   private long runningTimeSum;
   // TODO: add configuration for the values
-  private double maximumIdleRatio = 0.5;
-  private double minimumIdleRatio = 0.1;
+  private double maximumIdleRatio = 0.8;
+  private double minimumIdleRatio = 0.2;
   private long minimumRunningTime = 10_000_000_000L;
 
   public DynamicThread(DynamicThreadGroup threadGroup) {

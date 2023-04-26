@@ -62,4 +62,6 @@ public interface StableEntryManager {
    * should be cleaned
    */
   void clearAllLogs(long commitIndex);
+
+  long getPersistedLogIndex();
 }

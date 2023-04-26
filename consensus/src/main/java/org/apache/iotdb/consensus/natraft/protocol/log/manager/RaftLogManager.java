@@ -973,4 +973,8 @@ public abstract class RaftLogManager {
   public ReentrantReadWriteLock getLock() {
     return lock;
   }
+
+  public long getPersistedLogIndex() {
+    return stableEntryManager.getPersistedLogIndex();
+  }
 }
