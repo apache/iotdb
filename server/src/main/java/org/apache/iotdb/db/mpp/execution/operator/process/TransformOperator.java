@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFQueryIdAssigner;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -78,7 +77,7 @@ public class TransformOperator implements ProcessOperator {
   protected TimeSelector timeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
 
-  private final long udtfQueryId;
+  private final String udtfQueryId;
 
   public TransformOperator(
       OperatorContext operatorContext,
@@ -94,8 +93,9 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
-    // use UDTFQueryIdAssigner to generate unique id for each TransformOperator
-    this.udtfQueryId = UDTFQueryIdAssigner.getInstance().getNextId();
+    // use DriverTaskID().getFullId() to ensure that udtfQueryId for each TransformOperator is
+    // unique
+    this.udtfQueryId = operatorContext.getDriverContext().getDriverTaskID().getFullId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);

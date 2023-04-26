@@ -39,10 +39,10 @@ public abstract class IntermediateLayer {
   // for debug
   protected final Expression expression;
 
-  protected final long queryId;
+  protected final String queryId;
   protected final float memoryBudgetInMB;
 
-  protected IntermediateLayer(Expression expression, long queryId, float memoryBudgetInMB) {
+  protected IntermediateLayer(Expression expression, String queryId, float memoryBudgetInMB) {
     this.expression = expression;
     this.queryId = queryId;
     this.memoryBudgetInMB = memoryBudgetInMB;

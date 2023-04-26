@@ -38,7 +38,7 @@ public class UDFClassLoaderManager implements IService {
   private final String libRoot;
 
   /** The keys in the map are the query IDs of the UDF queries being executed. */
-  private final Map<Long, UDFClassLoader> queryIdToUDFClassLoaderMap;
+  private final Map<String, UDFClassLoader> queryIdToUDFClassLoaderMap;
 
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
@@ -54,12 +54,12 @@ public class UDFClassLoaderManager implements IService {
     activeClassLoader = null;
   }
 
-  public void initializeUDFQuery(long queryId) {
+  public void initializeUDFQuery(String queryId) {
     activeClassLoader.acquire();
     queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader);
   }
 
-  public void finalizeUDFQuery(long queryId) {
+  public void finalizeUDFQuery(String queryId) {
     UDFClassLoader classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
     try {
       if (classLoader != null) {
