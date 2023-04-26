@@ -48,7 +48,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  private Comparator<Binary> comparator;
+  private Comparator<Binary> comparator = Comparator.naturalOrder();
 
   public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath) {
     super(id);
