@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -74,7 +72,7 @@ public class QueryResourceManager {
     filePathsManager.removeUsedFilesForQuery(queryId);
 
     // close and delete UDF temp files
-    TemporaryQueryDataFileService.getInstance().deregister(queryId);
+    // TemporaryQueryDataFileService.getInstance().deregister(queryId);
   }
 
   public QueryFileManager getQueryFileManager() {
