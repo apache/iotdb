@@ -30,6 +30,10 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFSubstr;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
 
+import com.google.common.collect.ImmutableSet;
+
+import java.util.Set;
+
 /** All built-in UDFs need to register their function names and classes here. */
 public enum BuiltinTimeSeriesGeneratingFunction {
   CONST("CONST", UDTFConst.class),
@@ -95,6 +99,12 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   private final String functionName;
   private final Class<?> functionClass;
   private final String className;
+
+  /**
+   * Set of functions are mappable but DeviceView of them also need special process. Now there is no
+   * function satisfies this.
+   */
+  public static final Set<String> DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS = ImmutableSet.of();
 
   BuiltinTimeSeriesGeneratingFunction(String functionName, Class<?> functionClass) {
     this.functionName = functionName;
