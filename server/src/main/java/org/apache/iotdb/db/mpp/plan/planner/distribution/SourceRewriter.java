@@ -569,14 +569,21 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         if (child instanceof LastQueryScanNode) {
                           fullPath = ((LastQueryScanNode) child).getSeriesPath().getFullPath();
                         } else if (child instanceof AlignedLastQueryScanNode) {
-                          // set comparator
-                          ((AlignedLastQueryScanNode) child).setComparator(comparator);
                           fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
                         }
                         return new Binary(fullPath);
                       },
                       comparator))
               .collect(Collectors.toList()));
+      lastQueryNode
+          .getChildren()
+          .forEach(
+              child -> {
+                if (child instanceof AlignedLastQueryScanNode) {
+                  // set comparator
+                  ((AlignedLastQueryScanNode) child).setComparator(comparator);
+                }
+              });
     } else {
       for (PlanNode child : root.getChildren()) {
         addSortForEachLastQueryNode(child, orderByParameter);
