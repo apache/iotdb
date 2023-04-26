@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -59,7 +59,8 @@ import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.w
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.writeOneAlignedPage;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
+public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest {
+  private final String oldThreadName = Thread.currentThread().getName();
 
   @Before
   public void setUp()
@@ -69,11 +70,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    Thread.currentThread().setName(oldThreadName);
     for (TsFileResource tsFileResource : seqResources) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
     }
@@ -253,7 +256,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -507,7 +510,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -760,7 +763,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -1030,7 +1033,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -1399,7 +1402,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -1776,7 +1779,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -2163,7 +2166,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -2534,7 +2537,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -2906,7 +2909,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -3289,7 +3292,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -3726,7 +3729,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -4166,7 +4169,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -4606,7 +4609,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -5098,7 +5101,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -5535,7 +5538,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -5753,7 +5756,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -6033,7 +6036,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -6440,7 +6443,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -6812,7 +6815,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -7066,7 +7069,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -7206,7 +7209,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -7397,7 +7400,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);
@@ -7625,7 +7628,7 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager,
             seqResources,
             unseqResources,
-            new FastCompactionPerformer(true),
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0,
             0);

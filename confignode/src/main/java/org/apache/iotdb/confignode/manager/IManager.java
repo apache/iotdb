@@ -375,7 +375,7 @@ public interface IManager {
   TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges */
-  TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
+  TPermissionInfoResp checkUserPrivileges(String username, List<PartialPath> paths, int permission);
 
   /**
    * Register ConfigNode when it is first startup

@@ -124,7 +124,13 @@ public class SnapshotStorage implements StateMachineStorage {
       }
       FileInfo fileInfo = null;
       try {
-        fileInfo = new FileInfo(file.toRealPath(), null);
+        if (getSnapshotDir() == null) {
+          // for regions that place the snapshot in default sm folder, use relative path
+          fileInfo = new FileInfo(file, null);
+        } else {
+          // for regions that have a separate snapshot installation path, use absolute path
+          fileInfo = new FileInfo(file.toRealPath(), null);
+        }
       } catch (IOException e) {
         logger.warn("{} cannot resolve real path of {} due to {}", this, file, e);
         return null;

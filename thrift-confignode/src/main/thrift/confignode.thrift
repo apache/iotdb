@@ -293,7 +293,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required list<string> nodeNameList
+  7: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -327,7 +327,7 @@ struct TLoginReq {
 
 struct TCheckUserPrivilegesReq {
   1: required string username
-  2: required list<string> paths
+  2: required binary paths
   3: required i32 permission
 }
 
