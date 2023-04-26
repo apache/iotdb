@@ -16,24 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.observer;
 
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
-import org.apache.iotdb.tsfile.utils.Pair;
+package org.apache.iotdb.db.pipe.task.subtask;
 
-import java.util.Map;
+public class PipeAssignerSubtask extends PipeSubtask {
 
-public class NodeStatisticsEvent implements IEvent {
-
-  // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one means
-  // the previous NodeStatistics
-  private Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap;
-
-  public NodeStatisticsEvent(Map<Integer, Pair<NodeStatistics, NodeStatistics>> nodeStatisticsMap) {
-    this.nodeStatisticsMap = nodeStatisticsMap;
+  public PipeAssignerSubtask(String taskID) {
+    super(taskID);
   }
 
-  public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getNodeStatisticsMap() {
-    return nodeStatisticsMap;
+  @Override
+  protected void executeForAWhile() {
+    // do nothing
+  }
+
+  @Override
+  public void close() {
+    // TODO
   }
 }

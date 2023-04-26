@@ -114,9 +114,12 @@ public class ShuffleSinkHandle implements ISinkHandle {
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
+      checkState();
+      if (closed) {
+        return;
+      }
       ISinkChannel currentChannel =
           downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
-      checkState();
       currentChannel.send(tsBlock);
     } finally {
       switchChannelIfNecessary();
@@ -248,8 +251,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("ShuffleSinkHandle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("ShuffleSinkHandle is closed.");
     }
   }
 

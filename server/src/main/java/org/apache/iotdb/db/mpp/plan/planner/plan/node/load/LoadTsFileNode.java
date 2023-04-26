@@ -90,21 +90,7 @@ public class LoadTsFileNode extends WritePlanNode {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
     for (TsFileResource resource : resources) {
-      try {
-        LoadSingleTsFileNode singleTsFileNode =
-            new LoadSingleTsFileNode(
-                getPlanNodeId(),
-                resource,
-                statement.isDeleteAfterLoad(),
-                analysis.getDataPartitionInfo());
-        singleTsFileNode.checkIfNeedDecodeTsFile();
-        res.add(singleTsFileNode);
-      } catch (Exception e) {
-        logger.error(
-            String.format(
-                "Check whether TsFile %s need decode or not error", resource.getTsFile().getPath()),
-            e);
-      }
+      res.add(new LoadSingleTsFileNode(getPlanNodeId(), resource, statement.isDeleteAfterLoad()));
     }
     return res;
   }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
+package org.apache.iotdb.util;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
@@ -85,7 +85,7 @@ public abstract class AbstractSchemaIT {
         .setSchemaMemoryAllocate(StringUtils.join(proportion, ':'));
   }
 
-  enum SchemaTestMode {
+  protected enum SchemaTestMode {
     Memory,
     SchemaFile
   }

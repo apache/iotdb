@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -110,6 +108,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -760,7 +759,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     try {
-      URI uri = new URI(uriString);
+      new URI(uriString);
     } catch (URISyntaxException e) {
       throw new SemanticException(String.format("Invalid URI: %s", uriString));
     }
@@ -3404,48 +3403,76 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(ctx.path.getText(), type);
-    if (ctx.seriesSlot != null) {
-      getRegionIdStatement.setSeriesSlotId(
-          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(type);
+    if (ctx.database != null) {
+      getRegionIdStatement.setDatabase(ctx.database.getText());
     } else {
-      getRegionIdStatement.setDeviceId(ctx.deviceId.getText());
+      getRegionIdStatement.setDevice(ctx.device.getText());
     }
-    if (ctx.timeSlot != null) {
-      getRegionIdStatement.setTimeSlotId(
-          new TTimePartitionSlot(
-              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
-    } else if (ctx.timeStamp != null) {
-      getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
+    if (ctx.time != null) {
+      long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getRegionIdStatement.setTimeStamp(timestamp);
+      }
     }
     return getRegionIdStatement;
   }
 
   @Override
   public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
-    GetSeriesSlotListStatement getSeriesSlotListStatement =
-        new GetSeriesSlotListStatement(ctx.prefixPath().getText());
-    if (ctx.DATA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.DataRegion);
-    } else if (ctx.SCHEMA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.SchemaRegion);
-    }
-    return getSeriesSlotListStatement;
+    TConsensusGroupType type =
+        ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
+    return new GetSeriesSlotListStatement(ctx.database.getText(), type);
   }
 
   @Override
   public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
-    GetTimeSlotListStatement getTimeSlotListStatement =
-        new GetTimeSlotListStatement(
-            ctx.prefixPath().getText(),
-            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetTimeSlotListStatement getTimeSlotListStatement = new GetTimeSlotListStatement();
+    if (ctx.database != null) {
+      getTimeSlotListStatement.setDatabase(ctx.database.getText());
+    } else if (ctx.device != null) {
+      getTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
     if (ctx.startTime != null) {
-      getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+      long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setStartTime(timestamp);
+      }
     }
     if (ctx.endTime != null) {
-      getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+      long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setEndTime(timestamp);
+      }
     }
     return getTimeSlotListStatement;
+  }
+
+  @Override
+  public Statement visitCountTimeSlotList(IoTDBSqlParser.CountTimeSlotListContext ctx) {
+    CountTimeSlotListStatement countTimeSlotListStatement = new CountTimeSlotListStatement();
+    if (ctx.database != null) {
+      countTimeSlotListStatement.setDatabase(ctx.database.getText());
+    } else if (ctx.device != null) {
+      countTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      countTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
+    if (ctx.startTime != null) {
+      countTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+    }
+    if (ctx.endTime != null) {
+      countTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+    }
+    return countTimeSlotListStatement;
   }
 
   @Override
@@ -3704,9 +3731,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("Limit configuration is not enabled, please enable it first.");
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
-    List<PartialPath> databases = null;
     if (ctx.prefixPath() != null) {
-      databases = new ArrayList<>();
+      List<PartialPath> databases = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         databases.add(parsePrefixPath(prefixPathContext));
       }

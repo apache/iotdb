@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.callable;
+package org.apache.iotdb.db.pipe.task.subtask;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
