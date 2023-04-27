@@ -48,6 +48,8 @@ public class LocalSinkChannel implements ISinkChannel {
   private boolean aborted = false;
   private boolean closed = false;
 
+  private boolean invokedOnFinished = false;
+
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
@@ -106,7 +108,10 @@ public class LocalSinkChannel implements ISinkChannel {
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
-          sinkListener.onFinish(this);
+          if (!invokedOnFinished) {
+            sinkListener.onFinish(this);
+            invokedOnFinished = true;
+          }
         }
       }
     }
@@ -188,7 +193,10 @@ public class LocalSinkChannel implements ISinkChannel {
         }
         closed = true;
         queue.close();
-        sinkListener.onFinish(this);
+        if (!invokedOnFinished) {
+          sinkListener.onFinish(this);
+          invokedOnFinished = true;
+        }
       }
     }
     LOGGER.debug("[EndCloseLocalSinkChannel]");
