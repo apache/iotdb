@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 public class PipeTaskAgent {
 
@@ -30,8 +32,28 @@ public class PipeTaskAgent {
     pipeMetaKeeper = new PipeMetaKeeper();
   }
 
-  // TODO: remove this method
-  public PipeMeta getPipeMeta(String pipeName) {
-    return pipeMetaKeeper.getPipeMeta(pipeName);
-  }
+  ////////////////////////// Pipe Task Management //////////////////////////
+
+  public void createPipe(PipeMeta pipeMeta) {}
+
+  public void createPipeTaskByConsensusGroup(
+      String pipeName,
+      long creationTime,
+      TConsensusGroupId consensusGroupId,
+      PipeTaskMeta pipeTaskMeta) {}
+
+  public void dropPipe(String pipeName, long creationTime) {}
+
+  public void dropPipeTaskByConsensusGroup(
+      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
+
+  public void startPipe(String pipeName, long creationTime) {}
+
+  public void startPipeTaskByConsensusGroup(
+      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
+
+  public void stopPipe(String pipeName, long creationTime) {}
+
+  public void stopPipeTaskByConsensusGroup(
+      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
 }
