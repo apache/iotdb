@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -229,6 +230,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // data region for insert row node
@@ -238,6 +240,8 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
                   TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
+      // collect redirectInfo
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       if (splitMap.containsKey(dataRegionReplicaSet)) {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
@@ -248,6 +252,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }
     }
+    analysis.setRedirectNodeList(redirectInfo);
 
     return new ArrayList<>(splitMap.values());
   }
