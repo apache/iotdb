@@ -2050,4 +2050,82 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       e.printStackTrace();
     }
   }
+
+  @Test
+  public void testSeasonalRepair() {
+    // create time series
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.testSeasonalRepair");
+      statement.execute("CREATE TIMESERIES root.testSeasonalRepair.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    String[] INSERT_SQL = {
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (1,100.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (2,120.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (3,80.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (4,100.5)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (5,119.5)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (6,101.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (7,99.5)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (8,119.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (9,80.5)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (10,99.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (11,121.0)",
+      "insert into root.testSeasonalRepair.d1(timestamp, s1) values (12,79.5)",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : INSERT_SQL) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+      // classical decomposition
+      double[] truth1 = {100.0, 120.0, 80.0, 100.5, 119.5, 87.0, 99.5, 119.0, 80.5, 99.0, 121.0, 79.5};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select seasonal_repair(s1,'period'=3,'k'=2) from root.testMasterRepair.d1")) {
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+          double expectedResult = truth1[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // error-tolerant decomposition
+      double[] truth2 = {100.0, 120.0, 80.0, 100.5, 119.5, 81.5, 99.5, 119.0, 80.5, 99.0, 121.0, 79.5};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select seasonal_repair(s1,'decomposition'='error-tolerant','period'=3) from root.testMasterRepair.d1")) {
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = truth2[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }
