@@ -105,6 +105,7 @@ public class ColumnTransformerVisitor
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(unaryExpression));
         context.cache.put(unaryExpression, identity);
       } else {
         ColumnTransformer childColumnTransformer =
@@ -136,6 +137,7 @@ public class ColumnTransformerVisitor
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(binaryExpression));
         context.cache.put(binaryExpression, identity);
       } else {
         ColumnTransformer leftColumnTransformer =
@@ -171,6 +173,7 @@ public class ColumnTransformerVisitor
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(ternaryExpression));
         context.cache.put(ternaryExpression, identity);
       } else {
         ColumnTransformer firstColumnTransformer =
@@ -209,6 +212,7 @@ public class ColumnTransformerVisitor
         ColumnTransformer columnTransformer = context.hasSeen.get(functionExpression);
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
+        context.inputDataTypes.add(context.getType(functionExpression));
         context.leafList.add(identity);
         context.cache.put(functionExpression, identity);
       } else {
@@ -355,6 +359,7 @@ public class ColumnTransformerVisitor
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(caseWhenThenExpression));
         context.cache.put(caseWhenThenExpression, identity);
       } else {
         List<ColumnTransformer> whenList = new ArrayList<>();
@@ -526,6 +531,8 @@ public class ColumnTransformerVisitor
     // Common Transformer between filter and project
     List<ColumnTransformer> commonTransformerList;
 
+    List<TSDataType> inputDataTypes;
+
     int originSize;
 
     public ColumnTransformerVisitorContext(
@@ -536,6 +543,7 @@ public class ColumnTransformerVisitor
         Map<Expression, ColumnTransformer> cache,
         Map<Expression, ColumnTransformer> hasSeen,
         List<ColumnTransformer> commonTransformerList,
+        List<TSDataType> inputDataTypes,
         int originSize) {
       this.udtfContext = udtfContext;
       this.expressionTypes = expressionTypes;
@@ -544,6 +552,7 @@ public class ColumnTransformerVisitor
       this.cache = cache;
       this.hasSeen = hasSeen;
       this.commonTransformerList = commonTransformerList;
+      this.inputDataTypes = inputDataTypes;
       this.originSize = originSize;
     }
 
