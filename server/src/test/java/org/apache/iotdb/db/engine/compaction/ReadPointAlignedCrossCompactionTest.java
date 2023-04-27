@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -261,7 +262,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -276,7 +277,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -528,7 +529,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -543,7 +544,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -794,7 +795,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -809,7 +810,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -1077,7 +1078,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -1092,7 +1093,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -1459,7 +1460,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -1474,7 +1475,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -1849,7 +1850,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -1864,7 +1865,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -2249,7 +2250,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -2264,7 +2265,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -2633,7 +2634,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -2648,7 +2649,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -3018,7 +3019,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -3033,7 +3034,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -3414,7 +3415,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -3429,7 +3430,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -3864,7 +3865,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -3879,7 +3880,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -4317,7 +4318,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -4332,7 +4333,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -4770,7 +4771,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -4785,7 +4786,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -5275,7 +5276,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -5290,7 +5291,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -5725,7 +5726,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -5740,7 +5741,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -5956,7 +5957,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -5971,7 +5972,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -6249,7 +6250,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -6264,7 +6265,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -6669,7 +6670,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -6684,7 +6685,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -7054,7 +7055,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -7069,7 +7070,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -7321,7 +7322,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -7336,7 +7337,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -7474,7 +7475,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -7489,7 +7490,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -7678,7 +7679,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -7693,7 +7694,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
@@ -7919,7 +7920,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new AtomicInteger(0),
             0,
             0);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
 
@@ -7934,7 +7935,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             new ReadPointCompactionPerformer(),
             new AtomicInteger(0),
             0);
-    innerTask.start();
+    Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
   }
