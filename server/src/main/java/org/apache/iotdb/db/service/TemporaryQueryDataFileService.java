@@ -50,7 +50,7 @@ public class TemporaryQueryDataFileService implements IService {
           + "tmp";
 
   private final AtomicLong uniqueDataId;
-  private final Map<Long, List<SerializationRecorder>> recorders;
+  private final Map<String, List<SerializationRecorder>> recorders;
 
   private TemporaryQueryDataFileService() {
     uniqueDataId = new AtomicLong(0);
@@ -58,7 +58,7 @@ public class TemporaryQueryDataFileService implements IService {
   }
 
   public String register(SerializationRecorder recorder) throws IOException {
-    long queryId = recorder.getQueryId();
+    String queryId = recorder.getQueryId();
     if (!recorders.containsKey(queryId)) {
       recorders.put(queryId, new ArrayList<>());
     }
@@ -69,7 +69,7 @@ public class TemporaryQueryDataFileService implements IService {
     return getFileName(dirName, uniqueDataId.getAndIncrement());
   }
 
-  public void deregister(long queryId) {
+  public void deregister(String queryId) {
     List<SerializationRecorder> recorderList = recorders.remove(queryId);
     if (recorderList == null) {
       return;
@@ -79,14 +79,14 @@ public class TemporaryQueryDataFileService implements IService {
         recorder.closeFile();
       } catch (IOException e) {
         logger.warn(
-            String.format("Failed to close file in method deregister(%d), because %s", queryId, e));
+            String.format("Failed to close file in method deregister(%s), because %s", queryId, e));
       }
     }
     try {
       FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
     } catch (IOException e) {
       logger.warn(
-          String.format("Failed to clean dir in method deregister(%d), because %s", queryId, e));
+          String.format("Failed to clean dir in method deregister(%s), because %s", queryId, e));
     }
   }
 
@@ -98,7 +98,7 @@ public class TemporaryQueryDataFileService implements IService {
     FileUtils.forceMkdir(file);
   }
 
-  private String getDirName(long queryId) {
+  private String getDirName(String queryId) {
     return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator;
   }
 
@@ -118,7 +118,7 @@ public class TemporaryQueryDataFileService implements IService {
   @Override
   public void stop() {
     for (Object queryId : recorders.keySet().toArray()) {
-      deregister((Long) queryId);
+      deregister((String) queryId);
     }
   }
 

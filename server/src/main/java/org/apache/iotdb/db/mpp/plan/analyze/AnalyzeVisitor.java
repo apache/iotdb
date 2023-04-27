@@ -1924,7 +1924,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-    dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
 
     return getAnalysisForWriting(
         insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
@@ -1940,7 +1941,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<TTimePartitionSlot> timePartitionSlotSet =
           dataPartitionQueryParamMap.computeIfAbsent(
               insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
-      timePartitionSlotSet.addAll(insertRowStatement.getTimePartitionSlots());
+      timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
     }
 
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
