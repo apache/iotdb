@@ -380,13 +380,8 @@ public class ClusterTemplateManager implements ITemplateManager {
     // and the following logic is equivalent with the above expression
 
     String measurement = pathPattern.getTailNode();
-    if (measurement.equals(MULTI_LEVEL_PATH_WILDCARD)
-        || measurement.equals(ONE_LEVEL_PATH_WILDCARD)) {
-      return pathPattern.overlapWith(
-              pathSetTemplate
-                  .concatNode(MULTI_LEVEL_PATH_WILDCARD)
-                  .concatNode(ONE_LEVEL_PATH_WILDCARD))
-          || pathPattern.overlapWith(pathSetTemplate.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    if (measurement.contains("*")) {
+      return pathPattern.overlapWith(pathSetTemplate.concatNode(MULTI_LEVEL_PATH_WILDCARD));
     }
 
     if (template.hasSchema(measurement)) {
