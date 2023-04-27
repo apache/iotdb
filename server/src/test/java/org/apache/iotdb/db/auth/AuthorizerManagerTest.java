@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -44,7 +46,7 @@ public class AuthorizerManagerTest {
   ClusterAuthorityFetcher authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
 
   @Test
-  public void permissionCacheTest() {
+  public void permissionCacheTest() throws IllegalPathException {
     User user = new User();
     Role role1 = new Role();
     Role role2 = new Role();
@@ -54,7 +56,7 @@ public class AuthorizerManagerTest {
     List<PathPrivilege> privilegeList = new ArrayList<>();
     privilegesIds.add(PrivilegeType.CREATE_ROLE.ordinal());
     privilegesIds.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
-    privilege.setPath("root.ln");
+    privilege.setPath(new PartialPath("root.ln"));
     privilege.setPrivileges(privilegesIds);
     privilegeList.add(privilege);
     role1.setName("role1");
@@ -78,7 +80,7 @@ public class AuthorizerManagerTest {
 
     // User permission information
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-      userPrivilegeList.add(pathPrivilege.getPath());
+      userPrivilegeList.add(pathPrivilege.getPath().getFullPath());
       String privilegeIdList = pathPrivilege.getPrivileges().toString();
       userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
     }
@@ -104,14 +106,18 @@ public class AuthorizerManagerTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPrivileges(
-                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
+                "user",
+                Collections.singletonList(new PartialPath("root.ln")),
+                PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // User does not have permission
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPrivileges(
-                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
+                "user",
+                Collections.singletonList(new PartialPath("root.ln")),
+                PrivilegeType.CREATE_USER.ordinal())
             .getCode());
 
     // Authenticate users with roles
@@ -125,7 +131,7 @@ public class AuthorizerManagerTest {
       rolePrivilegeList = new ArrayList<>();
       tRoleResp.setRoleName(role.getName());
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        rolePrivilegeList.add(pathPrivilege.getPath());
+        rolePrivilegeList.add(pathPrivilege.getPath().getFullPath());
         String privilegeIdList = pathPrivilege.getPrivileges().toString();
         rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
       }
@@ -145,14 +151,18 @@ public class AuthorizerManagerTest {
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPrivileges(
-                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_ROLE.ordinal())
+                "user",
+                Collections.singletonList(new PartialPath("root.ln")),
+                PrivilegeType.CREATE_ROLE.ordinal())
             .getCode());
     // role does not have permission
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPrivileges(
-                "user", Collections.singletonList("root.ln"), PrivilegeType.CREATE_USER.ordinal())
+                "user",
+                Collections.singletonList(new PartialPath("root.ln")),
+                PrivilegeType.CREATE_USER.ordinal())
             .getCode());
 
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");

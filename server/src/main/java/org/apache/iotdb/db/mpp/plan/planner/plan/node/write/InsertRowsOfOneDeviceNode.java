@@ -40,6 +40,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -170,6 +171,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
 
       tmpMap.add(insertRowNode);
       tmpIndexMap.add(insertRowNodeIndexList.get(i));
+
+      if (i == insertRowNodeList.size() - 1) {
+        analysis.setRedirectNodeList(
+            Collections.singletonList(
+                dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
+      }
     }
 
     for (Map.Entry<TRegionReplicaSet, List<InsertRowNode>> entry : splitMap.entrySet()) {

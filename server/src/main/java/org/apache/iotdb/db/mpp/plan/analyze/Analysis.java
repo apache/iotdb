@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -44,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +71,8 @@ public class Analysis {
   private SchemaPartition schemaPartition;
 
   private ISchemaTree schemaTree;
+
+  private List<TEndPoint> redirectNodeList;
 
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
@@ -258,6 +262,21 @@ public class Analysis {
 
   public void setSchemaTree(ISchemaTree schemaTree) {
     this.schemaTree = schemaTree;
+  }
+
+  public List<TEndPoint> getRedirectNodeList() {
+    return redirectNodeList;
+  }
+
+  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+    this.redirectNodeList = redirectNodeList;
+  }
+
+  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+    if (redirectNodeList == null) {
+      redirectNodeList = new ArrayList<>();
+    }
+    redirectNodeList.add(endPoint);
   }
 
   public Filter getGlobalTimeFilter() {

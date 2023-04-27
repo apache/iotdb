@@ -93,6 +93,8 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
+    // TODO change a way to do the existing check to avoid this IO call each time.
+
     // if the mods file does not exist, do not add it to the cache
     if (!modFile.exists()) {
       return Collections.emptyList();

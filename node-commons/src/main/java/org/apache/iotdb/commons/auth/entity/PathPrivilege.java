@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -32,12 +38,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents a privilege on a specific seriesPath. If the privilege is seriesPath-free,
- * the seriesPath will be null.
+ * the seriesPath will be null.I
  */
 public class PathPrivilege {
-
+  private static final Logger logger = LoggerFactory.getLogger(PathPrivilege.class);
   private Set<Integer> privileges;
-  private String path;
+  private PartialPath path;
 
   /**
    * This field records how many times this privilege is referenced during a life cycle (from being
@@ -56,7 +62,7 @@ public class PathPrivilege {
     // Empty constructor
   }
 
-  public PathPrivilege(String path) {
+  public PathPrivilege(PartialPath path) {
     this.path = path;
     this.privileges = new HashSet<>();
   }
@@ -69,11 +75,11 @@ public class PathPrivilege {
     this.privileges = privileges;
   }
 
-  public String getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(String path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 
@@ -104,7 +110,7 @@ public class PathPrivilege {
 
   @Override
   public String toString() {
-    StringBuilder builder = new StringBuilder(path);
+    StringBuilder builder = new StringBuilder(path.getFullPath());
     builder.append(" :");
     for (Integer privilegeId : privileges) {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
@@ -117,14 +123,17 @@ public class PathPrivilege {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
     SerializeUtils.serializeIntSet(privileges, dataOutputStream);
-    SerializeUtils.serialize(path, dataOutputStream);
-
+    try {
+      path.serialize(dataOutputStream);
+    } catch (IOException exception) {
+      logger.error("Unexpected exception when serialize path", exception);
+    }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
     SerializeUtils.deserializeIntSet(privileges, buffer);
-    path = SerializeUtils.deserializeString(buffer);
+    path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
   }
 }
