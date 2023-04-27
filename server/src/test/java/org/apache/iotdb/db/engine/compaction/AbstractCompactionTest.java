@@ -84,6 +84,9 @@ public class AbstractCompactionTest {
   protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
   private TSDataType dataType;
 
+  protected int maxDeviceNum = 25;
+  protected int maxMeasurementNum = 25;
+
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 

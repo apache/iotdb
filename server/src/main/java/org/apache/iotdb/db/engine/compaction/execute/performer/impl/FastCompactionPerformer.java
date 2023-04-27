@@ -52,14 +52,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
 public class FastCompactionPerformer
     implements ICrossCompactionPerformer, ISeqCompactionPerformer, IUnseqCompactionPerformer {
@@ -172,7 +170,7 @@ public class FastCompactionPerformer
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        new HashMap<>();
+        new LinkedHashMap<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
     // Get all value measurements and their schemas of the current device. Also get start offset and
@@ -184,9 +182,7 @@ public class FastCompactionPerformer
     // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
-      if (!entry.getKey().equals(TIME_COLUMN_ID)) {
-        measurementSchemas.add(entry.getValue().left);
-      }
+      measurementSchemas.add(entry.getValue().left);
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
@@ -218,6 +214,7 @@ public class FastCompactionPerformer
         deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
 
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+    allMeasurements.sort((String::compareTo));
 
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 

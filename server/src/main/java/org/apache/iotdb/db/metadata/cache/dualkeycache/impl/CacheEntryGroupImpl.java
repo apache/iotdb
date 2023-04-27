@@ -42,7 +42,7 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public T getCacheEntry(SK secondKey) {
-    return cacheEntryMap.get(secondKey);
+    return secondKey == null ? null : cacheEntryMap.get(secondKey);
   }
 
   @Override

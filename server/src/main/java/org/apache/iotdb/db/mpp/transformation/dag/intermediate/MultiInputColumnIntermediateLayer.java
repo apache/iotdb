@@ -64,7 +64,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
   public MultiInputColumnIntermediateLayer(
       Expression expression,
-      long queryId,
+      String queryId,
       float memoryBudgetInMB,
       List<LayerPointReader> parentLayerPointReaders) {
     super(expression, queryId, memoryBudgetInMB);

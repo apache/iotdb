@@ -77,6 +77,8 @@ public class TransformOperator implements ProcessOperator {
   protected TimeSelector timeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
 
+  private final String udtfQueryId;
+
   public TransformOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -91,6 +93,9 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
+    // use DriverTaskID().getFullId() to ensure that udtfQueryId for each TransformOperator is
+    // unique
+    this.udtfQueryId = operatorContext.getDriverContext().getDriverTaskID().getFullId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
@@ -103,7 +108,7 @@ public class TransformOperator implements ProcessOperator {
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
     inputLayer =
         new QueryDataSetInputLayer(
-            operatorContext.getOperatorId(),
+            udtfQueryId,
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
@@ -120,11 +125,11 @@ public class TransformOperator implements ProcessOperator {
     UDFManagementService.getInstance().acquireLock();
     try {
       // This statement must be surrounded by the registration lock.
-      UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
+      UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
       // UDF executors will be initialized at the same time
       transformers =
           new EvaluationDAGBuilder(
-                  operatorContext.getOperatorId(),
+                  udtfQueryId,
                   inputLayer,
                   inputLocations,
                   outputExpressions,
@@ -324,7 +329,7 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    udtfContext.finalizeUDFExecutors(operatorContext.getOperatorId());
+    udtfContext.finalizeUDFExecutors(udtfQueryId);
     inputOperator.close();
   }
 

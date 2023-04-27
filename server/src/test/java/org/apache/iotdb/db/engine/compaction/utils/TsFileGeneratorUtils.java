@@ -22,7 +22,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -42,17 +45,24 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
 public class TsFileGeneratorUtils {
   public static final String testStorageGroup = "root.testsg";
 
   public static List<IChunkWriter> createChunkWriter(
-      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes, boolean isAligned) {
+      List<PartialPath> timeseriesPaths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressionTypes,
+      boolean isAligned) {
     List<IChunkWriter> iChunkWriters = new ArrayList<>();
     if (!isAligned) {
       for (int i = 0; i < timeseriesPaths.size(); i++) {
         PartialPath path = timeseriesPaths.get(i);
-        MeasurementSchema schema = new MeasurementSchema(path.getMeasurement(), dataTypes.get(i));
+        MeasurementSchema schema =
+            new MeasurementSchema(
+                path.getMeasurement(), dataTypes.get(i), encodings.get(i), compressionTypes.get(i));
         iChunkWriters.add(new ChunkWriterImpl(schema));
       }
     } else {
@@ -60,9 +70,20 @@ public class TsFileGeneratorUtils {
       for (int i = 0; i < timeseriesPaths.size(); i++) {
         AlignedPath alignedPath = (AlignedPath) timeseriesPaths.get(i);
         schemas.add(
-            new MeasurementSchema(alignedPath.getMeasurementList().get(0), dataTypes.get(i)));
+            new MeasurementSchema(
+                alignedPath.getMeasurementList().get(0),
+                dataTypes.get(i),
+                encodings.get(i),
+                compressionTypes.get(i)));
       }
-      iChunkWriters.add(new AlignedChunkWriterImpl(schemas));
+      // use GZIP to compress time column
+      MeasurementSchema timeSchema =
+          new MeasurementSchema(
+              TIME_COLUMN_ID,
+              TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType(),
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+              CompressionType.GZIP);
+      iChunkWriters.add(new AlignedChunkWriterImpl(timeSchema, schemas));
     }
 
     return iChunkWriters;
@@ -89,6 +110,30 @@ public class TsFileGeneratorUtils {
                 Collections.singletonList(new MeasurementSchema("s" + i, dataTypes.get(i)))));
       }
     }
+    return timeseriesPath;
+  }
+
+  public static List<PartialPath> createTimeseries(
+      int deviceNum, int measurementNum, boolean isAligned) throws IllegalPathException {
+    List<PartialPath> timeseriesPath = new ArrayList<>();
+    for (int d = 0; d < deviceNum; d++) {
+      for (int i = 0; i < measurementNum; i++) {
+        TSDataType dataType = getDataType(i);
+        if (!isAligned) {
+          timeseriesPath.add(
+              new MeasurementPath(
+                  testStorageGroup + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + i,
+                  dataType));
+        } else {
+          timeseriesPath.add(
+              new AlignedPath(
+                  testStorageGroup + PATH_SEPARATOR + "d" + d,
+                  Collections.singletonList("s" + i),
+                  Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
+        }
+      }
+    }
+
     return timeseriesPath;
   }
 
@@ -232,6 +277,69 @@ public class TsFileGeneratorUtils {
     }
     // seal time chunk and value chunks
     alignedChunkWriter.writeToFileWriter(tsFileIOWriter);
+  }
+
+  public static List<TSEncoding> createEncodingType(int num) {
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < num; i++) {
+      int j = i % 6;
+      switch (j) {
+        case 0: // boolean
+          encodings.add(TSEncoding.RLE);
+          break;
+        case 5: // TEXT
+          encodings.add(TSEncoding.DICTIONARY);
+          break;
+        default:
+          encodings.add(TSEncoding.GORILLA);
+          break;
+      }
+    }
+    return encodings;
+  }
+
+  public static List<CompressionType> createCompressionType(int num) {
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < num; i++) {
+      // compressionTypes.add(CompressionType.LZ4);
+      switch (i % 6) {
+        case 0:
+          compressionTypes.add(CompressionType.UNCOMPRESSED);
+          break;
+        case 1:
+          compressionTypes.add(CompressionType.SNAPPY);
+          break;
+        case 2:
+          compressionTypes.add(CompressionType.GZIP);
+          break;
+        case 3:
+          compressionTypes.add(CompressionType.LZ4);
+          break;
+        default:
+          compressionTypes.add(CompressionType.ZSTD);
+          break;
+      }
+    }
+    return compressionTypes;
+  }
+
+  public static TSDataType getDataType(int num) {
+    switch (num % 6) {
+      case 0:
+        return TSDataType.BOOLEAN;
+      case 1:
+        return TSDataType.INT32;
+      case 2:
+        return TSDataType.INT64;
+      case 3:
+        return TSDataType.FLOAT;
+      case 4:
+        return TSDataType.DOUBLE;
+      case 5:
+        return TSDataType.TEXT;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + num % 6);
+    }
   }
 
   public static List<TSDataType> createDataType(int num) {
