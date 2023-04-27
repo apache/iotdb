@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import com.sun.media.jfxmedia.logging.Logger;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
