@@ -17,56 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+package org.apache.iotdb.db.pipe.core.event.view.collector;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-public class DoNothingConnector implements PipeConnector {
+import java.io.IOException;
+
+public class PipeEventCollector implements EventCollector {
 
   @Override
-  public void validate(PipeParameterValidator validator) {
-    // do nothing
-  }
+  public void collectTabletInsertionEvent(TabletInsertionEvent event) throws IOException {}
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
-    // do nothing
-  }
+  public void collectTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException {}
 
   @Override
-  public void handshake() {
-    // do nothing
-  }
-
-  @Override
-  public void heartbeat() {
-    // do nothing
-  }
-
-  @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    // do nothing
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    // do nothing
-  }
-
-  @Override
-  public void transfer(DeletionEvent deletionEvent) {
-    // do nothing
-  }
-
-  @Override
-  public void close() {
-    // do nothing
-  }
+  public void collectDeletionEvent(DeletionEvent event) throws IOException {}
 }
