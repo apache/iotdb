@@ -27,10 +27,12 @@ import java.util.List;
 
 public class BackupPlan extends PhysicalPlan {
   private String outputPath;
+  private boolean isFullBackup;
 
-  public BackupPlan(String outputPath) {
+  public BackupPlan(String outputPath, boolean isFullBackup) {
     super(Operator.OperatorType.BACKUP);
     this.outputPath = outputPath;
+    this.isFullBackup = isFullBackup;
   }
 
   @Override
@@ -44,5 +46,13 @@ public class BackupPlan extends PhysicalPlan {
 
   public String getOutputPath() {
     return outputPath;
+  }
+
+  public void setIsFullBackup(boolean isFullBackup) {
+    this.isFullBackup = isFullBackup;
+  }
+
+  public boolean getIsFullBackup() {
+    return isFullBackup;
   }
 }

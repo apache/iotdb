@@ -2739,10 +2739,17 @@ public class PlanExecutor implements IPlanExecutor {
   private void backup(BackupPlan plan) throws StorageEngineException {
     try {
       String outputPath = plan.getOutputPath();
-      BackupService.getINSTANCE().checkFullBackupPathValid(outputPath);
-      List<TsFileResource> resources = new ArrayList<>();
-      StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
-      BackupService.getINSTANCE().performFullBackup(resources, outputPath);
+      if (plan.getIsFullBackup()) {
+        BackupService.getINSTANCE().checkFullBackupPathValid(outputPath);
+        List<TsFileResource> resources = new ArrayList<>();
+        StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
+        BackupService.getINSTANCE().performFullBackup(resources, outputPath);
+      } else {
+        BackupService.getINSTANCE().checkIncrementalBackupPathValid(outputPath);
+        List<TsFileResource> resources = new ArrayList<>();
+        StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
+        BackupService.getINSTANCE().performIncrementalBackup(resources, outputPath);
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e.getMessage());
     }
