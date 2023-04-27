@@ -262,6 +262,10 @@ public class SinkChannel implements ISinkChannel {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    localMemoryManager
+        .getQueryPool()
+        .clearMemoryReservationMap(
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     invokeOnFinished();
     closed = true;
     LOGGER.debug("[EndCloseSinkChannel]");
