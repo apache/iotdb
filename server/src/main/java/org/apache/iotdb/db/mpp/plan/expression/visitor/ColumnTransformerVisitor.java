@@ -238,7 +238,7 @@ public class ColumnTransformerVisitor
           // Mappable UDF does not need PointCollector, so memoryBudget and queryId is not
           // needed.
           executor.beforeStart(
-              0,
+              String.valueOf(0),
               0,
               expressions.stream().map(Expression::toString).collect(Collectors.toList()),
               expressions.stream().map(context::getType).collect(Collectors.toList()),
