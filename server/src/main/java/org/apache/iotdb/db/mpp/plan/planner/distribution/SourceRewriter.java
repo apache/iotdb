@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -195,6 +196,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       return deviceViewNodeList;
     }
 
+    if (analysis.isOrderByExpressionInDeviceView()) {
+      return deviceViewNodeList;
+    }
+
     MergeSortNode mergeSortNode =
         new MergeSortNode(
             context.queryContext.getQueryId().genPlanNodeId(),
@@ -262,6 +267,38 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
       return newRoot;
     }
+  }
+
+  @Override
+  public List<PlanNode> visitSort(SortNode node, DistributionPlanContext context) {
+
+    if (node.getChild() instanceof DeviceViewNode) {
+      analysis.setOrderByExpressionInDeviceView(true);
+    }
+
+    List<PlanNode> children = rewrite(node.getChild(), context);
+    if (children.size() == 1) {
+      node.setChild(children.get(0));
+      return Collections.singletonList(node);
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getOrderByParameter(),
+            node.getOutputColumnNames());
+
+    for (PlanNode child : children) {
+      SortNode sortNode = cloneSortNodeWithOutChild(node, context);
+      sortNode.setChild(child);
+      mergeSortNode.addChild(sortNode);
+    }
+    return Collections.singletonList(mergeSortNode);
+  }
+
+  private SortNode cloneSortNodeWithOutChild(SortNode node, DistributionPlanContext context) {
+    return new SortNode(
+        context.queryContext.getQueryId().genPlanNodeId(), node.getOrderByParameter());
   }
 
   @Override
