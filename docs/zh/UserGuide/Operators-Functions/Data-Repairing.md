@@ -410,7 +410,7 @@ select MasterRepair(t1,t2,t3,m1,m2,m3) from root.test
 ### SeasonalRepair
 
 #### 函数简介
-本函数用于对周期性时间序列的数值进行基于分解的修复。目前，本函数支持两种方法：**Classical**使用经典分解方法得到的残差项检测数值的异常波动，并使用滑动平均修复序列；**Improved**使用改进的分解方法得到的残差项检测数值的异常波动，并使用滑动中值修复序列。
+本函数用于对周期性时间序列的数值进行基于分解的修复。目前，本函数支持两种方法：**classical**使用经典分解方法得到的残差项检测数值的异常波动，并使用滑动平均修复序列；**error-tolerant**使用错误容忍的分解方法得到的残差项检测数值的异常波动，并使用滑动中值修复序列。
 
 **函数名：** SEASONALREPAIR
 
@@ -418,9 +418,9 @@ select MasterRepair(t1,t2,t3,m1,m2,m3) from root.test
 
 **参数：** 
 
-+ `method`：修复时采用的分解方法，取值为'Classical'或'Improved'。在缺省情况下，使用经典分解方法进行修复。
++ `decomposition`：修复时采用的分解方法，取值为'classical'或'error-tolerant'。在缺省情况下，使用经典分解方法进行修复。
 + `period`：序列的周期。
-+ `k`：残差项的范围阈值，用来限制残差项偏离中心的程度。在缺省情况下为9。
++ `k`：残差约束的偏离程度。在缺省情况下为9。
 + `max_iter`：算法的最大迭代次数。在缺省情况下为10。
 
 **输出序列：** 输出单个序列，类型与输入序列相同。该序列是修复后的输入序列。
@@ -429,7 +429,7 @@ select MasterRepair(t1,t2,t3,m1,m2,m3) from root.test
 
 #### 使用示例
 ##### 使用经典分解方法进行修复
-当`method`缺省或取值为'Classical'时，本函数将使用经典分解方法进行数值修复。
+当`decomposition`缺省或取值为'classical'时，本函数将使用经典分解方法进行数值修复。
 
 输入序列：
 
@@ -479,20 +479,20 @@ select seasonalrepair(s1,'period'=3,'k'=2) from root.test.d2
 +-----------------------------+--------------------------------------------------+
 ```
 
-##### 使用改进的分解方法进行修复
-当`method`取值为'Improved'时，本函数将使用改进的分解方法进行数值修复。
+##### 使用错误容忍的分解方法进行修复
+当`decomposition`取值为'error-tolerant'时，本函数将使用错误容忍的分解方法进行数值修复。
 
 输入序列同上，用于查询的SQL语句如下：
 
 ```sql
-select seasonalrepair(s1,'method'='improved','period'=3) from root.test.d2
+select seasonalrepair(s1,'decomposition'='error-tolerant','period'=3) from root.test.d2
 ```
 
 输出序列：
 
 ```
 +-----------------------------+-------------------------------------------------------------+
-|                         Time|valuerepair(root.test.d2.s1, 'method'='improved', 'period'=3)|
+|                         Time|valuerepair(root.test.d2.s1, 'decomposition'='error-tolerant', 'period'=3)|
 +-----------------------------+-------------------------------------------------------------+
 |2020-01-01T00:00:02.000+08:00|                                                        100.0|
 |2020-01-01T00:00:04.000+08:00|                                                        120.0|
