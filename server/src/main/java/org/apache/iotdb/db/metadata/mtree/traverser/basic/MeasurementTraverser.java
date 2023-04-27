@@ -20,44 +20,44 @@ package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-public abstract class MeasurementTraverser<R> extends Traverser<R> {
+public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @param store
-   * @param isPrefixMatch
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @throws MetadataException path does not meet the expected rules
    */
   public MeasurementTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
+  protected boolean acceptFullMatchedNode(N node) {
     return node.isMeasurement();
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
   }
 }

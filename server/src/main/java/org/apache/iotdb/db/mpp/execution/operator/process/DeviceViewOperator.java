@@ -107,11 +107,16 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!getCurDeviceOperator().hasNextWithTimer()) {
+      // close finished child
+      getCurDeviceOperator().close();
+      deviceOperators.set(deviceIndex, null);
+      // increment index, move to next child
       deviceIndex++;
       return null;
     }
+
     TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
@@ -138,19 +143,22 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return deviceIndex < devices.size();
   }
 
   @Override
   public void close() throws Exception {
-    for (Operator child : deviceOperators) {
-      child.close();
+    for (int i = deviceIndex, n = deviceOperators.size(); i < n; i++) {
+      Operator currentChild = deviceOperators.get(i);
+      if (currentChild != null) {
+        deviceOperators.get(i).close();
+      }
     }
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 

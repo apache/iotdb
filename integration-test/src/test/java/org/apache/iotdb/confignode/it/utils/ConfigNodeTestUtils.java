@@ -29,19 +29,16 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import org.apache.thrift.TException;
 import org.junit.Assert;
 
 import java.io.IOException;
@@ -51,31 +48,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigNodeTestUtils {
-
-  private static final int retryNum = 30;
-
-  public static TShowClusterResp getClusterNodeInfos(
-      IConfigNodeRPCService.Iface client, int expectedConfigNodeNum, int expectedDataNodeNum)
-      throws TException, InterruptedException {
-    TShowClusterResp clusterNodes = null;
-    for (int i = 0; i < retryNum; i++) {
-      clusterNodes = client.showCluster();
-      if (clusterNodes.getConfigNodeListSize() == expectedConfigNodeNum
-          && clusterNodes.getDataNodeListSize() == expectedDataNodeNum) {
-        break;
-      }
-      Thread.sleep(1000);
-    }
-
-    assertEquals(expectedConfigNodeNum, clusterNodes.getConfigNodeListSize());
-    assertEquals(expectedDataNodeNum, clusterNodes.getDataNodeListSize());
-
-    return clusterNodes;
-  }
 
   public static void checkNodeConfig(
       List<TConfigNodeLocation> configNodeList,
@@ -233,11 +208,10 @@ public class ConfigNodeTestUtils {
     clusterParameters.setTimePartitionInterval(604800000);
     clusterParameters.setDataReplicationFactor(1);
     clusterParameters.setSchemaReplicationFactor(1);
-    clusterParameters.setDataRegionPerProcessor(1.0);
+    clusterParameters.setDataRegionPerDataNode(5.0);
     clusterParameters.setSchemaRegionPerDataNode(1.0);
     clusterParameters.setDiskSpaceWarningThreshold(0.05);
     clusterParameters.setReadConsistencyLevel("strong");
-    clusterParameters.setLeastDataRegionGroupNum(5);
     return clusterParameters;
   }
 
@@ -276,7 +250,7 @@ public class ConfigNodeTestUtils {
   public static TDataNodeRegisterReq generateTDataNodeRegisterReq(
       String clusterName, DataNodeWrapper dataNodeWrapper) {
     return new TDataNodeRegisterReq(
-        generateTDataNodeConfiguration(-1, dataNodeWrapper), clusterName);
+        clusterName, generateTDataNodeConfiguration(-1, dataNodeWrapper));
   }
 
   public static TDataNodeRestartReq generateTDataNodeRestartReq(

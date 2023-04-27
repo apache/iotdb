@@ -19,15 +19,15 @@
 
 -->
 
-# 结果集补空值
+## 结果集补空值
 
-## 功能介绍
+### 功能介绍
 
 当执行一些数据查询时，结果集的某行某列可能没有数据，则此位置结果为空，但这种空值不利于进行数据可视化展示和分析，需要对空值进行填充。
 
 在 IoTDB 中，用户可以使用 `FILL` 子句指定数据缺失情况下的填充模式，允许用户按照特定的方法对任何查询的结果集填充空值，如取前一个不为空的值、线性插值等。
 
-## 语法定义
+### 语法定义
 
 **`FILL` 子句的语法定义如下：**
 
@@ -39,7 +39,7 @@ FILL '(' PREVIOUS | LINEAR | constant ')'
 - 在 `Fill` 语句中只能指定一种填充方法，该方法作用于结果集的全部列。
 - 空值填充不兼容 0.13 版本及以前的语法（即不支持 `FILL((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)`）
 
-## 填充方式
+### 填充方式
 
 **IoTDB 目前支持以下三种空值填充方式：**
 
@@ -85,7 +85,7 @@ select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:
 Total line number = 4
 ```
 
-### `PREVIOUS` 填充
+#### `PREVIOUS` 填充
 
 **对于查询结果集中的空值，使用该列前一个非空值进行填充。**
 
@@ -114,7 +114,7 @@ select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:
 Total line number = 4
 ```
 
-### `LINEAR` 填充
+#### `LINEAR` 填充
 
 **对于查询结果集中的空值，使用该列前一个非空值和下一个非空值的线性插值进行填充。** 
 
@@ -145,7 +145,7 @@ select temperature, status from root.sgcc.wf03.wt01 where time >= 2017-11-01T16:
 Total line number = 4
 ```
 
-### 常量填充
+#### 常量填充
 
 **对于查询结果集中的空值，使用指定常量填充。**
 

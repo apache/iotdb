@@ -29,18 +29,19 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -101,7 +102,9 @@ public class PartitionInfoTest {
     partitionInfo.generateNextRegionGroupId();
 
     // Set StorageGroup
-    partitionInfo.setStorageGroup(new SetStorageGroupPlan(new TStorageGroupSchema("root.test")));
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
 
     // Create a SchemaRegion
     CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
@@ -154,8 +157,9 @@ public class PartitionInfoTest {
       partitionInfo.generateNextRegionGroupId();
 
       // Set StorageGroup
-      partitionInfo.setStorageGroup(
-          new SetStorageGroupPlan(new TStorageGroupSchema("root.test" + i)));
+      partitionInfo.createDatabase(
+          new DatabaseSchemaPlan(
+              ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test" + i)));
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
@@ -210,7 +214,7 @@ public class PartitionInfoTest {
                 Assert.assertEquals(
                     regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion));
     showRegionReq.setConsensusGroupType(null);
-    showRegionReq.setStorageGroups(Collections.singletonList("root.test1"));
+    showRegionReq.setDatabases(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList4.getRegionInfoList().size(), 10);
@@ -219,7 +223,7 @@ public class PartitionInfoTest {
         .forEach(
             (regionInfo) -> {
               Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
-              Assert.assertEquals(regionInfo.getStorageGroup(), "root.test1");
+              Assert.assertEquals(regionInfo.getDatabase(), "root.test1");
             });
   }
 

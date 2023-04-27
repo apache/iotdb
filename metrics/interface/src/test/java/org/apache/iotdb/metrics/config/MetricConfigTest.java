@@ -66,7 +66,6 @@ public class MetricConfigTest {
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
     assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
-    assertEquals(InternalReporterType.MEMORY, metricConfig.getInternalReportType());
   }
 
   @Test

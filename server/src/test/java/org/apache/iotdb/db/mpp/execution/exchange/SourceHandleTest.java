@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -112,6 +114,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -227,6 +230,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -252,7 +256,8 @@ public class SourceHandleTest {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
           .reserve(
               queryId,
-              localFragmentInstanceId.getInstanceId(),
+              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                  localFragmentInstanceId),
               localPlanNodeId,
               MOCK_TSBLOCK_SIZE,
               maxBytesCanReserve);
@@ -283,7 +288,11 @@ public class SourceHandleTest {
     for (int i = 0; i < numOfMockTsBlock; i++) {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_0000).times(i))
           .free(
-              queryId, localFragmentInstanceId.getInstanceId(), localPlanNodeId, MOCK_TSBLOCK_SIZE);
+              queryId,
+              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                  localFragmentInstanceId),
+              localPlanNodeId,
+              MOCK_TSBLOCK_SIZE);
       sourceHandle.receive();
       try {
         if (i < 5) {
@@ -382,6 +391,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -554,6 +564,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,
@@ -641,6 +652,7 @@ public class SourceHandleTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
             mockTsBlockSerde,

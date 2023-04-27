@@ -581,13 +581,13 @@ public class AnalyzeTest {
   public void testDataPartitionAnalyze() {
     Analysis analysis = analyzeSQL("insert into root.sg.d1(timestamp,s) values(1,10),(86401,11)");
     Assert.assertEquals(
+        1,
         analysis
             .getDataPartitionInfo()
             .getDataPartitionMap()
             .get("root.sg")
-            .get(new TSeriesPartitionSlot(8923))
-            .size(),
-        1);
+            .get(new TSeriesPartitionSlot(1107))
+            .size());
   }
 
   @Test
@@ -755,6 +755,42 @@ public class AnalyzeTest {
       Assert.assertEquals(
           results.get(i),
           analysis.getDeviceViewIntoPathDescriptor().getDeviceToSourceTargetPathPairListMap());
+    }
+  }
+
+  @Test
+  public void testAlias1() {
+    Analysis analysis = analyzeSQL("select s1 as a, s2 as b from root.sg.d2.a, root.sg.d2.b");
+    assert analysis != null;
+    Assert.assertEquals(
+        analysis.getRespDatasetHeader(),
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader("root.sg.d2.a.s1", TSDataType.INT32, "a"),
+                new ColumnHeader("root.sg.d2.a.s2", TSDataType.DOUBLE, "b")),
+            false));
+  }
+
+  @Test
+  public void testAlias2() {
+    assertTestFail(
+        "select s1 as a from root.sg.*", "alias 'a' can only be matched with one time series");
+    assertTestFail(
+        "select s1 as a from root.sg.d1, root.sg.d2",
+        "alias 'a' can only be matched with one time series");
+  }
+
+  private void assertTestFail(String sql, String errMsg) {
+    try {
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      analyzer.analyze(statement);
+      fail("No exception!");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
 

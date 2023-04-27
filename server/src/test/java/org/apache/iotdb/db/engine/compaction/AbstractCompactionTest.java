@@ -84,6 +84,9 @@ public class AbstractCompactionTest {
   protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
   private TSDataType dataType;
 
+  protected int maxDeviceNum = 25;
+  protected int maxMeasurementNum = 25;
+
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
@@ -105,6 +108,9 @@ public class AbstractCompactionTest {
 
   private final long oldLowerTargetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
+  private int oldMinCrossCompactionUnseqLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -374,6 +380,9 @@ public class AbstractCompactionTest {
     CompactionTaskManager.getInstance().stop();
     seqResources.clear();
     unseqResources.clear();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()
@@ -435,18 +444,16 @@ public class AbstractCompactionTest {
   protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
       List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
     Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
-    for (int i = 0; i < timeseriesPaths.size(); i++) {
-      PartialPath path = timeseriesPaths.get(i);
+    for (PartialPath path : timeseriesPaths) {
       List<TimeValuePair> dataList = new ArrayList<>();
       sourceData.put(path, dataList);
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
               path,
-              dataTypes.get(i),
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-              seqResources,
-              unseqResources,
+              tsFileManager.getTsFileList(true),
+              tsFileManager.getTsFileList(false),
               true);
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
@@ -455,7 +462,6 @@ public class AbstractCompactionTest {
           dataList.add(
               new TimeValuePair(
                   iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
-          // new Pair<>(iterator.currentTime(), ((TsPrimitiveType[]) iterator.currentValue())[0]));
           iterator.next();
         }
       }
@@ -466,12 +472,10 @@ public class AbstractCompactionTest {
   protected void validateTargetDatas(
       Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
-    int timeseriesIndex = 0;
     for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
               entry.getKey(),
-              dataTypes.get(timeseriesIndex++),
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
               tsFileManager.getTsFileList(true),
@@ -489,7 +493,8 @@ public class AbstractCompactionTest {
         }
       }
       if (timeseriesData.size() > 0) {
-        // there are still data points left, which are not in the target file
+        // there are still data points left, which are not in the target file. Lost the data after
+        // compaction.
         fail();
       }
     }

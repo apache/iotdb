@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -64,6 +67,7 @@ import java.util.NoSuchElementException;
  */
 public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     implements Iterator<R>, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractTreeVisitor.class);
 
   // command parameters
   protected N root;
@@ -118,11 +122,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-
-    initStack();
   }
 
-  private void initStack() {
+  /** This method must be invoked before iteration */
+  protected final void initStack() {
     IFAState initialState = patternFA.getInitialState();
     IFATransition transition =
         patternFA.getPreciseMatchTransition(initialState).get(root.getName());
@@ -162,6 +165,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       try {
         getNext();
       } catch (Throwable e) {
+        logger.warn(e.getMessage(), e);
         setFailure(e);
       }
     }
@@ -197,6 +201,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
       N nextTempNode = iterator.next();
 
+      shouldVisitSubtree = false;
       if (currentStateMatchInfo.hasFinalState()) {
         if (acceptFullMatchedNode(nextTempNode)) {
           nextMatchedNode = nextTempNode;
@@ -437,8 +442,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         try {
           getNext();
         } catch (Throwable e) {
-          setFailure(e);
-          return false;
+          throw new RuntimeException(e.getMessage(), e);
         }
       }
       return nextMatchedChild != null;

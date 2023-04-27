@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -37,6 +36,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -131,16 +132,17 @@ public class LastQuerySortOperatorTest {
                 operatorContext.setMaxRunTime(TEST_TIME_SLICE);
               });
 
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
               measurementPath1,
-              allSensors,
+              Ordering.DESC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
               initTimeRangeIterator(null, false, true),
-              null,
-              false,
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
@@ -159,12 +161,11 @@ public class LastQuerySortOperatorTest {
           new SeriesAggregationScanOperator(
               planNodeId3,
               measurementPath2,
-              allSensors,
+              Ordering.DESC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
               initTimeRangeIterator(null, false, true),
-              null,
-              false,
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
@@ -207,7 +208,7 @@ public class LastQuerySortOperatorTest {
         }
       }
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -255,16 +256,17 @@ public class LastQuerySortOperatorTest {
                 operatorContext.setMaxRunTime(TEST_TIME_SLICE);
               });
 
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
               measurementPath1,
-              allSensors,
+              Ordering.DESC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators1,
               initTimeRangeIterator(null, false, true),
-              null,
-              false,
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
@@ -283,12 +285,11 @@ public class LastQuerySortOperatorTest {
           new SeriesAggregationScanOperator(
               planNodeId3,
               measurementPath2,
-              allSensors,
+              Ordering.DESC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
               aggregators2,
               initTimeRangeIterator(null, false, true),
-              null,
-              false,
               null,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
@@ -341,7 +342,7 @@ public class LastQuerySortOperatorTest {
         }
       }
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }

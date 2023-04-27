@@ -24,17 +24,15 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
     <properties>
         <integrationTest.forkCount>1</integrationTest.forkCount>
-        <integrationTest.threadCount>1</integrationTest.threadCount>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
-        <integrationTest.parallelMode>none</integrationTest.parallelMode>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.testEnv/>
@@ -137,11 +135,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M5</version>
             </dependency>
-            <dependency>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.0.0-M5</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     <build>
@@ -213,8 +206,7 @@
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
-                            <parallel>${integrationTest.parallelMode}</parallel>
-                            <threadCount>${integrationTest.threadCount}</threadCount>
+                            <parallel>none</parallel>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
@@ -267,7 +259,6 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -294,7 +285,6 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>

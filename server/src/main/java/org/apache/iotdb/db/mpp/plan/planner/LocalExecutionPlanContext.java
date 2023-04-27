@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -59,6 +59,8 @@ public class LocalExecutionPlanContext {
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
+  private int degreeOfParallelism =
+      IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
@@ -97,6 +99,7 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.degreeOfParallelism = parentContext.degreeOfParallelism;
     this.exchangeSumNum = parentContext.exchangeSumNum;
     this.exchangeOperatorList = parentContext.exchangeOperatorList;
     this.cachedDataTypes = parentContext.cachedDataTypes;
@@ -110,20 +113,25 @@ public class LocalExecutionPlanContext {
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
     this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
 
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
-    this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
+    this.driverContext =
+        new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
+    this.pipelineDriverFactories = new ArrayList<>();
   }
 
-  public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {
+  public void addPipelineDriverFactory(
+      Operator operation, DriverContext driverContext, long estimatedMemorySize) {
     driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext ->
                 operatorContext.setMaxRunTime(
                     driverContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
-    pipelineDriverFactories.add(new PipelineDriverFactory(operation, driverContext));
+    pipelineDriverFactories.add(
+        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
   }
 
   public LocalExecutionPlanContext createSubContext() {
@@ -138,8 +146,24 @@ public class LocalExecutionPlanContext {
     return pipelineDriverFactories;
   }
 
+  public PipelineDriverFactory getCurrentPipelineDriverFactory() {
+    return pipelineDriverFactories.get(pipelineDriverFactories.size() - 1);
+  }
+
+  public int getPipelineNumber() {
+    return pipelineDriverFactories.size();
+  }
+
   public DriverContext getDriverContext() {
     return driverContext;
+  }
+
+  public int getDegreeOfParallelism() {
+    return degreeOfParallelism;
+  }
+
+  public void setDegreeOfParallelism(int degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
   }
 
   private int getNextPipelineId() {
@@ -211,10 +235,10 @@ public class LocalExecutionPlanContext {
     return cachedLastValueAndPathList;
   }
 
-  public void setSinkHandle(ISinkHandle sinkHandle) {
-    requireNonNull(sinkHandle, "sinkHandle is null");
-    checkArgument(driverContext.getSinkHandle() == null, "There must be at most one SinkNode");
-    driverContext.setSinkHandle(sinkHandle);
+  public void setISink(ISink sink) {
+    requireNonNull(sink, "sink is null");
+    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    driverContext.setSink(sink);
   }
 
   public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {

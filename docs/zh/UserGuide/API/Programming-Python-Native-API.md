@@ -19,13 +19,13 @@
 
 -->
 
-# Python 原生接口
+## Python 原生接口
 
-## 依赖
+### 依赖
 
 在使用 Python 原生接口包前，您需要安装 thrift (>=0.13) 依赖。
 
-## 如何使用 （示例）
+### 如何使用 （示例）
 
 首先下载包：`pip3 install apache-iotdb`
 
@@ -49,16 +49,37 @@ session.open(False)
 zone = session.get_time_zone()
 session.close()
 ```
-## 基本接口说明
+### 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
 
-### 初始化
+#### 初始化
 
 * 初始化 Session
 
 ```python
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session(
+    ip="127.0.0.1",
+    port="6667",
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
+```
+
+* 初始化可连接多节点的 Session
+
+```python
+session = Session.init_from_node_urls(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
 ```
 
 * 开启 Session，并决定是否开启 RPC 压缩
@@ -75,9 +96,9 @@ session.open(enable_rpc_compression=False)
 session.close()
 ```
 
-### 数据定义接口 DDL
+#### 数据定义接口 DDL
 
-#### Database 管理
+##### Database 管理
 
 * 设置 database
 
@@ -91,7 +112,7 @@ session.set_storage_group(group_name)
 session.delete_storage_group(group_name)
 session.delete_storage_groups(group_name_lst)
 ```
-#### 时间序列管理
+##### 时间序列管理
 
 * 创建单个或多个时间序列
 
@@ -127,9 +148,9 @@ session.delete_time_series(paths_list)
 session.check_time_series_exists(path)
 ```
 
-### 数据操作接口 DML
+#### 数据操作接口 DML
 
-#### 数据写入
+##### 数据写入
 
 推荐使用 insert_tablet 帮助提高写入效率
 
@@ -249,7 +270,7 @@ session.insert_records(
 session.insert_records_of_one_device(device_id, time_list, measurements_list, data_types_list, values_list)
 ```
 
-#### 带有类型推断的写入
+##### 带有类型推断的写入
 
 当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
@@ -257,7 +278,7 @@ session.insert_records_of_one_device(device_id, time_list, measurements_list, da
 session.insert_str_record(device_id, timestamp, measurements, string_values)
 ```
 
-#### 对齐时间序列的写入
+##### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insert_aligned_xxx 接口，其余与上述接口类似：
 
@@ -268,7 +289,7 @@ session.insert_str_record(device_id, timestamp, measurements, string_values)
 * insert_aligned_tablets
 
 
-### IoTDB-SQL 接口
+#### IoTDB-SQL 接口
 
 * 执行查询语句
 
@@ -289,29 +310,26 @@ session.execute_statement(sql)
 ```
 
 
-### 元数据模版接口
-#### 构建元数据模版
-1. 首先构建Template类
-2. 添加子节点，可以选择InternalNode或MeasurementNode
+#### 元数据模版接口
+##### 构建元数据模版
+1. 首先构建 Template 类
+2. 添加子节点 MeasurementNode
 3. 调用创建元数据模版接口
 
 ```python
 template = Template(name=template_name, share_time=True)
 
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_y = MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_z = MeasurementNode("z", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
 template.add_template(m_node_x)
+template.add_template(m_node_y)
+template.add_template(m_node_z)
 
 session.create_schema_template(template)
 ```
-#### 修改模版节点信息
+##### 修改模版节点信息
 修改模版节点，其中修改的模版必须已经被创建。以下函数能够在已经存在的模版中增加或者删除物理量
 * 在模版中增加实体
 ```python
@@ -323,17 +341,17 @@ session.add_measurements_in_template(template_name, measurements_path, data_type
 session.delete_node_in_template(template_name, path)
 ```
 
-#### 挂载元数据模板
+##### 挂载元数据模板
 ```python
 session.set_schema_template(template_name, prefix_path)
 ```
 
-#### 卸载元数据模版
+##### 卸载元数据模版
 ```python
 session.unset_schema_template(template_name, prefix_path)
 ```
 
-#### 查看元数据模版
+##### 查看元数据模版
 * 查看所有的元数据模版
 ```python
 session.show_all_templates()
@@ -368,14 +386,14 @@ session.show_paths_template_set_on(template_name)
 session.show_paths_template_using_on(template_name)
 ```
 
-#### 删除元数据模版
+##### 删除元数据模版
 删除已经存在的元数据模版，不支持删除已经挂载的模版
 ```python
 session.drop_schema_template("template_python")
 ```
 
 
-### 对 Pandas 的支持
+#### 对 Pandas 的支持
 
 我们支持将查询结果轻松地转换为 [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。
 
@@ -403,7 +421,7 @@ session.close()
 df = ...
 ```
 
-### IoTDB Testcontainer
+#### IoTDB Testcontainer
 
 Python 客户端对测试的支持是基于`testcontainers`库 (https://testcontainers-python.readthedocs.io/en/latest/index.html) 的，如果您想使用该特性，就需要将其安装到您的项目中。
 
@@ -423,11 +441,11 @@ class MyTestCase(unittest.TestCase):
 
 默认情况下，它会拉取最新的 IoTDB 镜像 `apache/iotdb:latest`进行测试，如果您想指定待测 IoTDB 的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的 IoTDB 实例。
 
-### IoTDB DBAPI
+#### IoTDB DBAPI
 
 IoTDB DBAPI 遵循 Python DB API 2.0 规范 (https://peps.python.org/pep-0249/)，实现了通过Python语言访问数据库的通用接口。
 
-#### 例子
+##### 例子
 + 初始化
 
 初始化的参数与Session部分保持一致（sqlalchemy_mode参数除外，该参数仅在SQLAlchemy方言中使用）
@@ -476,9 +494,9 @@ cursor.close()
 conn.close()
 ```
 
-### IoTDB SQLAlchemy Dialect（实验性）
+#### IoTDB SQLAlchemy Dialect（实验性）
 IoTDB的SQLAlchemy方言主要是为了适配Apache superset而编写的，该部分仍在完善中，请勿在生产环境中使用！
-#### 元数据模型映射
+##### 元数据模型映射
 SQLAlchemy 所使用的数据模型为关系数据模型，这种数据模型通过表格来描述不同实体之间的关系。
 而 IoTDB 的数据模型为层次数据模型，通过树状结构来对数据进行组织。
 为了使 IoTDB 能够适配 SQLAlchemy 的方言，需要对 IoTDB 中原有的数据模型进行重新组织，
@@ -506,9 +524,9 @@ SQLAlchemy 中的元数据有：
 
 下图更加清晰的展示了二者的映射关系：
 
-![sqlalchemy-to-iotdb](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
-#### 数据类型映射
+##### 数据类型映射
 | IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |
 |--------------|-------------------|
 | BOOLEAN      | Boolean           |
@@ -518,7 +536,7 @@ SQLAlchemy 中的元数据有：
 | DOUBLE       | Float             |
 | TEXT         | Text              |
 | LONG         | BigInteger        |
-#### Example
+##### Example
 
 + 执行语句
 
@@ -563,13 +581,13 @@ for row in res:
     print(row)
 ```
 
-## 给开发人员
+### 给开发人员
 
-### 介绍
+#### 介绍
 
 这是一个使用 thrift rpc 接口连接到 IoTDB 的示例。在 Windows 和 Linux 上操作几乎是一样的，但要注意路径分隔符等不同之处。
 
-### 依赖
+#### 依赖
 
 首选 Python3.7 或更高版本。
 
@@ -584,7 +602,7 @@ http://thrift.apache.org/docs/install/
 pip install -r requirements_dev.txt
 ```
 
-### 编译 thrift 库并调试
+#### 编译 thrift 库并调试
 
 在 IoTDB 源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
 
@@ -594,7 +612,7 @@ pip install -r requirements_dev.txt
 
 **注意**不要将`iotdb/thrift`上传到 git 仓库中 ！
 
-### Session 客户端 & 使用示例 
+#### Session 客户端 & 使用示例 
 
 我们将 thrift 接口打包到`client-py/src/iotdb/session.py `中（与 Java 版本类似），还提供了一个示例文件`client-py/src/SessionExample.py`来说明如何使用 Session 模块。请仔细阅读。
 
@@ -613,7 +631,7 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-### 测试
+#### 测试
 
 请在`tests`文件夹中添加自定义测试。
 
@@ -621,12 +639,12 @@ session.close()
 
 **注意**一些测试需要在您的系统上使用 docker，因为测试的 IoTDB 实例是使用 [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html) 在 docker 容器中启动的。
 
-### 其他工具
+#### 其他工具
 
 [black](https://pypi.org/project/black/) 和 [flake8](https://pypi.org/project/flake8/) 分别用于自动格式化和 linting。
 它们可以通过 `black .` 或 `flake8 .` 分别运行。
 
-## 发版
+### 发版
 
 要进行发版，
 
@@ -638,11 +656,11 @@ session.close()
 
 最后，您就可以将包发布到 pypi 了。
 
-### 准备您的环境
+#### 准备您的环境
 
 首先，通过`pip install -r requirements_dev.txt`安装所有必要的开发依赖。
 
-### 发版
+#### 发版
 
 有一个脚本`release.sh`可以用来执行发版的所有步骤。
 

@@ -51,7 +51,7 @@ Generally, there are three steps to finish the integration test, (1) constructin
 
 #### 1. Integration Test Class (IT Class) and Annotations
 
-When writing new IT classes, the developers are encouraged to create the new ones in the [integration-test](https://github.com/apache/iotdb/tree/master/integration-test) module. Except for the classes serving the other test cases, the classes containing integration tests to evaluate the functionality of IoTDB should be named "function"+"IT". For example, the test for auto-registration metadata in IoTDB is named “<font color=green>IoTDBAutoCreateSchema</font><font color=red>IT</font>”. 
+When writing new IT classes, the developers are encouraged to create the new ones in the [integration-test](https://github.com/apache/iotdb/tree/master/integration-test) module. Except for the classes serving the other test cases, the classes containing integration tests to evaluate the functionality of IoTDB should be named "function"+"IT". For example, the test for auto-registration metadata in IoTDB is named “<span style="color:green">IoTDBAutoCreateSchema</span><span style="color:red">IT</span>”. 
 
 - Category`` Annotation. **When creating new IT classes, the ```@Category``` should be introduced explicitly**, and the test environment should be specified by ```LocalStandaloneIT.class```, ```ClusterIT.class```, and ```RemoteIT.class```, which corresponds to the Local Standalone, Cluster and Remote environment respectively. **In general, ```LocalStandaloneIT.class``` and ```ClusterIT.class``` should both be included**.  Only in the case when some functionalities are only supported in the standalone version can we include   ```LocalStandaloneIT.class``` solely. 
 - RunWith Annotation. The ```@RunWith(IoTDBTestRunner.class)```  annotation should be included in every IT class. 
@@ -108,7 +108,7 @@ public static void tearDown() throws Exception {
 
 #### 3. Implementing the logic of IT
 
-IT of Apache IoTDB should be implemented as black-box testing. Please name the method as "functionality"+"Test", e.g., "<font color=green>selectWithAlias</font><font color=red>Test</font>". The interaction should be implemented through JDBC or Session API. 
+IT of Apache IoTDB should be implemented as black-box testing. Please name the method as "functionality"+"Test", e.g., "<span style="color:green">selectWithAlias</span><span style="color:red">Test</span>". The interaction should be implemented through JDBC or Session API. 
 
 1 With JDBC
 

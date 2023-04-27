@@ -30,13 +30,14 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -107,11 +108,11 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public TPermissionInfoResp checkUserPrivileges(
-      String username, List<String> paths, int permission) {
+      String username, List<PartialPath> paths, int permission) {
     boolean status = true;
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      for (String path : paths) {
+      for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           status = false;
           break;
@@ -135,7 +136,8 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  private boolean checkOnePath(String username, String path, int permission) throws AuthException {
+  private boolean checkOnePath(String username, PartialPath path, int permission)
+      throws AuthException {
     try {
       if (authorizer.checkUserPrivileges(username, path, permission)) {
         return true;
@@ -154,7 +156,7 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
-    List<String> nodeNameList = authorPlan.getNodeNameList();
+    List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
         case UpdateUser:
@@ -174,14 +176,14 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantRole:
           for (int i : permissions) {
-            for (String path : nodeNameList) {
+            for (PartialPath path : nodeNameList) {
               authorizer.grantPrivilegeToRole(roleName, path, i);
             }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
-            for (String path : nodeNameList) {
+            for (PartialPath path : nodeNameList) {
               authorizer.grantPrivilegeToUser(userName, path, i);
             }
           }
@@ -191,14 +193,14 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeUser:
           for (int i : permissions) {
-            for (String path : nodeNameList) {
+            for (PartialPath path : nodeNameList) {
               authorizer.revokePrivilegeFromUser(userName, path, i);
             }
           }
           break;
         case RevokeRole:
           for (int i : permissions) {
-            for (String path : nodeNameList) {
+            for (PartialPath path : nodeNameList) {
               authorizer.revokePrivilegeFromRole(roleName, path, i);
             }
           }
@@ -285,8 +287,8 @@ public class AuthorInfo implements SnapshotProcessor {
         rolePrivilegesSet.add(pathPrivilege.toString());
         continue;
       }
-      for (String path : plan.getNodeNameList()) {
-        if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)) {
+      for (PartialPath path : plan.getNodeNameList()) {
+        if (path.matchFullPath(pathPrivilege.getPath())) {
           rolePrivilegesSet.add(pathPrivilege.toString());
         }
       }
@@ -324,8 +326,8 @@ public class AuthorInfo implements SnapshotProcessor {
           userPrivilegeSet.add(pathPrivilege.toString());
           continue;
         }
-        for (String path : plan.getNodeNameList()) {
-          if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)
+        for (PartialPath path : plan.getNodeNameList()) {
+          if (path.matchFullPath(pathPrivilege.getPath())
               && !userPrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add("");
             userPrivilegeSet.add(pathPrivilege.toString());
@@ -346,8 +348,8 @@ public class AuthorInfo implements SnapshotProcessor {
             rolePrivilegeSet.add(pathPrivilege.toString());
             continue;
           }
-          for (String path : plan.getNodeNameList()) {
-            if (AuthUtils.pathBelongsTo(pathPrivilege.getPath(), path)
+          for (PartialPath path : plan.getNodeNameList()) {
+            if (path.matchFullPath(pathPrivilege.getPath())
                 && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
               rolePrivileges.add(roleN);
               rolePrivilegeSet.add(pathPrivilege.toString());
@@ -402,7 +404,7 @@ public class AuthorInfo implements SnapshotProcessor {
     User user = authorizer.getUser(username);
     if (user.getPrivilegeList() != null) {
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        userPrivilegeList.add(pathPrivilege.getPath());
+        userPrivilegeList.add(pathPrivilege.getPath().getFullPath());
         String privilegeIdList = pathPrivilege.getPrivileges().toString();
         userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
       }
@@ -418,7 +420,7 @@ public class AuthorInfo implements SnapshotProcessor {
         Role role = authorizer.getRole(roleName);
         List<String> rolePrivilegeList = new ArrayList<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          rolePrivilegeList.add(pathPrivilege.getPath());
+          rolePrivilegeList.add(pathPrivilege.getPath().getFullPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }

@@ -47,5 +47,5 @@ public class SessionConfig {
 
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 
-  public static final Version DEFAULT_VERSION = Version.V_0_13;
+  public static final Version DEFAULT_VERSION = Version.V_1_0;
 }

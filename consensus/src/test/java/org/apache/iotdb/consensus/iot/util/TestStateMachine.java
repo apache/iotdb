@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -76,12 +77,12 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
       if (request instanceof IndexedConsensusRequest) {
         writeOneRequest((IndexedConsensusRequest) request);
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else if (request instanceof BatchIndexedConsensusRequest) {
-        BatchIndexedConsensusRequest batchIndexedConsensusRequest =
-            (BatchIndexedConsensusRequest) request;
+      } else if (request instanceof DeserializedBatchIndexedConsensusRequest) {
+        DeserializedBatchIndexedConsensusRequest batchIndexedConsensusRequest =
+            (DeserializedBatchIndexedConsensusRequest) request;
         List<TSStatus> subStatus = new ArrayList<>();
-        for (IndexedConsensusRequest innerRequest : batchIndexedConsensusRequest.getRequests()) {
-          writeOneRequest(innerRequest);
+        for (IConsensusRequest innerRequest : batchIndexedConsensusRequest.getInsertNodes()) {
+          writeOneRequest((IndexedConsensusRequest) innerRequest);
           subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         }
         return new TSStatus().setSubStatus(subStatus);
@@ -89,6 +90,24 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
         logger.error("Unknown request: {}", request);
         return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
       }
+    }
+  }
+
+  @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    if (request instanceof BatchIndexedConsensusRequest) {
+      BatchIndexedConsensusRequest consensusRequest = (BatchIndexedConsensusRequest) request;
+      DeserializedBatchIndexedConsensusRequest result =
+          new DeserializedBatchIndexedConsensusRequest(
+              consensusRequest.getStartSyncIndex(),
+              consensusRequest.getEndSyncIndex(),
+              consensusRequest.getRequests().size());
+      for (IndexedConsensusRequest r : consensusRequest.getRequests()) {
+        result.add(r);
+      }
+      return result;
+    } else {
+      return request;
     }
   }
 

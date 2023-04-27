@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.client.DataNodeInternalClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.IntoProcessException;
@@ -34,6 +35,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
@@ -51,6 +54,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
@@ -75,22 +79,43 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected boolean finished = false;
 
-  private final long maxRetainedSize;
-  private final long maxReturnSize;
+  protected int maxRowNumberInStatement;
+  private long maxRetainedSize;
+  private long maxReturnSize;
+
+  protected final List<Type> typeConvertors;
 
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
-      List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
+      List<TSDataType> inputColumnTypes,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize) {
+      long statementSizePerLine) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.insertTabletStatementGenerators = insertTabletStatementGenerators;
+    this.typeConvertors =
+        inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
+
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
     this.writeOperationExecutor = intoOperationExecutor;
+    initMemoryEstimates(statementSizePerLine);
+  }
 
+  private void initMemoryEstimates(long statementSizePerLine) {
+    long intoOperationBufferSizeInByte =
+        IoTDBDescriptor.getInstance().getConfig().getIntoOperationBufferSizeInByte();
+    long memAllowedMaxRowNumber = Math.max(intoOperationBufferSizeInByte / statementSizePerLine, 1);
+    if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
+      memAllowedMaxRowNumber = Integer.MAX_VALUE;
+    }
+    int maxRowNumberInStatement =
+        Math.min(
+            (int) memAllowedMaxRowNumber,
+            IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
+    long maxStatementSize = maxRowNumberInStatement * statementSizePerLine;
+
+    this.maxRowNumberInStatement = maxRowNumberInStatement;
     this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
     this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
@@ -124,19 +149,18 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !finished;
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {
       return null;
     }
     cachedTsBlock = null;
-
     if (child.hasNextWithTimer()) {
       TsBlock inputTsBlock = child.nextWithTimer();
       processTsBlock(inputTsBlock);
@@ -202,7 +226,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, Boolean> targetDeviceToAlignedMap) {
+      Map<String, Boolean> targetDeviceToAlignedMap,
+      List<Type> sourceTypeConvertors,
+      int maxRowNumberInStatement) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
     for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
@@ -213,7 +239,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
               targetDevice,
               entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice.toString()));
+              targetDeviceToAlignedMap.get(targetDevice.toString()),
+              sourceTypeConvertors,
+              maxRowNumberInStatement);
       insertTabletStatementGenerators.add(generator);
     }
     return insertTabletStatementGenerators;
@@ -284,7 +312,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished;
   }
 
@@ -314,10 +342,14 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
   }
 
+  @TestOnly
+  public int getMaxRowNumberInStatement() {
+    return maxRowNumberInStatement;
+  }
+
   public static class InsertTabletStatementGenerator {
 
-    private final int TABLET_ROW_LIMIT =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+    private final int rowLimit;
 
     private final PartialPath devicePath;
     private final boolean isAligned;
@@ -333,11 +365,15 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     private final Map<String, AtomicInteger> writtenCounter;
 
+    private final List<Type> sourceTypeConvertors;
+
     public InsertTabletStatementGenerator(
         PartialPath devicePath,
         Map<String, InputLocation> measurementToInputLocationMap,
         Map<String, TSDataType> measurementToDataTypeMap,
-        Boolean isAligned) {
+        Boolean isAligned,
+        List<Type> sourceTypeConvertors,
+        int rowLimit) {
       this.devicePath = devicePath;
       this.isAligned = isAligned;
       this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
@@ -347,32 +383,34 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       for (String measurement : measurements) {
         writtenCounter.put(measurement, new AtomicInteger(0));
       }
+      this.sourceTypeConvertors = sourceTypeConvertors;
+      this.rowLimit = rowLimit;
       this.reset();
     }
 
     public void reset() {
       this.rowCount = 0;
-      this.times = new long[TABLET_ROW_LIMIT];
+      this.times = new long[rowLimit];
       this.columns = new Object[this.measurements.length];
       for (int i = 0; i < this.measurements.length; i++) {
         switch (dataTypes[i]) {
           case BOOLEAN:
-            columns[i] = new boolean[TABLET_ROW_LIMIT];
+            columns[i] = new boolean[rowLimit];
             break;
           case INT32:
-            columns[i] = new int[TABLET_ROW_LIMIT];
+            columns[i] = new int[rowLimit];
             break;
           case INT64:
-            columns[i] = new long[TABLET_ROW_LIMIT];
+            columns[i] = new long[rowLimit];
             break;
           case FLOAT:
-            columns[i] = new float[TABLET_ROW_LIMIT];
+            columns[i] = new float[rowLimit];
             break;
           case DOUBLE:
-            columns[i] = new double[TABLET_ROW_LIMIT];
+            columns[i] = new double[rowLimit];
             break;
           case TEXT:
-            columns[i] = new Binary[TABLET_ROW_LIMIT];
+            columns[i] = new Binary[rowLimit];
             Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
             break;
           default:
@@ -382,7 +420,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       }
       this.bitMaps = new BitMap[this.measurements.length];
       for (int i = 0; i < this.bitMaps.length; ++i) {
-        this.bitMaps[i] = new BitMap(TABLET_ROW_LIMIT);
+        this.bitMaps[i] = new BitMap(rowLimit);
         this.bitMaps[i].markAll();
       }
     }
@@ -393,7 +431,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         times[rowCount] = tsBlock.getTimeByIndex(lastReadIndex);
 
         for (int i = 0; i < measurements.length; ++i) {
-          Column valueColumn = tsBlock.getValueColumns()[inputLocations[i].getValueColumnIndex()];
+          int valueColumnIndex = inputLocations[i].getValueColumnIndex();
+          Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
+          Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
 
           // if the value is NULL
           if (valueColumn.isNull(lastReadIndex)) {
@@ -403,24 +443,30 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
           bitMaps[i].unmark(rowCount);
           writtenCounter.get(measurements[i]).getAndIncrement();
-          switch (valueColumn.getDataType()) {
+          switch (dataTypes[i]) {
             case INT32:
-              ((int[]) columns[i])[rowCount] = valueColumn.getInt(lastReadIndex);
+              ((int[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
               break;
             case INT64:
-              ((long[]) columns[i])[rowCount] = valueColumn.getLong(lastReadIndex);
+              ((long[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getLong(valueColumn, lastReadIndex);
               break;
             case FLOAT:
-              ((float[]) columns[i])[rowCount] = valueColumn.getFloat(lastReadIndex);
+              ((float[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getFloat(valueColumn, lastReadIndex);
               break;
             case DOUBLE:
-              ((double[]) columns[i])[rowCount] = valueColumn.getDouble(lastReadIndex);
+              ((double[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getDouble(valueColumn, lastReadIndex);
               break;
             case BOOLEAN:
-              ((boolean[]) columns[i])[rowCount] = valueColumn.getBoolean(lastReadIndex);
+              ((boolean[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBoolean(valueColumn, lastReadIndex);
               break;
             case TEXT:
-              ((Binary[]) columns[i])[rowCount] = valueColumn.getBinary(lastReadIndex);
+              ((Binary[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBinary(valueColumn, lastReadIndex);
               break;
             default:
               throw new UnSupportedDataTypeException(
@@ -432,7 +478,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
         ++rowCount;
         ++lastReadIndex;
-        if (rowCount == TABLET_ROW_LIMIT) {
+        if (rowCount == rowLimit) {
           break;
         }
       }
@@ -440,7 +486,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
 
     public boolean isFull() {
-      return rowCount == TABLET_ROW_LIMIT;
+      return rowCount == rowLimit;
     }
 
     public boolean isEmpty() {
@@ -455,7 +501,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       insertTabletStatement.setDataTypes(dataTypes);
       insertTabletStatement.setRowCount(rowCount);
 
-      if (rowCount != TABLET_ROW_LIMIT) {
+      if (rowCount != rowLimit) {
         times = Arrays.copyOf(times, rowCount);
         for (int i = 0; i < columns.length; i++) {
           bitMaps[i] = bitMaps[i].getRegion(0, rowCount);

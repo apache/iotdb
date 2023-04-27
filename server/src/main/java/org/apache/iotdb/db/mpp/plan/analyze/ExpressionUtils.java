@@ -35,10 +35,12 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -54,9 +56,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExpressionUtils {
-
   public static List<Expression> reconstructTimeSeriesOperands(
       List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
@@ -93,44 +95,18 @@ public class ExpressionUtils {
       UnaryExpression expression, List<Expression> childExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression childExpression : childExpressions) {
-      switch (expression.getExpressionType()) {
-        case IS_NULL:
-          resultExpressions.add(
-              new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot()));
-          break;
-        case IN:
-          resultExpressions.add(
-              new InExpression(
-                  childExpression,
-                  ((InExpression) expression).isNotIn(),
-                  ((InExpression) expression).getValues()));
-          break;
-        case LIKE:
-          resultExpressions.add(
-              new LikeExpression(
-                  childExpression,
-                  ((LikeExpression) expression).getPatternString(),
-                  ((LikeExpression) expression).getPattern()));
-          break;
-        case LOGIC_NOT:
-          resultExpressions.add(new LogicNotExpression(childExpression));
-          break;
-        case NEGATION:
-          resultExpressions.add(new NegationExpression(childExpression));
-          break;
-        case REGEXP:
-          resultExpressions.add(
-              new RegularExpression(
-                  childExpression,
-                  ((RegularExpression) expression).getPatternString(),
-                  ((RegularExpression) expression).getPattern()));
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + expression.getExpressionType());
-      }
+      resultExpressions.add(reconstructUnaryExpression(expression, childExpression));
     }
     return resultExpressions;
+  }
+
+  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
+    return new CaseWhenThenExpression(
+        childExpressions // transform to List<WhenThenExpression>
+            .subList(0, childExpressions.size() - 1).stream()
+            .map(expression -> (WhenThenExpression) expression)
+            .collect(Collectors.toList()),
+        childExpressions.get(childExpressions.size() - 1));
   }
 
   public static Expression reconstructUnaryExpression(
@@ -173,49 +149,7 @@ public class ExpressionUtils {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression le : leftExpressions) {
       for (Expression re : rightExpressions) {
-        switch (expressionType) {
-          case ADDITION:
-            resultExpressions.add(new AdditionExpression(le, re));
-            break;
-          case SUBTRACTION:
-            resultExpressions.add(new SubtractionExpression(le, re));
-            break;
-          case MULTIPLICATION:
-            resultExpressions.add(new MultiplicationExpression(le, re));
-            break;
-          case DIVISION:
-            resultExpressions.add(new DivisionExpression(le, re));
-            break;
-          case MODULO:
-            resultExpressions.add(new ModuloExpression(le, re));
-            break;
-          case LESS_THAN:
-            resultExpressions.add(new LessThanExpression(le, re));
-            break;
-          case LESS_EQUAL:
-            resultExpressions.add(new LessEqualExpression(le, re));
-            break;
-          case GREATER_THAN:
-            resultExpressions.add(new GreaterThanExpression(le, re));
-            break;
-          case GREATER_EQUAL:
-            resultExpressions.add(new GreaterEqualExpression(le, re));
-            break;
-          case EQUAL_TO:
-            resultExpressions.add(new EqualToExpression(le, re));
-            break;
-          case NON_EQUAL:
-            resultExpressions.add(new NonEqualExpression(le, re));
-            break;
-          case LOGIC_AND:
-            resultExpressions.add(new LogicAndExpression(le, re));
-            break;
-          case LOGIC_OR:
-            resultExpressions.add(new LogicOrExpression(le, re));
-            break;
-          default:
-            throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-        }
+        resultExpressions.add(reconstructBinaryExpression(expressionType, le, re));
       }
     }
     return resultExpressions;
@@ -259,6 +193,9 @@ public class ExpressionUtils {
       case LOGIC_OR:
         return new LogicOrExpression(leftExpression, rightExpression);
 
+      case WHEN_THEN:
+        return new WhenThenExpression(leftExpression, rightExpression);
+
       default:
         throw new IllegalArgumentException("unsupported expression type: " + expressionType);
     }
@@ -273,16 +210,7 @@ public class ExpressionUtils {
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          switch (expression.getExpressionType()) {
-            case BETWEEN:
-              resultExpressions.add(
-                  new BetweenExpression(
-                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
-              break;
-            default:
-              throw new IllegalArgumentException(
-                  "unsupported expression type: " + expression.getExpressionType());
-          }
+          resultExpressions.add(reconstructTernaryExpression(expression, fe, se, te));
         }
     }
     return resultExpressions;
@@ -306,6 +234,17 @@ public class ExpressionUtils {
     }
   }
 
+  /**
+   * Make cartesian product. Attention, in this implementation, the way to handle the empty set is
+   * to ignore it instead of making the result an empty set.
+   *
+   * @param dimensionValue source data
+   * @param resultList final results
+   * @param layer the depth of recursive, dimensionValue[layer] will be processed this time, should
+   *     always be 0 while call from outside
+   * @param currentList intermediate result, should always be empty while call from outside
+   * @param <T> any type
+   */
   public static <T> void cartesianProduct(
       List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
     if (layer < dimensionValue.size() - 1) {
@@ -365,7 +304,8 @@ public class ExpressionUtils {
         && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64) {
       long value1 = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
       long value2 = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
-      return new Pair<>(TimeFilter.between(value1, value2, not), false);
+      return new Pair<>(
+          not ? TimeFilter.notBetween(value1, value2) : TimeFilter.between(value1, value2), false);
     } else {
       return new Pair<>(null, true);
     }

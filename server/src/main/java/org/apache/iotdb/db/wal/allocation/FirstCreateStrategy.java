@@ -109,6 +109,12 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
     return snapshot;
   }
 
+  /** non-thread-safe, used for metrics only */
+  @Override
+  public int getNodesNum() {
+    return identifier2Nodes.size();
+  }
+
   @Override
   public void clear() {
     nodesLock.lock();

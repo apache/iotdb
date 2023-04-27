@@ -38,14 +38,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public class RatisClient {
+class RatisClient {
 
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
   private final RaftGroup serveGroup;
   private final RaftClient raftClient;
   private final ClientManager<RaftGroup, RatisClient> clientManager;
 
-  public RatisClient(
+  RatisClient(
       RaftGroup serveGroup,
       RaftClient client,
       ClientManager<RaftGroup, RatisClient> clientManager) {
@@ -54,7 +54,7 @@ public class RatisClient {
     this.clientManager = clientManager;
   }
 
-  public RaftClient getRaftClient() {
+  RaftClient getRaftClient() {
     return raftClient;
   }
 
@@ -66,11 +66,11 @@ public class RatisClient {
     }
   }
 
-  public void returnSelf() {
+  void returnSelf() {
     clientManager.returnClient(serveGroup, this);
   }
 
-  public static class Factory extends BaseClientFactory<RaftGroup, RatisClient> {
+  static class Factory extends BaseClientFactory<RaftGroup, RatisClient> {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
@@ -124,9 +124,9 @@ public class RatisClient {
   private static class RatisRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
-    RetryPolicy defaultPolicy;
+    private final RetryPolicy defaultPolicy;
 
-    public RatisRetryPolicy(RatisConfig.Client config) {
+    RatisRetryPolicy(RatisConfig.Client config) {
       defaultPolicy =
           ExponentialBackoffRetry.newBuilder()
               .setBaseSleepTime(
@@ -144,7 +144,7 @@ public class RatisClient {
 
       if (event.getCause() instanceof IOException && !(event.getCause() instanceof RaftException)) {
         // unexpected. may be caused by statemachine.
-        logger.debug("raft client request failed and caught exception: ", event.getCause());
+        logger.info("raft client request failed and caught exception: ", event.getCause());
         return NO_RETRY_ACTION;
       }
 

@@ -49,6 +49,7 @@ import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -188,7 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+            .updateRpcInstance(conf.getClusterName(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
@@ -228,6 +229,13 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
+    if (properties.getProperty("dn_core_connection_for_internal_service", null) != null) {
+      conf.setCoreClientNumForEachNode(
+          Integer.parseInt(
+              properties.getProperty("dn_core_connection_for_internal_service").trim()));
+      logger.warn(
+          "The parameter dn_core_connection_for_internal_service is out of date. Please rename it to dn_core_client_count_for_each_node_in_client_manager.");
+    }
     conf.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
@@ -236,6 +244,13 @@ public class IoTDBDescriptor {
                     String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
+    if (properties.getProperty("dn_max_connection_for_internal_service", null) != null) {
+      conf.setMaxClientNumForEachNode(
+          Integer.parseInt(
+              properties.getProperty("dn_max_connection_for_internal_service").trim()));
+      logger.warn(
+          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+    }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
@@ -270,6 +285,19 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
+                .trim()));
+
+    conf.setEnableMLNodeService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_mlnode_rpc_service", Boolean.toString(conf.isEnableMLNodeService()))
+                .trim()));
+
+    conf.setMLNodePort(
+        Integer.parseInt(
+            properties
+                .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
                 .trim()));
 
     conf.setTimestampPrecision(
@@ -330,8 +358,6 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
-
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
 
     conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
@@ -476,6 +502,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_priority", conf.getCompactionPriority().toString())));
 
+    conf.setEnableCompactionMemControl(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_compaction_mem_control",
+                Boolean.toString(conf.isEnableCompactionMemControl()))));
+
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
@@ -543,6 +575,24 @@ public class IoTDBDescriptor {
       conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setDegreeOfParallelism(
+        Integer.parseInt(
+            properties.getProperty(
+                "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
+
+    if (conf.getDegreeOfParallelism() <= 0) {
+      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
+    conf.setModeMapSizeThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+
+    if (conf.getModeMapSizeThreshold() <= 0) {
+      conf.setModeMapSizeThreshold(10000);
+    }
+
     conf.setMaxAllowedConcurrentQueries(
         Integer.parseInt(
             properties.getProperty(
@@ -552,21 +602,6 @@ public class IoTDBDescriptor {
     if (conf.getMaxAllowedConcurrentQueries() <= 0) {
       conf.setMaxAllowedConcurrentQueries(1000);
     }
-
-    conf.setSubRawQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
-
-    if (conf.getSubRawQueryThreadCount() <= 0) {
-      conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
-
-    conf.setRawQueryBlockingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "raw_query_blocking_queue_capacity",
-                Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
@@ -583,14 +618,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
 
-    conf.setEnableExternalSort(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
-    conf.setExternalSortThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
     conf.setUpgradeThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -661,11 +688,21 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_compaction_validation",
                 Boolean.toString(conf.isEnableCompactionValidation()))));
+    conf.setCandidateCompactionTaskQueueSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "candidate_compaction_task_queue_size",
+                Integer.toString(conf.getCandidateCompactionTaskQueueSize()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
+
+    conf.setEnable13DataInsertAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "0.13_data_insert_adapt", String.valueOf(conf.isEnable13DataInsertAdapt()))));
 
     int rpcSelectorThreadNum =
         Integer.parseInt(
@@ -736,6 +773,12 @@ public class IoTDBDescriptor {
         properties.getProperty("kerberos_keytab_file_path", conf.getKerberosKeytabFilePath()));
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
+
+    // the size of device path cache
+    conf.setDevicePathCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
 
     // the num of memtables in each database
     conf.setConcurrentWritingTimePartition(
@@ -881,6 +924,11 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
+    conf.setIntoOperationBufferSizeInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "into_operation_buffer_size_in_byte",
+                String.valueOf(conf.getIntoOperationBufferSizeInByte()))));
     conf.setSelectIntoInsertTabletPlanRowLimit(
         Integer.parseInt(
             properties.getProperty(
@@ -989,6 +1037,9 @@ public class IoTDBDescriptor {
     // CQ
     loadCQProps(properties);
 
+    // Pipe
+    loadPipeProps(properties);
+
     // cluster
     loadClusterProps(properties);
 
@@ -1001,6 +1052,12 @@ public class IoTDBDescriptor {
     conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
+
+    conf.setQuotaEnable(
+        Boolean.parseBoolean(
+            properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+
+    conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1417,12 +1474,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      // update max_deduplicated_path_num
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_deduplicated_path_num",
-                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -1440,6 +1491,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
                   Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+
+      // update select into operation max buffer size
+      conf.setIntoOperationBufferSizeInByte(
+          Long.parseLong(
+              properties.getProperty(
+                  "into_operation_buffer_size_in_byte",
+                  String.valueOf(conf.getIntoOperationBufferSizeInByte()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -1554,12 +1612,6 @@ public class IoTDBDescriptor {
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
 
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
-
     conf.setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1634,7 +1686,7 @@ public class IoTDBDescriptor {
     double memtableProportionForWrite =
         ((double) (proportionForMemTable)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
+
     double timePartitionInfoForWrite =
         ((double) (proportionForTimePartitionInfo)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));
@@ -1654,15 +1706,14 @@ public class IoTDBDescriptor {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 8;
-    int schemaCacheProportion = 1;
-    int partitionCacheProportion = 0;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
     int lastCacheProportion = 1;
 
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
-      conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
@@ -1676,8 +1727,6 @@ public class IoTDBDescriptor {
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
         lastCacheProportion = Integer.parseInt(proportions[3].trim());
       }
-    } else {
-      conf.setDefaultSchemaMemoryConfig(true);
     }
 
     conf.setAllocateMemoryForSchemaRegion(
@@ -1711,11 +1760,6 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
-    }
-
-    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
-    if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =
@@ -1790,6 +1834,19 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
+  private void loadPipeProps(Properties properties) {
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+
+    conf.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_thread_num",
+                Integer.toString(conf.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (conf.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      conf.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
+  }
+
   private void loadCQProps(Properties properties) {
     conf.setContinuousQueryThreadNum(
         Integer.parseInt(
@@ -1810,6 +1867,7 @@ public class IoTDBDescriptor {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
     if (configNodeUrls != null) {
       try {
+        configNodeUrls = configNodeUrls.trim();
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
@@ -1818,29 +1876,39 @@ public class IoTDBDescriptor {
     }
 
     conf.setInternalAddress(
-        properties.getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress()));
+        properties
+            .getProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, conf.getInternalAddress())
+            .trim());
 
     conf.setInternalPort(
         Integer.parseInt(
-            properties.getProperty(
-                IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
+            properties
+                .getProperty(
+                    IoTDBConstant.DN_INTERNAL_PORT, Integer.toString(conf.getInternalPort()))
+                .trim()));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty(
-                "dn_data_region_consensus_port",
-                Integer.toString(conf.getDataRegionConsensusPort()))));
+            properties
+                .getProperty(
+                    "dn_data_region_consensus_port",
+                    Integer.toString(conf.getDataRegionConsensusPort()))
+                .trim()));
 
     conf.setSchemaRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty(
-                "dn_schema_region_consensus_port",
-                Integer.toString(conf.getSchemaRegionConsensusPort()))));
+            properties
+                .getProperty(
+                    "dn_schema_region_consensus_port",
+                    Integer.toString(conf.getSchemaRegionConsensusPort()))
+                .trim()));
     conf.setJoinClusterRetryIntervalMs(
         Long.parseLong(
-            properties.getProperty(
-                "dn_join_cluster_retry_interval_ms",
-                Long.toString(conf.getJoinClusterRetryIntervalMs()))));
+            properties
+                .getProperty(
+                    "dn_join_cluster_retry_interval_ms",
+                    Long.toString(conf.getJoinClusterRetryIntervalMs()))
+                .trim()));
   }
 
   public void loadShuffleProps(Properties properties) {
@@ -1961,40 +2029,6 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForStorageEngine(
         conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
     SystemInfo.getInstance().allocateWriteMemory();
-  }
-
-  public void initClusterSchemaMemoryAllocate() {
-    if (!conf.isDefaultSchemaMemoryConfig()) {
-      // the config has already been updated as user config in properties file
-      return;
-    }
-
-    // process the default schema memory allocate
-
-    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
-
-    int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
-    int partitionCacheProportion = 1;
-    int lastCacheProportion = 1;
-
-    conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * schemaRegionProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
-
-    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
-
-    conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * partitionCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
-
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
-    logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   private static class IoTDBDescriptorHolder {

@@ -19,16 +19,18 @@
 
 -->
 
-# Java 原生接口
 
-## 安装
+# 应用编程接口
+## Java 原生接口
 
-### 依赖
+### 安装
+
+#### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-### 安装方法
+#### 安装方法
 
 在根目录下运行：
 
@@ -36,7 +38,7 @@
 mvn clean install -pl session -am -Dmaven.test.skip=true
 ```
 
-### 在 MAVEN 中使用原生接口
+#### 在 MAVEN 中使用原生接口
 
 ```xml
 <dependencies>
@@ -48,23 +50,23 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-## 语法说明
+### 语法说明
 
- - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Syntax-Conventions/Literal-Values.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
  - 对于其他接口： 
    - 经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，此处均需要进行转义。 
    - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，均可以不用进行转义。
  - 语法说明相关代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
-## 基本接口说明
+### 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
 
-### 初始化
+#### 初始化
 
 * 初始化 Session
 
-```java
+``` java
 // 全部使用默认配置
 session = new Session.Builder.build();
 
@@ -94,17 +96,17 @@ session =
         .build();
 ```
 
-其中，version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`。
+其中，version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`、`V_1_0`。
 
 * 开启 Session
 
-```java
+``` java
 void open()
 ```
 
 * 开启 Session，并决定是否开启 RPC 压缩
 
-```java
+``` java
 void open(boolean enableRPCCompression)
 ```
 
@@ -112,31 +114,31 @@ void open(boolean enableRPCCompression)
 
 * 关闭 Session
 
-```java
+``` java
 void close()
 ```
 
-### 数据定义接口 DDL
+#### 数据定义接口 DDL
 
-#### Database 管理
+##### Database 管理
 
 * 设置 database
 
-```java
+``` java
 void setStorageGroup(String storageGroupId)
 ```
 
 * 删除单个或多个 database
 
-```java
+``` java
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
-#### 时间序列管理
+##### 时间序列管理
 
 * 创建单个或多个时间序列
 
-```java
+``` java
 void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor, Map<String, String> props,
       Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
@@ -159,22 +161,22 @@ void createAlignedTimeseries(String prefixPath, List<String> measurements,
 
 * 删除一个或多个时间序列
 
-```java
+``` java
 void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
 * 检测时间序列是否存在
 
-```java
+``` java
 boolean checkTimeseriesExists(String path)
 ```
 
-#### 元数据模版
+##### 元数据模版
 
 * 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
-```java
+``` java
 public void createSchemaTemplate(Template template);
 
 Class Template {
@@ -207,7 +209,7 @@ Class MeasurementNode extends Node {
 
 通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
 
-```java
+``` java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
@@ -221,59 +223,10 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-* 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
+* 完成模板挂载操作后，可以通过如下的接口在给定的设备上使用模板注册序列，或者也可以直接向相应的设备写入数据以自动使用模板注册序列。
 
-```java
-// 为指定模板新增一组对齐的物理量，若其父节点在模板中已经存在，且不要求对齐，则报错
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// 为指定模板新增一个对齐物理量, 若其父节点在模板中已经存在，且不要求对齐，则报错
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// 为指定模板新增一个不对齐物理量, 若其父节在模板中已经存在，且要求对齐，则报错
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// 为指定模板新增一组不对齐的物理量, 若其父节在模板中已经存在，且要求对齐，则报错
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// 从指定模板中删除一个节点
-public void deleteNodeInTemplate(String templateName, String path);
-```
-
-* 对于已经创建的元数据模板，还可以通过以下接口查询模板信息：
-
-```java
-// 查询返回目前模板中所有物理量的数量
-public int countMeasurementsInTemplate(String templateName);
-
-// 检查模板内指定路径是否为物理量
-public boolean isMeasurementInTemplate(String templateName, String path);
-
-// 检查在指定模板内是否存在某路径
-public boolean isPathExistInTemplate(String templateName, String path);
-
-// 返回指定模板内所有物理量的路径
-public List<String> showMeasurementsInTemplate(String templateName);
-
-// 返回指定模板内某前缀路径下的所有物理量的路径
-public List<String> showMeasurementsInTemplate(String templateName, String pattern);
+``` java
+void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
 ```
 
 * 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
@@ -285,7 +238,7 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 - 将模板挂载到 MTree 上之后，你可以随时查询所有模板的名称、某模板被设置到 MTree 的所有路径、所有正在使用某模板的所有路径，即如下接口：
 
-```java
+``` java
 /** @return All template names. */
 public List<String> showAllTemplates();
 
@@ -310,9 +263,9 @@ public void dropSchemaTemplate(String templateName);
 注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
 
 
-### 数据操作接口 DML
+#### 数据操作接口 DML
 
-#### 数据写入
+##### 数据写入
 
 推荐使用 insertTablet 帮助提高写入效率
 
@@ -320,7 +273,7 @@ public void dropSchemaTemplate(String templateName);
   * **写入效率高**
   * **支持写入空值**：空值处可以填入任意值，然后通过 BitMap 标记空值
 
-```java
+``` java
 void insertTablet(Tablet tablet)
 
 public class Tablet {
@@ -345,7 +298,7 @@ public class Tablet {
 
 * 插入多个 Tablet
 
-```java
+``` java
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
@@ -362,14 +315,14 @@ void insertTablets(Map<String, Tablet> tablets)
   | DOUBLE     | Double         |
   | TEXT       | String, Binary |
 
-```java
+``` java
 void insertRecord(String prefixPath, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
 * 插入多个 Record
 
-```java
+``` java
 void insertRecords(List<String> deviceIds,
         List<Long> times,
         List<List<String>> measurementsList,
@@ -379,37 +332,37 @@ void insertRecords(List<String> deviceIds,
 
 * 插入同属于一个 device 的多个 Record
 
-```java
+``` java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
 ```
 
-#### 带有类型推断的写入
+##### 带有类型推断的写入
 
 当数据均是 String 类型时，我们可以使用如下接口，根据 value 的值进行类型推断。例如：value 为 "true" ，就可以自动推断为布尔类型。value 为 "3.2" ，就可以自动推断为数值类型。服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
-```java
+``` java
 void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
 * 插入多个 Record
 
-```java
+``` java
 void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
 * 插入同属于一个 device 的多个 Record
 
-```java
+``` java
 void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
-#### 对齐时间序列的写入
+##### 对齐时间序列的写入
 
 对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
 
@@ -420,50 +373,78 @@ void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
 * insertAlignedTablet
 * insertAlignedTablets
 
-#### 数据删除
+##### 数据删除
 
 * 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 
-```java
+``` java
 void deleteData(String path, long endTime)
 void deleteData(List<String> paths, long endTime)
 ```
 
-#### 数据查询
+##### 数据查询
 
-* 原始数据查询。时间间隔包含开始时间，不包含结束时间
+* 时间序列原始数据范围查询：
+  - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
 
-```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+``` java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
-* 查询最后一条时间戳大于等于某个时间点的数据
+* 最新点查询：
+  - 查询最后一条时间戳大于等于某个时间点的数据。
 
-```java
-SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+``` java
+SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
 ```
 
-### IoTDB-SQL 接口
+* 聚合查询：
+  - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+  - 支持按照时间区间分段查询。
+
+``` java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
+```
+
+#### IoTDB-SQL 接口
 
 * 执行查询语句
 
-```java
+``` java
 SessionDataSet executeQueryStatement(String sql)
 ```
 
 * 执行非查询语句
 
-```java
+``` java
 void executeNonQueryStatement(String sql)
 ```
 
-### 写入测试接口 (用于分析网络带宽)
+#### 写入测试接口 (用于分析网络带宽)
 
 不实际写入数据，只将数据传输到 server 即返回
 
 * 测试 insertRecord
 
-```java
+``` java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
 
 void testInsertRecord(String deviceId, long time, List<String> measurements,
@@ -472,7 +453,7 @@ void testInsertRecord(String deviceId, long time, List<String> measurements,
 
 * 测试 testInsertRecords
 
-```java
+``` java
 void testInsertRecords(List<String> deviceIds, List<Long> times,
         List<List<String>> measurementsList, List<List<String>> valuesList)
 
@@ -483,17 +464,17 @@ void testInsertRecords(List<String> deviceIds, List<Long> times,
 
 * 测试 insertTablet
 
-```java
+``` java
 void testInsertTablet(Tablet tablet)
 ```
 
 * 测试 insertTablets
 
-```java
+``` java
 void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
-### 示例代码
+#### 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 
@@ -501,7 +482,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 使用对齐时间序列和元数据模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
-## 针对原生接口的连接池
+### 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池 (`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -521,7 +502,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-## 集群信息相关的接口 （仅在集群模式下可用）
+### 集群信息相关的接口 （仅在集群模式下可用）
 
 集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
 要使用该 API，需要增加依赖：
@@ -574,7 +555,7 @@ API 列表：
 
 * 获取集群中的各个节点的信息（构成哈希环）
 
-```java
+``` java
 list<Node> getRing();
 ```
 
@@ -599,7 +580,7 @@ list<Node> getMetaPartition(1:string path);
 ```
 
 * 获取所有节点的死活状态：
-```java
+``` java
 /**
  * @return key: node, value: live or not
  */

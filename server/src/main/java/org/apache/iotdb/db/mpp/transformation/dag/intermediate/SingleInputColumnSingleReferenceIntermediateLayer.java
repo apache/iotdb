@@ -54,7 +54,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
   public SingleInputColumnSingleReferenceIntermediateLayer(
       Expression expression,
-      long queryId,
+      String queryId,
       float memoryBudgetInMB,
       LayerPointReader parentLayerPointReader) {
     super(expression, queryId, memoryBudgetInMB);
@@ -78,7 +78,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private boolean isCurrentNull = false;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (!hasCached) {
           final YieldableState yieldableState = parentLayerPointReader.yield();
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -151,7 +151,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private int beginIndex = -slidingStep;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -277,7 +277,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private int nextIndexBegin = 0;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
@@ -457,7 +457,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private int nextIndexEnd = 1;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
@@ -575,7 +575,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private ValueRecorder valueRecorder = new ValueRecorder();
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =

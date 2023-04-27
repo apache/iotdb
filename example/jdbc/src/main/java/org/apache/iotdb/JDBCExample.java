@@ -33,7 +33,7 @@ public class JDBCExample {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize

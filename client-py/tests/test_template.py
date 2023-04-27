@@ -92,12 +92,18 @@ def test_set_template():
         session.execute_non_query_statement("CREATE DATABASE root.python")
 
         session.set_schema_template(template_name, "root.python.GPS")
-        session.execute_non_query_statement("create timeseries of schema template on root.python.GPS")
+        session.execute_non_query_statement(
+            "create timeseries of schema template on root.python.GPS"
+        )
 
         assert session.show_paths_template_set_on(template_name) == ["root.python.GPS"]
-        assert session.show_paths_template_using_on(template_name) == ["root.python.GPS"]
+        assert session.show_paths_template_using_on(template_name) == [
+            "root.python.GPS"
+        ]
 
-        session.execute_non_query_statement("delete timeseries of schema template from root.python.GPS")
+        session.execute_non_query_statement(
+            "delete timeseries of schema template from root.python.GPS"
+        )
 
         session.unset_schema_template(template_name, "root.python.GPS")
         session.drop_schema_template(template_name)

@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,7 +29,11 @@ public class PlainCacheManager extends CacheManager {
   // The nodes in nodeCache are all evictable if not pinned and may be selected to be evicted during
   // cache
   // eviction.
-  private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
+  private volatile Map<CacheEntry, ICachedMNode> nodeCache = new ConcurrentHashMap<>();
+
+  public PlainCacheManager(MemManager memManager) {
+    super(memManager);
+  }
 
   @Override
   protected void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
@@ -36,7 +41,7 @@ public class PlainCacheManager extends CacheManager {
   // MNode update operation like node replace may reset the mapping between cacheEntry and node,
   // thus it should be updated
   @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, IMNode node) {
+  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
     nodeCache.replace(cacheEntry, node);
   }
 
@@ -46,7 +51,7 @@ public class PlainCacheManager extends CacheManager {
   }
 
   @Override
-  protected void addToNodeCache(CacheEntry cacheEntry, IMNode node) {
+  protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     nodeCache.put(cacheEntry, node);
   }
 
@@ -56,7 +61,7 @@ public class PlainCacheManager extends CacheManager {
   }
 
   @Override
-  protected IMNode getPotentialNodeTobeEvicted() {
+  protected ICachedMNode getPotentialNodeTobeEvicted() {
     for (CacheEntry cacheEntry : nodeCache.keySet()) {
       if (!cacheEntry.isPinned()) {
         return nodeCache.get(cacheEntry);
@@ -68,5 +73,10 @@ public class PlainCacheManager extends CacheManager {
   @Override
   protected void clearNodeCache() {
     nodeCache.clear();
+  }
+
+  @Override
+  public long getCacheNodeNum() {
+    return nodeCache.size();
   }
 }

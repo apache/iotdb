@@ -19,20 +19,15 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 
 import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 
@@ -45,15 +40,12 @@ public class DataDriver extends Driver {
 
   private boolean init;
 
-  /** closed tsfile used in this fragment instance */
-  private Set<TsFileResource> closedFilePaths;
-  /** unClosed tsfile used in this fragment instance */
-  private Set<TsFileResource> unClosedFilePaths;
+  // Unit : Byte
+  private final long estimatedMemorySize;
 
-  public DataDriver(Operator root, DriverContext driverContext) {
+  public DataDriver(Operator root, DriverContext driverContext, long estimatedMemorySize) {
     super(root, driverContext);
-    this.closedFilePaths = new HashSet<>();
-    this.unClosedFilePaths = new HashSet<>();
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
   @Override
@@ -73,32 +65,22 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * All file paths used by this fragment instance must be cleared and thus the usage reference must
-   * be decreased.
-   */
-  @Override
-  protected void releaseResource() {
-    for (TsFileResource tsFile : closedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
-    }
-    closedFilePaths = null;
-    for (TsFileResource tsFile : unClosedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
-    }
-    unClosedFilePaths = null;
-  }
-
-  /**
    * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode TODO
    * we should change all the blocked lock operation into tryLock
    */
-  private void initialize() {
+  private void initialize() throws QueryProcessException {
     long startTime = System.nanoTime();
     try {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
         QueryDataSource dataSource = initQueryDataSource();
+        if (dataSource == null) {
+          // if this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+          // for some reasons, we may get null QueryDataSource here.
+          // And it's safe for us to throw this exception here in such case.
+          throw new IllegalStateException("QueryDataSource should never be null!");
+        }
         sourceOperators.forEach(
             sourceOperator -> {
               // construct QueryDataSource for source operator
@@ -117,70 +99,21 @@ public class DataDriver extends Driver {
     }
   }
 
+  @Override
+  protected void releaseResource() {
+    // do nothing
+  }
+
   /**
    * The method is called in mergeLock() when executing query. This method will get all the
    * QueryDataSource needed for this query
    */
-  private QueryDataSource initQueryDataSource() {
-    DataDriverContext context = (DataDriverContext) driverContext;
-    IDataRegionForQuery dataRegion = context.getDataRegion();
-    dataRegion.readLock();
-    try {
-
-      QueryDataSource dataSource = ((DataDriverContext) driverContext).getSharedQueryDataSource();
-
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      if (dataSource != null) {
-        addUsedFilesForQuery(dataSource);
-      }
-
-      return dataSource;
-    } finally {
-      dataRegion.readUnlock();
-    }
+  private QueryDataSource initQueryDataSource() throws QueryProcessException {
+    return ((DataDriverContext) driverContext).getSharedQueryDataSource();
   }
 
-  /** Add the unique file paths to closeddFilePathsMap and unClosedFilePathsMap. */
-  private void addUsedFilesForQuery(QueryDataSource dataSource) {
-
-    // sequence data
-    addUsedFilesForQuery(dataSource.getSeqResources());
-
-    // unsequence data
-    addUsedFilesForQuery(dataSource.getUnseqResources());
-  }
-
-  private void addUsedFilesForQuery(List<TsFileResource> resources) {
-    Iterator<TsFileResource> iterator = resources.iterator();
-    while (iterator.hasNext()) {
-      TsFileResource tsFileResource = iterator.next();
-      boolean isClosed = tsFileResource.isClosed();
-      addFilePathToMap(tsFileResource, isClosed);
-
-      // this file may be deleted just before we lock it
-      if (tsFileResource.isDeleted()) {
-        Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-        // This resource may be removed by other threads of this query.
-        if (pathSet.remove(tsFileResource)) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-        }
-        iterator.remove();
-      }
-    }
-  }
-
-  /**
-   * Increase the usage reference of filePath of job id. Before the invoking of this method, <code>
-   * this.setqueryIdForCurrentRequestThread</code> has been invoked, so <code>
-   * sealedFilePathsMap.get(queryId)</code> or <code>unsealedFilePathsMap.get(queryId)</code> must
-   * not return null.
-   */
-  private void addFilePathToMap(TsFileResource tsFile, boolean isClosed) {
-    Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-    if (!pathSet.contains(tsFile)) {
-      pathSet.add(tsFile);
-      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
-    }
+  @Override
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
   }
 }

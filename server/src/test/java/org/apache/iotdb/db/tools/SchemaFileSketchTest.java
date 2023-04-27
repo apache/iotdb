@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -53,6 +51,8 @@ import java.util.Queue;
 
 public class SchemaFileSketchTest {
 
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance()
@@ -75,9 +75,9 @@ public class SchemaFileSketchTest {
     int TEST_SCHEMA_REGION_ID = 0;
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
-    Iterator<IMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
+    Iterator<ICachedMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
     while (ite.hasNext()) {
-      IMNode cur = ite.next();
+      ICachedMNode cur = ite.next();
       if (!cur.isMeasurement()) {
         sf.writeMNode(cur);
       }
@@ -118,9 +118,9 @@ public class SchemaFileSketchTest {
     }
   }
 
-  private Iterator<IMNode> getTreeBFT(IMNode root) {
-    return new Iterator<IMNode>() {
-      Queue<IMNode> queue = new LinkedList<IMNode>();
+  private Iterator<ICachedMNode> getTreeBFT(ICachedMNode root) {
+    return new Iterator<ICachedMNode>() {
+      Queue<ICachedMNode> queue = new LinkedList<>();
 
       {
         this.queue.add(root);
@@ -132,10 +132,10 @@ public class SchemaFileSketchTest {
       }
 
       @Override
-      public IMNode next() {
-        IMNode curNode = queue.poll();
+      public ICachedMNode next() {
+        ICachedMNode curNode = queue.poll();
         if (!curNode.isMeasurement() && curNode.getChildren().size() > 0) {
-          for (IMNode child : curNode.getChildren().values()) {
+          for (ICachedMNode child : curNode.getChildren().values()) {
             queue.add(child);
           }
         }
@@ -144,18 +144,19 @@ public class SchemaFileSketchTest {
     };
   }
 
-  private IMNode getFlatTree(int flatSize, String id) {
-    IMNode root = new InternalMNode(null, "root");
-    IMNode test = new InternalMNode(root, "test");
-    IMNode internalNode = new StorageGroupEntityMNode(null, "vRoot1", 0L);
+  private ICachedMNode getFlatTree(int flatSize, String id) {
+    ICachedMNode root = nodeFactory.createInternalMNode(null, "root");
+    ICachedMNode test = nodeFactory.createInternalMNode(root, "test");
+    ICachedMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
-      IMeasurementMNode mNode =
-          MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsEntityMNode(), measurementId, schema, measurementId + "als");
-      internalNode.addChild(mNode);
+      internalNode.addChild(
+          nodeFactory
+              .createMeasurementMNode(
+                  internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als")
+              .getAsMNode());
     }
 
     test.addChild(internalNode);

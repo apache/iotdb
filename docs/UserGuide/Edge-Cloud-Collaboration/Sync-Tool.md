@@ -31,7 +31,7 @@ You can use SQL commands to start or close a synchronization task at the sender,
 
 ## 2.Model definition
 
-![pipe2.png](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Sync-Tool/pipe2.png?raw=true)
+![pipe2.png](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Sync-Tool/pipe2.png?raw=true)
 
 Two machines A and B, which are installed with iotdb, we want to continuously synchronize the data from A to B. To better describe this process, we introduce the following concepts.
 
@@ -131,7 +131,7 @@ All parameters are in `$IOTDB_ HOME$/conf/iotdb-common.properties`, after all mo
 
 - Show all PipeSink types supported by IoTDB.
 
-```Plain%20Text
+```
 IoTDB> SHOW PIPESINKTYPE
 IoTDB>
 +-----+

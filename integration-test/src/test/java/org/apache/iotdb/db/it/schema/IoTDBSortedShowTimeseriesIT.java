@@ -20,15 +20,14 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,9 +41,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSortedShowTimeseriesIT {
+public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
 
   private static String[] sqls =
       new String[] {
@@ -95,19 +93,28 @@ public class IoTDBSortedShowTimeseriesIT {
         "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  public IoTDBSortedShowTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
+      allocateMemoryForSchemaRegion(10000);
+    }
     EnvFactory.getEnv().initClusterEnvironment();
     createSchema();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
-  public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
+  public void showTimeseriesOrderByHeatTest1() {
 
     List<String> retArray1 =
         Arrays.asList(

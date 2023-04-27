@@ -122,7 +122,7 @@ How to review a pr
 
 2. Add review comments. First, move your mouse to the left. And then there will be a plus sign, click the plus sign. Second, write comments. Third, click Start a Review. At this step, all review comments will be temporarily saved, which others can not see.<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/zh/development/howtocontributecode/%E4%BB%A3%E7%A0%81%E5%AE%A1%E9%98%85%E6%B5%81%E7%A8%8B2.png?raw=true">
 3. Submit review. After all the comments are added, click Review Changes and select your opinion. Select "Approve" for those that can be combined. Select  "Request Changes" or "Comment" for those that need to be modified. Select  "Comment" for those that are not sure. Finally, submit a review and only the person submitting the PR can see the review.
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/zh/development/howtocontributecode/%E4%BB%A3%E7%A0%81%E5%AE%A1%E9%98%85%E6%B5%81%E7%A8%8B3.png?raw=tru">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/zh/development/howtocontributecode/%E4%BB%A3%E7%A0%81%E5%AE%A1%E9%98%85%E6%B5%81%E7%A8%8B3.png?raw=true">
 
 ### Merging a PR
 Make sure that all review comments are responded. 

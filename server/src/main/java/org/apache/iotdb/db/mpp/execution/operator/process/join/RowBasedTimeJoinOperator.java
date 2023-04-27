@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AbstractProcessOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AbstractConsumeAllOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -39,14 +40,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
-
-  private final List<Operator> children;
-
-  private final int inputOperatorsCount;
-
-  /** TsBlock from child operator. Only one cache now. */
-  private final TsBlock[] inputTsBlocks;
+public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
@@ -86,13 +80,8 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
       List<TSDataType> dataTypes,
       List<ColumnMerger> mergers,
       TimeComparator comparator) {
-    checkArgument(
-        children != null && !children.isEmpty(),
-        "child size of TimeJoinOperator should be larger than 0");
-    this.operatorContext = operatorContext;
-    this.children = children;
-    this.inputOperatorsCount = children.size();
-    this.inputTsBlocks = new TsBlock[this.inputOperatorsCount];
+    super(operatorContext, children);
+    checkArgument(!children.isEmpty(), "child size of TimeJoinOperator should be larger than 0");
     this.inputIndex = new int[this.inputOperatorsCount];
     this.shadowInputIndex = new int[this.inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
@@ -111,24 +100,35 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i)) {
-        ListenableFuture<?> blocked = children.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          listenableFutures.add(blocked);
-        }
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      ListenableFuture<?> blocked = children.get(i).isBlocked();
+      if (blocked.isDone()) {
+        hasReadyChild = true;
+        canCallNext[i] = true;
+      } else {
+        listenableFutures.add(blocked);
       }
     }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
     tsBlockBuilder.reset();
+    if (!prepareInput()) {
+      return null;
+    }
+
     // end time for returned TsBlock this time, it's the min/max end time among all the children
     // TsBlocks order by asc/desc
     long currentEndTime = 0;
@@ -137,29 +137,8 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
     // get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i)) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputIndex[i] = 0;
-          inputTsBlocks[i] = children.get(i).nextWithTimer();
-          if (!empty(i)) {
-            updateTimeSelector(i);
-          } else {
-            // child operator has next but return an empty TsBlock which means that it may not
-            // finish calculation in given time slice.
-            // In such case, TimeJoinOperator can't go on calculating, so we just return null.
-            // We can also use the while loop here to continuously call the hasNext() and next()
-            // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
-            // to be uncontrollable and may exceed all allocated time slice
-            return null;
-          }
-        } else { // no more tsBlock
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-        }
-      }
-      // update the currentEndTime if the TsBlock is not empty
-      if (!empty(i)) {
+      if (!noMoreTsBlocks[i]) {
+        // update the currentEndTime if the TsBlock is not empty
         currentEndTime =
             init
                 ? comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime())
@@ -192,20 +171,20 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
       for (int i = 0; i < inputOperatorsCount; i++) {
         if (inputIndex[i] != shadowInputIndex[i]) {
           inputIndex[i] = shadowInputIndex[i];
-          if (!empty(i)) {
+          if (!isEmpty(i)) {
             updateTimeSelector(i);
           }
         }
       }
       tsBlockBuilder.declarePosition();
-    } while (currentTime < currentEndTime && !timeSelector.isEmpty());
+    } while (comparator.canContinue(currentTime, currentEndTime) && !timeSelector.isEmpty());
 
     resultTsBlock = tsBlockBuilder.build();
     return checkTsBlockSizeAndGetResult();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -213,14 +192,16 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
       return true;
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!empty(i)) {
+      if (!isEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (children.get(i).hasNextWithTimer()) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
         }
       }
     }
@@ -228,14 +209,7 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
@@ -246,7 +220,7 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
     finished = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
-      if (!noMoreTsBlocks[i] || !empty(i)) {
+      if (!noMoreTsBlocks[i] || !isEmpty(i)) {
         finished = false;
         break;
       }
@@ -291,10 +265,58 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
   }
 
   /**
+   * Try to cache one result of each child.
+   *
+   * @return true if results of all children are ready or have no more TsBlocks. Return false if
+   *     some children is blocked or return null.
+   */
+  @Override
+  protected boolean prepareInput() throws Exception {
+    boolean allReady = true;
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      if (canCallNext[i]) {
+        if (children.get(i).hasNextWithTimer()) {
+          inputTsBlocks[i] = getNextTsBlock(i);
+          canCallNext[i] = false;
+          if (isEmpty(i)) {
+            allReady = false;
+          } else {
+            updateTimeSelector(i);
+          }
+        } else {
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
+        }
+
+      } else {
+        allReady = false;
+      }
+    }
+    return allReady;
+  }
+
+  @TestOnly
+  public List<Operator> getChildren() {
+    return children;
+  }
+
+  @Override
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
+    inputIndex[childIndex] = 0;
+    return children.get(childIndex).nextWithTimer();
+  }
+
+  /**
    * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
    * return false;
    */
-  private boolean empty(int columnIndex) {
+  @Override
+  protected boolean isEmpty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
   }

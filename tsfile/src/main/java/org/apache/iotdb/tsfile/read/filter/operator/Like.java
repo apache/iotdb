@@ -26,7 +26,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -35,7 +37,7 @@ import java.util.regex.PatternSyntaxException;
  *
  * @param <T> comparable data type
  */
-public class Like<T extends Comparable<T>> implements Filter {
+public class Like<T extends Comparable<T>> implements Filter, Serializable {
 
   private static final long serialVersionUID = 2171102599229260789L;
 
@@ -45,15 +47,18 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected Pattern pattern;
 
-  private Like() {}
+  protected boolean not;
+
+  public Like() {}
 
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
    */
-  public Like(String value, FilterType filterType) {
+  public Like(String value, FilterType filterType, boolean not) {
     this.value = value;
     this.filterType = filterType;
+    this.not = not;
     try {
       String unescapeValue = unescapeString(value);
       String specialRegexStr = ".^$*+?{}[]|()";
@@ -90,11 +95,16 @@ public class Like<T extends Comparable<T>> implements Filter {
   }
 
   @Override
+  public boolean allSatisfy(Statistics statistics) {
+    return false;
+  }
+
+  @Override
   public boolean satisfy(long time, Object value) {
     if (filterType != FilterType.VALUE_FILTER) {
-      return false;
+      throw new UnsupportedOperationException("");
     }
-    return pattern.matcher(value.toString()).find();
+    return not != pattern.matcher(value.toString()).find();
   }
 
   @Override
@@ -104,12 +114,12 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return true;
+    return false;
   }
 
   @Override
   public Filter copy() {
-    return new Like(value, filterType);
+    return new Like<>(value, filterType, not);
   }
 
   @Override
@@ -117,9 +127,10 @@ public class Like<T extends Comparable<T>> implements Filter {
     try {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
-      ReadWriteIOUtils.writeObject(value, outputStream);
-    } catch (IOException ex) {
-      throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
+      ReadWriteIOUtils.write(value, outputStream);
+      ReadWriteIOUtils.write(not, outputStream);
+    } catch (IOException ignored) {
+      // ignore
     }
   }
 
@@ -127,11 +138,12 @@ public class Like<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
+    not = ReadWriteIOUtils.readBool(buffer);
   }
 
   @Override
   public String toString() {
-    return filterType + " is " + value;
+    return filterType + (not ? " not like " : " like ") + value;
   }
 
   @Override
@@ -139,11 +151,30 @@ public class Like<T extends Comparable<T>> implements Filter {
     return FilterSerializeId.LIKE;
   }
 
+  @Override
+  public Filter reverse() {
+    return new Like<>(value, filterType, !not);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof Like)) {
+      return false;
+    }
+    Like<?> like = (Like<?>) o;
+    return not == like.not && value.equals(like.value) && filterType == like.filterType;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value, filterType, not);
+  }
+
   /**
    * This Method is for unescaping strings except '\' before special string '%', '_', '\', because
    * we need to use '\' to judege whether to replace this to regexp string
    */
-  public String unescapeString(String value) {
+  private String unescapeString(String value) {
     String out = "";
     for (int i = 0; i < value.length(); i++) {
       String ch = String.valueOf(value.charAt(i));

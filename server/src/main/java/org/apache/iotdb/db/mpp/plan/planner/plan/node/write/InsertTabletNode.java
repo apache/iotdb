@@ -21,14 +21,15 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -40,10 +41,11 @@ import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -66,9 +68,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class InsertTabletNode extends InsertNode implements WALEntryValue {
+public class InsertTabletNode extends InsertNode implements WALEntryValue, ISchemaValidation {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertTabletNode.class);
 
@@ -174,31 +175,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree) throws MetadataException {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    if (deviceSchemaInfo == null) {
-      throw new PathNotExistException(
-          Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
-              .collect(Collectors.toList()));
-    }
-    if (deviceSchemaInfo.isAligned() != isAligned) {
-      throw new AlignedTimeseriesException(
-          String.format(
-              "timeseries under this device are%s aligned, " + "please use %s interface",
-              deviceSchemaInfo.isAligned() ? "" : " not",
-              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
-          devicePath.getFullPath());
-    }
-    measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
-
-    // validate whether data types are matched
-    selfCheckDataTypes();
   }
 
   @Override
@@ -1137,5 +1113,50 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[lastIdx], value);
+  }
+
+  @Override
+  public TSEncoding getEncoding(int index) {
+    return null;
+  }
+
+  @Override
+  public CompressionType getCompressionType(int index) {
+    return null;
+  }
+
+  @Override
+  public void validateDeviceSchema(boolean isAligned) {
+    if (this.isAligned != isAligned) {
+      throw new SemanticException(
+          new AlignedTimeseriesException(
+              String.format(
+                  "timeseries under this device are%s aligned, " + "please use %s interface",
+                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
+              devicePath.getFullPath()));
+    }
+  }
+
+  @Override
+  public ISchemaValidation getSchemaValidation() {
+    return this;
+  }
+
+  @Override
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    if (measurementSchemaInfo == null) {
+      measurementSchemas[index] = null;
+    } else {
+      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+    }
+
+    try {
+      selfCheckDataTypes(index);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
+    }
   }
 }

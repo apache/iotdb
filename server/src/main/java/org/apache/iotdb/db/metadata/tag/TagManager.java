@@ -21,13 +21,17 @@ package org.apache.iotdb.db.metadata.tag;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -40,8 +44,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -62,7 +68,7 @@ public class TagManager {
   private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
+  private Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex = new ConcurrentHashMap<>();
 
   public TagManager(String sgSchemaDirPath) throws IOException {
     this.sgSchemaDirPath = sgSchemaDirPath;
@@ -119,7 +125,8 @@ public class TagManager {
     }
   }
 
-  public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+  public boolean recoverIndex(long offset, IMeasurementMNode<?> measurementMNode)
+      throws IOException {
     Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
     if (tags == null || tags.isEmpty()) {
       return false;
@@ -129,7 +136,7 @@ public class TagManager {
     }
   }
 
-  public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
+  public void addIndex(String tagKey, String tagValue, IMeasurementMNode<?> measurementMNode) {
     if (tagKey == null || tagValue == null || measurementMNode == null) {
       return;
     }
@@ -139,7 +146,7 @@ public class TagManager {
         .add(measurementMNode);
   }
 
-  public void addIndex(Map<String, String> tagsMap, IMeasurementMNode measurementMNode) {
+  public void addIndex(Map<String, String> tagsMap, IMeasurementMNode<?> measurementMNode) {
     if (tagsMap != null && measurementMNode != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
         addIndex(entry.getKey(), entry.getValue(), measurementMNode);
@@ -147,64 +154,25 @@ public class TagManager {
     }
   }
 
-  public void removeIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
+  public void removeIndex(String tagKey, String tagValue, IMeasurementMNode<?> measurementMNode) {
     tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       tagIndex.get(tagKey).remove(tagValue);
     }
   }
 
-  public List<String> getMatchedTimeseriesInIndex(String key, String value, boolean isContains) {
-    if (!tagIndex.containsKey(key)) {
-      return Collections.emptyList();
-    }
-    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(key);
-    if (value2Node.isEmpty()) {
-      return Collections.emptyList();
-    }
-    List<String> timeseries = new ArrayList<>();
-    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
-    if (isContains) {
-      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (tagValue.contains(value)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
-      }
-    } else {
-      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (value.equals(tagValue)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
-      }
-    }
-    allMatchedNodes =
-        allMatchedNodes.stream()
-            .sorted(Comparator.comparing(IMNode::getFullPath))
-            .collect(toList());
-    allMatchedNodes.forEach(measurementMNode -> timeseries.add(measurementMNode.getFullPath()));
-    return timeseries;
-  }
-
-  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan) {
+  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan) {
     if (!tagIndex.containsKey(plan.getKey())) {
       return Collections.emptyList();
     }
-    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
+    Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
       return Collections.emptyList();
     }
 
-    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
+    List<IMeasurementMNode<?>> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {
-      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+      for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
         if (entry.getKey() == null || entry.getValue() == null) {
           continue;
         }
@@ -214,7 +182,7 @@ public class TagManager {
         }
       }
     } else {
-      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+      for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
         if (entry.getKey() == null || entry.getValue() == null) {
           continue;
         }
@@ -233,8 +201,92 @@ public class TagManager {
     return allMatchedNodes;
   }
 
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReaderWithIndex(
+      IShowTimeSeriesPlan plan) {
+    Iterator<IMeasurementMNode<?>> allMatchedNodes = getMatchedTimeseriesInIndex(plan).iterator();
+    PartialPath pathPattern = plan.getPath();
+    int curOffset = 0;
+    int count = 0;
+    long limit = plan.getLimit();
+    long offset = plan.getOffset();
+    boolean hasLimit = limit > 0 || offset > 0;
+    while (curOffset < offset && allMatchedNodes.hasNext()) {
+      IMeasurementMNode<?> node = allMatchedNodes.next();
+      if (plan.isPrefixMatch()
+          ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+          : pathPattern.matchFullPath(node.getPartialPath())) {
+        curOffset++;
+      }
+    }
+    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
+      private ITimeSeriesSchemaInfo nextMatched;
+      private Throwable throwable;
+
+      @Override
+      public boolean isSuccess() {
+        return throwable == null;
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return throwable;
+      }
+
+      @Override
+      public void close() {}
+
+      @Override
+      public boolean hasNext() {
+        if (throwable == null) {
+          if (hasLimit && count >= limit) {
+            return false;
+          } else if (nextMatched == null) {
+            try {
+              getNext();
+            } catch (Throwable e) {
+              throwable = e;
+            }
+          }
+        }
+        return throwable == null && nextMatched != null;
+      }
+
+      @Override
+      public ITimeSeriesSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ITimeSeriesSchemaInfo result = nextMatched;
+        nextMatched = null;
+        return result;
+      }
+
+      private void getNext() throws IOException {
+        nextMatched = null;
+        while (allMatchedNodes.hasNext()) {
+          IMeasurementMNode<?> node = allMatchedNodes.next();
+          if (plan.isPrefixMatch()
+              ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+              : pathPattern.matchFullPath(node.getPartialPath())) {
+            Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                readTagFile(node.getOffset());
+            nextMatched =
+                new ShowTimeSeriesResult(
+                    node.getFullPath(),
+                    node.getAlias(),
+                    (MeasurementSchema) node.getSchema(),
+                    tagAndAttributePair.left,
+                    tagAndAttributePair.right,
+                    node.getParent().getAsDeviceMNode().isAligned());
+            break;
+          }
+        }
+      }
+    };
+  }
+
   /** remove the node from the tag inverted index */
-  public void removeFromTagInvertedIndex(IMeasurementMNode node) throws IOException {
+  public void removeFromTagInvertedIndex(IMeasurementMNode<?> node) throws IOException {
     if (node.getOffset() < 0) {
       return;
     }
@@ -279,7 +331,9 @@ public class TagManager {
    * new value to update it.
    */
   public void updateTagsAndAttributes(
-      Map<String, String> tagsMap, Map<String, String> attributesMap, IMeasurementMNode leafMNode)
+      Map<String, String> tagsMap,
+      Map<String, String> attributesMap,
+      IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -343,7 +397,7 @@ public class TagManager {
    * @throws MetadataException tagLogFile write error or attributes already exist
    */
   public void addAttributes(
-      Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode leafMNode)
+      Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -371,7 +425,7 @@ public class TagManager {
    * @throws MetadataException tagLogFile write error or tag already exists
    */
   public void addTags(
-      Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode leafMNode)
+      Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -401,7 +455,7 @@ public class TagManager {
    * @param keySet tags key or attributes key
    */
   public void dropTagsOrAttributes(
-      Set<String> keySet, PartialPath fullPath, IMeasurementMNode leafMNode)
+      Set<String> keySet, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     Pair<Map<String, String>, Map<String, String>> pair =
         tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
@@ -424,8 +478,8 @@ public class TagManager {
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-    Map<String, Set<IMeasurementMNode>> tagVal2LeafMNodeSet;
-    Set<IMeasurementMNode> MMNodes;
+    Map<String, Set<IMeasurementMNode<?>>> tagVal2LeafMNodeSet;
+    Set<IMeasurementMNode<?>> MMNodes;
     for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
@@ -472,7 +526,7 @@ public class TagManager {
    * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   public void setTagsOrAttributesValue(
-      Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode leafMNode)
+      Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -542,7 +596,7 @@ public class TagManager {
    *     a tag/attribute named newKey
    */
   public void renameTagOrAttributeKey(
-      String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode leafMNode)
+      String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -618,7 +672,7 @@ public class TagManager {
    * @return the tag key-value map.
    * @throws RuntimeException If any IOException happens.
    */
-  public Map<String, String> readTags(IMeasurementMNode node) {
+  public Map<String, String> readTags(IMeasurementMNode<?> node) {
     try {
       return readTagFile(node.getOffset()).getLeft();
     } catch (IOException e) {

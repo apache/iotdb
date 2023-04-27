@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,14 +45,18 @@ import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUP
 public class IntoPathDescriptor {
 
   // List<(sourceColumn, targetPath)>
-  private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
+  private List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
   // targetDevice -> isAlignedDevice
   private final Map<String, Boolean> targetDeviceToAlignedMap;
 
+  // sourceColumn -> dataType (not serialize & deserialize)
+  private Map<String, TSDataType> sourceToDataTypeMap;
+
   public IntoPathDescriptor() {
     this.sourceTargetPathPairList = new ArrayList<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
+    this.sourceToDataTypeMap = new HashMap<>();
   }
 
   public IntoPathDescriptor(
@@ -71,12 +78,25 @@ public class IntoPathDescriptor {
     targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
 
+  public void recordSourceColumnDataType(String sourceColumn, TSDataType dataType) {
+    sourceToDataTypeMap.put(sourceColumn, dataType);
+  }
+
   public void validate() {
     List<PartialPath> targetPaths =
         sourceTargetPathPairList.stream().map(Pair::getRight).collect(Collectors.toList());
     if (targetPaths.size() > new HashSet<>(targetPaths).size()) {
       throw new SemanticException(DUPLICATE_TARGET_PATH_ERROR_MSG);
     }
+  }
+
+  public void bindType(ISchemaTree targetSchemaTree) {
+    this.sourceTargetPathPairList =
+        SelectIntoUtils.bindTypeForSourceTargetPathPairList(
+            sourceTargetPathPairList,
+            sourceToDataTypeMap,
+            targetSchemaTree,
+            targetDeviceToAlignedMap);
   }
 
   public List<Pair<String, PartialPath>> getSourceTargetPathPairList() {
@@ -101,6 +121,11 @@ public class IntoPathDescriptor {
           .put(targetMeasurement, sourceColumn);
     }
     return targetPathToSourceMap;
+  }
+
+  public Map<PartialPath, Map<String, TSDataType>> getTargetPathToDataTypeMap() {
+    return SelectIntoUtils.convertSourceTargetPathPairListToTargetPathDataTypeMap(
+        sourceTargetPathPairList);
   }
 
   public void serialize(ByteBuffer byteBuffer) {

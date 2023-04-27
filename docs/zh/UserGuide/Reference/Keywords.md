@@ -19,7 +19,7 @@
 
 -->
 
-# 关键字
+## 关键字
 
 保留字（不能用于作为标识符）：
 
@@ -86,6 +86,7 @@
 - DESC
 - DESCRIBE
 - DEVICE
+- DEVICEID
 - DEVICES
 - DISABLE
 - DISCARD

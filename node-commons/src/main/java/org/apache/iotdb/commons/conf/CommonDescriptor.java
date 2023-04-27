@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
@@ -185,6 +187,26 @@ public class CommonDescriptor {
                     "disk_space_warning_threshold",
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
+
+    config.setTTimePartitionSlotTransmitLimit(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "time_partition_slot_transmit_limit",
+                    String.valueOf(config.getTTimePartitionSlotTransmitLimit()))
+                .trim()));
+
+    String endPointUrl =
+        properties.getProperty(
+            "target_ml_node_endpoint",
+            NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
+    try {
+      config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn(
+          "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
+          endPointUrl);
+    }
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

@@ -22,7 +22,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -70,11 +69,7 @@ public class IoTDBPartialInsertionIT {
         statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
         fail();
       } catch (SQLException e) {
-        assertTrue(
-            e.getMessage()
-                .contains(
-                    TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Path [root.sg1.s0] does not exist"));
+        assertTrue(e.getMessage().contains("Path [root.sg1.s0] does not exist"));
       }
     }
   }

@@ -21,83 +21,80 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBDeleteAlignedTimeseriesIT {
+public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
 
-  private Statement statement;
-  private Connection connection;
+  public IoTDBDeleteAlignedTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
-  public void setUp() throws ClassNotFoundException, SQLException, InterruptedException {
+  public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().getConfig().getCommonConfig().setMemtableSizeThreshold(2);
     EnvFactory.getEnv().initClusterEnvironment();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
   public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
-
-    statement.execute(
-        "create aligned timeseries root.turbine1.d1(s1 INT64 encoding=PLAIN compression=SNAPPY, "
-            + "s2 INT64 encoding=PLAIN compression=SNAPPY)");
-    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create aligned timeseries root.turbine1.d1(s1 INT64 encoding=PLAIN compression=SNAPPY, "
+              + "s2 INT64 encoding=PLAIN compression=SNAPPY)");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
       }
-    }
 
-    statement.execute("DELETE timeseries root.turbine1.d1.s1");
-    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,1.1)");
-    statement.execute("FLUSH");
+      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,1.1)");
+      statement.execute("FLUSH");
 
-    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
       }
     }
 
@@ -112,36 +109,38 @@ public class IoTDBDeleteAlignedTimeseriesIT {
   public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1.0,", "2,5.0,"};
     int cnt = 0;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create aligned timeseries root.turbine1.d1(s1 FLOAT encoding=PLAIN compression=SNAPPY, "
+              + "s2 INT64 encoding=PLAIN compression=SNAPPY)");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
 
-    statement.execute(
-        "create aligned timeseries root.turbine1.d1(s1 FLOAT encoding=PLAIN compression=SNAPPY, "
-            + "s2 INT64 encoding=PLAIN compression=SNAPPY)");
-    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-
-    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
       }
-    }
-    statement.execute("DELETE timeseries root.turbine1.d1.s1");
-    statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,5)");
-    statement.execute("FLUSH");
+      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,5)");
+      statement.execute("FLUSH");
 
-    try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
       }
     }
 
@@ -156,53 +155,55 @@ public class IoTDBDeleteAlignedTimeseriesIT {
   public void deleteTimeseriesAndChangeDeviceAlignmentTest() throws Exception {
     String[] retArray = new String[] {"1,1.0,2.0,"};
     int cnt = 0;
-
-    statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-    try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
-      while (resultSet.next()) {
-        Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
-      }
-    }
-    cnt = 0;
-    statement.execute("DELETE timeseries root.sg3.d1.s1");
-    statement.execute("DELETE timeseries root.sg3.d1.s2");
-    statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
-    try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
-      while (resultSet.next()) {
-        Assert.assertEquals("false", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
-      }
-    }
-
-    try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+        while (resultSet.next()) {
+          Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
       }
-    }
-    cnt = 0;
-    statement.execute("DELETE timeseries root.sg3.d1.s1");
-    statement.execute("DELETE timeseries root.sg3.d1.s2");
-    statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-    try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
-      while (resultSet.next()) {
-        Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
-      }
-    }
-
-    try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+      cnt = 0;
+      statement.execute("DELETE timeseries root.sg3.d1.s1");
+      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+        while (resultSet.next()) {
+          Assert.assertEquals("false", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
-        Assert.assertEquals(retArray[cnt], builder.toString());
-        cnt++;
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+      }
+      cnt = 0;
+      statement.execute("DELETE timeseries root.sg3.d1.s1");
+      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+        while (resultSet.next()) {
+          Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
+        }
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
       }
     }
   }
@@ -211,7 +212,8 @@ public class IoTDBDeleteAlignedTimeseriesIT {
   public void deleteTimeSeriesMultiIntervalTest() {
     String[] retArray1 = new String[] {"0,0"};
 
-    try {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       String insertSql = "insert into root.sg.d1(time, s1) aligned values(%d, %d)";
       for (int i = 1; i <= 4; i++) {
         statement.execute(String.format(insertSql, i, i));

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.nimbusds.jose.JOSEException;
@@ -255,7 +256,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, String path, int privilegeId)
+  public boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
       throws AuthException {
     return isAdmin(username);
   }

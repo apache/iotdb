@@ -27,8 +27,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class TsFileProcessorInfoMetrics implements IMetricSet {
-  private String storageGroupName;
-  private TsFileProcessorInfo tsFileProcessorInfo;
+  private final String storageGroupName;
+  private final TsFileProcessorInfo tsFileProcessorInfo;
 
   public TsFileProcessorInfoMetrics(
       String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {

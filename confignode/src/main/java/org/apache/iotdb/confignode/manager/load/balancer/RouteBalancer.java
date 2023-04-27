@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.GreedyLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFl
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.GreedyPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.LeaderPriorityBalancer;
+import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -56,7 +58,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -91,13 +92,13 @@ public class RouteBalancer {
   private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
       ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
-  private final IManager configManager;
-
   // Key: RegionGroupId
   // Value: Pair<Timestamp, LeaderDataNodeId>, where
   // the left value stands for sampling timestamp
   // and the right value stands for the index of DataNode that leader resides.
   private final Map<TConsensusGroupId, Pair<Long, Integer>> leaderCache;
+
+  private final IManager configManager;
 
   /** RegionRouteMap */
   private final RegionRouteMap regionRouteMap;
@@ -107,6 +108,7 @@ public class RouteBalancer {
   private final IPriorityBalancer priorityRouter;
 
   /** Leader Balancing service */
+  // TODO: leader balancing should be triggered by cluster events
   private Future<?> currentLeaderBalancingFuture;
 
   private final ScheduledExecutorService leaderBalancingExecutor =
@@ -115,9 +117,8 @@ public class RouteBalancer {
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
-
-    this.leaderCache = new ConcurrentHashMap<>();
     this.regionRouteMap = new RegionRouteMap();
+    this.leaderCache = new ConcurrentHashMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
       case ILeaderBalancer.GREEDY_POLICY:
@@ -141,10 +142,10 @@ public class RouteBalancer {
   }
 
   /**
-   * Cache the newest leaderHeartbeatSample
+   * Cache the latest leader of a RegionGroup.
    *
-   * @param regionGroupId Corresponding RegionGroup's index
-   * @param leaderSample <Sample timestamp, leaderDataNodeId>, The newest HeartbeatSample
+   * @param regionGroupId the id of the RegionGroup
+   * @param leaderSample the latest leader of a RegionGroup
    */
   public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
@@ -164,16 +165,18 @@ public class RouteBalancer {
   /**
    * Invoking periodically to update the RegionRouteMap
    *
-   * @return True if the RegionRouteMap has changed, false otherwise
+   * @return RouteChangeEvent
    */
-  public boolean updateRegionRouteMap() {
+  public RouteChangeEvent updateRegionRouteMap() {
     synchronized (regionRouteMap) {
-      return updateRegionLeaderMap() | updateRegionPriorityMap();
+      RegionRouteMap preRouteMap = new RegionRouteMap(regionRouteMap);
+      updateRegionLeaderMap();
+      updateRegionPriorityMap();
+      return new RouteChangeEvent(preRouteMap, regionRouteMap);
     }
   }
 
-  private boolean updateRegionLeaderMap() {
-    AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
+  private void updateRegionLeaderMap() {
     leaderCache.forEach(
         (regionGroupId, leadershipSample) -> {
           if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
@@ -185,15 +188,13 @@ public class RouteBalancer {
           if (leadershipSample.getRight() != regionRouteMap.getLeader(regionGroupId)) {
             // Update leader
             regionRouteMap.setLeader(regionGroupId, leadershipSample.getRight());
-            isLeaderChanged.set(true);
           }
         });
-    return isLeaderChanged.get();
   }
 
-  private boolean updateRegionPriorityMap() {
+  private void updateRegionPriorityMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = regionRouteMap.getRegionLeaderMap();
-    Map<Integer, Long> dataNodeLoadScoreMap = getNodeManager().getAllLoadScores();
+    Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
     // Balancing region priority in each SchemaRegionGroup
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionPriorityMap =
@@ -210,9 +211,6 @@ public class RouteBalancer {
 
     if (!latestRegionPriorityMap.equals(regionRouteMap.getRegionPriorityMap())) {
       regionRouteMap.setRegionPriorityMap(latestRegionPriorityMap);
-      return true;
-    } else {
-      return false;
     }
   }
 
@@ -411,5 +409,9 @@ public class RouteBalancer {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

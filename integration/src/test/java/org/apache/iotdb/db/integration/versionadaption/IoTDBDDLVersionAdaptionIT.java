@@ -53,7 +53,7 @@ public class IoTDBDDLVersionAdaptionIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDDLVersionAdaptionIT.class);
 
   private static void insertSQL() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
 
       String[] insertSqls =
@@ -288,7 +288,7 @@ public class IoTDBDDLVersionAdaptionIT {
   }
 
   private void executeAndCheckResult(String[] sqls, Set<String>[] standards) throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -342,7 +342,7 @@ public class IoTDBDDLVersionAdaptionIT {
 
   private void executeDeleteAndCheckResult(String deleteSql, String showSql, String[] expected)
       throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       statement.execute(deleteSql);
       boolean hasResult = statement.execute(showSql);

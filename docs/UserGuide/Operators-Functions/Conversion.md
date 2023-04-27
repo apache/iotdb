@@ -21,107 +21,82 @@
 
 # Data Type Conversion Function
 
-The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE, BOOLEAN, TEXT. When we query or evaluate data, we may need to convert data types, such as TEXT to INT32, or improve the accuracy of the data, such as FLOAT to DOUBLE. Therefore, IoTDB supports the use of cast functions to convert data types.
+The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE, BOOLEAN, TEXT. When we query or evaluate data, we may need to convert data types, such as TEXT to INT32, or FLOAT to DOUBLE. IoTDB supports cast function to convert data types.
 
-| Function Name | Required Attributes                                          | Output Series Data Type                      | Series Data Type  Description                               |
-| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------- |
-| CAST          | `type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Converts data to the type specified by the `type` argument. |
+Syntax example:
 
-#### Notes
-1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.    
+```sql
+SELECT cast(s1 as INT32) from root.sg
+```
+
+The syntax of the cast function is consistent with that of PostgreSQL. The data type specified after AS indicates the target type to be converted. Currently, all six data types supported by IoTDB can be used in the cast function. The conversion rules to be followed are shown in the following table. The row represents the original data type, and the column represents the target data type to be converted into:
+
+|             | **INT32**                                                    | **INT64**                                                    | **FLOAT**                                                    | **DOUBLE**              | **BOOLEAN**                                                  | **TEXT**                         |
+| ----------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------- | ------------------------------------------------------------ | -------------------------------- |
+| **INT32**   | No need to cast                                              | Cast directly                                                | Cast directly                                                | Cast directly           | !=0 : true<br />==0: false                                   | String.valueOf()                 |
+| **INT64**   | Out of the range of INT32: throw Exception<br />Otherwise: Cast directly | No need to cast                                              | Cast directly                                                | Cast directly           | !=0L : true<br />==0: false                                  | String.valueOf()                 |
+| **FLOAT**   | Out of the range of INT32: throw Exception<br />Otherwise: Math.round() | Out of the range of INT64: throw Exception<br />Otherwise: Math.round() | No need to cast                                              | Cast directly           | !=0.0f : true<br />==0: false                                | String.valueOf()                 |
+| **DOUBLE**  | Out of the range of INT32: throw Exception<br />Otherwise: Math.round() | Out of the range of INT64: throw Exception<br />Otherwise: Math.round() | Out of the range of FLOAT：throw Exception<br />Otherwise: Cast directly | No need to cast         | !=0.0 : true<br />==0: false                                 | String.valueOf()                 |
+| **BOOLEAN** | true: 1<br />false: 0                                        | true: 1L<br />false: 0                                       | true: 1.0f<br />false: 0                                     | true: 1.0<br />false: 0 | No need to cast                                              | true: "true"<br />false: "false" |
+| **TEXT**    | Integer.parseInt()                                           | Long.parseLong()                                             | Float.parseFloat()                                           | Double.parseDouble()    | text.toLowerCase =="true" : true<br />text.toLowerCase =="false" : false<br />Otherwise: throw Exception | No need to cast                  |
+
+#### Examples
 
 ```
-IoTDB> show timeseries root.sg.d1.*;
-+-------------+-----+-------------+--------+--------+-----------+----+----------+
-|   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
-+-------------+-----+-------------+--------+--------+-----------+----+----------+
-|root.sg.d1.s3| null|      root.sg|   FLOAT|     RLE|     SNAPPY|null|      null|
-|root.sg.d1.s4| null|      root.sg|  DOUBLE|     RLE|     SNAPPY|null|      null|
-|root.sg.d1.s5| null|      root.sg|    TEXT|   PLAIN|     SNAPPY|null|      null|
-|root.sg.d1.s6| null|      root.sg| BOOLEAN|     RLE|     SNAPPY|null|      null|
-|root.sg.d1.s1| null|      root.sg|   INT32|     RLE|     SNAPPY|null|      null|
-|root.sg.d1.s2| null|      root.sg|   INT64|     RLE|     SNAPPY|null|      null|
-+-------------+-----+-------------+--------+--------+-----------+----+----------+
-Total line number = 6
-It costs 0.006s
+// timeseries
+IoTDB> show timeseries root.sg.d1.**
++-------------+-----+--------+--------+--------+-----------+----+----------+--------+------------------+
+|   Timeseries|Alias|Database|DataType|Encoding|Compression|Tags|Attributes|Deadband|DeadbandParameters|
++-------------+-----+--------+--------+--------+-----------+----+----------+--------+------------------+
+|root.sg.d1.s3| null| root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|    null|              null|
+|root.sg.d1.s4| null| root.sg|  DOUBLE|   PLAIN|     SNAPPY|null|      null|    null|              null|
+|root.sg.d1.s5| null| root.sg| BOOLEAN|   PLAIN|     SNAPPY|null|      null|    null|              null|
+|root.sg.d1.s6| null| root.sg|    TEXT|   PLAIN|     SNAPPY|null|      null|    null|              null|
+|root.sg.d1.s1| null| root.sg|   INT32|   PLAIN|     SNAPPY|null|      null|    null|              null|
+|root.sg.d1.s2| null| root.sg|   INT64|   PLAIN|     SNAPPY|null|      null|    null|              null|
++-------------+-----+--------+--------+--------+-----------+----+----------+--------+------------------+
+
+// data of timeseries
 IoTDB> select * from root.sg.d1;
 +-----------------------------+-------------+-------------+-------------+-------------+-------------+-------------+
 |                         Time|root.sg.d1.s3|root.sg.d1.s4|root.sg.d1.s5|root.sg.d1.s6|root.sg.d1.s1|root.sg.d1.s2|
 +-----------------------------+-------------+-------------+-------------+-------------+-------------+-------------+
-|1970-01-01T08:00:00.001+08:00|          1.1|          1.1|         test|        false|            1|            1|
-|1970-01-01T08:00:00.002+08:00|         -2.2|         -2.2|        false|         true|           -2|           -2|
-|1970-01-01T08:00:00.003+08:00|          0.0|          0.0|         true|         true|            0|            0|
+|1970-01-01T08:00:00.000+08:00|          0.0|          0.0|        false|        10000|            0|            0|
+|1970-01-01T08:00:00.001+08:00|          1.0|          1.0|        false|            3|            1|            1|
+|1970-01-01T08:00:00.002+08:00|          2.7|          2.7|         true|         TRue|            2|            2|
+|1970-01-01T08:00:00.003+08:00|         3.33|         3.33|         true|        faLse|            3|            3|
 +-----------------------------+-------------+-------------+-------------+-------------+-------------+-------------+
-Total line number = 3
-It costs 0.009s
-IoTDB> select cast(s1, 'type'='BOOLEAN'), cast(s2, 'type'='BOOLEAN'), cast(s3, 'type'='BOOLEAN'), cast(s4, 'type'='BOOLEAN'), cast(s5, 'type'='BOOLEAN') from root.sg.d1;
-+-----------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+
-|                         Time|cast(root.sg.d1.s1, "type"="BOOLEAN")|cast(root.sg.d1.s2, "type"="BOOLEAN")|cast(root.sg.d1.s3, "type"="BOOLEAN")|cast(root.sg.d1.s4, "type"="BOOLEAN")|cast(root.sg.d1.s5, "type"="BOOLEAN")|
-+-----------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+
-|1970-01-01T08:00:00.001+08:00|                                 true|                                 true|                                 true|                                 true|                                 true|
-|1970-01-01T08:00:00.002+08:00|                                 true|                                 true|                                 true|                                 true|                                false|
-|1970-01-01T08:00:00.003+08:00|                                false|                                false|                                false|                                false|                                 true|
-+-----------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+-------------------------------------+
-Total line number = 3
-It costs 0.012s
-```
 
-2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".  
+// cast BOOLEAN to other types
+IoTDB> select cast(s5 as INT32), cast(s5 as INT64),cast(s5 as FLOAT),cast(s5 as DOUBLE), cast(s5 as TEXT) from root.sg.d1
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+---------------------------+
+|                         Time|CAST(root.sg.d1.s5 AS INT32)|CAST(root.sg.d1.s5 AS INT64)|CAST(root.sg.d1.s5 AS FLOAT)|CAST(root.sg.d1.s5 AS DOUBLE)|CAST(root.sg.d1.s5 AS TEXT)|
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+---------------------------+
+|1970-01-01T08:00:00.000+08:00|                           0|                           0|                         0.0|                          0.0|                      false|
+|1970-01-01T08:00:00.001+08:00|                           0|                           0|                         0.0|                          0.0|                      false|
+|1970-01-01T08:00:00.002+08:00|                           1|                           1|                         1.0|                          1.0|                       true|
+|1970-01-01T08:00:00.003+08:00|                           1|                           1|                         1.0|                          1.0|                       true|
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+---------------------------+
 
-```
-IoTDB> select cast(s6, 'type'='INT32'), cast(s6, 'type'='INT64'), cast(s6, 'type'='FLOAT'), cast(s6, 'type'='DOUBLE'), cast(s6, 'type'='TEXT') from root.sg.d1;
-+-----------------------------+-----------------------------------+-----------------------------------+-----------------------------------+------------------------------------+----------------------------------+
-|                         Time|cast(root.sg.d1.s6, "type"="INT32")|cast(root.sg.d1.s6, "type"="INT64")|cast(root.sg.d1.s6, "type"="FLOAT")|cast(root.sg.d1.s6, "type"="DOUBLE")|cast(root.sg.d1.s6, "type"="TEXT")|
-+-----------------------------+-----------------------------------+-----------------------------------+-----------------------------------+------------------------------------+----------------------------------+
-|1970-01-01T08:00:00.001+08:00|                                  0|                                  0|                                0.0|                                 0.0|                             false|
-|1970-01-01T08:00:00.002+08:00|                                  1|                                  1|                                1.0|                                 1.0|                              true|
-|1970-01-01T08:00:00.003+08:00|                                  1|                                  1|                                1.0|                                 1.0|                              true|
-+-----------------------------+-----------------------------------+-----------------------------------+-----------------------------------+------------------------------------+----------------------------------+
-Total line number = 3
-It costs 0.016s
-```
+// cast TEXT to numeric types
+IoTDB> select cast(s6 as INT32), cast(s6 as INT64), cast(s6 as FLOAT), cast(s6 as DOUBLE) from root.sg.d1 where time < 2
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+
+|                         Time|CAST(root.sg.d1.s6 AS INT32)|CAST(root.sg.d1.s6 AS INT64)|CAST(root.sg.d1.s6 AS FLOAT)|CAST(root.sg.d1.s6 AS DOUBLE)|
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+
+|1970-01-01T08:00:00.000+08:00|                       10000|                       10000|                     10000.0|                      10000.0|
+|1970-01-01T08:00:00.001+08:00|                           3|                           3|                         3.0|                          3.0|
++-----------------------------+----------------------------+----------------------------+----------------------------+-----------------------------+
 
-3. When TEXT is converted to INT32, INT64, or FLOAT, the TEXT is first converted to DOUBLE and then to the corresponding type, which may cause loss of precision. It will skip directly if the data can not be converted.
-
-```
-IoTDB> select cast(s5, 'type'='INT32'), cast(s5, 'type'='INT64'), cast(s5, 'type'='FLOAT') from root.sg.d1;
-+----+-----------------------------------+-----------------------------------+-----------------------------------+
-|Time|cast(root.sg.d1.s5, "type"="INT32")|cast(root.sg.d1.s5, "type"="INT64")|cast(root.sg.d1.s5, "type"="FLOAT")|
-+----+-----------------------------------+-----------------------------------+-----------------------------------+
-+----+-----------------------------------+-----------------------------------+-----------------------------------+
-Empty set.
-It costs 0.005s
+// cast TEXT to BOOLEAN
+IoTDB> select cast(s6 as BOOLEAN) from root.sg.d1 where time >= 2
++-----------------------------+------------------------------+
+|                         Time|CAST(root.sg.d1.s6 AS BOOLEAN)|
++-----------------------------+------------------------------+
+|1970-01-01T08:00:00.002+08:00|                          true|
+|1970-01-01T08:00:00.003+08:00|                         false|
++-----------------------------+------------------------------+
 ```
 
 
 
-#### Syntax
-Example data:
-```
-IoTDB> select text from root.test;
-+-----------------------------+--------------+
-|                         Time|root.test.text|
-+-----------------------------+--------------+
-|1970-01-01T08:00:00.001+08:00|           1.1|
-|1970-01-01T08:00:00.002+08:00|             1|
-|1970-01-01T08:00:00.003+08:00|   hello world|
-|1970-01-01T08:00:00.004+08:00|         false|
-+-----------------------------+--------------+
-```
-SQL:
-```sql
-select cast(text, 'type'='BOOLEAN'), cast(text, 'type'='INT32'), cast(text, 'type'='INT64'), cast(text, 'type'='FLOAT'), cast(text, 'type'='DOUBLE') from root.test;
-```
-Result:
-```
-+-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
-|                         Time|cast(root.test.text, "type"="BOOLEAN")|cast(root.test.text, "type"="INT32")|cast(root.test.text, "type"="INT64")|cast(root.test.text, "type"="FLOAT")|cast(root.test.text, "type"="DOUBLE")|
-+-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
-|1970-01-01T08:00:00.001+08:00|                                  true|                                   1|                                   1|                                 1.1|                                  1.1|
-|1970-01-01T08:00:00.002+08:00|                                  true|                                   1|                                   1|                                 1.0|                                  1.0|
-|1970-01-01T08:00:00.003+08:00|                                  true|                                null|                                null|                                null|                                 null|
-|1970-01-01T08:00:00.004+08:00|                                 false|                                null|                                null|                                null|                                 null|
-+-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
-Total line number = 4
-It costs 0.078s
-```
+

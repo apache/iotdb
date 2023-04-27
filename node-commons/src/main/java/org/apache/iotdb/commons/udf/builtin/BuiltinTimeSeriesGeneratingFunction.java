@@ -26,9 +26,12 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFStartsWith;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrCompare;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLength;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLocate;
-import org.apache.iotdb.commons.udf.builtin.String.UDTFSubstr;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
+
+import com.google.common.collect.ImmutableSet;
+
+import java.util.Set;
 
 /** All built-in UDFs need to register their function names and classes here. */
 public enum BuiltinTimeSeriesGeneratingFunction {
@@ -50,7 +53,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   SIGN("SIGN", UDTFSign.class),
   CEIL("CEIL", UDTFCeil.class),
   FLOOR("FLOOR", UDTFFloor.class),
-  ROUND("ROUND", UDTFRound.class),
   EXP("EXP", UDTFExp.class),
   LN("LN", UDTFLog.class),
   LOG10("LOG10", UDTFLog10.class),
@@ -62,7 +64,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   STRING_STARTS_WITH("STARTSWITH", UDTFStartsWith.class),
   STRING_ENDS_WITH("ENDSWITH", UDTFEndsWith.class),
   STRING_CONCAT("CONCAT", UDTFConcat.class),
-  STRING_SUBSTR("SUBSTR", UDTFSubstr.class),
   STRING_UPPER("UPPER", UDTFUpper.class),
   STRING_LOWER("LOWER", UDTFLower.class),
   STRING_TRIM("TRIM", UDTFTrim.class),
@@ -75,7 +76,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
-  CAST("CAST", UDTFCast.class),
   IN_RANGE("IN_RANGE", UDTFInRange.class),
   ON_OFF("ON_OFF", UDTFOnOff.class),
   ZERO_DURATION("ZERO_DURATION", UDTFZeroDuration.class),
@@ -90,11 +90,18 @@ public enum BuiltinTimeSeriesGeneratingFunction {
       "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
   JEXL("JEXL", UDTFJexl.class),
   MASTER_REPAIR("MASTER_REPAIR", UDTFMasterRepair.class),
-  M4("M4", UDTFM4.class);
+  M4("M4", UDTFM4.class),
+  SEASONAL_REPAIR("SEASONAL_REPAIR", UDTFSeasonalRepair.class);
 
   private final String functionName;
   private final Class<?> functionClass;
   private final String className;
+
+  /**
+   * Set of functions are mappable but DeviceView of them also need special process. Now there is no
+   * function satisfies this.
+   */
+  public static final Set<String> DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS = ImmutableSet.of();
 
   BuiltinTimeSeriesGeneratingFunction(String functionName, Class<?> functionClass) {
     this.functionName = functionName;

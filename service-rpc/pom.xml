@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>service-rpc</artifactId>
@@ -116,6 +116,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${rpc.ut.skip}</skipTests>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -134,6 +136,8 @@
                 <configuration>
                     <skipTests>${rpc.test.skip}</skipTests>
                     <skipITs>${rpc.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>

@@ -19,17 +19,25 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AccumulatorFactory {
 
   // TODO: Are we going to create different seriesScanOperator based on order by sequence?
   public static Accumulator createAccumulator(
-      AggregationType aggregationType, TSDataType tsDataType, boolean ascending) {
+      TAggregationType aggregationType,
+      TSDataType tsDataType,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -55,17 +63,86 @@ public class AccumulatorFactory {
         return ascending
             ? new FirstValueAccumulator(tsDataType)
             : new FirstValueDescAccumulator(tsDataType);
+      case COUNT_IF:
+        return new CountIfAccumulator(
+            initKeepEvaluator(inputExpressions.get(1)),
+            Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
+      case TIME_DURATION:
+        return new TimeDurationAccumulator();
+      case MODE:
+        return crateModeAccumulator(tsDataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
   }
 
+  private static Accumulator crateModeAccumulator(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case BOOLEAN:
+        return new BooleanModeAccumulator();
+      case TEXT:
+        return new BinaryModeAccumulator();
+      case INT32:
+        return new IntModeAccumulator();
+      case INT64:
+        return new LongModeAccumulator();
+      case FLOAT:
+        return new FloatModeAccumulator();
+      case DOUBLE:
+        return new DoubleModeAccumulator();
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + tsDataType);
+    }
+  }
+
   public static List<Accumulator> createAccumulators(
-      List<AggregationType> aggregationTypes, TSDataType tsDataType, boolean ascending) {
+      List<TAggregationType> aggregationTypes,
+      TSDataType tsDataType,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
     List<Accumulator> accumulators = new ArrayList<>();
-    for (AggregationType aggregationType : aggregationTypes) {
-      accumulators.add(createAccumulator(aggregationType, tsDataType, ascending));
+    for (TAggregationType aggregationType : aggregationTypes) {
+      accumulators.add(
+          createAccumulator(
+              aggregationType, tsDataType, inputExpressions, inputAttributes, ascending));
     }
     return accumulators;
+  }
+
+  @FunctionalInterface
+  public interface KeepEvaluator {
+    boolean apply(long keep);
+  }
+
+  public static KeepEvaluator initKeepEvaluator(Expression keepExpression) {
+    // We have check semantic in FE,
+    // keep expression must be ConstantOperand or CompareBinaryExpression here
+    if (keepExpression instanceof ConstantOperand) {
+      return keep -> keep >= Long.parseLong(keepExpression.toString());
+    } else {
+      long constant =
+          Long.parseLong(
+              ((CompareBinaryExpression) keepExpression)
+                  .getRightExpression()
+                  .getExpressionString());
+      switch (keepExpression.getExpressionType()) {
+        case LESS_THAN:
+          return keep -> keep < constant;
+        case LESS_EQUAL:
+          return keep -> keep <= constant;
+        case GREATER_THAN:
+          return keep -> keep > constant;
+        case GREATER_EQUAL:
+          return keep -> keep >= constant;
+        case EQUAL_TO:
+          return keep -> keep == constant;
+        case NON_EQUAL:
+          return keep -> keep != constant;
+        default:
+          throw new IllegalArgumentException(
+              "unsupported expression type: " + keepExpression.getExpressionType());
+      }
+    }
   }
 }

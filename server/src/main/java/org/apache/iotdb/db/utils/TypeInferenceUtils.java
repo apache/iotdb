@@ -19,29 +19,41 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
+import java.util.List;
+
 public class TypeInferenceUtils {
 
-  private static TSDataType booleanStringInferType =
+  private static final TSDataType booleanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
-  private static TSDataType integerStringInferType =
+  private static final TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
-  private static TSDataType longStringInferType =
+  private static final TSDataType longStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
-  private static TSDataType floatingStringInferType =
+  private static final TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
-  private static TSDataType nanStringInferType =
+  private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
@@ -114,21 +126,21 @@ public class TypeInferenceUtils {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
-    if (!verifyIsAggregationDataTypeMatched(aggrFuncName, dataType)) {
-      throw new SemanticException(
-          "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
-    }
+    verifyIsAggregationDataTypeMatched(aggrFuncName, dataType);
 
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_IF:
+      case SqlConstant.TIME_DURATION:
         return TSDataType.INT64;
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.EXTREME:
+      case SqlConstant.MODE:
         return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -138,23 +150,145 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static boolean verifyIsAggregationDataTypeMatched(
-      String aggrFuncName, TSDataType dataType) {
+  private static void verifyIsAggregationDataTypeMatched(String aggrFuncName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return;
+    }
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
-        return dataType.isNumeric();
+        if (dataType.isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       case SqlConstant.COUNT:
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
-        return true;
+      case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
+        return;
+      case SqlConstant.COUNT_IF:
+        if (dataType != TSDataType.BOOLEAN) {
+          throw new SemanticException(
+              String.format(
+                  "Input series of Aggregation function [%s] only supports data type [BOOLEAN]",
+                  aggrFuncName));
+        }
+        return;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  /**
+   * Bind Type for non-series input Expressions of AggregationFunction and check Semantic
+   *
+   * <p>.e.g COUNT_IF(s1>1, keep>2, 'ignoreNull'='false'), we bind type {@link TSDataType#INT64} for
+   * 'keep'
+   */
+  public static void bindTypeForAggregationNonSeriesInputExpressions(
+      String functionName,
+      List<Expression> inputExpressions,
+      List<List<Expression>> outputExpressionLists) {
+    switch (functionName.toLowerCase()) {
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+      case SqlConstant.EXTREME:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.COUNT:
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
+        return;
+      case SqlConstant.COUNT_IF:
+        Expression keepExpression = inputExpressions.get(1);
+        if (keepExpression instanceof ConstantOperand) {
+          outputExpressionLists.add(Collections.singletonList(keepExpression));
+          return;
+        } else if (keepExpression instanceof CompareBinaryExpression) {
+          Expression leftExpression =
+              ((CompareBinaryExpression) keepExpression).getLeftExpression();
+          Expression rightExpression =
+              ((CompareBinaryExpression) keepExpression).getRightExpression();
+          if (leftExpression instanceof TimeSeriesOperand
+              && leftExpression.getExpressionString().equalsIgnoreCase("keep")
+              && rightExpression.isConstantOperand()) {
+            outputExpressionLists.add(
+                Collections.singletonList(
+                    ExpressionUtils.reconstructBinaryExpression(
+                        keepExpression.getExpressionType(),
+                        new TimeSeriesOperand(
+                            new MeasurementPath(
+                                ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
+                        rightExpression)));
+            return;
+          } else {
+            throw new SemanticException(
+                String.format(
+                    "Please check input keep condition of Aggregation function [%s]",
+                    functionName));
+          }
+        } else {
+          throw new SemanticException(
+              String.format(
+                  "Keep condition of Aggregation function [%s] need to be constant or compare expression constructed by keep and a long number",
+                  functionName));
+        }
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
+    }
+  }
+
+  public static TSDataType getBuiltInScalarFunctionDataType(
+      FunctionExpression functionExpression, TSDataType dataType) {
+    String functionName = functionExpression.getFunctionName();
+    if (functionName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null.");
+    }
+    BuiltInScalarFunctionHelper helper =
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName);
+    // check input data type first if it is not a NullOperand
+    if (dataType != null) {
+      helper.checkBuiltInScalarFunctionInputDataType(dataType);
+    }
+    return helper.getBuiltInScalarFunctionReturnType(functionExpression);
+  }
+
+  public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
+    if (fromType.equals(toType)) {
+      return true;
+    }
+
+    switch (fromType) {
+      case INT32:
+        switch (toType) {
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            return true;
+          default:
+            return false;
+        }
+      case INT64:
+      case FLOAT:
+        return toType.equals(TSDataType.DOUBLE);
+      case DOUBLE:
+      case BOOLEAN:
+      case TEXT:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + fromType);
     }
   }
 }

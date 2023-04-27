@@ -25,8 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -41,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,12 +92,12 @@ public class FragmentInstanceManager {
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        instanceManagementExecutor, this::removeOldInstances, 200, 200, TimeUnit.MILLISECONDS);
+        instanceManagementExecutor, this::removeOldInstances, 2000, 2000, TimeUnit.MILLISECONDS);
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         instanceManagementExecutor,
         this::cancelTimeoutFlushingInstances,
-        200,
-        200,
+        2000,
+        2000,
         TimeUnit.MILLISECONDS);
 
     this.intoOperationExecutor =
@@ -140,15 +138,15 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
-                  // get the sinkHandle of last driver
-                  ISinkHandle sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+                  // get the sink of last driver
+                  ISink sink = drivers.get(drivers.size() - 1).getSink();
 
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
                       context,
                       drivers,
-                      sinkHandle,
+                      sink,
                       stateMachine,
                       failedInstances,
                       instance.getTimeOut());
@@ -195,14 +193,20 @@ public class FragmentInstanceManager {
                               fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
-                SchemaDriver driver =
+                List<PipelineDriverFactory> driverFactories =
                     planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
+
+                List<IDriver> drivers = new ArrayList<>();
+                driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                // get the sink of last driver
+                ISink sink = drivers.get(drivers.size() - 1).getSink();
+
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
                     context,
-                    Collections.singletonList(driver),
-                    driver.getSinkHandle(),
+                    drivers,
+                    sink,
                     stateMachine,
                     failedInstances,
                     instance.getTimeOut());
@@ -239,14 +243,18 @@ public class FragmentInstanceManager {
   }
 
   /** Cancels a FragmentInstance. */
-  public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
+  public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
     logger.debug("[CancelFI]");
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);
     if (context != null) {
       instanceExecution.remove(instanceId);
-      context.cancel();
+      if (hasThrowable) {
+        context.cancel();
+      } else {
+        context.finished();
+      }
       return context.getInstanceInfo();
     }
     return null;
@@ -293,14 +301,13 @@ public class FragmentInstanceManager {
 
   private void cancelTimeoutFlushingInstances() {
     long now = System.currentTimeMillis();
-    instanceContext.entrySet().stream()
-        .filter(
-            entry -> {
-              FragmentInstanceContext context = entry.getValue();
-              return context.getStateMachine().getState() == FragmentInstanceState.FLUSHING
-                  && (now - context.getStartTime()) > QUERY_TIMEOUT_MS;
-            })
-        .forEach(entry -> entry.getValue().failed(new TimeoutException()));
+    instanceExecution.forEach(
+        (key, execution) -> {
+          if (execution.getStateMachine().getState() == FragmentInstanceState.FLUSHING
+              && (now - execution.getStartTime()) > QUERY_TIMEOUT_MS) {
+            execution.getStateMachine().failed(new TimeoutException());
+          }
+        });
   }
 
   public ExecutorService getIntoOperationExecutor() {

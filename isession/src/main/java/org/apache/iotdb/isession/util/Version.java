@@ -21,5 +21,6 @@ package org.apache.iotdb.isession.util;
 
 public enum Version {
   V_0_12,
-  V_0_13
+  V_0_13,
+  V_1_0
 }

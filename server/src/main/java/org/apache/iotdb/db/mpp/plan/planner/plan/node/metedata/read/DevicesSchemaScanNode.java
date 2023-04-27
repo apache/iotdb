@@ -41,8 +41,8 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   public DevicesSchemaScanNode(
       PlanNodeId id,
       PartialPath path,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean isPrefixPath,
       boolean hasSgCol) {
     super(id, path, limit, offset, isPrefixPath);
@@ -98,8 +98,8 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    long limit = ReadWriteIOUtils.readLong(byteBuffer);
+    long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
     boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

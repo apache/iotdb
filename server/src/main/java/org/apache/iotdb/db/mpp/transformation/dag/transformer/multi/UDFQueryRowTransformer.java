@@ -36,7 +36,7 @@ public class UDFQueryRowTransformer extends UniversalUDFQueryTransformer {
   }
 
   @Override
-  protected YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException {
+  protected YieldableState tryExecuteUDFOnce() throws Exception {
     final YieldableState yieldableState = layerRowReader.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;

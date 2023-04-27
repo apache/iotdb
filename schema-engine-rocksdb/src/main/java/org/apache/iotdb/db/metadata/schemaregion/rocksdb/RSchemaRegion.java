@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -41,8 +43,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
@@ -57,7 +58,10 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
@@ -116,6 +120,7 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
 
+@SchemaRegion(mode = "Rocksdb_based")
 public class RSchemaRegion implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);
@@ -148,11 +153,10 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  public RSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, RSchemaConfLoader rSchemaConfLoader)
-      throws MetadataException {
-    this.schemaRegionId = schemaRegionId;
-    storageGroupFullPath = storageGroup.getFullPath();
+  public RSchemaRegion(ISchemaRegionParams schemaRegionParams) throws MetadataException {
+    RSchemaConfLoader rSchemaConfLoader = new RSchemaConfLoader();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
     init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
@@ -190,12 +194,22 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public SchemaRegionId getSchemaRegionId() {
     return schemaRegionId;
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -608,7 +622,7 @@ public class RSchemaRegion implements ISchemaRegion {
                     // TODO: tags invert index update
                   }
                   readWriteHandler.executeBatch(batch);
-                  if (!deletedNode.getParent().isStorageGroup()) {
+                  if (!deletedNode.getParent().isDatabase()) {
                     parentNeedsToCheck.add(deletedNode.getParent());
                   }
                 }
@@ -631,7 +645,7 @@ public class RSchemaRegion implements ISchemaRegion {
           Stream<IMNode> parentStream = parentNeedsToCheck.parallelStream();
           parentStream.forEach(
               currentNode -> {
-                if (!currentNode.isStorageGroup()) {
+                if (!currentNode.isDatabase()) {
                   PartialPath parentPath = currentNode.getPartialPath();
                   int level = parentPath.getNodeLength();
                   int end = parentPath.getNodeLength() - 1;
@@ -641,7 +655,7 @@ public class RSchemaRegion implements ISchemaRegion {
                       readWriteHandler.deleteNode(
                           parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
                       IMNode parentNode = currentNode.getParent();
-                      if (!parentNode.isStorageGroup()) {
+                      if (!parentNode.isDatabase()) {
                         tempSet.add(currentNode.getParent());
                       }
                     } catch (Exception e) {
@@ -1517,6 +1531,16 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countDeviceNumBySchemaRegion() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

@@ -21,16 +21,15 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,18 +44,23 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBCreateTimeseriesIT {
+public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  public IoTDBCreateTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   /** Test if creating a time series will cause the database with same name to disappear */

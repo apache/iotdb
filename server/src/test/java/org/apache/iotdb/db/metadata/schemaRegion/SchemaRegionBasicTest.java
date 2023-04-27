@@ -22,10 +22,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
@@ -617,11 +617,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s1",
             "root.laptop.d2.s2"));
 
+    // CASE 01. Query a timeseries, result should be empty set.
     Assert.assertEquals(
         Collections.emptyList(),
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d0"))));
+
+    // CASE 02. Query an existing device.
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop.d1", false)),
         SchemaRegionTestUtil.getMatchedDevices(
@@ -632,24 +635,28 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d2"))));
+
+    // CASE 03. Query an existing device, which has a sub device
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop"))));
+
+    // CASE 04. Query devices using '*'
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.*"))));
 
+    // CASE 05. Query all devices using 'root.**'
     List<IDeviceSchemaInfo> expectedList =
         Arrays.asList(
             new ShowDevicesResult("root.laptop", false),
             new ShowDevicesResult("root.laptop.d1", false),
             new ShowDevicesResult("root.laptop.d2", false),
             new ShowDevicesResult("root.laptop.d1.s2", false));
-
     List<IDeviceSchemaInfo> actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
@@ -659,11 +666,11 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     HashSet<IDeviceSchemaInfo> actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
 
+    // CASE 06. show devices root.**.d*
     expectedList =
         Arrays.asList(
             new ShowDevicesResult("root.laptop.d1", false),
             new ShowDevicesResult("root.laptop.d2", false));
-
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
@@ -672,6 +679,35 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     expectedHashset = new HashSet<>(expectedList);
     actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
+
+    // CASE 07. show devices root.** limit 3 offset 0
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 0, false));
+    Assert.assertEquals(3, actualResult.size());
+    // CASE 08. show devices root.** limit 3 offset 1
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 1, false));
+    Assert.assertEquals(3, actualResult.size());
+    // CASE 09. show devices root.** limit 3 offset 2
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 2, false));
+    Assert.assertEquals(2, actualResult.size());
+    // CASE 10. show devices root.** limit 3 offset 99
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 99, false));
+    Assert.assertEquals(0, actualResult.size());
   }
 
   @Test
@@ -688,8 +724,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s1",
             "root.laptop.d2.s2"));
 
-    // case 01: all timeseries
-
+    // CASE 01: all timeseries
     List<ITimeSeriesSchemaInfo> result =
         SchemaRegionTestUtil.showTimeseries(
             schemaRegion,
@@ -711,7 +746,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     }
     Assert.assertEquals(expectedPathList, actualPathList);
 
-    // case 02: some timeseries, pattern "root.**.s*"
+    // CASE 02: some timeseries, pattern "root.**.s*"
     result =
         SchemaRegionTestUtil.showTimeseries(
             schemaRegion,

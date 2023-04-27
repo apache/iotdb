@@ -22,11 +22,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -52,8 +55,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   private IDataRegionForQuery dataRegion;
   private Filter timeFilter;
+  private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
+  /** closed tsfile used in this fragment instance */
+  private Set<TsFileResource> closedFilePaths;
+  /** unClosed tsfile used in this fragment instance */
+  private Set<TsFileResource> unClosedFilePaths;
 
   private final long createNanos = System.nanoTime();
 
@@ -253,7 +261,14 @@ public class FragmentInstanceContext extends QueryContext {
     return dataRegion;
   }
 
+  public void setSourcePaths(List<PartialPath> sourcePaths) {
+    this.sourcePaths = sourcePaths;
+  }
+
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
+    if (sourcePaths == null) {
+      return;
+    }
     dataRegion.readLock();
     try {
       List<PartialPath> pathList = new ArrayList<>();
@@ -272,12 +287,92 @@ public class FragmentInstanceContext extends QueryContext {
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               this,
               timeFilter != null ? timeFilter.copy() : null);
+
+      // used files should be added before mergeLock is unlocked, or they may be deleted by
+      // running merge
+      if (sharedQueryDataSource != null) {
+        closedFilePaths = new HashSet<>();
+        unClosedFilePaths = new HashSet<>();
+        addUsedFilesForQuery(sharedQueryDataSource);
+      }
     } finally {
       dataRegion.readUnlock();
     }
   }
 
-  public QueryDataSource getSharedQueryDataSource() {
+  public synchronized QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
+    if (sharedQueryDataSource == null) {
+      initQueryDataSource(sourcePaths);
+    }
     return sharedQueryDataSource;
+  }
+
+  /** Add the unique file paths to closeddFilePathsMap and unClosedFilePathsMap. */
+  private void addUsedFilesForQuery(QueryDataSource dataSource) {
+
+    // sequence data
+    addUsedFilesForQuery(dataSource.getSeqResources());
+
+    // unsequence data
+    addUsedFilesForQuery(dataSource.getUnseqResources());
+  }
+
+  private void addUsedFilesForQuery(List<TsFileResource> resources) {
+    Iterator<TsFileResource> iterator = resources.iterator();
+    while (iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
+      boolean isClosed = tsFileResource.isClosed();
+      addFilePathToMap(tsFileResource, isClosed);
+
+      // this file may be deleted just before we lock it
+      if (tsFileResource.isDeleted()) {
+        Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
+        // This resource may be removed by other threads of this query.
+        if (pathSet.remove(tsFileResource)) {
+          FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
+        }
+        iterator.remove();
+      }
+    }
+  }
+
+  /**
+   * Increase the usage reference of filePath of job id. Before the invoking of this method, <code>
+   * this.setqueryIdForCurrentRequestThread</code> has been invoked, so <code>
+   * sealedFilePathsMap.get(queryId)</code> or <code>unsealedFilePathsMap.get(queryId)</code> must
+   * not return null.
+   */
+  private void addFilePathToMap(TsFileResource tsFile, boolean isClosed) {
+    Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
+    if (!pathSet.contains(tsFile)) {
+      pathSet.add(tsFile);
+      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+    }
+  }
+
+  /**
+   * All file paths used by this fragment instance must be cleared and thus the usage reference must
+   * be decreased.
+   */
+  protected synchronized void releaseResource() {
+    // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
+    if (closedFilePaths != null) {
+      for (TsFileResource tsFile : closedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+      }
+      closedFilePaths = null;
+    }
+
+    if (unClosedFilePaths != null) {
+      for (TsFileResource tsFile : unClosedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+      }
+      unClosedFilePaths = null;
+    }
+
+    dataRegion = null;
+    timeFilter = null;
+    sourcePaths = null;
+    sharedQueryDataSource = null;
   }
 }

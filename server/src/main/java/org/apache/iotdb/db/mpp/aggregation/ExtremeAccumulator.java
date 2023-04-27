@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -32,7 +32,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class ExtremeAccumulator implements Accumulator {
 
   private final TSDataType seriesDataType;
-  private TsPrimitiveType extremeResult;
+  private final TsPrimitiveType extremeResult;
   private boolean initResult;
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
@@ -41,16 +41,20 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow);
+        addIntInput(column, bitMap, lastIndex);
+        return;
       case INT64:
-        return addLongInput(column, curWindow);
+        addLongInput(column, bitMap, lastIndex);
+        return;
       case FLOAT:
-        return addFloatInput(column, curWindow);
+        addFloatInput(column, bitMap, lastIndex);
+        return;
       case DOUBLE:
-        return addDoubleInput(column, curWindow);
+        addDoubleInput(column, bitMap, lastIndex);
+        return;
       case TEXT:
       case BOOLEAN:
       default:
@@ -221,23 +225,15 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  private int addIntInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
+  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateIntResult(column[2].getInt(i));
+      if (!column[1].isNull(i)) {
+        updateIntResult(column[1].getInt(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateIntResult(int extVal) {
@@ -253,23 +249,15 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addLongInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
+  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateLongResult(column[2].getLong(i));
+      if (!column[1].isNull(i)) {
+        updateLongResult(column[1].getLong(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateLongResult(long extVal) {
@@ -285,23 +273,15 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addFloatInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
+  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateFloatResult(column[2].getFloat(i));
+      if (!column[1].isNull(i)) {
+        updateFloatResult(column[1].getFloat(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateFloatResult(float extVal) {
@@ -317,23 +297,15 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addDoubleInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
+  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateDoubleResult(column[2].getDouble(i));
+      if (!column[1].isNull(i)) {
+        updateDoubleResult(column[1].getDouble(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateDoubleResult(double extVal) {

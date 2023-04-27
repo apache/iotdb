@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -44,6 +45,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_SCALAR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
@@ -80,6 +82,7 @@ public class ShowFunctionsTask implements IConfigTask {
       appendUDFInformation(builder, udfInformation);
     }
     appendNativeFunctions(builder);
+    appendBuiltInScalarFunctions(builder);
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
@@ -96,6 +99,18 @@ public class ShowFunctionsTask implements IConfigTask {
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
     for (String functionName : BuiltinAggregationFunction.getNativeFunctionNames()) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(functionName.toUpperCase()));
+      builder.getColumnBuilder(1).writeBinary(functionType);
+      builder.getColumnBuilder(2).writeBinary(className);
+      builder.declarePosition();
+    }
+  }
+
+  private static void appendBuiltInScalarFunctions(TsBlockBuilder builder) {
+    final Binary functionType = Binary.valueOf(FUNCTION_TYPE_BUILTIN_SCALAR);
+    final Binary className = Binary.valueOf("");
+    for (String functionName : BuiltinScalarFunction.getNativeFunctionNames()) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(Binary.valueOf(functionName.toUpperCase()));
       builder.getColumnBuilder(1).writeBinary(functionType);

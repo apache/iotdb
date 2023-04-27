@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -85,6 +86,8 @@ public class SyncConfigNodeClientPool {
             return removeConfigNode((TConfigNodeLocation) req, client);
           case DELETE_CONFIG_NODE_PEER:
             return client.deleteConfigNodePeer((TConfigNodeLocation) req);
+          case REPORT_CONFIG_NODE_SHUTDOWN:
+            return client.reportConfigNodeShutdown((TConfigNodeLocation) req);
           case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.
             return client.stopConfigNode((TConfigNodeLocation) req);
@@ -135,6 +138,7 @@ public class SyncConfigNodeClientPool {
       TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
+      Thread.currentThread().interrupt();
     }
   }
 

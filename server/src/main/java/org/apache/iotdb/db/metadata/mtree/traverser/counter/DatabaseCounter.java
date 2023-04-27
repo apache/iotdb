@@ -20,23 +20,23 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 
 // This class implement database counter.
-public class DatabaseCounter extends DatabaseTraverser<Void> implements Counter {
+public class DatabaseCounter<N extends IMNode<N>> extends DatabaseTraverser<Void, N>
+    implements Counter {
 
   private int count;
 
-  public DatabaseCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public DatabaseCounter(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected Void generateResult(IMNode nextMatchedNode) {
+  protected Void generateResult(N nextMatchedNode) {
     count++;
     return null;
   }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -346,7 +348,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public SessionPool getSessionPool(int maxSize) {
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            nodeUrls,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool(
@@ -688,11 +707,14 @@ public abstract class AbstractEnv implements BaseEnv {
         for (int j = 0; j < nodes.size(); j++) {
           String endpoint = nodes.get(j).getIpAndPortString();
           if (!nodeIds.containsKey(endpoint)) {
-            throw new IllegalStateException(
-                "The node " + nodes.get(j).getIpAndPortString() + " is not found!");
+            // Node not exist
+            // Notice: Never modify this line, since the NodeLocation might be modified in IT
+            errorMessages.add("The node " + nodes.get(j).getIpAndPortString() + " is not found!");
+            continue;
           }
           String status = showClusterResp.getNodeStatus().get(nodeIds.get(endpoint));
           if (!targetStatus.get(j).getStatus().equals(status)) {
+            // Error status
             errorMessages.add(
                 String.format(
                     "Node %s is in status %s, but expected %s",

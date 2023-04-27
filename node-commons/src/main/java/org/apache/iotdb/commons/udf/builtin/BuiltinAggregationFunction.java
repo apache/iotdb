@@ -35,7 +35,9 @@ public enum BuiltinAggregationFunction {
   COUNT("count"),
   AVG("avg"),
   SUM("sum"),
-  ;
+  COUNT_IF("count_if"),
+  TIME_DURATION("time_duration"),
+  MODE("mode");
 
   private final String functionName;
 
@@ -55,5 +57,55 @@ public enum BuiltinAggregationFunction {
 
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;
+  }
+
+  /** @return if the Aggregation can use statistics to optimize */
+  public static boolean canUseStatistics(String name) {
+    final String functionName = name.toLowerCase();
+    switch (functionName) {
+      case "min_time":
+      case "max_time":
+      case "max_value":
+      case "min_value":
+      case "extreme":
+      case "first_value":
+      case "last_value":
+      case "count":
+      case "avg":
+      case "sum":
+      case "time_duration":
+        return true;
+      case "count_if":
+      case "mode":
+        return false;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+    }
+  }
+
+  // TODO Maybe we can merge this method with canUseStatistics(),
+  //  new method returns three level push-down: No push-down, DataRegion, SeriesScan
+  /** @return if the Aggregation can split to multi phases */
+  public static boolean canSplitToMultiPhases(String name) {
+    final String functionName = name.toLowerCase();
+    switch (functionName) {
+      case "min_time":
+      case "max_time":
+      case "max_value":
+      case "min_value":
+      case "extreme":
+      case "first_value":
+      case "last_value":
+      case "count":
+      case "avg":
+      case "sum":
+      case "time_duration":
+      case "mode":
+        return true;
+      case "count_if":
+        return false;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+    }
   }
 }

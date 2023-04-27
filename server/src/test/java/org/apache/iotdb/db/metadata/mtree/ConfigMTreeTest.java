@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -89,17 +89,17 @@ public class ConfigMTreeTest {
   public void testAddAndPathExist() throws MetadataException {
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath(path1)));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
   }
 
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
+      assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
+      assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1.s1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -117,14 +117,14 @@ public class ConfigMTreeTest {
     }
 
     try {
-      root.deleteStorageGroup(new PartialPath("root.laptop.d1"));
+      root.deleteDatabase(new PartialPath("root.laptop.d1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
+    assertFalse(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d2")));
   }
 
   @Test
@@ -136,12 +136,12 @@ public class ConfigMTreeTest {
       List<PartialPath> list = new ArrayList<>();
 
       list.add(new PartialPath("root.laptop.d1"));
-      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.d1")));
+      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.d1")));
 
       list.add(new PartialPath("root.laptop.d2"));
-      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.laptop.**")));
-      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.**")));
+      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.laptop.**")));
+      assertEquals(list, root.getBelongedDatabases(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -151,26 +151,25 @@ public class ConfigMTreeTest {
   @Test
   public void testCheckStorageExistOfPath() {
     try {
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle.device0")).isEmpty());
       assertTrue(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
+          root.getBelongedDatabases(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle"));
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
-      assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
+      assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle")).isEmpty());
+      assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle.device0")).isEmpty());
       assertFalse(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
+          root.getBelongedDatabases(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device0")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle1.device0"));
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device2")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device3")).isEmpty());
-      assertFalse(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device1")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device2")).isEmpty());
+      assertTrue(root.getBelongedDatabases(new PartialPath("root.vehicle1.device3")).isEmpty());
+      assertFalse(root.getBelongedDatabases(new PartialPath("root.vehicle1.device0")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -196,14 +195,14 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg3"));
     root.setStorageGroup(new PartialPath("root.a.b.sg3"));
 
-    Assert.assertEquals(7, root.getStorageGroupNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(3, root.getStorageGroupNum(new PartialPath("root.*"), false));
-    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*"), false));
-    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*.*"), false));
-    Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.*.sg1"), false));
-    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.**.sg1"), false));
-    Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.sg3"), false));
-    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.b.*"), false));
+    Assert.assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), false));
+    Assert.assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*"), false));
+    Assert.assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*.*"), false));
+    Assert.assertEquals(1, root.getDatabaseNum(new PartialPath("root.*.sg1"), false));
+    Assert.assertEquals(2, root.getDatabaseNum(new PartialPath("root.**.sg1"), false));
+    Assert.assertEquals(1, root.getDatabaseNum(new PartialPath("root.sg3"), false));
+    Assert.assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.b.*"), false));
   }
 
   @Test
@@ -228,6 +227,20 @@ public class ConfigMTreeTest {
     result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
+
+    root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
+    root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
+    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.ln"));
+
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true);
+    Assert.assertEquals(0, result.left.size());
+    Assert.assertEquals(5, result.right.size());
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg2")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.ln")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.test.`001.002.003`")));
   }
 
   @Test
@@ -241,12 +254,13 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      IStorageGroupMNode storageGroupMNode =
-          root.getStorageGroupNodeByStorageGroupPath(pathList[i]);
+      IDatabaseMNode<IConfigMNode> storageGroupMNode =
+          root.getDatabaseNodeByDatabasePath(pathList[i]);
       storageGroupMNode.setDataTTL(i);
-      storageGroupMNode.setDataReplicationFactor(i);
-      storageGroupMNode.setSchemaReplicationFactor(i);
-      storageGroupMNode.setTimePartitionInterval(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
+      storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
+      root.getNodeWithAutoCreate(pathList[i].concatNode("a")).setSchemaTemplateId(i);
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -257,20 +271,22 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      TStorageGroupSchema storageGroupSchema =
-          newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
+      TDatabaseSchema storageGroupSchema =
+          newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+      Assert.assertEquals(
+          i, newTree.getNodeWithAutoCreate(pathList[i].concatNode("a")).getSchemaTemplateId());
     }
 
     Assert.assertEquals(
-        3, newTree.getMatchedStorageGroups(new PartialPath("root.**.sg"), false).size());
+        3, newTree.getMatchedDatabases(new PartialPath("root.**.sg"), false).size());
     Assert.assertEquals(
-        2, newTree.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
+        2, newTree.getMatchedDatabases(new PartialPath("root.**.b.sg"), false).size());
     Assert.assertEquals(
-        1, newTree.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
+        1, newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), false).size());
   }
 
   @Test
@@ -283,7 +299,7 @@ public class ConfigMTreeTest {
       fail();
     }
 
-    IMNode node = root.getNodeWithAutoCreate(path);
+    IConfigMNode node = root.getNodeWithAutoCreate(path);
     node.setSchemaTemplateId(0);
 
     try {

@@ -62,10 +62,12 @@ public class MetricService extends AbstractMetricService implements MetricServic
     stopCoreModule();
     internalReporter.clear();
     startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      LOGGER.info("MetricService rebind metricSet: {}", metricSet.getClass().getName());
-      metricSet.unbindFrom(this);
-      metricSet.bindTo(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        LOGGER.info("MetricService rebind metricSet: {}", metricSet.getClass().getName());
+        metricSet.unbindFrom(this);
+        metricSet.bindTo(this);
+      }
     }
     LOGGER.info("MetricService restart successfully.");
   }

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>node-commons</artifactId>
@@ -62,6 +62,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>pipe-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
         </dependency>
@@ -90,6 +95,11 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-mlnode</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -230,6 +240,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${commons.ut.skip}</skipTests>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -248,6 +260,8 @@
                 <configuration>
                     <skipTests>${commons.test.skip}</skipTests>
                     <skipITs>${commons.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>

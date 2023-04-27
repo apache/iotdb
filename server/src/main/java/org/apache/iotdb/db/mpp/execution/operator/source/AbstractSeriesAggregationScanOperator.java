@@ -113,12 +113,12 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -131,7 +131,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
       // clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
+        aggregator.reset();
       }
 
       // calculate aggregation result on current time window
@@ -148,7 +148,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished || (finished = !hasNextWithTimer());
   }
 
@@ -331,14 +331,14 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
     return !seriesScanUtil.isFileOverlapped()
-        && fileStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && fileStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentFileModified();
   }
 
   protected boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
     return !seriesScanUtil.isChunkOverlapped()
-        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentChunkModified();
   }
 
@@ -348,7 +348,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       return false;
     }
     return !seriesScanUtil.isPageOverlapped()
-        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentPageModified();
   }
 }

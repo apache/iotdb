@@ -236,4 +236,47 @@ public class IoTDBNullOperandIT {
         expectedHeader,
         retArray);
   }
+
+  @Test
+  public void testSeriesNotExist() {
+    // series in select not exist
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR, "root.test.sg1.s1", "root.test.sg1.s3", "root.test.sg1.s4",
+        };
+    String[] retArray =
+        new String[] {
+          "1,1,true,false,", "2,2,true,null,", "3,3,null,false,",
+        };
+    resultSetEqualTest("select s1, s3, s4, notExist from root.**", expectedHeader, retArray);
+
+    // series in where not exist
+
+    retArray = new String[] {};
+    resultSetEqualTest("select s1, s3, s4 from root.** where notExist>0", expectedHeader, retArray);
+    resultSetEqualTest("select s1, s3, s4 from root.** where notExist=0", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where notExist!=0", expectedHeader, retArray);
+
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where diff(notExist)>0", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "1,1,true,false,", "2,2,true,null,", "3,3,null,false,",
+        };
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where diff(notExist) is null", expectedHeader, retArray);
+
+    // series in having not exist
+    expectedHeader =
+        new String[] {
+          TIMESTAMP_STR, "count(root.test.sg1.s1)", "count(root.test.sg1.s2)",
+        };
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "select count(s1), count(s2) from root.** group by ([1,4),1ms) having count(notExist)>0",
+        expectedHeader,
+        retArray);
+  }
 }

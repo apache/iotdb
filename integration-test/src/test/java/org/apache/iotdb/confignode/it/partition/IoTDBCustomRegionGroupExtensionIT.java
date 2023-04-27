@@ -25,12 +25,11 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -77,9 +76,9 @@ public class IoTDBCustomRegionGroupExtensionIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy)
-        .setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase)
+        .setDefaultSchemaRegionGroupNumPerDatabase(testSchemaRegionGroupPerDatabase)
         .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
-        .setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase)
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment
@@ -100,8 +99,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
         String curSg = sg + i;
 
         /* Set StorageGroup */
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(curSg));
-        TSStatus status = client.setStorageGroup(setReq);
+        TSStatus status = client.setDatabase(new TDatabaseSchema(curSg));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         /* Insert a DataPartition to create DataRegionGroups */
@@ -132,12 +130,12 @@ public class IoTDBCustomRegionGroupExtensionIT {
             .getRegionInfoList()
             .forEach(
                 regionInfo -> {
-                  if (regionInfo.getStorageGroup().equals(curSg)
+                  if (regionInfo.getDatabase().equals(curSg)
                       && TConsensusGroupType.DataRegion.equals(
                           regionInfo.getConsensusGroupId().getType())) {
                     dataRegionCount.getAndIncrement();
                   }
-                  if (regionInfo.getStorageGroup().equals(curSg)
+                  if (regionInfo.getDatabase().equals(curSg)
                       && TConsensusGroupType.SchemaRegion.equals(
                           regionInfo.getConsensusGroupId().getType())) {
                     schemaRegionCount.getAndIncrement();

@@ -19,7 +19,7 @@
 
 -->
 
-# 数据存活时间（TTL）
+## 数据存活时间（TTL）
 
 IoTDB 支持对 database 级别设置数据存活时间（TTL），这使得 IoTDB 可以定期、自动地删除一定时间之前的数据。合理使用 TTL
 可以帮助您控制 IoTDB 占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降，
@@ -27,7 +27,7 @@ IoTDB 支持对 database 级别设置数据存活时间（TTL），这使得 IoT
 
 TTL的默认单位为毫秒，如果配置文件中的时间精度修改为其他单位，设置ttl时仍然使用毫秒单位。
 
-## 设置 TTL
+### 设置 TTL
 
 设置 TTL 的 SQL 语句如下所示：
 ```
@@ -43,7 +43,7 @@ IoTDB> set ttl to root.** 3600000
 ```
 表示给所有 database 设置TTL。
 
-## 取消 TTL
+### 取消 TTL
 
 取消 TTL 的 SQL 语句如下所示：
 
@@ -63,7 +63,7 @@ IoTDB> unset ttl to root.**
 
 取消设置所有 database 的 TTL 。
 
-## 显示 TTL
+### 显示 TTL
 
 显示 TTL 的 SQL 语句如下所示：
 

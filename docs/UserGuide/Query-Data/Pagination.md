@@ -287,16 +287,16 @@ Total line number = 6
 It costs 0.005s
 ```
 
-If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
+If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int64), the system prompts errors. For example, executing the following SQL statement:
 
 ```sql
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 9223372036854775808
 ```
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 416: Out of range. LIMIT <N>: N should be Int32.
+Msg: 416: Out of range. LIMIT <N>: N should be Int64.
 ```
 
 If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:

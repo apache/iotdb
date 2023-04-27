@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
@@ -64,8 +64,15 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
       int subTaskId,
-      SubCompactionTaskSummary summary) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
+      FastCompactionTaskSummary summary) {
+    super(
+        compactionWriter,
+        readerCacheMap,
+        modificationCacheMap,
+        deviceId,
+        false,
+        subTaskId,
+        summary);
     this.sortResources = sortedSourceFiles;
   }
 
@@ -93,14 +100,14 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
       // read chunk metadatas from files and put them into chunk metadata queue
-      deserializeFileIntoQueue(overlappedFiles);
+      deserializeFileIntoChunkMetadataQueue(overlappedFiles);
 
       compactChunks();
     }
   }
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
-  void deserializeFileIntoQueue(List<FileElement> fileElements)
+  void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
@@ -144,7 +151,8 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
     ChunkReader chunkReader = new ChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
@@ -174,6 +182,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)

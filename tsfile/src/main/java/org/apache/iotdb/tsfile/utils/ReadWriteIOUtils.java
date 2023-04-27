@@ -82,6 +82,13 @@ public class ReadWriteIOUtils {
     return flag == 1;
   }
 
+  // used by generated code
+  @SuppressWarnings("unused")
+  public static boolean readBoolean(InputStream inputStream) throws IOException {
+    int flag = inputStream.read();
+    return flag == 1;
+  }
+
   /** read a bool from byteBuffer. */
   public static boolean readBool(ByteBuffer buffer) {
     byte a = buffer.get();

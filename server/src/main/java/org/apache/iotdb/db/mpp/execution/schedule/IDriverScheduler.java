@@ -20,9 +20,10 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
-import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import java.util.List;
 
@@ -36,7 +37,9 @@ public interface IDriverScheduler {
    * @param instances the submitted instances.
    * @param timeOut the query timeout
    */
-  void submitDrivers(QueryId queryId, List<IDriver> instances, long timeOut);
+  void submitDrivers(
+      QueryId queryId, List<IDriver> instances, long timeOut, SessionInfo sessionInfo)
+      throws CpuNotEnoughException, MemoryNotEnoughException;
 
   /**
    * Abort all the instances in this query.
@@ -52,13 +55,4 @@ public interface IDriverScheduler {
    * @param instanceId the id of the fragment instance to be aborted.
    */
   void abortFragmentInstance(FragmentInstanceId instanceId);
-
-  /**
-   * Return the schedule priority of a Driver task.
-   *
-   * @param driverTaskID the fragment instance id.
-   * @return the schedule priority.
-   * @throws IllegalStateException if the instance has already been cleared.
-   */
-  Priority getSchedulePriority(DriverTaskId driverTaskID);
 }

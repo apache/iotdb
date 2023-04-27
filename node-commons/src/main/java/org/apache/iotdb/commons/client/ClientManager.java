@@ -57,9 +57,10 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   /**
-   * return a client V for node K to the ClientManager Note: We do not define this interface in
-   * IClientManager to make you aware that the return of a client is automatic whenever a particular
-   * client is used.
+   * return a client V for node K to the ClientManager.
+   *
+   * <p>Note: We do not define this interface in IClientManager to make you aware that the return of
+   * a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
     Optional.ofNullable(node)
@@ -89,10 +90,6 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public void close() {
-    try {
-      pool.close();
-    } catch (Exception e) {
-      logger.warn("Close client pool failed", e);
-    }
+    pool.close();
   }
 }

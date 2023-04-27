@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -161,8 +162,8 @@ public class IoTDBClusterNodeGetterIT {
           expectedParameters.getSchemaReplicationFactor(),
           clusterParameters.getSchemaReplicationFactor());
       Assert.assertEquals(
-          expectedParameters.getDataRegionPerProcessor(),
-          clusterParameters.getDataRegionPerProcessor(),
+          expectedParameters.getDataRegionPerDataNode(),
+          clusterParameters.getDataRegionPerDataNode(),
           0.01);
       Assert.assertEquals(
           expectedParameters.getSchemaRegionPerDataNode(),
@@ -175,9 +176,6 @@ public class IoTDBClusterNodeGetterIT {
       Assert.assertEquals(
           expectedParameters.getReadConsistencyLevel(),
           clusterParameters.getReadConsistencyLevel());
-      Assert.assertEquals(
-          expectedParameters.getLeastDataRegionGroupNum(),
-          clusterParameters.getLeastDataRegionGroupNum());
 
       /* Test showConfigNodes */
       TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();

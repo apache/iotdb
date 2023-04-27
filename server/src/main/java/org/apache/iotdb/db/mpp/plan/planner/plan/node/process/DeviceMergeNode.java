@@ -64,6 +64,12 @@ public class DeviceMergeNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    throw new UnsupportedOperationException(
+        "DeviceMergeNode should have only one local child in single data region.");
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)

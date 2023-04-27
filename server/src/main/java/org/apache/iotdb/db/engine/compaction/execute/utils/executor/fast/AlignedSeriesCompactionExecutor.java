@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
@@ -52,6 +52,7 @@ import java.util.Map;
 public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+  // linked hash map, which has the same measurement lexicographical order as measurementSchemas.
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
   private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
@@ -66,8 +67,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       String deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
-      SubCompactionTaskSummary summary) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
+      FastCompactionTaskSummary summary) {
+    super(
+        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     // get source files which are sorted by the startTime of current device from old to new,
@@ -90,14 +92,14 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
       // read chunk metadatas from files and put them into chunk metadata queue
-      deserializeFileIntoQueue(overlappedFiles);
+      deserializeFileIntoChunkMetadataQueue(overlappedFiles);
 
       compactChunks();
     }
   }
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
-  void deserializeFileIntoQueue(List<FileElement> fileElements)
+  void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
@@ -198,7 +200,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     List<PageHeader> timePageHeaders = new ArrayList<>();
     List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
     List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
@@ -272,7 +275,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks, null),
+              new AlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
@@ -282,6 +285,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     chunkMetadataElement.chunk =

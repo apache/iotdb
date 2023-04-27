@@ -19,16 +19,15 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -47,9 +46,12 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchIT {
+public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
+
+  public IoTDBMetadataFetchIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -84,6 +86,7 @@ public class IoTDBMetadataFetchIT {
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
 
     insertSQL();
@@ -92,13 +95,13 @@ public class IoTDBMetadataFetchIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -273,6 +276,55 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  public void showDevicesWithWildcardTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "show devices root.l*.wf01.w*",
+            "show devices root.ln.*f01.*",
+            "show devices root.l*.*f*.*1",
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,",
+                    "root.ln.wf01.wt02,true,",
+                    "root.ln1.wf01.wt01,false,",
+                    "root.ln2.wf01.wt01,false,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,",
+                    "root.ln1.wf01.wt01,false,",
+                    "root.ln2.wf01.wt01,false,"))
+          };
+
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            String string = builder.toString();
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
+          }
+          assertEquals(0, standard.size());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
   public void showChildPaths() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -357,13 +409,11 @@ public class IoTDBMetadataFetchIT {
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
             "COUNT TIMESERIES where tag1 = v1",
             "COUNT TIMESERIES where tag3 = v3"
           };
@@ -496,10 +546,8 @@ public class IoTDBMetadataFetchIT {
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
             "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
@@ -509,9 +557,9 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(Collections.singletonList("root.sg.d.status,1,")),
-            new HashSet<>(Arrays.asList("root.sg.d,1,", "root.sg1.d,1,")),
+            new HashSet<>(Arrays.asList("root.ln1,1,", "root.ln2,1,")),
+            new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
+            new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
             Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {

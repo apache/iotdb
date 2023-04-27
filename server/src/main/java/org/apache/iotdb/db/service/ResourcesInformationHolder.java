@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 
@@ -32,6 +33,9 @@ public class ResourcesInformationHolder {
 
   /** store the list when registering in config node for preparing trigger related resources */
   private List<TriggerInformation> triggerInformationList;
+
+  /** store the list when registering in config node for preparing pipe plugin related resources */
+  private List<PipePluginMeta> pipePluginMetaList;
 
   public static int getJarNumOfOneRpc() {
     return JAR_NUM_OF_ONE_RPC;
@@ -51,5 +55,13 @@ public class ResourcesInformationHolder {
 
   public void setTriggerInformationList(List<TriggerInformation> triggerInformationList) {
     this.triggerInformationList = triggerInformationList;
+  }
+
+  public List<PipePluginMeta> getPipePluginMetaList() {
+    return pipePluginMetaList;
+  }
+
+  public void setPipePluginMetaList(List<PipePluginMeta> pipePluginMetaList) {
+    this.pipePluginMetaList = pipePluginMetaList;
   }
 }

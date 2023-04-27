@@ -20,10 +20,10 @@ package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -63,14 +63,20 @@ public class AuditLogger {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private AuditLogger() {}
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
+
+  private AuditLogger() {
+    // empty constructor
+  }
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
       String log, String address, String username)
       throws IoTDBConnectionException, IllegalPathException, QueryProcessException {
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(String.format(AUDIT_LOG_DEVICE, username)));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, username)));
     insertStatement.setTime(DateTimeUtils.currentTime());
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
@@ -140,7 +146,7 @@ public class AuditLogger {
       case REVOKE_ROLE_PRIVILEGE:
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
-      case SET_STORAGE_GROUP:
+      case STORAGE_GROUP_SCHEMA:
       case DELETE_STORAGE_GROUP:
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
@@ -184,6 +190,8 @@ public class AuditLogger {
       case STOP_PIPE:
       case DROP_PIPE:
       case DEACTIVATE_TEMPLATE:
+      case CREATE_PIPEPLUGIN:
+      case DROP_PIPEPLUGIN:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:
@@ -215,6 +223,7 @@ public class AuditLogger {
       case UDAF:
       case UDTF:
       case SHOW:
+      case SHOW_PIPES:
       case SHOW_MERGE_STATUS:
       case KILL:
       case TRACING:
@@ -227,6 +236,7 @@ public class AuditLogger {
       case FETCH_SCHEMA:
       case COUNT:
       case SHOW_TRIGGERS:
+      case SHOW_PIPEPLUGINS:
         return AuditLogOperation.QUERY;
       default:
         logger.error("Unrecognizable operator type ({}) for audit log", type);

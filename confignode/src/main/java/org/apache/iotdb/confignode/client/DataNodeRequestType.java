@@ -62,10 +62,17 @@ public enum DataNodeRequestType {
   INACTIVE_TRIGGER_INSTANCE,
   UPDATE_TRIGGER_LOCATION,
 
-  /** Sync */
-  PRE_CREATE_PIPE,
+  /** Pipe Plugin */
+  CREATE_PIPE_PLUGIN,
+  DROP_PIPE_PLUGIN,
+
+  /** Pipe Task */
+  CREATE_PIPE,
+  /**
+   * DROP_PIPE, START_PIPE, STOP_PIPE Merge them into OPERATE_PIPE since these requests only require
+   * pipe name
+   */
   OPERATE_PIPE,
-  ROLLBACK_OPERATE_PIPE,
 
   /** CQ */
   EXECUTE_CQ,
@@ -86,7 +93,15 @@ public enum DataNodeRequestType {
   ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
   DEACTIVATE_TEMPLATE,
   COUNT_PATHS_USING_TEMPLATE,
+  CHECK_TIMESERIES_EXISTENCE,
 
   /** @TODO Need to migrate to 'Node Maintenance' */
-  KILL_QUERY_INSTANCE
+  KILL_QUERY_INSTANCE,
+
+  /** ML Model */
+  DELETE_MODEL_METRICS,
+
+  /** Quota */
+  SET_SPACE_QUOTA,
+  SET_THROTTLE_QUOTA,
 }

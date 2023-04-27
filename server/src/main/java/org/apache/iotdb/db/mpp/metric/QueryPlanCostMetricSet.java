@@ -30,8 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class QueryPlanCostMetricSet implements IMetricSet {
-
-  public static final String SQL_PARSER = "sql_parser";
   public static final String ANALYZER = "analyzer";
   public static final String LOGICAL_PLANNER = "logical_planner";
   public static final String DISTRIBUTION_PLANNER = "distribution_planner";
@@ -44,12 +42,7 @@ public class QueryPlanCostMetricSet implements IMetricSet {
 
   private static final List<String> stages =
       Arrays.asList(
-          SQL_PARSER,
-          ANALYZER,
-          LOGICAL_PLANNER,
-          DISTRIBUTION_PLANNER,
-          PARTITION_FETCHER,
-          SCHEMA_FETCHER);
+          ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER);
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

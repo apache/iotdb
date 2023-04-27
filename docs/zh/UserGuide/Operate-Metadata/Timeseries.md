@@ -19,9 +19,9 @@
 
 -->
 
-# 时间序列管理
+## 时间序列管理
 
-## 创建时间序列
+### 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的 SQL 语句如下所示：
 
@@ -53,7 +53,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见 [编码方式](../Data-Concept/Encoding.md)。
 
-## 创建对齐时间序列
+### 创建对齐时间序列
 
 创建一组对齐时间序列的SQL语句如下所示：
 
@@ -65,7 +65,7 @@ IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN 
 
 对齐的时间序列也支持设置别名、标签、属性。
 
-## 删除时间序列
+### 删除时间序列
 
 我们可以使用`(DELETE | DROP) TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
@@ -76,7 +76,7 @@ IoTDB> delete timeseries root.ln.wf02.*
 IoTDB> drop timeseries root.ln.wf02.*
 ```
 
-## 查看时间序列
+### 查看时间序列
 
 * SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
@@ -143,7 +143,7 @@ show timeseries root.ln.** limit 10 offset 10
 
 需要注意的是，当查询路径不存在时，系统会返回 0 条时间序列。
 
-## 统计时间序列总数
+### 统计时间序列总数
 
 IoTDB 支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL 语句如下所示：
 ```
@@ -175,7 +175,7 @@ It costs 0.004s
 
 那么 Metadata Tree 如下所示：
 
-<img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg">
+<img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg">
 
 可以看到，`root`被定义为`LEVEL=0`。那么当你输入如下语句时：
 
@@ -221,7 +221,7 @@ It costs 0.002s
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
 
-## 标签点管理
+### 标签点管理
 
 我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
 
@@ -238,7 +238,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 括号里的`temprature`是`s1`这个传感器的别名。
 我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
 
-> IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/DML-Data-Manipulation%20Language.md) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
+> IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/SQL-Reference.md#数据管理语句) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
 
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 

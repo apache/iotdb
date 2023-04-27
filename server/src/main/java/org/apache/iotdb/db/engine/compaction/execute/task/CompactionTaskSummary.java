@@ -18,11 +18,20 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.task;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /** The summary of one {@link AbstractCompactionTask} execution */
 public class CompactionTaskSummary {
-  private long timeCost = 0L;
-  private volatile Status status = Status.NOT_STARTED;
-  private long startTime = -1L;
+  protected long timeCost = 0L;
+  protected volatile Status status = Status.NOT_STARTED;
+  protected long startTime = -1L;
+  protected int processChunkNum = 0;
+  protected int directlyFlushChunkNum = 0;
+  protected int deserializeChunkCount = 0;
+  protected int deserializePageCount = 0;
+  protected int mergedChunkNum = 0;
+  protected long processPointNum = 0;
 
   public CompactionTaskSummary() {}
 
@@ -65,11 +74,78 @@ public class CompactionTaskSummary {
     return timeCost;
   }
 
+  public void increaseProcessChunkNum(int increment) {
+    processChunkNum += increment;
+  }
+
+  public void increaseDirectlyFlushChunkNum(int increment) {
+    directlyFlushChunkNum += increment;
+  }
+
+  public void increaseDeserializedChunkNum(int increment) {
+    deserializeChunkCount += increment;
+  }
+
+  public void increaseProcessPointNum(long increment) {
+    processPointNum += increment;
+  }
+
+  public void increaseMergedChunkNum(int increment) {
+    this.mergedChunkNum += increment;
+  }
+
+  public void setDirectlyFlushChunkNum(int directlyFlushChunkNum) {
+    this.directlyFlushChunkNum = directlyFlushChunkNum;
+  }
+
+  public void setDeserializeChunkCount(int deserializeChunkCount) {
+    this.deserializeChunkCount = deserializeChunkCount;
+  }
+
+  public void setProcessPointNum(int processPointNum) {
+    this.processPointNum = processPointNum;
+  }
+
+  public int getProcessChunkNum() {
+    return processChunkNum;
+  }
+
+  public int getDirectlyFlushChunkNum() {
+    return directlyFlushChunkNum;
+  }
+
+  public int getDeserializeChunkCount() {
+    return deserializeChunkCount;
+  }
+
+  public int getMergedChunkNum() {
+    return mergedChunkNum;
+  }
+
+  public long getProcessPointNum() {
+    return processPointNum;
+  }
+
   enum Status {
     NOT_STARTED,
     STARTED,
     SUCCESS,
     FAILED,
     CANCELED
+  }
+
+  @Override
+  public String toString() {
+    String startTimeInStr = new SimpleDateFormat().format(new Date(startTime));
+    return String.format(
+        "Task start time: %s, total process chunk num: %d, "
+            + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d,"
+            + " total process point num: %d",
+        startTimeInStr,
+        processChunkNum,
+        directlyFlushChunkNum,
+        mergedChunkNum,
+        deserializeChunkCount,
+        processPointNum);
   }
 }

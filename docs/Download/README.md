@@ -29,44 +29,43 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-            <td rowspan="2">1.0.0</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip">Sources</a></td>
-            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.asc">ASC</a></td>
-            <td rowspan="2"><a href="https://raw.githubusercontent.com/apache/iotdb/v1.0.0/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="2">1.1.0</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip">Sources</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://raw.githubusercontent.com/apache/iotdb/rel/1.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip">Grafana-plugin</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip">Grafana-plugin</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td rowspan="3">0.13.3</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip">Sources</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.13.3/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="3">0.13.4</td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip">Sources</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://archive.apache.org/dist/iotdb/0.13.4/RELEASE_NOTES.md">release notes</a></td>
+      </tr>
+      <tr>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip">Grafana-connector</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip">Grafana-plugin</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip.asc">ASC</a></td>
       </tr>
-      <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip">Grafana-connector</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.asc">ASC</a></td>
-      </tr>
 </table>
 
 Legacy version are available here: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
-
 
 ## Configurations
 

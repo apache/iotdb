@@ -30,9 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -138,19 +136,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   public boolean isRoot() {
     return isRoot;
-  }
-
-  public String getDownstreamInfo() {
-    PlanNode root = getFragment().getPlanNodeTree();
-    if (root instanceof FragmentSinkNode) {
-      FragmentSinkNode sink = (FragmentSinkNode) root;
-      return String.format(
-          "(%s, %s, %s)",
-          sink.getDownStreamEndpoint(),
-          sink.getDownStreamInstanceId(),
-          sink.getDownStreamPlanNodeId());
-    }
-    return "<No downstream>";
   }
 
   public void setTimeFilter(Filter timeFilter) {

@@ -86,6 +86,12 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
     return snapshot;
   }
 
+  /** non-thread-safe, used for metrics only */
+  @Override
+  public int getNodesNum() {
+    return walNodes.size();
+  }
+
   @Override
   public void clear() {
     nodesLock.lock();

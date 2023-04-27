@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,16 +30,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class AggregationDescriptor {
 
   // aggregation function type
-  protected final AggregationType aggregationType;
+  protected final TAggregationType aggregationType;
   // In case user's input is case-sensitive, we should keep the origin string.
   protected final String aggregationFuncName;
 
@@ -55,14 +56,33 @@ public class AggregationDescriptor {
    */
   protected List<Expression> inputExpressions;
 
-  private String parametersString;
+  protected final Map<String, String> inputAttributes;
 
+  protected String parametersString;
+
+  public AggregationDescriptor(
+      String aggregationFuncName,
+      AggregationStep step,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes) {
+    this.aggregationFuncName = aggregationFuncName;
+    this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
+    this.step = step;
+    this.inputExpressions = inputExpressions;
+    this.inputAttributes = inputAttributes;
+  }
+
+  // Old method, please don't use it any more
+  // keep here for compatibility of old Test before introduce of count_if
+  @TestOnly
+  @Deprecated
   public AggregationDescriptor(
       String aggregationFuncName, AggregationStep step, List<Expression> inputExpressions) {
     this.aggregationFuncName = aggregationFuncName;
-    this.aggregationType = AggregationType.valueOf(aggregationFuncName.toUpperCase());
+    this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
     this.step = step;
     this.inputExpressions = inputExpressions;
+    this.inputAttributes = Collections.emptyMap();
   }
 
   public AggregationDescriptor(AggregationDescriptor other) {
@@ -70,6 +90,7 @@ public class AggregationDescriptor {
     this.aggregationType = other.getAggregationType();
     this.step = other.getStep();
     this.inputExpressions = other.getInputExpressions();
+    this.inputAttributes = other.inputAttributes;
   }
 
   public String getAggregationFuncName() {
@@ -87,36 +108,20 @@ public class AggregationDescriptor {
 
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
-      return inputExpressions.stream()
-          .map(expression -> Collections.singletonList(expression.getExpressionString()))
-          .collect(Collectors.toList());
+      return Collections.singletonList(
+          Collections.singletonList(inputExpressions.get(0).getExpressionString()));
     }
 
-    List<List<String>> inputColumnNames = new ArrayList<>();
-    for (Expression expression : inputExpressions) {
-      inputColumnNames.add(getInputColumnNames(expression));
-    }
-    return inputColumnNames;
+    return Collections.singletonList(getInputColumnNames());
   }
 
-  public List<String> getInputColumnNames(Expression inputExpression) {
+  public List<String> getInputColumnNames() {
     List<String> inputAggregationNames = getActualAggregationNames(step.isInputPartial());
     List<String> inputColumnNames = new ArrayList<>();
     for (String funcName : inputAggregationNames) {
-      inputColumnNames.add(funcName + "(" + inputExpression.getExpressionString() + ")");
+      inputColumnNames.add(funcName + "(" + getParametersString() + ")");
     }
     return inputColumnNames;
-  }
-
-  public Map<String, Expression> getInputColumnCandidateMap() {
-    Map<String, Expression> inputColumnNameToExpressionMap = new HashMap<>();
-    for (Expression inputExpression : inputExpressions) {
-      List<String> inputColumnNames = getInputColumnNames(inputExpression);
-      for (String inputColumnName : inputColumnNames) {
-        inputColumnNameToExpressionMap.put(inputColumnName, inputExpression);
-      }
-    }
-    return inputColumnNameToExpressionMap;
   }
 
   /** Keep the lower case of function name for partial result, and origin value for others. */
@@ -136,6 +141,10 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.LAST_VALUE);
           outputAggregationNames.add(SqlConstant.MAX_TIME);
           break;
+        case TIME_DURATION:
+          outputAggregationNames.add(SqlConstant.MAX_TIME);
+          outputAggregationNames.add(SqlConstant.MIN_TIME);
+          break;
         default:
           outputAggregationNames.add(aggregationFuncName);
       }
@@ -154,7 +163,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  public String getParametersString() {
+  protected String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {
@@ -163,16 +172,46 @@ public class AggregationDescriptor {
           builder.append(", ").append(inputExpressions.get(i).toString());
         }
       }
+      appendAttributes(builder);
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  protected void appendAttributes(StringBuilder builder) {
+    if (!inputAttributes.isEmpty()) {
+      builder.append(", ");
+
+      Iterator<Map.Entry<String, String>> iterator = inputAttributes.entrySet().iterator();
+      Map.Entry<String, String> entry = iterator.next();
+      builder
+          .append("\"")
+          .append(entry.getKey())
+          .append("\"=\"")
+          .append(entry.getValue())
+          .append("\"");
+      while (iterator.hasNext()) {
+        entry = iterator.next();
+        builder
+            .append(", ")
+            .append("\"")
+            .append(entry.getKey())
+            .append("\"=\"")
+            .append(entry.getValue())
+            .append("\"");
+      }
+    }
   }
 
   public List<Expression> getInputExpressions() {
     return inputExpressions;
   }
 
-  public AggregationType getAggregationType() {
+  public Map<String, String> getInputAttributes() {
+    return inputAttributes;
+  }
+
+  public TAggregationType getAggregationType() {
     return aggregationType;
   }
 
@@ -199,6 +238,7 @@ public class AggregationDescriptor {
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, byteBuffer);
     }
+    ReadWriteIOUtils.write(inputAttributes, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -208,6 +248,7 @@ public class AggregationDescriptor {
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, stream);
     }
+    ReadWriteIOUtils.write(inputAttributes, stream);
   }
 
   public static AggregationDescriptor deserialize(ByteBuffer byteBuffer) {
@@ -219,7 +260,8 @@ public class AggregationDescriptor {
       inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;
     }
-    return new AggregationDescriptor(aggregationFuncName, step, inputExpressions);
+    Map<String, String> inputAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    return new AggregationDescriptor(aggregationFuncName, step, inputExpressions, inputAttributes);
   }
 
   @Override

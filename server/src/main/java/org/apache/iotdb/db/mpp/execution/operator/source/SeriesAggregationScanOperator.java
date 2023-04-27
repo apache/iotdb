@@ -24,10 +24,10 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -42,29 +42,21 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
   public SeriesAggregationScanOperator(
       PlanNodeId sourceId,
       PartialPath seriesPath,
-      Set<String> allSensors,
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
       OperatorContext context,
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
-      Filter timeFilter,
-      boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
     super(
         sourceId,
         context,
-        new SeriesScanUtil(
-            seriesPath,
-            allSensors,
-            seriesPath.getSeriesType(),
-            context.getInstanceContext(),
-            timeFilter,
-            null,
-            ascending),
+        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
         1,
         aggregators,
         timeRangeIterator,
-        ascending,
+        scanOrder.isAscending(),
         groupByTimeParameter,
         maxReturnSize);
   }

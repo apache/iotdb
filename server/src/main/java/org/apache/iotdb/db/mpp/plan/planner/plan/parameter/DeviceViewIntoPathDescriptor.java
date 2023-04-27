@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,14 +45,18 @@ import static org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent.DUP
 public class DeviceViewIntoPathDescriptor {
 
   // device -> List<(sourceColumn, targetPath)>
-  private final Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
+  private Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
 
   // targetDevice -> isAlignedDevice
   private final Map<String, Boolean> targetDeviceToAlignedMap;
 
+  // sourceColumn -> dataType (not serialize & deserialize)
+  private Map<String, TSDataType> sourceToDataTypeMap;
+
   public DeviceViewIntoPathDescriptor() {
     this.deviceToSourceTargetPathPairListMap = new HashMap<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
+    this.sourceToDataTypeMap = new HashMap<>();
   }
 
   public DeviceViewIntoPathDescriptor(
@@ -77,6 +84,10 @@ public class DeviceViewIntoPathDescriptor {
     targetDeviceToAlignedMap.put(targetDevice, isAligned);
   }
 
+  public void recordSourceColumnDataType(String sourceColumn, TSDataType dataType) {
+    sourceToDataTypeMap.put(sourceColumn, dataType);
+  }
+
   public void validate() {
     List<PartialPath> targetPaths =
         deviceToSourceTargetPathPairListMap.values().stream()
@@ -86,6 +97,22 @@ public class DeviceViewIntoPathDescriptor {
     if (targetPaths.size() > new HashSet<>(targetPaths).size()) {
       throw new SemanticException(DUPLICATE_TARGET_PATH_ERROR_MSG);
     }
+  }
+
+  public void bindType(ISchemaTree targetSchemaTree) {
+    Map<String, List<Pair<String, PartialPath>>> deviceToSourceTypeBoundTargetPathPairListMap =
+        new HashMap<>();
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> sourceTargetEntry :
+        this.deviceToSourceTargetPathPairListMap.entrySet()) {
+      deviceToSourceTypeBoundTargetPathPairListMap.put(
+          sourceTargetEntry.getKey(),
+          SelectIntoUtils.bindTypeForSourceTargetPathPairList(
+              sourceTargetEntry.getValue(),
+              sourceToDataTypeMap,
+              targetSchemaTree,
+              targetDeviceToAlignedMap));
+    }
+    this.deviceToSourceTargetPathPairListMap = deviceToSourceTypeBoundTargetPathPairListMap;
   }
 
   public Map<String, List<Pair<String, PartialPath>>> getDeviceToSourceTargetPathPairListMap() {
@@ -115,6 +142,22 @@ public class DeviceViewIntoPathDescriptor {
       sourceDeviceToTargetPathMap.put(sourceDevice, targetPathToSourceMap);
     }
     return sourceDeviceToTargetPathMap;
+  }
+
+  public Map<String, Map<PartialPath, Map<String, TSDataType>>>
+      getSourceDeviceToTargetPathDataTypeMap() {
+    // sourceDevice -> targetPathToDataTypeMap (for each device)
+    //  targetPathToSourceMap: targetDevice -> { targetMeasurement -> dataType }
+    Map<String, Map<PartialPath, Map<String, TSDataType>>> sourceDeviceToTargetPathDataTypeMap =
+        new HashMap<>();
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> sourceTargetEntry :
+        deviceToSourceTargetPathPairListMap.entrySet()) {
+      sourceDeviceToTargetPathDataTypeMap.put(
+          sourceTargetEntry.getKey(),
+          SelectIntoUtils.convertSourceTargetPathPairListToTargetPathDataTypeMap(
+              sourceTargetEntry.getValue()));
+    }
+    return sourceDeviceToTargetPathDataTypeMap;
   }
 
   public Map<String, Boolean> getTargetDeviceToAlignedMap() {

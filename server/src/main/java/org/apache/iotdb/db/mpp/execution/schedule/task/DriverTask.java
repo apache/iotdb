@@ -21,8 +21,9 @@ package org.apache.iotdb.db.mpp.execution.schedule.task;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTa
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
@@ -58,23 +60,35 @@ public class DriverTask implements IDIndexedAccessible {
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
 
+  private long estimatedMemorySize;
+
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
-    this(new StubFragmentInstance(), 0L, null, null);
+    this(new StubFragmentInstance(), 0L, null, null, 0);
   }
 
   public DriverTask(
-      IDriver driver, long timeoutMs, DriverTaskStatus status, DriverTaskHandle driverTaskHandle) {
+      IDriver driver,
+      long timeoutMs,
+      DriverTaskStatus status,
+      DriverTaskHandle driverTaskHandle,
+      long estimatedMemorySize) {
     this.driver = driver;
     this.setStatus(status);
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
+  @Override
   public DriverTaskId getDriverTaskId() {
     return driver.getDriverTaskId();
+  }
+
+  public long getEstimatedMemorySize() {
+    return driver.getEstimatedMemorySize();
   }
 
   @Override
@@ -135,6 +149,10 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public SettableFuture<Void> getBlockedDependencyDriver() {
+    return driver.getDriverContext().getDownstreamOperator().getBlockedDependencyDriver();
   }
 
   public Priority getPriority() {
@@ -248,7 +266,12 @@ public class DriverTask implements IDIndexedAccessible {
     public void failed(Throwable t) {}
 
     @Override
-    public ISinkHandle getSinkHandle() {
+    public ISink getSink() {
+      return null;
+    }
+
+    @Override
+    public DriverContext getDriverContext() {
       return null;
     }
   }

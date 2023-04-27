@@ -30,16 +30,15 @@ import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -111,8 +110,7 @@ public class IoTDBPartitionDurableIT {
   private void setStorageGroup() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSetStorageGroupReq setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
-      TSStatus status = client.setStorageGroup(setStorageGroupReq);
+      TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
@@ -122,6 +120,7 @@ public class IoTDBPartitionDurableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // TODO: Fix this when replica completion is supported
   @Test
   public void testRemovingDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
@@ -248,6 +247,7 @@ public class IoTDBPartitionDurableIT {
     }
   }
 
+  // TODO: Fix this when replica completion is supported
   @Test
   public void testReadOnlyDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
@@ -410,6 +410,39 @@ public class IoTDBPartitionDurableIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // Wait for shutdown check
+      TShowClusterResp showClusterResp;
+      while (true) {
+        AtomicBoolean containUnknown = new AtomicBoolean(false);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
+                    containUnknown.set(true);
+                  }
+                });
+
+        if (containUnknown.get()) {
+          break;
+        }
+        TimeUnit.SECONDS.sleep(1);
+      }
+      int runningCnt = 0;
+      int unknownCnt = 0;
+      showClusterResp = client.showCluster();
+      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+        if (NodeStatus.Running.getStatus()
+            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+          runningCnt += 1;
+        } else if (NodeStatus.Unknown.getStatus()
+            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
+          unknownCnt += 1;
+        }
+      }
+      Assert.assertEquals(2, runningCnt);
+      Assert.assertEquals(1, unknownCnt);
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
@@ -450,8 +483,8 @@ public class IoTDBPartitionDurableIT {
           dataPartitionTableResp.getDataPartitionTable());
 
       // Check Region count
-      int runningCnt = 0;
-      int unknownCnt = 0;
+      runningCnt = 0;
+      unknownCnt = 0;
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
@@ -465,40 +498,6 @@ public class IoTDBPartitionDurableIT {
       // The runningCnt should be exactly twice as the unknownCnt
       // since there exists one DataNode is shutdown
       Assert.assertEquals(unknownCnt * 2, runningCnt);
-
-      // Wait for shutdown check
-      TShowClusterResp showClusterResp;
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (containUnknown.get()) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      runningCnt = 0;
-      unknownCnt = 0;
-      showClusterResp = client.showCluster();
-      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
-        if (NodeStatus.Running.getStatus()
-            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
-          runningCnt += 1;
-        } else if (NodeStatus.Unknown.getStatus()
-            .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
-          unknownCnt += 1;
-        }
-      }
-      Assert.assertEquals(2, runningCnt);
-      Assert.assertEquals(1, unknownCnt);
 
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       partitionSlotsMap =

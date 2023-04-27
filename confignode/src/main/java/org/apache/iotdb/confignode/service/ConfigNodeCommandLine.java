@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 
@@ -69,11 +68,9 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     LOGGER.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
-        // Startup environment check
-        StartupChecks checks = new StartupChecks(IoTDBConstant.CN_ROLE).withDefaultTest();
-        checks.verify();
         // Do ConfigNode startup checks
-        ConfigNodeStartupCheck.getInstance().startUpCheck();
+        ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
+        checks.startUpCheck();
       } catch (StartupException | ConfigurationException | IOException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;

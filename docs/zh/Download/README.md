@@ -28,39 +28,39 @@
 	    <th>发布说明</th>  
 	  </tr>
       	<tr>
-            <td rowspan="2">1.0.0</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip">源代码</a></td>
-            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-source-release.zip.asc">ASC</a></td>
-            <td rowspan="2"><a href="https://raw.githubusercontent.com/apache/iotdb/v1.0.0/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="2">1.1.0</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip">源代码</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-source-release.zip.asc">ASC</a></td>
+            <td rowspan="2"><a href="https://raw.githubusercontent.com/apache/iotdb/rel/1.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip">Grafana 插件</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/1.0.0/apache-iotdb-1.0.0-grafana-plugin-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip">Grafana 插件</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/1.1.0/apache-iotdb-1.1.0-grafana-plugin-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td rowspan="3">0.13.3</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip">源代码</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="3"><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-source-release.zip.asc">ASC</a></td>
-            <td rowspan="3"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.13.3/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="3">0.13.4</td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip">源代码</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="3"><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-source-release.zip.asc">ASC</a></td>
+            <td rowspan="3"><a href="https://archive.apache.org/dist/iotdb/0.13.4/RELEASE_NOTES.md">release notes</a></td>
+      </tr>
+      <tr>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip">Grafana 连接器</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://dlcdn.apache.org/iotdb/0.13.4/apache-iotdb-0.13.4-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip">Grafana 插件</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-plugin-bin.zip.asc">ASC</a></td>
-      </tr>
-      <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip">Grafana 连接器</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.13.3/apache-iotdb-0.13.3-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
 </table>
 
@@ -222,6 +222,13 @@ insert into root.sg(time, a) values(4, "\u96d5")
   * 同一个大版本下的多个小版本是互相兼容的。
   * 只需要下载新的小版本， 然后修改其配置文件，使其与原有版本的设置一致。
   * 停掉旧版本进程，启动新版本即可。
+
+- 如何从 v0.13.x 升级到 v1.0.x？
+  * 0.13版本与1.0版本的文件目录结构不同，**<font color=red>不能将0.13的data目录直接拷贝到1.0集群使用</font>**。如果需要将0.13的数据导入至1.0，可以使用[LOAD](../UserGuide/Maintenance-Tools/Load-Tsfile.md)功能;
+  * __0.13版本的默认RPC地址是0.0.0.0，1.0版本的默认RPC地址是127.0.0.1__
+
+- 如何从 v1.0.0 升级到 v1.x.0？
+  * 停止写入，下载新版本文件，将lib文件夹全部替换，重启即可
 
 - 如何从 v0.12.x 升级到 v0.13.x?
   * 0.12 与 0.13 的数据文件格式兼容，但写前日志等格式不兼容，因此需要进行升级（但速度很快）：

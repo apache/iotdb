@@ -55,7 +55,7 @@ public class SchemaCountOperatorTest {
   private static final String SCHEMA_COUNT_OPERATOR_TEST_SG = "root.SchemaCountOperatorTest";
 
   @Test
-  public void testSchemaCountOperator() {
+  public void testSchemaCountOperator() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -73,7 +73,7 @@ public class SchemaCountOperatorTest {
           driverContext.addOperatorContext(
               1, planNodeId, SchemaCountOperator.class.getSimpleName());
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ISchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
 
       List<ISchemaInfo> schemaInfoList = new ArrayList<>(10);
@@ -133,7 +133,7 @@ public class SchemaCountOperatorTest {
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
@@ -184,7 +184,7 @@ public class SchemaCountOperatorTest {
     }
   }
 
-  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) {
+  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) throws Exception {
     List<TsBlock> tsBlocks = new ArrayList<>();
     while (operator.hasNext()) {
       TsBlock tsBlock = operator.next();

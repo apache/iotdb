@@ -162,7 +162,7 @@ class IoTDBRpcDataSet(object):
     def resultset_to_pandas(self):
         result = {}
         for column_name in self.__column_name_list:
-            result[column_name] = None
+            result[column_name] = []
         while self._has_next_result_set():
             time_array = np.frombuffer(
                 self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
@@ -173,12 +173,8 @@ class IoTDBRpcDataSet(object):
                 self.get_ignore_timestamp() is None
                 or self.get_ignore_timestamp() is False
             ):
-                if result[IoTDBRpcDataSet.TIMESTAMP_STR] is None:
-                    result[IoTDBRpcDataSet.TIMESTAMP_STR] = time_array
-                else:
-                    result[IoTDBRpcDataSet.TIMESTAMP_STR] = np.concatenate(
-                        (result[IoTDBRpcDataSet.TIMESTAMP_STR], time_array), axis=0
-                    )
+                result[IoTDBRpcDataSet.TIMESTAMP_STR].append(time_array)
+
             self.__query_data_set.time = []
             total_length = len(time_array)
 
@@ -243,7 +239,9 @@ class IoTDBRpcDataSet(object):
                 if len(data_array) < total_length:
                     if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE:
+                    elif (
+                        data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE
+                    ):
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == TSDataType.BOOLEAN:
                         tmp_array = np.full(total_length, np.nan, np.float32)
@@ -252,7 +250,7 @@ class IoTDBRpcDataSet(object):
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
-                    bit_mask = (np.fromstring(bitmap_str, 'u1') - ord('0')).astype(bool)
+                    bit_mask = (np.fromstring(bitmap_str, "u1") - ord("0")).astype(bool)
                     if len(bit_mask) != total_length:
                         bit_mask = bit_mask[:total_length]
                     tmp_array[bit_mask] = data_array
@@ -266,18 +264,19 @@ class IoTDBRpcDataSet(object):
 
                     data_array = tmp_array
 
-                if result[column_name] is None:
-                    result[column_name] = data_array
-                else:
-                    if isinstance(result[column_name], pd.Series):
-                        result[column_name] = result[column_name].append(data_array)
-                    else:
-                        result[column_name] = np.concatenate(
-                            (result[column_name], data_array), axis=0
-                        )
+                result[column_name].append(data_array)
+
         for k, v in result.items():
-            if v is None:
+            if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
+            elif v[0].dtype == "Int32":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
+            elif v[0].dtype == "Int64":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
+            elif v[0].dtype == "boolean":
+                result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+            else:
+                result[k] = np.concatenate(v, axis=0)
 
         df = pd.DataFrame(result)
         return df

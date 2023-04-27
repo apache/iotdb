@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColum
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -85,7 +87,7 @@ public class TimeJoinOperatorTest {
   }
 
   @Test
-  public void batchTest1() {
+  public void batchTest1() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -107,17 +109,17 @@ public class TimeJoinOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -130,11 +132,8 @@ public class TimeJoinOperatorTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -183,7 +182,7 @@ public class TimeJoinOperatorTest {
 
   /** test time join with non-exist sensor */
   @Test
-  public void batchTest2() {
+  public void batchTest2() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -209,16 +208,16 @@ public class TimeJoinOperatorTest {
       driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -231,11 +230,8 @@ public class TimeJoinOperatorTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -249,11 +245,8 @@ public class TimeJoinOperatorTest {
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
@@ -305,7 +298,7 @@ public class TimeJoinOperatorTest {
 
   /** test time join with non-exist sensor and order by time desc */
   @Test
-  public void batchTest3() {
+  public void batchTest3() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -331,16 +324,16 @@ public class TimeJoinOperatorTest {
       driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              false);
+              Ordering.DESC,
+              scanOptionsBuilder.build());
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -353,11 +346,8 @@ public class TimeJoinOperatorTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              false);
+              Ordering.DESC,
+              scanOptionsBuilder.build());
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -371,11 +361,8 @@ public class TimeJoinOperatorTest {
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()

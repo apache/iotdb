@@ -22,7 +22,7 @@ package org.apache.iotdb.db.trigger.service;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
@@ -44,8 +44,8 @@ public class TriggerInformationUpdater {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInformationUpdater.class);
 
-  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER = ConfigNodeClientManager.getInstance();
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   private final ScheduledExecutorService triggerInformationUpdateExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -78,7 +78,7 @@ public class TriggerInformationUpdater {
 
   public void updateTask() {
     try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTriggerTableResp getStatefulTriggerTableResp = client.getStatefulTriggerTable();
       if (getStatefulTriggerTableResp.getStatus().getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

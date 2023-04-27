@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 
 import java.util.NoSuchElementException;
 
-public class TraverserWithLimitOffsetWrapper<R> extends Traverser<R> {
-  private final Traverser<R> traverser;
-  private final int limit;
-  private final int offset;
+public class TraverserWithLimitOffsetWrapper<R, N extends IMNode<N>> extends Traverser<R, N> {
+  private final Traverser<R, N> traverser;
+  private final long limit;
+  private final long offset;
   private final boolean hasLimit;
 
   private int count = 0;
   int curOffset = 0;
 
-  public TraverserWithLimitOffsetWrapper(Traverser<R> traverser, int limit, int offset) {
+  public TraverserWithLimitOffsetWrapper(Traverser<R, N> traverser, long limit, long offset) {
     this.traverser = traverser;
     this.limit = limit;
     this.offset = offset;
@@ -84,27 +84,27 @@ public class TraverserWithLimitOffsetWrapper<R> extends Traverser<R> {
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
+  protected boolean acceptFullMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
+  protected R generateResult(N nextMatchedNode) {
     return null;
   }
 

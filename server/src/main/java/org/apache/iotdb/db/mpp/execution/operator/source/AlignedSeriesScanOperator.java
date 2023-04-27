@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -28,10 +30,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
@@ -41,22 +41,16 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   private boolean finished = false;
 
   public AlignedSeriesScanOperator(
+      OperatorContext context,
       PlanNodeId sourceId,
       AlignedPath seriesPath,
-      OperatorContext context,
-      Filter timeFilter,
-      Filter valueFilter,
-      boolean ascending) {
+      Ordering scanOrder,
+      SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
         new AlignedSeriesScanUtil(
-            seriesPath,
-            new HashSet<>(seriesPath.getMeasurementList()),
-            context.getInstanceContext(),
-            timeFilter,
-            valueFilter,
-            ascending);
+            seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     // time + all value columns
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.valueColumnCount = seriesPath.getColumnNum();
@@ -68,7 +62,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -78,7 +72,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
       return true;
     }
@@ -123,7 +117,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished;
   }
 

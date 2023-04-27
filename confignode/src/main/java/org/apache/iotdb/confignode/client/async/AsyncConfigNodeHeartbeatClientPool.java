@@ -21,16 +21,16 @@ package org.apache.iotdb.confignode.client.async;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeHeartbeatServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 
 public class AsyncConfigNodeHeartbeatClientPool {
 
-  private final IClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager;
+  private final IClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
 
   private AsyncConfigNodeHeartbeatClientPool() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncConfigNodeHeartbeatServiceClient>()
+        new IClientManager.Factory<TEndPoint, AsyncConfigNodeIServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory());
   }

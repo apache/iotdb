@@ -22,19 +22,24 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -50,36 +55,43 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -89,21 +101,22 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -142,9 +155,14 @@ public class ConfigPlanExecutor {
   private final UDFInfo udfInfo;
 
   private final TriggerInfo triggerInfo;
-  private final ClusterSyncInfo syncInfo;
 
   private final CQInfo cqInfo;
+
+  private final ModelInfo modelInfo;
+
+  private final PipeInfo pipeInfo;
+
+  private final QuotaInfo quotaInfo;
 
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
@@ -154,8 +172,10 @@ public class ConfigPlanExecutor {
       ProcedureInfo procedureInfo,
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
-      ClusterSyncInfo syncInfo,
-      CQInfo cqInfo) {
+      CQInfo cqInfo,
+      ModelInfo modelInfo,
+      PipeInfo pipeInfo,
+      QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -177,13 +197,19 @@ public class ConfigPlanExecutor {
     this.udfInfo = udfInfo;
     this.snapshotProcessorList.add(udfInfo);
 
-    this.syncInfo = syncInfo;
-    this.snapshotProcessorList.add(syncInfo);
-
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
 
+    this.modelInfo = modelInfo;
+    this.snapshotProcessorList.add(modelInfo);
+
+    this.pipeInfo = pipeInfo;
+    this.snapshotProcessorList.add(pipeInfo);
+
     this.procedureInfo = procedureInfo;
+
+    this.quotaInfo = quotaInfo;
+    this.snapshotProcessorList.add(quotaInfo);
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -191,10 +217,10 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
         return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
-      case CountStorageGroup:
-        return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
-      case GetStorageGroup:
-        return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupPlan) req);
+      case CountDatabase:
+        return clusterSchemaInfo.countMatchedDatabases((CountDatabasePlan) req);
+      case GetDatabase:
+        return clusterSchemaInfo.getMatchedDatabaseSchemas((GetDatabasePlan) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
         return partitionInfo.getDataPartition((GetDataPartitionPlan) req);
@@ -225,10 +251,6 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetTemplateSetInfo:
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
-      case GetPipeSink:
-        return syncInfo.getPipeSink((GetPipeSinkPlan) req);
-      case ShowPipe:
-        return syncInfo.showPipe((ShowPipePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:
@@ -241,6 +263,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getRegionId((GetRegionIdPlan) req);
       case GetTimeSlotList:
         return partitionInfo.getTimeSlotList((GetTimeSlotListPlan) req);
+      case CountTimeSlotList:
+        return partitionInfo.countTimeSlotList((CountTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       case SHOW_CQ:
@@ -249,6 +273,14 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFTable();
       case GetFunctionJar:
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
+      case ShowModel:
+        return modelInfo.showModel((ShowModelPlan) req);
+      case ShowTrail:
+        return modelInfo.showTrail((ShowTrailPlan) req);
+      case GetPipePluginTable:
+        return pipeInfo.getPipePluginInfo().showPipePlugins();
+      case GetPipePluginJar:
+        return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -263,20 +295,22 @@ public class ConfigPlanExecutor {
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
       case UpdateDataNodeConfiguration:
         return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
-      case SetStorageGroup:
-        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      case CreateDatabase:
+        TSStatus status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+        return partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+      case AlterDatabase:
+        return clusterSchemaInfo.alterDatabase((DatabaseSchemaPlan) physicalPlan);
       case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
             (AdjustMaxRegionGroupNumPlan) physicalPlan);
-      case DeleteStorageGroup:
-        partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
-        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
-      case PreDeleteStorageGroup:
-        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) physicalPlan);
+      case DeleteDatabase:
+        partitionInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
+        return clusterSchemaInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
+      case PreDeleteDatabase:
+        return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
       case SetSchemaReplicationFactor:
@@ -294,6 +328,9 @@ public class ConfigPlanExecutor {
         return partitionInfo.offerRegionMaintainTasks((OfferRegionMaintainTasksPlan) physicalPlan);
       case PollRegionMaintainTask:
         return partitionInfo.pollRegionMaintainTask();
+      case PollSpecificRegionMaintainTask:
+        return partitionInfo.pollSpecificRegionMaintainTask(
+            (PollSpecificRegionMaintainTaskPlan) physicalPlan);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:
@@ -339,6 +376,11 @@ public class ConfigPlanExecutor {
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
+      case PreSetSchemaTemplate:
+        return clusterSchemaInfo.preSetSchemaTemplate((PreSetSchemaTemplatePlan) physicalPlan);
+      case CommitSetSchemaTemplate:
+        return clusterSchemaInfo.commitSetSchemaTemplate(
+            (CommitSetSchemaTemplatePlan) physicalPlan);
       case PreUnsetTemplate:
         return clusterSchemaInfo.preUnsetSchemaTemplate((PreUnsetSchemaTemplatePlan) physicalPlan);
       case RollbackUnsetTemplate:
@@ -348,18 +390,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.unsetSchemaTemplate((UnsetSchemaTemplatePlan) physicalPlan);
       case DropSchemaTemplate:
         return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
-      case CreatePipeSink:
-        return syncInfo.addPipeSink((CreatePipeSinkPlan) physicalPlan);
-      case DropPipeSink:
-        return syncInfo.dropPipeSink((DropPipeSinkPlan) physicalPlan);
-      case PreCreatePipe:
-        return syncInfo.preCreatePipe((PreCreatePipePlan) physicalPlan);
-      case SetPipeStatus:
-        return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
-      case DropPipe:
-        return syncInfo.dropPipe((DropPipePlan) physicalPlan);
-      case RecordPipeMessage:
-        return syncInfo.recordPipeMessage((RecordPipeMessagePlan) physicalPlan);
+      case ExtendSchemaTemplate:
+        return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
+      case CreatePipeV2:
+        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlanV2) physicalPlan);
+      case SetPipeStatusV2:
+        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
+      case DropPipeV2:
+        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -368,6 +406,31 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case CreateModel:
+        return modelInfo.createModel((CreateModelPlan) physicalPlan);
+      case UpdateModelInfo:
+        return modelInfo.updateModelInfo((UpdateModelInfoPlan) physicalPlan);
+      case UpdateModelState:
+        return modelInfo.updateModelState((UpdateModelStatePlan) physicalPlan);
+      case DropModel:
+        return modelInfo.dropModel((DropModelPlan) physicalPlan);
+      case CreatePipePlugin:
+        return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
+      case DropPipePlugin:
+        return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
+      case CreatePipeSinkV1:
+      case DropPipeV1:
+      case DropPipeSinkV1:
+      case GetPipeSinkV1:
+      case PreCreatePipeV1:
+      case RecordPipeMessageV1:
+      case SetPipeStatusV1:
+      case ShowPipeV1:
+        return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+      case setSpaceQuota:
+        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
+      case setThrottleQuota:
+        return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }
@@ -397,23 +460,22 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList.stream()
-        .forEach(
-            x -> {
-              boolean takeSnapshotResult = true;
-              try {
-                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
-              } catch (TException | IOException e) {
-                LOGGER.error("Take snapshot error: {}", e.getMessage());
-                takeSnapshotResult = false;
-              } finally {
-                // If any snapshot fails, the whole fails
-                // So this is just going to be false
-                if (!takeSnapshotResult) {
-                  result.set(false);
-                }
-              }
-            });
+    snapshotProcessorList.forEach(
+        x -> {
+          boolean takeSnapshotResult = true;
+          try {
+            takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+          } catch (TException | IOException e) {
+            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            takeSnapshotResult = false;
+          } finally {
+            // If any snapshot fails, the whole fails
+            // So this is just going to be false
+            if (!takeSnapshotResult) {
+              result.set(false);
+            }
+          }
+        });
     if (result.get()) {
       LOGGER.info("Task snapshot success, snapshotDir: {}", snapshotDir);
     }
@@ -486,14 +548,14 @@ public class ConfigPlanExecutor {
   private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
     TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
-    if (showRegionReq != null && showRegionReq.isSetStorageGroups()) {
-      final List<String> storageGroups = showRegionReq.getStorageGroups();
+    if (showRegionReq != null && showRegionReq.isSetDatabases()) {
+      final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedStorageGroupSchemasByName(storageGroups).values().stream()
-              .map(TStorageGroupSchema::getName)
+          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
+              .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {
-        showRegionReq.setStorageGroups(matchedStorageGroups);
+        showRegionReq.setDatabases(matchedStorageGroups);
       }
     }
     return partitionInfo.getRegionInfoList(getRegionInfoListPlan);

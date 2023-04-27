@@ -40,11 +40,11 @@ public class InternalServiceThriftHandlerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.THRIFT_CONNECTIONS.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         thriftConnectionNumber,
         AtomicLong::get,
         Tag.NAME.toString(),
-        "Internal");
+        "InternalRPC");
   }
 
   @Override
@@ -53,7 +53,7 @@ public class InternalServiceThriftHandlerMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.THRIFT_CONNECTIONS.toString(),
         Tag.NAME.toString(),
-        "Internal");
+        "InternalRPC");
   }
 
   @Override

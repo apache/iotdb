@@ -35,6 +35,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -99,6 +101,10 @@ public class DProfileIT {
                 x + Math.random() * y % (y - x + 1),
                 x + Math.random() * y % (y - x + 1))));
       }
+
+      statement.execute("insert into root.test.db(time,s1) values (1,1)");
+      statement.execute("insert into root.test.db(time,s1) values (2,2)");
+      statement.execute("insert into root.test.db(time,s1) values (10000000000,1)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -117,7 +123,6 @@ public class DProfileIT {
           "create function integralavg as 'org.apache.iotdb.library.dprofile.UDAFIntegralAvg'");
       statement.execute("create function mad as 'org.apache.iotdb.library.dprofile.UDAFMad'");
       statement.execute("create function median as 'org.apache.iotdb.library.dprofile.UDAFMedian'");
-      statement.execute("create function mode as 'org.apache.iotdb.library.dprofile.UDAFMode'");
       statement.execute(
           "create function percentile as 'org.apache.iotdb.library.dprofile.UDAFPercentile'");
       statement.execute("create function period as 'org.apache.iotdb.library.dprofile.UDAFPeriod'");
@@ -258,7 +263,7 @@ public class DProfileIT {
   }
 
   @Test
-  public void testMode1() {
+  public void testConsistency1() {
     String sqlStr = "select consistency(d1.s1) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -407,6 +412,17 @@ public class DProfileIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testDistinct2() {
+    String sqlStr = "select distinct(s1) from root.test.db align by device";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", "distinct(s1)"};
+    String[] retArray =
+        new String[] {
+          "0,root.test.db,1.0,", "1,root.test.db,2.0,",
+        };
+    resultSetEqualTest(sqlStr, expectedHeader, retArray);
   }
 
   @Test

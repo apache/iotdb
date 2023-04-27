@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -33,7 +31,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect range anomaly of time series. */
 public class UDTFRange implements UDTF {
-  private TSDataType dataType;
+  private Type dataType;
   private double upperBound;
   private double lowerBound;
 
@@ -52,7 +50,7 @@ public class UDTFRange implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.lowerBound = parameters.getDouble("lower_bound");
     this.upperBound = parameters.getDouble("upper_bound");
-    this.dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    this.dataType = parameters.getDataType(0);
   }
 
   @Override

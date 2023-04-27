@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
@@ -59,7 +57,7 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
-  public void initCurWindow(TsBlock tsBlock) {
+  public void initCurWindow() {
     this.initialized = true;
   }
 
@@ -150,33 +148,22 @@ public class TimeWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(startTime);
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    if (this.needOutputEndTime) {
-      columnBuilders[0].writeLong(endTime);
-      columnIndex = 1;
-    }
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    resultTsBlockBuilder.declarePosition();
+    long endTime = this.needOutputEndTime ? this.endTime : -1;
+    outputAggregators(aggregators, resultTsBlockBuilder, this.startTime, endTime);
   }
 
   @Override
-  public boolean notInitedLastTimeWindow() {
+  public boolean notInitializedLastTimeWindow() {
     return !this.initialized;
   }
 
   @Override
   public boolean needSkipInAdvance() {
     return false;
+  }
+
+  @Override
+  public boolean isIgnoringNull() {
+    return true;
   }
 }

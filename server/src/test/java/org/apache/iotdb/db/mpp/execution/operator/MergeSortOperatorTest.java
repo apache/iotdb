@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,7 +37,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortComparator;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -167,13 +167,14 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(
           6, new PlanNodeId("6"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          7, new PlanNodeId("7"), TimeJoinOperator.class.getSimpleName());
+          7, new PlanNodeId("7"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           8, new PlanNodeId("8"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
+
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), MergeSortOperator.class.getSimpleName());
 
@@ -187,72 +188,62 @@ public class MergeSortOperatorTest {
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
       MeasurementPath measurementPath5 =
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
+
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
@@ -275,8 +266,8 @@ public class MergeSortOperatorTest {
               Collections.singletonList(1),
               tsDataTypes);
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(6),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -301,8 +292,8 @@ public class MergeSortOperatorTest {
               Arrays.asList(2, 3),
               tsDataTypes);
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -327,17 +318,22 @@ public class MergeSortOperatorTest {
               Arrays.asList(4, 5),
               tsDataTypes);
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(10),
-          Arrays.asList(
-              singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(10),
               Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+                  singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -346,13 +342,14 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1() {
+  public void testOrderByTime1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -388,17 +385,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime2() {
+  public void testOrderByTime2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -434,17 +433,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime3() {
+  public void testOrderByTime3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -480,17 +481,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime4() {
+  public void testOrderByTime4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -526,6 +529,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
@@ -541,7 +545,8 @@ public class MergeSortOperatorTest {
   //                   /               |                       /               \
   //               [SDO]             [SDO]                   [SDO]            [SDO]
   //                 |                 |                       |                |
-  //               [SSO]       TimeJoinOperator        TimeJoinOperator   TimeJoinOperator
+  //               [SSO]       RowBasedTimeJoinOperator        RowBasedTimeJoinOperator
+  // RowBasedTimeJoinOperator
   //                              /         \              /         \       /         \
   //                            [SSO]      [SSO]         [SSO]      [SSO] [SSO]        [SSO]
   // ------------------------------------------------------------------------------------------------
@@ -575,11 +580,11 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -615,95 +620,80 @@ public class MergeSortOperatorTest {
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath6));
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator6
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath7));
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator7
           .getOperatorContext()
@@ -712,8 +702,8 @@ public class MergeSortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -731,8 +721,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -750,8 +740,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator3 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator3 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -808,6 +798,9 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               driverContext.getOperatorContexts().get(15),
@@ -819,17 +812,25 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(16),
-          Arrays.asList(mergeSortOperator1, mergeSortOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(16),
+              Arrays.asList(mergeSortOperator1, mergeSortOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -838,13 +839,14 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1_2() {
+  public void testOrderByTime1_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -876,17 +878,20 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime2_2() {
+  public void testOrderByTime2_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -918,17 +923,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime3_2() {
+  public void testOrderByTime3_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -960,17 +967,19 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime4_2() {
+  public void testOrderByTime4_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
+      if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -1002,6 +1011,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
   // ------------------------------------------------------------------------------------------------
@@ -1013,7 +1023,8 @@ public class MergeSortOperatorTest {
   //                                 /                      \
   //                    DeviceViewOperator              DeviceViewOperator
   //                    /               |                /               \
-  //                [SSO]       TimeJoinOperator TimeJoinOperator    TimeJoinOperator
+  //                [SSO]       RowBasedTimeJoinOperator RowBasedTimeJoinOperator
+  // RowBasedTimeJoinOperator
   //                               /         \      /         \         /         \
   //                             [SSO]      [SSO] [SSO]      [SSO]  [SSO]       [SSO]
   // ------------------------------------------------------------------------------------------------
@@ -1047,11 +1058,11 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), DeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -1079,95 +1090,80 @@ public class MergeSortOperatorTest {
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath6));
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator6
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath7));
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator7
           .getOperatorContext()
@@ -1176,8 +1172,8 @@ public class MergeSortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -1195,8 +1191,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -1214,8 +1210,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator3 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator3 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -1264,16 +1260,21 @@ public class MergeSortOperatorTest {
                   : Arrays.asList(timeJoinOperator3, timeJoinOperator2),
               deviceColumnIndex,
               tsDataTypes);
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(12),
-          Arrays.asList(deviceViewOperator1, deviceViewOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.DEVICE, deviceOrdering),
-                  new SortItem(SortKey.TIME, timeOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(12),
+              Arrays.asList(deviceViewOperator1, deviceViewOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.DEVICE, deviceOrdering),
+                      new SortItem(SortKey.TIME, timeOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1282,12 +1283,12 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice1() {
+  public void testOrderByDevice1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1330,16 +1331,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice2() {
+  public void testOrderByDevice2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1382,16 +1384,18 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice3() {
+  public void testOrderByDevice3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1438,12 +1442,12 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice4() {
+  public void testOrderByDevice4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1501,7 +1505,7 @@ public class MergeSortOperatorTest {
   //                        ShowQueriesOperator      ShowQueriesOperator
   // ------------------------------------------------------------------------------------------------
   @Test
-  public void mergeSortWithSortOperatorTest() {
+  public void mergeSortWithSortOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
@@ -1563,9 +1567,15 @@ public class MergeSortOperatorTest {
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),
-              ImmutableList.of(sortOperator1, sortOperator2),
+              new ArrayList<Operator>() {
+                {
+                  add(sortOperator1);
+                  add(sortOperator2);
+                }
+              },
               dataTypes,
               comparator);
+      root.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int index = 0;
       // Time ASC
@@ -1585,7 +1595,7 @@ public class MergeSortOperatorTest {
           new String[] {
             "sql1_node2", "sql1_node1", "sql2_node2", "sql2_node1", "sql3_node2", "sql3_node1"
           };
-      while (root.hasNext()) {
+      while (root.isBlocked().isDone() && root.hasNext()) {
         TsBlock result = root.next();
         if (result == null) {
           continue;
@@ -1646,10 +1656,13 @@ public class MergeSortOperatorTest {
     public void start() {}
 
     @Override
-    public void stop() {}
+    public void stop(Throwable t) {}
 
     @Override
     public void stopAndCleanup() {}
+
+    @Override
+    public void stopAndCleanup(Throwable t) {}
 
     @Override
     public void cancel() {}
@@ -1660,12 +1673,12 @@ public class MergeSortOperatorTest {
     }
 
     @Override
-    public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    public Optional<TsBlock> getBatchResult() {
       return Optional.empty();
     }
 
     @Override
-    public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
     }
 

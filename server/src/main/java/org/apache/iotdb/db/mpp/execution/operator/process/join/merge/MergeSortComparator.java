@@ -36,7 +36,8 @@ public class MergeSortComparator {
   public static final Comparator<MergeSortKey> ASC_TIME_ASC_DEVICE =
       (MergeSortKey o1, MergeSortKey o2) -> {
         int timeComparing =
-            (int) (o1.tsBlock.getTimeByIndex(o1.rowIndex) - o2.tsBlock.getTimeByIndex(o2.rowIndex));
+            Long.compare(
+                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex));
         return timeComparing == 0
             ? o1.tsBlock
                 .getColumn(0)
@@ -47,7 +48,8 @@ public class MergeSortComparator {
   public static final Comparator<MergeSortKey> ASC_TIME_DESC_DEVICE =
       (MergeSortKey o1, MergeSortKey o2) -> {
         int timeComparing =
-            (int) (o1.tsBlock.getTimeByIndex(o1.rowIndex) - o2.tsBlock.getTimeByIndex(o2.rowIndex));
+            Long.compare(
+                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex));
         return timeComparing == 0
             ? o2.tsBlock
                 .getColumn(0)
@@ -58,7 +60,8 @@ public class MergeSortComparator {
   public static final Comparator<MergeSortKey> DESC_TIME_ASC_DEVICE =
       (MergeSortKey o1, MergeSortKey o2) -> {
         int timeComparing =
-            (int) (o2.tsBlock.getTimeByIndex(o2.rowIndex) - o1.tsBlock.getTimeByIndex(o1.rowIndex));
+            Long.compare(
+                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex));
         return timeComparing == 0
             ? o1.tsBlock
                 .getColumn(0)
@@ -69,7 +72,8 @@ public class MergeSortComparator {
   public static final Comparator<MergeSortKey> DESC_TIME_DESC_DEVICE =
       (MergeSortKey o1, MergeSortKey o2) -> {
         int timeComparing =
-            (int) (o2.tsBlock.getTimeByIndex(o2.rowIndex) - o1.tsBlock.getTimeByIndex(o1.rowIndex));
+            Long.compare(
+                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex));
         return timeComparing == 0
             ? o2.tsBlock
                 .getColumn(0)
@@ -86,8 +90,8 @@ public class MergeSortComparator {
                 .getBinary(o1.rowIndex)
                 .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex));
         return deviceComparing == 0
-            ? (int)
-                (o1.tsBlock.getTimeByIndex(o1.rowIndex) - o2.tsBlock.getTimeByIndex(o2.rowIndex))
+            ? Long.compare(
+                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex))
             : deviceComparing;
       };
   public static final Comparator<MergeSortKey> ASC_DEVICE_DESC_TIME =
@@ -98,8 +102,8 @@ public class MergeSortComparator {
                 .getBinary(o1.rowIndex)
                 .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex));
         return deviceComparing == 0
-            ? (int)
-                (o2.tsBlock.getTimeByIndex(o2.rowIndex) - o1.tsBlock.getTimeByIndex(o1.rowIndex))
+            ? Long.compare(
+                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex))
             : deviceComparing;
       };
   public static final Comparator<MergeSortKey> DESC_DEVICE_ASC_TIME =
@@ -110,8 +114,8 @@ public class MergeSortComparator {
                 .getBinary(o2.rowIndex)
                 .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex));
         return deviceComparing == 0
-            ? (int)
-                (o1.tsBlock.getTimeByIndex(o1.rowIndex) - o2.tsBlock.getTimeByIndex(o2.rowIndex))
+            ? Long.compare(
+                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex))
             : deviceComparing;
       };
   public static final Comparator<MergeSortKey> DESC_DEVICE_DESC_TIME =
@@ -122,8 +126,8 @@ public class MergeSortComparator {
                 .getBinary(o2.rowIndex)
                 .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex));
         return deviceComparing == 0
-            ? (int)
-                (o2.tsBlock.getTimeByIndex(o2.rowIndex) - o1.tsBlock.getTimeByIndex(o1.rowIndex))
+            ? Long.compare(
+                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex))
             : deviceComparing;
       };
 

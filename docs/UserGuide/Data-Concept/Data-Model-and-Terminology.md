@@ -25,7 +25,7 @@ A wind power IoT scenario is taken as an example to illustrate how to creat a co
 
 According to the enterprise organization structure and equipment entity hierarchy, it is expressed as an attribute hierarchy structure, as shown below. The hierarchical from top to bottom is: power group layer - power plant layer - entity layer - measurement layer. ROOT is the root node, and each node of measurement layer is a leaf node. In the process of using IoTDB, the attributes on the path from ROOT node is directly connected to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `root.ln.wf01.wt01.status`.
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122668849-b1c69280-d1ec-11eb-83cb-3b73c40bdf72.png"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/122668849-b1c69280-d1ec-11eb-83cb-3b73c40bdf72.png"></center>
 
 Here are the basic concepts of the model involved in IoTDB. 
 
@@ -85,7 +85,7 @@ The following are the constraints on the `nodeName`:
   * [ 0-9 a-z A-Z _ ] （letters, numbers, underscore)
   * ['\u2E80'..'\u9FFF'] （Chinese characters）
 * In particular, if the system is deployed on a Windows machine, the database layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
-* If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Reference/Syntax-Conventions.html).
+* If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found from charpter Syntax-Conventions,click here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Syntax-Conventions/Literal-Values.html).
 
 ### Path Pattern
 
@@ -132,7 +132,7 @@ When querying, you can query each timeseries separately.
 
 When inserting data, it is allowed to insert null value in the aligned timeseries.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
 

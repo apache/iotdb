@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 
 import java.sql.Connection;
@@ -140,6 +141,17 @@ public class AlignedWriteUtil {
         statement.addBatch(sql);
       }
       statement.executeBatch();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void insertDataWithSession() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (String sql : sqls) {
+        session.executeNonQueryStatement(sql);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

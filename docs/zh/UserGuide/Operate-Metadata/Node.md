@@ -19,9 +19,9 @@
 
 -->
 
-# 节点管理
+## 节点管理
 
-## 查看子路径
+### 查看子路径
 
 ```
 SHOW CHILD PATHS pathPattern
@@ -57,7 +57,7 @@ It costs 0.002s
 +---------------+
 ```
 
-## 查看子节点
+### 查看子节点
 
 ```
 SHOW CHILD NODES pathPattern
@@ -88,7 +88,7 @@ SHOW CHILD NODES pathPattern
 +------------+
 ```
 
-## 统计节点数
+### 统计节点数
 
 IoTDB 支持使用`COUNT NODES <PathPattern> LEVEL=<INTEGER>`来统计当前 Metadata
  树下满足某路径模式的路径中指定层级的节点个数。这条语句可以用来统计带有特定采样点的设备数。例如：
@@ -138,7 +138,7 @@ It costs 0.002s
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
 
-## 查看设备
+### 查看设备
 
 * SHOW DEVICES pathPattern? (WITH DATABASE)? limitClause? #showDevices
 
@@ -216,9 +216,9 @@ Total line number = 2
 It costs 0.001s
 ```
 
-## 统计设备数量
+### 统计设备数量
 
-* COUNT DEVICES <PathPattern>
+* COUNT DEVICES \<PathPattern\>
 
 上述语句用于统计设备的数量，同时允许指定`PathPattern` 用于统计匹配该`PathPattern` 的设备数量
 

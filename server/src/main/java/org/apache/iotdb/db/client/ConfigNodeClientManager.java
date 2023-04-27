@@ -20,16 +20,16 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 
 public class ConfigNodeClientManager {
   private static final class ConfigNodeClientManagerHolder {
-    private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient> INSTANCE =
-        new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
+    private static final IClientManager<ConfigRegionId, ConfigNodeClient> INSTANCE =
+        new IClientManager.Factory<ConfigRegionId, ConfigNodeClient>()
             .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   }
 
-  public static IClientManager<ConfigNodeRegionId, ConfigNodeClient> getInstance() {
+  public static IClientManager<ConfigRegionId, ConfigNodeClient> getInstance() {
     return ConfigNodeClientManagerHolder.INSTANCE;
   }
 }

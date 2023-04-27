@@ -29,7 +29,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -48,7 +50,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
+import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createCompressionType;
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createDataType;
+import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createEncodingType;
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createTimeseries;
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.testStorageGroup;
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.writeAlignedChunk;
@@ -92,6 +96,9 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -103,7 +110,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(0L, 300L));
         pages.add(new TimeRange(500L, 600L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
@@ -127,6 +135,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -137,7 +147,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<TimeRange> pages = new ArrayList<>();
         pages.add(new TimeRange(200L, 2200L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
         tsFileIOWriter.endChunkGroup();
@@ -161,6 +172,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -173,7 +186,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(1550L, 1700L));
         pages.add(new TimeRange(1750L, 2000L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
@@ -197,6 +211,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -209,7 +225,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(1200L, 1300L));
         pages.add(new TimeRange(1500L, 1600L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
         tsFileIOWriter.endChunkGroup();
@@ -223,12 +240,13 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
+
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -261,6 +279,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -272,7 +292,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(100L, 300L));
         pages.add(new TimeRange(500L, 600L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
@@ -296,6 +317,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -308,7 +331,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(900L, 1189L));
         timeRanges.add(new TimeRange(1301L, 1400L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, true);
           iChunkWriter.writeToFileWriter(tsFileIOWriter);
@@ -345,6 +369,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -357,7 +383,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(0L, 1189L));
         timeRanges.add(new TimeRange(1301L, 2000L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, false);
           iChunkWriter.writeToFileWriter(tsFileIOWriter);
@@ -392,6 +419,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -405,7 +434,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(1200L, 1300L));
         timeRanges.add(new TimeRange(1500L, 2200L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk(
               (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
@@ -432,6 +462,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -445,7 +477,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(550L, 700L));
         timeRanges.add(new TimeRange(1050L, 1150L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk(
               (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
@@ -462,12 +495,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -499,6 +532,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -510,7 +545,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(100L, 300L));
         pages.add(new TimeRange(500L, 600L));
 
-        for (IChunkWriter iChunkWriter : createChunkWriter(timeseriesPath, dataTypes, true)) {
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
@@ -534,6 +570,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -546,7 +584,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(900L, 1249L));
         timeRanges.add(new TimeRange(1351L, 1400L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, true);
           iChunkWriter.writeToFileWriter(tsFileIOWriter);
@@ -583,6 +622,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -595,7 +636,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(0L, 1249L));
         timeRanges.add(new TimeRange(1351L, 2000L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeOneAlignedPage((AlignedChunkWriterImpl) iChunkWriter, timeRanges, false);
           iChunkWriter.writeToFileWriter(tsFileIOWriter);
@@ -630,6 +672,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -643,7 +687,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(1250L, 1350L));
         timeRanges.add(new TimeRange(1500L, 2200L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk(
               (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
@@ -670,6 +715,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -683,7 +730,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         timeRanges.add(new TimeRange(550L, 700L));
         timeRanges.add(new TimeRange(1050L, 1150L));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk(
               (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
@@ -700,12 +748,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -737,6 +785,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -744,7 +794,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -785,13 +836,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -824,13 +878,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -876,13 +933,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -916,13 +976,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -955,12 +1018,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -992,6 +1055,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -999,7 +1064,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1040,13 +1106,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1079,13 +1148,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1124,13 +1196,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -1176,13 +1251,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1223,13 +1301,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1263,13 +1344,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -1303,12 +1387,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -1340,6 +1424,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -1347,7 +1433,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1388,13 +1475,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1427,13 +1517,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1472,13 +1565,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -1524,13 +1620,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1571,13 +1670,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1611,13 +1713,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -1659,12 +1764,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -1696,6 +1801,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -1703,7 +1810,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1746,13 +1854,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1793,13 +1904,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1838,13 +1952,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -1890,13 +2007,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1937,13 +2057,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -1977,13 +2100,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2025,12 +2151,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2062,6 +2188,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -2069,7 +2197,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2110,13 +2239,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2149,13 +2281,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2196,13 +2331,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2248,13 +2386,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2295,13 +2436,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2335,13 +2479,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2375,12 +2522,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2412,6 +2559,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -2419,7 +2568,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2460,13 +2610,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2499,13 +2652,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2546,13 +2702,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2598,13 +2757,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2645,13 +2807,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2685,13 +2850,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2726,12 +2894,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -2763,6 +2931,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -2770,7 +2940,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2813,13 +2984,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2860,13 +3034,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -2907,13 +3084,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -2959,13 +3139,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3006,13 +3189,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3046,13 +3232,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -3087,12 +3276,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     validateSeqFiles(true);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -3125,6 +3314,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -3132,7 +3323,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3173,13 +3365,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3215,13 +3410,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3265,13 +3463,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -3323,13 +3524,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3372,13 +3576,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3412,13 +3619,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -3467,13 +3677,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3501,12 +3714,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -3538,6 +3751,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -3545,7 +3760,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3588,13 +3804,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3630,13 +3849,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3680,13 +3902,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -3739,13 +3964,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3788,13 +4016,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3828,13 +4059,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -3883,13 +4117,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -3917,12 +4154,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -3954,6 +4191,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -3961,7 +4200,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4004,13 +4244,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4046,13 +4289,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4096,13 +4342,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -4155,13 +4404,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4204,13 +4456,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4244,13 +4499,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -4299,13 +4557,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4333,12 +4594,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -4370,6 +4631,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -4377,7 +4640,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4420,13 +4684,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4462,13 +4729,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4512,13 +4782,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -4571,13 +4844,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4620,13 +4896,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4660,13 +4939,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -4715,13 +4997,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4759,13 +5044,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4798,12 +5086,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -4835,6 +5123,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -4842,7 +5132,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4885,13 +5176,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4927,13 +5221,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -4977,13 +5274,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -5033,13 +5333,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -5082,13 +5385,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -5122,13 +5428,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -5177,13 +5486,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -5211,12 +5523,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5248,6 +5560,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5261,7 +5575,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(100, 199));
         pages.add(new TimeRange(200, 300));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5294,6 +5609,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5304,7 +5621,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(900, 1400, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5342,6 +5660,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5352,7 +5672,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(200, 2200, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5378,6 +5699,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5388,7 +5711,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(550, 800, 70);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5417,12 +5741,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5454,6 +5778,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5464,7 +5790,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(100, 300, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5496,6 +5823,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5507,7 +5836,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<TimeRange> pages = createPages(900, 1199, 100);
         pages.addAll(createPages(1301, 1400, 100));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5551,6 +5881,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5562,7 +5894,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<TimeRange> pages = createPages(0, 1199, 50);
         pages.addAll(createPages(1301, 2000, 100));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5594,6 +5927,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5604,7 +5939,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(550, 800, 70);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5643,6 +5979,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5653,7 +5991,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(350, 400, 70);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5682,12 +6021,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -5719,6 +6058,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5729,7 +6070,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(0, 300, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5761,6 +6103,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5772,7 +6116,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<TimeRange> pages = createPages(900, 1199, 100);
         pages.addAll(createPages(1301, 1400, 100));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5797,6 +6142,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5807,7 +6154,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(1800, 1900, 30);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5845,6 +6193,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5856,7 +6206,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<TimeRange> pages = createPages(100, 1199, 50);
         pages.addAll(createPages(1301, 1650, 100));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5888,6 +6239,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5898,7 +6251,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(2200, 2400, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5931,6 +6285,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5941,7 +6297,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(550, 800, 70);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -5985,6 +6342,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -5995,7 +6354,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(350, 400, 25);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6033,6 +6393,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6043,7 +6405,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(2700, 2800, 25);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6065,12 +6428,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6102,6 +6465,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6109,7 +6474,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -6150,13 +6516,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -6189,13 +6558,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -6236,13 +6608,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -6288,13 +6663,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -6335,13 +6713,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> pages = new ArrayList<>();
@@ -6375,13 +6756,16 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
             createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
 
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
@@ -6416,12 +6800,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6453,6 +6837,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6463,7 +6849,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(300, 600, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
@@ -6501,6 +6888,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6511,7 +6900,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(1600, 1900, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
@@ -6543,6 +6933,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6553,7 +6945,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(0, 2000, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6579,6 +6972,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6589,7 +6984,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(100, 400, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6622,6 +7018,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6632,7 +7030,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> pages = createPages(450, 950, 100);
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
         }
@@ -6655,12 +7054,12 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
-
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -6692,6 +7091,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6707,7 +7108,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         pages.add(new TimeRange(900, 1100));
         pages.add(new TimeRange(1400, 1600));
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
@@ -6733,6 +7135,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
         List<Integer> measurementIndexes = new ArrayList<>();
         for (int i = 0; i < measurementNum; i++) {
           measurementIndexes.add(i);
@@ -6743,7 +7147,8 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
         // write first chunk
         List<TimeRange> timeRanges = new ArrayList<>();
 
-        List<IChunkWriter> iChunkWriters = createChunkWriter(timeseriesPath, dataTypes, true);
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
         for (IChunkWriter iChunkWriter : iChunkWriters) {
           // first page
           timeRanges.clear();
@@ -6789,12 +7194,431 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     unseqResources.add(resource);
 
+    // start compacting
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(timeserisPathList, tsDataTypes);
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+    task.start();
+
+    validateSeqFiles(true);
+
+    validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
+  @Test
+  public void test22() throws IOException, IllegalPathException {
+    List<PartialPath> timeserisPathList = new ArrayList<>();
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    // seq file 1
+    int deviceNum = 10;
+    int measurementNum = 10;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(0, 1000, 100);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write second chunk
+        pages = createPages(1100, 1200, 30);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        // write third chunk
+        pages = createPages(1300, 1400, 80);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 0);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1400);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // unseq file 1
+    deviceNum = 15;
+    measurementNum = 5;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(50, 250, 100);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write second chunk
+        pages = createPages(300, 500, 60);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write third chunk
+        pages = createPages(550, 650, 60);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write forth chunk
+        pages = createPages(950, 1450, 45);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 50);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1450);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 2
+    deviceNum = 12;
+    measurementNum = 12;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> pages = createPages(700, 800, 50);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write second chunk
+        pages = createPages(850, 1350, 90);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        // write third chunk
+        pages = createPages(1500, 1600, 30);
+
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 700);
+        resource.updateEndTime(testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex, 1600);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
 
     // start compacting
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+    task.start();
+
+    validateSeqFiles(true);
+
+    validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
+  @Test
+  public void test23() throws MetadataException, IOException {
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
+    List<PartialPath> timeserisPathList = new ArrayList<>();
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    // seq file 1
+    int deviceNum = 10;
+    int measurementNum = 10;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(0, 300L));
+        pages.add(new TimeRange(500L, 600L));
+
+        for (IChunkWriter iChunkWriter :
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true)) {
+          writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        }
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 0);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 600);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // seq file 2
+    deviceNum = 12;
+    measurementNum = 5;
+    resource = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(900L, 1200L));
+        timeRanges.add(new TimeRange(1350, 1700));
+        timeRanges.add(new TimeRange(1750, 2000));
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, true);
+        }
+
+        // write second chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(2220, 2300));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, true);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 900);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2300);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+
+    // unseq file 1
+    deviceNum = 12;
+    measurementNum = 15;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(500, 950));
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        // write second chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(1000, 1320));
+        timeRanges.add(new TimeRange(1400, 1850));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        // write third chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(2000, 2200));
+        timeRanges.add(new TimeRange(2220, 2300));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 500);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2300);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // unseq file 2
+    deviceNum = 20;
+    measurementNum = 20;
+    resource = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, true);
+
+        // write first chunk
+        List<TimeRange> timeRanges = new ArrayList<>();
+        timeRanges.add(new TimeRange(500, 800));
+        timeRanges.add(new TimeRange(850, 950));
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, true);
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        // write second chunk
+        timeRanges.clear();
+        timeRanges.add(new TimeRange(1000, 1300));
+        timeRanges.add(new TimeRange(1400, 1850));
+        timeRanges.add(new TimeRange(2220, 2300));
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeAlignedChunk(
+              (AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, timeRanges, false);
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 500);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2300);
+        timeserisPathList.addAll(timeseriesPath);
+        tsDataTypes.addAll(dataTypes);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    unseqResources.add(resource);
+
+    // start compacting
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,

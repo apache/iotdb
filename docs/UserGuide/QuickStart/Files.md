@@ -45,7 +45,7 @@ In order to support users' storage requirements such as disk space expansion bet
 1. {TsFileName}.tsfile.resource
     + descriptor and statistic file of a TsFile
   
-### 与合并相关的数据文件
+### Compaction Related Files
 > under directory basedir/data/sequence or unsequence/{DatabaseName}/
 
 1. file suffixe with `.cross ` or `.inner`

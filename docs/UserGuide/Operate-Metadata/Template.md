@@ -55,6 +55,7 @@ After a schema template is created, it should be set to specific path before cre
 
 **It is recommended to set schema template to database path. It is not suggested to set schema template to some path above database**
 
+**It is forbidden to create timeseries under a path setting schema template. Schema template shall not be set on a prefix path of an existing timeseries.**
 
 The SQL Statement for setting schema template is as follow:
 
@@ -70,15 +71,15 @@ After setting the schema template, with the system enabled to auto create schema
 **Attention**: Before inserting data or the system not enabled to auto create schema, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries or activate the schema template, act before inserting data:
 
 ```shell
-IoTDB> create timeseries of schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d1
 ```
 
 **Example:** Execute the following statement
 ```shell
 IoTDB> set schema template t1 to root.sg1.d1
 IoTDB> set schema template t2 to root.sg1.d2
-IoTDB> create timeseries of schema template on root.sg1.d1
-IoTDB> create timeseries of schema template on root.sg1.d2
+IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d2
 ```
 
 Show the time series:
@@ -226,3 +227,15 @@ IoTDB> drop schema template t1
 ```
 
 **Attention**: Dropping an already set template is not supported.
+
+## Alter Schema Template
+
+In a scenario where measurements need to be added, you can modify the schema template to add measurements to all devices using the schema template.
+
+The SQL Statement for altering schema template is as follow:
+
+```shell
+IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
+```
+
+**When executing data insertion to devices with schema template set on related prefix path and there are measurements not present in this schema template, the measurements will be auto added to this schema template.**

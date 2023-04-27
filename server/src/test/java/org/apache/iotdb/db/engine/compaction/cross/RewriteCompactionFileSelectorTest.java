@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -38,7 +40,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +60,21 @@ import static org.junit.Assert.assertEquals;
 public class RewriteCompactionFileSelectorTest extends MergeTest {
   private static final Logger logger =
       LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
+
+  private int oldMinCrossCompactionUnseqLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
+  @Before
+  public void setUp() throws IOException, MetadataException, WriteProcessException {
+    super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+  }
+
+  @After
+  public void tearDown() throws StorageEngineException, IOException {
+    super.tearDown();
+  }
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
@@ -120,8 +139,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
+                System.currentTimeMillis()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 10
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -172,8 +190,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
+                System.currentTimeMillis()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 10
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -224,8 +241,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
-                10
-                    + "unseq"
+                System.currentTimeMillis()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 10
                     + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -492,8 +508,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "seq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -512,8 +527,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       File file =
           new File(
               TestConstant.OUTPUT_DATA_DIR.concat(
-                  10
-                      + "unseq"
+                  System.currentTimeMillis()
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -1011,5 +1025,16 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     if (fail.get()) {
       // fail();
     }
+  }
+
+  @Test
+  public void testFirstUnseqFileIsLarge() {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(1);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<CrossCompactionTaskResource> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    Assert.assertEquals(1, selected.size());
   }
 }

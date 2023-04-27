@@ -20,11 +20,11 @@ package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-public abstract class EntityTraverser<R> extends Traverser<R> {
+public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
   private boolean usingTemplate = false;
   private int schemaTemplateId = -1;
@@ -34,36 +34,35 @@ public abstract class EntityTraverser<R> extends Traverser<R> {
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @param store
-   * @param isPrefixMatch
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @throws MetadataException path does not meet the expected rules
    */
-  public EntityTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public EntityTraverser(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
-    if (node.isEntity()) {
-      return !usingTemplate || schemaTemplateId == node.getSchemaTemplateId();
+  protected boolean acceptFullMatchedNode(N node) {
+    if (node.isDevice()) {
+      return !usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId();
     }
     return false;
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
   }
 

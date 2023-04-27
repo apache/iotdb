@@ -25,7 +25,7 @@
 
 根据企业组织结构和设备实体层次结构，我们将其物联网数据模型表示为如下图所示的属性层级组织结构，即电力集团层-风电场层-实体层-物理量层。其中 ROOT 为根节点，物理量层的每一个节点为叶子节点。IoTDB 采用树形结构定义数据模式，以从 ROOT 节点到叶子节点的路径来命名一个时间序列，层次间以“.”连接。例如，下图最左侧路径对应的时间序列名称为`ROOT.ln.wf01.wt01.status`。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542457-5f511d00-d77c-11eb-8006-562d83069baa.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/123542457-5f511d00-d77c-11eb-8006-562d83069baa.png">
 
 在上图所描述的实际场景中，有许多实体所采集的物理量相同，即具有相同的工况名称和类型，因此，可以声明一个**元数据模板**来定义可采集的物理量集合。在实践中，元数据模板的使用可帮助减少元数据的资源占用，详细内容参见 [元数据模板文档](./Schema-Template.md)。
 
@@ -88,7 +88,7 @@ wildcard
   * [ 0-9 a-z A-Z _ ] （字母，数字，下划线）
   * ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
 * 特别地，如果系统在 Windows 系统上部署，那么 database 路径结点名是大小写不敏感的。例如，同时创建`root.ln` 和 `root.LN` 是不被允许的。
-* 如果需要在路径结点名中用特殊字符，可以用反引号引用路径结点名，具体使用方法可以参考[语法约定](../Reference/Syntax-Conventions.md)。
+* 如果需要在路径结点名中用特殊字符，可以用反引号引用路径结点名，具体使用方法可以参考[语法约定](../Syntax-Conventions/Literal-Values.md)。
 
 ### 路径模式（Path Pattern）
 
@@ -135,6 +135,6 @@ wildcard
 
 插入数据时，对齐的时间序列中某列的某些行允许有空值。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
 
 在后续数据定义语言、数据操作语言和 Java 原生接口章节，将对涉及到对齐时间序列的各种操作进行逐一介绍。

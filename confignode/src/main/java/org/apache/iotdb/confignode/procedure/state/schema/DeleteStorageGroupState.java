@@ -20,8 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state.schema;
 
 public enum DeleteStorageGroupState {
-  DELETE_STORAGE_GROUP_PREPARE,
-  DELETE_PRE,
+  PRE_DELETE_DATABASE,
   INVALIDATE_CACHE,
-  DELETE_CONFIG
+  DELETE_DATABASE_SCHEMA
 }

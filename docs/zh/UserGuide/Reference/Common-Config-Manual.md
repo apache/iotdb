@@ -19,22 +19,24 @@
 
 -->
 
-# 公共配置参数
+# 参考
+
+## 公共配置参数
 
 IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * `iotdb-common.properties`：IoTDB 集群的公共配置。
 
-## 改后生效方式
+### 改后生效方式
 不同的配置参数有不同的生效方式，分为以下三种：
 
 + **仅允许在第一次启动服务前修改：** 在第一次启动 ConfigNode/DataNode 后即禁止修改，修改会导致 ConfigNode/DataNode 无法启动。
 + **重启服务生效：** ConfigNode/DataNode 启动后仍可修改，但需要重启 ConfigNode/DataNode 后才生效。
 + **热加载：** 可在 ConfigNode/DataNode 运行时修改，修改后通过 Session 或 Cli 发送 ```load configuration``` 命令（SQL）至 IoTDB 使配置生效。
 
-## 系统配置项
+### 系统配置项
 
-### 副本配置
+#### 副本配置
 
 * config\_node\_consensus\_protocol\_class
 
@@ -82,7 +84,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | org.apache.iotdb.consensus.iot.IoTConsensus                                   |
 | 改后生效方式 | 仅允许在第一次启动服务前修改                                                                |
 
-### 负载均衡配置
+#### 负载均衡配置
 
 * series\_partition\_slot\_num
 
@@ -102,6 +104,24 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 | 改后生效方式 | 仅允许在第一次启动服务前修改                                                    |
 
+* schema\_region\_group\_extension\_policy
+
+|   名字   | schema\_region\_group\_extension\_policy |
+|:------:|:-----------------------------------------|
+|   描述   | SchemaRegionGroup 的扩容策略                  |
+|   类型   | string                                   |
+|  默认值   | AUTO                                     |
+| 改后生效方式 | 重启服务生效                                   |
+
+* default\_schema\_region\_group\_num\_per\_database
+
+|   名字   | default\_schema\_region\_group\_num\_per\_database                                                                                                      |
+|:------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 当选用 CUSTOM-SchemaRegionGroup 扩容策略时，此参数为每个 Database 拥有的 SchemaRegionGroup 数量；当选用 AUTO-SchemaRegionGroup 扩容策略时，此参数为每个 Database 最少拥有的 SchemaRegionGroup 数量 |
+|   类型   | int                                                                                                                                                     |
+|  默认值   | 1                                                                                                                                                       |
+| 改后生效方式 | 重启服务生效                                                                                                                                                  |
+
 * schema\_region\_per\_data\_node
 
 |   名字   | schema\_region\_per\_data\_node       |
@@ -120,14 +140,14 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | AUTO                                   |
 | 改后生效方式 | 重启服务生效                                 |
 
-* data\_region\_group\_per\_database
+* default\_data\_region\_group\_num\_per\_database
 
-|   名字   | data\_region\_group\_per\_database                                  |
-|:------:|:--------------------------------------------------------------------|
-|   描述   | 当选用 CUSTOM-DataRegionGroup 扩容策略时，每个 Database 拥有的 DataRegionGroup 数量 |
-|   类型   | int                                                                 |
-|  默认值   | 1                                                                   |
-| 改后生效方式 | 重启服务生效                                                              |
+|   名字   | data\_region\_group\_per\_database                                                                                                              |
+|:------:|:------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 当选用 CUSTOM-DataRegionGroup 扩容策略时，此参数为每个 Database 拥有的 DataRegionGroup 数量；当选用 AUTO-DataRegionGroup 扩容策略时，此参数为每个 Database 最少拥有的 DataRegionGroup 数量 |
+|   类型   | int                                                                                                                                             |
+|  默认值   | 2                                                                                                                                               |
+| 改后生效方式 | 重启服务生效                                                                                                                                          |
 
 * data\_region\_per\_processor
 
@@ -137,15 +157,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   类型   | double                       |
 |  默认值   | 1.0                          |
 | 改后生效方式 | 重启服务生效                       |
-
-* least\_data\_region\_group\_num
-
-|   名字   | least\_data\_region\_group\_num     |
-|:------:|:------------------------------------|
-|   描述   | 每个 Database 的 DataRegionGroup 的最少数量 |
-|   类型   | int                                 |
-|  默认值   | 5                                   |
-| 改后生效方式 | 重启服务生效                              |
 
 * enable\_data\_partition\_inherit\_policy
 
@@ -183,38 +194,38 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | true                                               |
 | 改后生效方式 | 重启服务生效                                             |
 
-### 集群管理
+#### 集群管理
 
 * time\_partition\_interval
 
-|     名字     | time\_partition\_interval       |
-| :----------: | :------------------------------ |
-|     描述     | Database 默认的数据时间分区间隔 |
-|     类型     | Long                            |
-|     单位     | 毫秒                            |
-|    默认值    | 604800000                       |
-| 改后生效方式 | 仅允许在第一次启动服务前修改    |
+|   名字   | time\_partition\_interval |
+|:------:|:--------------------------|
+|   描述   | Database 默认的数据时间分区间隔      |
+|   类型   | Long                      |
+|   单位   | 毫秒                        |
+|  默认值   | 604800000                 |
+| 改后生效方式 | 仅允许在第一次启动服务前修改            |
 
 * heartbeat\_interval\_in\_ms
 
-|     名字     | heartbeat\_interval\_in\_ms |
-| :----------: | :-------------------------- |
-|     描述     | 集群节点间的心跳间隔        |
-|     类型     | Long                        |
-|     单位     | ms                          |
-|    默认值    | 1000                        |
-| 改后生效方式 | 重启服务生效                |
+|   名字   | heartbeat\_interval\_in\_ms |
+|:------:|:----------------------------|
+|   描述   | 集群节点间的心跳间隔                  |
+|   类型   | Long                        |
+|   单位   | ms                          |
+|  默认值   | 1000                        |
+| 改后生效方式 | 重启服务生效                      |
 
 * disk\_space\_warning\_threshold
 
-|     名字     | disk\_space\_warning\_threshold |
-| :----------: | :------------------------------ |
-|     描述     | DataNode 磁盘剩余阈值           |
-|     类型     | double(percentage)              |
-|    默认值    | 0.05                            |
-| 改后生效方式 | 重启服务生效                    |
+|   名字   | disk\_space\_warning\_threshold |
+|:------:|:--------------------------------|
+|   描述   | DataNode 磁盘剩余阈值                 |
+|   类型   | double(percentage)              |
+|  默认值   | 0.05                            |
+| 改后生效方式 | 重启服务生效                          |
 
-### 内存控制配置
+#### 内存控制配置
 
 * enable\_mem\_control
 
@@ -351,7 +362,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
-### 元数据引擎配置
+#### 元数据引擎配置
 
 * mlog\_buffer\_size
 
@@ -407,7 +418,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 10000                          |
 |改后生效方式| 重启服务生效         |
 
-### 数据类型自动推断
+#### 数据类型自动推断
 
 * enable\_auto\_create\_schema
 
@@ -526,7 +537,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | PLAIN                   |
 | 改后生效方式 | 重启服务生效            |
 
-### 查询配置
+#### 查询配置
 
 * read\_consistency\_level
 
@@ -563,15 +574,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     类型     | Boolean             |
 |    默认值    | true                |
 | 改后生效方式 | 重启服务生效        |
-
-* max\_deduplicated\_path\_num
-
-|名字| max\_deduplicated\_path\_num |
-|:---:|:---|
-|描述| 单次查询允许的最大路径数。 |
-|类型| Int32 |
-|默认值| 1000 |
-|改后生效方式|重启服务生效|
 
 * mpp\_data\_exchange\_core\_pool\_size
 
@@ -672,7 +674,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 100000 |
 |改后生效方式|重启服务生效|
 
-### 存储引擎配置
+#### 存储引擎配置
 
 * timestamp\_precision
 
@@ -827,6 +829,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5000                            |
 | 改后生效方式 | 重启服务生效                          |
 
+* 0.13\_data\_insert\_adapt
+
+|     名字     | 0.13\_data\_insert\_adapt         |
+| :----------: |:----------------------------------|
+|     描述     | 如果 0.13 版本客户端进行写入，需要将此配置项设置为 true |
+|     类型     | Boolean                           |
+|    默认值    | false                             |
+| 改后生效方式 | 重启服务生效                            |
+
 * upgrade\_thread\_count
 
 |     名字     | upgrade\_thread\_count          |
@@ -835,6 +846,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     类型     | Int32                           |
 |    默认值    | 1                               |
 | 改后生效方式 | 重启服务生效                          |
+
+* device\_path\_cache\_size
+
+|     名字     | device\_path\_cache\_size                             |
+| :----------: |:------------------------------------------------------|
+|     描述     | Device Path 缓存的最大数量，这个缓存可以避免写入过程中重复的 Device Path 对象创建 |
+|     类型     | Int32                                                 |
+|    默认值    | 500000                                                |
+| 改后生效方式 | 重启服务生效                                                |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -845,7 +865,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 10                                                               |
 | 改后生效方式 | 重启服务生效                                                     |
 
-### 合并配置
+#### 合并配置
 
 * enable\_seq\_space\_compaction
 
@@ -1056,23 +1076,32 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * sub\_compaction\_thread\_count
 
-|名字| sub\_compaction\_thread\_count |
-|:---:|:--|
-|描述| 每个跨空间合并任务的子任务线程数 |
-|类型| Int32 |
-|默认值| 4 |
-|改后生效方式| 重启服务生效|
+|名字| sub\_compaction\_thread\_count  |
+|:---:|:--------------------------------|
+|描述| 每个合并任务的子任务线程数，只对跨空间合并和乱序空间内合并生效 |
+|类型| int32                           |
+|默认值| 4                               |
+|改后生效方式| 重启服务生效                          |
 
 * enable\_compaction\_validation
 
 |名字| enable\_compaction\_validation |
-|:---:|:--|
-|描述| 开启合并结束后对顺序文件时间范围的检查 |
-|类型| Boolean |
-|默认值| true |
-|改后生效方式| 重启服务生效|
+|:---:|:-------------------------------|
+|描述| 开启合并结束后对顺序文件时间范围的检查            |
+|类型| Boolean                        |
+|默认值| true                           |
+|改后生效方式| 重启服务生效                         |
 
-### 写前日志配置
+* candidate\_compaction\_task\_queue\_size
+
+|名字| candidate\_compaction\_task\_queue\_size |
+|:---:|:-----------------------------------------|
+|描述| 合并任务优先级队列的大小                             |
+|类型| int32                                    |
+|默认值| 50                                       |
+|改后生效方式| 重启服务生效                                   |
+
+#### 写前日志配置
 
 * wal\_mode
 
@@ -1164,7 +1193,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | 20000                              |
 | 改后生效方式 | 热加载                                |
 
-### TsFile 配置
+#### TsFile 配置
 
 * group\_size\_in\_byte
 
@@ -1240,12 +1269,12 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * compressor
 
-|     名字     | compressor                                    |
-| :----------: | :-------------------------------------------- |
-|     描述     | 数据压缩方法                                  |
-|     类型     | 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4” |
-|    默认值    | SNAPPY                                        |
-| 改后生效方式 | 热加载                                      |
+|   名字   | compressor                                                   |
+|:------:|:-------------------------------------------------------------|
+|   描述   | 数据压缩方法                                                       |
+|   类型   | 枚举 String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|  默认值   | SNAPPY                                                       |
+| 改后生效方式 | 热加载                                                          |
 
 * max\_degree\_of\_index\_node
 
@@ -1283,7 +1312,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 1024 |
 |改后生效方式|热加载|
 
-### 授权配置
+#### 授权配置
 
 * authorizer\_provider\_class
 
@@ -1358,7 +1387,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 30                                     |
 | 改后生效方式 | 重启服务生效                           |
 
-### UDF查询配置
+#### UDF查询配置
 
 * udf\_initial\_byte\_array\_length\_for\_memory\_control
 
@@ -1396,7 +1425,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | ext/udf（Windows：ext\\udf） |
 | 改后生效方式 | 重启服务生效                 |
 
-### 触发器配置
+#### 触发器配置
 
 * trigger\_lib\_dir
 
@@ -1417,7 +1446,16 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 | 改后生效方式 | 重启服务生效                                          |
 
 
-### SELECT-INTO配置
+#### SELECT-INTO配置
+
+* into\_operation\_buffer\_size\_in\_byte
+
+|     名字     | into\_operation\_buffer\_size\_in\_byte                              |
+| :----------: | :-------------------------------------------------------------------- |
+|     描述     | 执行 select-into 语句时，待写入数据占用的最大内存（单位：Byte） |
+|     类型     | int64                                                        |
+|    默认值    | 100MB                                                        |
+| 改后生效方式 | 热加载                                                     |
 
 * select\_into\_insert\_tablet\_plan\_row\_limit
 
@@ -1437,7 +1475,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 2                                         |
 | 改后生效方式  | 重启服务生效                                 |
 
-### 连续查询配置
+#### 连续查询配置
 
 * continuous\_query\_submit\_thread\_count
 
@@ -1457,7 +1495,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 1000                                            |
 | 改后生效方式 | 重启服务生效                                          |
 
-### PIPE 配置
+#### PIPE 配置
 
 * ip\_white\_list
 
@@ -1477,7 +1515,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5                             |
 | 改后生效方式 | 热加载                  |
 
-### Ratis 共识协议配置
+#### Ratis 共识协议配置
 当Region配置了RatisConsensus共识协议之后，下述的配置项才会生效
 
 * config\_node\_ratis\_log\_appender\_buffer\_size\_max
@@ -1805,7 +1843,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | 1000                                           |
 | 改后生效方式 | 重启生效                                           |
 
-### Procedure 配置
+#### Procedure 配置
 
 * procedure\_core\_worker\_thread\_count
 
@@ -1834,7 +1872,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 800(s)                            |
 | 改后生效方式 | 重启服务生效                      |
 
-### MQTT代理配置
+#### MQTT代理配置
 
 * enable\_mqtt\_service
 
@@ -1890,7 +1928,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 1048576 |
 |改后生效方式|热加载|
 
-### REST 服务配置
+#### REST 服务配置
 
 * enable\_rest\_service
 
@@ -2009,7 +2047,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 5000          |
 |改后生效方式| 重启生效          |
 
-### InfluxDB 协议适配器配置
+#### InfluxDB 协议适配器配置
 
 * enable\_influxdb\_rpc\_service
 

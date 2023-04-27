@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -33,30 +33,26 @@ public class CountAccumulator implements Accumulator {
 
   public CountAccumulator() {}
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
+
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     int curPositionCount = column[0].getPositionCount();
 
-    if (!column[2].mayHaveNull() && curWindow.contains(column[0])) {
+    if (!column[1].mayHaveNull()
+        && lastIndex == curPositionCount - 1
+        && ((bitMap == null) || bitMap.isAllMarked())) {
       countValue += curPositionCount;
     } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        // skip null value in control column
-        if (column[0].isNull(i)) {
+      for (int i = 0; i <= lastIndex; i++) {
+        if (bitMap != null && !bitMap.isMarked(i)) {
           continue;
         }
-        if (!curWindow.satisfy(column[0], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint(column, i);
-        if (!column[2].isNull(i)) {
+        if (!column[1].isNull(i)) {
           countValue++;
         }
       }
     }
-
-    return curPositionCount;
   }
 
   // partialResult should be like: | partialCountValue1 |

@@ -25,36 +25,45 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 public class WindowManagerFactory {
 
   public static IWindowManager genWindowManager(
-      WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator) {
+      WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator, boolean ascending) {
     switch (windowParameter.getWindowType()) {
       case TIME_WINDOW:
         return new TimeWindowManager(timeRangeIterator, (TimeWindowParameter) windowParameter);
-      case EVENT_WINDOW:
-        return ((EventWindowParameter) windowParameter).getDelta() == 0
-            ? genEqualEventWindowManager(
-                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending())
-            : genVariationEventWindowManager(
-                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
+      case VARIATION_WINDOW:
+        return ((VariationWindowParameter) windowParameter).getDelta() == 0
+            ? genEqualEventWindowManager((VariationWindowParameter) windowParameter, ascending)
+            : genVariationEventWindowManager((VariationWindowParameter) windowParameter, ascending);
+      case CONDITION_WINDOW:
+        return new ConditionWindowManager((ConditionWindowParameter) windowParameter);
+      case SESSION_WINDOW:
+        return new SessionWindowManager(
+            windowParameter.isNeedOutputEndTime(),
+            ((SessionWindowParameter) windowParameter).getTimeInterval(),
+            ascending);
+      case COUNT_WINDOW:
+        return new CountWindowManager((CountWindowParameter) windowParameter);
       default:
-        throw new IllegalArgumentException("Not support this type of aggregation window.");
+        throw new IllegalArgumentException(
+            "Not support this type of aggregation window :"
+                + windowParameter.getWindowType().name());
     }
   }
 
-  private static EventWindowManager genEqualEventWindowManager(
-      EventWindowParameter eventWindowParameter, boolean ascending) {
+  private static VariationWindowManager genEqualEventWindowManager(
+      VariationWindowParameter eventWindowParameter, boolean ascending) {
     switch (eventWindowParameter.getDataType()) {
       case INT32:
-        return new EqualEventIntWindowManager(eventWindowParameter, ascending);
+        return new EqualIntWindowManager(eventWindowParameter, ascending);
       case INT64:
-        return new EqualEventLongWindowManager(eventWindowParameter, ascending);
+        return new EqualLongWindowManager(eventWindowParameter, ascending);
       case FLOAT:
-        return new EqualEventFloatWindowManager(eventWindowParameter, ascending);
+        return new EqualFloatWindowManager(eventWindowParameter, ascending);
       case DOUBLE:
-        return new EqualEventDoubleWindowManager(eventWindowParameter, ascending);
+        return new EqualDoubleWindowManager(eventWindowParameter, ascending);
       case TEXT:
-        return new EqualEventTextWindowManager(eventWindowParameter, ascending);
+        return new EqualBinaryWindowManager(eventWindowParameter, ascending);
       case BOOLEAN:
-        return new EqualEventBooleanWindowManager(eventWindowParameter, ascending);
+        return new EqualBooleanWindowManager(eventWindowParameter, ascending);
       default:
         throw new UnSupportedDataTypeException(
             String.format(
@@ -63,17 +72,17 @@ public class WindowManagerFactory {
     }
   }
 
-  private static EventWindowManager genVariationEventWindowManager(
-      EventWindowParameter eventWindowParameter, boolean ascending) {
+  private static VariationWindowManager genVariationEventWindowManager(
+      VariationWindowParameter eventWindowParameter, boolean ascending) {
     switch (eventWindowParameter.getDataType()) {
       case INT32:
-        return new VariationEventIntWindowManager(eventWindowParameter, ascending);
+        return new VariationIntWindowManager(eventWindowParameter, ascending);
       case INT64:
-        return new VariationEventLongWindowManager(eventWindowParameter, ascending);
+        return new VariationLongWindowManager(eventWindowParameter, ascending);
       case FLOAT:
-        return new VariationEventFloatWindowManager(eventWindowParameter, ascending);
+        return new VariationFloatWindowManager(eventWindowParameter, ascending);
       case DOUBLE:
-        return new VariationEventDoubleWindowManager(eventWindowParameter, ascending);
+        return new VariationDoubleWindowManager(eventWindowParameter, ascending);
       default:
         throw new UnSupportedDataTypeException(
             String.format(

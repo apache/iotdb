@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -521,6 +522,34 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("newTag1", "t1");
             }
           });
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDeleteAndQueryByAlias() {
+    try {
+      prepareTimeseries();
+      List<ITimeSeriesSchemaInfo> result =
+          SchemaRegionTestUtil.showTimeseries(
+              schemaRegion,
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.wf01.wt01.v1.temp")));
+      Assert.assertEquals(1, result.size());
+      // delete timeseries
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(new PartialPath("root.sg.wf01.wt01.v1.temp"));
+      patternTree.constructTree();
+      Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree) >= 1);
+      schemaRegion.deleteTimeseriesInBlackList(patternTree);
+      result =
+          SchemaRegionTestUtil.showTimeseries(
+              schemaRegion,
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.wf01.wt01.v1.temp")));
+      Assert.assertEquals(0, result.size());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());

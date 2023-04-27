@@ -64,7 +64,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
-              schemaRegion.getStorageGroupFullPath()
+              schemaRegion.getDatabaseFullPath()
                   + File.separator
                   + schemaRegion.getSchemaRegionId().getId(),
               MetadataConstant.METADATA_LOG);
@@ -147,10 +147,10 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Collections.singletonList(Collections.singletonList("s1")),
-            Collections.singletonList(Collections.singletonList(TSDataType.INT32)),
-            Collections.singletonList(Collections.singletonList(TSEncoding.PLAIN)),
-            Collections.singletonList(Collections.singletonList(CompressionType.GZIP)));
+            Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.GZIP));
     template.setId(1);
     return template;
   }
@@ -164,7 +164,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
-              schemaRegion.getStorageGroupFullPath()
+              schemaRegion.getDatabaseFullPath()
                   + File.separator
                   + schemaRegion.getSchemaRegionId().getId(),
               MetadataConstant.METADATA_LOG);

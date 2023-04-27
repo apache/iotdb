@@ -22,19 +22,15 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.isession.util.Version;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.pool.SessionPool;
 
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.List;
 
 public interface BaseEnv {
@@ -80,116 +76,11 @@ public interface BaseEnv {
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;
 
-  default ISession getSessionConnection() throws IoTDBConnectionException {
-    return getSessionConnection(
-        SessionConfig.DEFAULT_HOST,
-        SessionConfig.DEFAULT_PORT,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION);
-  }
+  ISessionPool getSessionPool(int maxSize);
 
-  default ISession getSessionConnection(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      boolean enableRedirection,
-      Version version)
-      throws IoTDBConnectionException {
-    Session session =
-        new Session(
-            host,
-            rpcPort,
-            username,
-            password,
-            fetchSize,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            enableRedirection,
-            version);
+  ISession getSessionConnection() throws IoTDBConnectionException;
 
-    session.open();
-    return session;
-  }
-
-  default ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
-    Session session =
-        new Session(
-            nodeUrls,
-            SessionConfig.DEFAULT_USER,
-            SessionConfig.DEFAULT_PASSWORD,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
-    session.open();
-    return session;
-  }
-
-  default SessionPool getSessionPool(int maxSize) {
-    return getSessionPool(
-        SessionConfig.DEFAULT_HOST,
-        SessionConfig.DEFAULT_PORT,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
-  }
-
-  default SessionPool getSessionPool(
-      String host,
-      int port,
-      String user,
-      String password,
-      int maxSize,
-      int fetchSize,
-      long waitToGetSessionTimeoutInMs,
-      boolean enableCompression,
-      ZoneId zoneId,
-      boolean enableRedirection,
-      int connectionTimeoutInMs,
-      Version version,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize) {
-    SessionPool pool =
-        new SessionPool(
-            host,
-            port,
-            user,
-            password,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize);
-    return pool;
-  }
+  ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**
    * Get the index of the ConfigNode leader.

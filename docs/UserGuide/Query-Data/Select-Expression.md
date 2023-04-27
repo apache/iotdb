@@ -85,7 +85,7 @@ See the documentation [Operators and Functions](../Operators-Functions/Overview.
 
 #### User-Defined time series generation function
 
-IoTDB supports function extension through [User-Defined Function](./User-Defined-Function.md) capability.
+IoTDB supports function extension through User Defined Function (click for [User-Defined Function](../Operators-Functions/User-Defined-Function.md)) capability.
 
 ## Nested Expressions
 

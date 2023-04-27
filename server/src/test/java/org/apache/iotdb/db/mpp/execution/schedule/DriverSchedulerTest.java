@@ -22,6 +22,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
@@ -52,7 +55,7 @@ public class DriverSchedulerTest {
   }
 
   @Test
-  public void testManagingDriver() {
+  public void testManagingDriver() throws CpuNotEnoughException, MemoryNotEnoughException {
     IMPPDataExchangeManager mockMPPDataExchangeManager =
         Mockito.mock(IMPPDataExchangeManager.class);
     manager.setBlockManager(mockMPPDataExchangeManager);
@@ -63,24 +66,28 @@ public class DriverSchedulerTest {
     DriverTaskId driverTaskId1 = new DriverTaskId(instanceId1, 0);
     IDriver mockDriver1 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
+    Mockito.when(mockDriver1.getDriverContext()).thenReturn(new DriverContext());
     FragmentInstanceId instanceId2 = new FragmentInstanceId(fragmentId, "inst-1");
     DriverTaskId driverTaskId2 = new DriverTaskId(instanceId2, 0);
     IDriver mockDriver2 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver2.getDriverTaskId()).thenReturn(driverTaskId2);
+    Mockito.when(mockDriver2.getDriverContext()).thenReturn(new DriverContext());
     List<IDriver> instances = Arrays.asList(mockDriver1, mockDriver2);
-    manager.submitDrivers(queryId, instances, QUERY_TIMEOUT_MS);
+    manager.submitDrivers(queryId, instances, QUERY_TIMEOUT_MS, null);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(2, manager.getQueryMap().get(queryId).size());
-    Assert.assertEquals(2, manager.getTimeoutQueue().size());
+    Assert.assertEquals(1, manager.getTimeoutQueue().size());
     Assert.assertEquals(2, manager.getReadyQueue().size());
-    DriverTask task1 = manager.getTimeoutQueue().get(driverTaskId1);
-    Assert.assertNotNull(task1);
-    DriverTask task2 = manager.getTimeoutQueue().get(driverTaskId2);
-    Assert.assertNotNull(task2);
-    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId1).contains(task1));
-    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId2).contains(task2));
+    Assert.assertNull(manager.getTimeoutQueue().get(driverTaskId1));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(driverTaskId2));
+    DriverTask task1 =
+        (DriverTask) manager.getQueryMap().get(queryId).get(instanceId1).toArray()[0];
+    DriverTask task2 =
+        (DriverTask) manager.getQueryMap().get(queryId).get(instanceId2).toArray()[0];
+    Assert.assertEquals(task1.getDriverTaskId(), driverTaskId1);
+    Assert.assertEquals(task2.getDriverTaskId(), driverTaskId2);
     Assert.assertEquals(DriverTaskStatus.READY, task1.getStatus());
     Assert.assertEquals(DriverTaskStatus.READY, task2.getStatus());
 
@@ -89,16 +96,18 @@ public class DriverSchedulerTest {
     FragmentInstanceId instanceId3 = new FragmentInstanceId(fragmentId, "inst-2");
     DriverTaskId driverTaskId3 = new DriverTaskId(instanceId3, 0);
     Mockito.when(mockDriver3.getDriverTaskId()).thenReturn(driverTaskId3);
-    manager.submitDrivers(queryId, Collections.singletonList(mockDriver3), QUERY_TIMEOUT_MS);
+    Mockito.when(mockDriver3.getDriverContext()).thenReturn(new DriverContext());
+    manager.submitDrivers(queryId, Collections.singletonList(mockDriver3), QUERY_TIMEOUT_MS, null);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(3, manager.getQueryMap().get(queryId).size());
-    Assert.assertEquals(3, manager.getTimeoutQueue().size());
+    Assert.assertEquals(2, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
-    DriverTask task3 = manager.getTimeoutQueue().get(driverTaskId3);
-    Assert.assertNotNull(task3);
-    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId3).contains(task3));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(driverTaskId3));
+    DriverTask task3 =
+        (DriverTask) manager.getQueryMap().get(queryId).get(instanceId3).toArray()[0];
+    Assert.assertEquals(task3.getDriverTaskId(), driverTaskId3);
     Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
 
     // Submit another task of the different query
@@ -108,12 +117,13 @@ public class DriverSchedulerTest {
     DriverTaskId driverTaskId4 = new DriverTaskId(instanceId4, 0);
     IDriver mockDriver4 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver4.getDriverTaskId()).thenReturn(driverTaskId4);
-    manager.submitDrivers(queryId2, Collections.singletonList(mockDriver4), QUERY_TIMEOUT_MS);
+    Mockito.when(mockDriver4.getDriverContext()).thenReturn(new DriverContext());
+    manager.submitDrivers(queryId2, Collections.singletonList(mockDriver4), QUERY_TIMEOUT_MS, null);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(2, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId2));
     Assert.assertEquals(1, manager.getQueryMap().get(queryId2).size());
-    Assert.assertEquals(4, manager.getTimeoutQueue().size());
+    Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(4, manager.getReadyQueue().size());
     DriverTask task4 = manager.getTimeoutQueue().get(driverTaskId4);
     Assert.assertNotNull(task4);

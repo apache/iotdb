@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.persistence.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -37,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroup {
 
+  private long createTime;
   private final TRegionReplicaSet replicaSet;
 
   // Map<TSeriesPartitionSlot, TTimePartitionSlot Count>
@@ -48,18 +48,22 @@ public class RegionGroup {
 
   private final AtomicLong totalTimeSlotCount;
 
-  private volatile RegionGroupStatistics statistics;
-
   public RegionGroup() {
+    this.createTime = 0;
     this.replicaSet = new TRegionReplicaSet();
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong();
   }
 
-  public RegionGroup(TRegionReplicaSet replicaSet) {
+  public RegionGroup(long createTime, TRegionReplicaSet replicaSet) {
+    this.createTime = createTime;
     this.replicaSet = replicaSet;
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong(0);
+  }
+
+  public long getCreateTime() {
+    return createTime;
   }
 
   public TConsensusGroupId getId() {
@@ -67,7 +71,7 @@ public class RegionGroup {
   }
 
   public TRegionReplicaSet getReplicaSet() {
-    return replicaSet;
+    return replicaSet.deepCopy();
   }
 
   /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */
@@ -89,8 +93,20 @@ public class RegionGroup {
     return totalTimeSlotCount.get();
   }
 
+  /**
+   * Check if the RegionGroup belongs to the specified DataNode.
+   *
+   * @param dataNodeId The specified DataNodeId.
+   * @return True if the RegionGroup belongs to the specified DataNode.
+   */
+  public boolean belongsToDataNode(int dataNodeId) {
+    return replicaSet.getDataNodeLocations().stream()
+        .anyMatch(dataNodeLocation -> dataNodeLocation.getDataNodeId() == dataNodeId);
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
+    ReadWriteIOUtils.write(createTime, outputStream);
     replicaSet.write(protocol);
 
     ReadWriteIOUtils.write(slotCountMap.size(), outputStream);
@@ -104,6 +120,7 @@ public class RegionGroup {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
+    this.createTime = ReadWriteIOUtils.readLong(inputStream);
     replicaSet.read(protocol);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
@@ -130,12 +147,13 @@ public class RegionGroup {
         return false;
       }
     }
-    return replicaSet.equals(that.replicaSet)
+    return createTime == that.createTime
+        && replicaSet.equals(that.replicaSet)
         && totalTimeSlotCount.get() == that.totalTimeSlotCount.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(replicaSet, slotCountMap, totalTimeSlotCount);
+    return Objects.hash(createTime, replicaSet, slotCountMap, totalTimeSlotCount);
   }
 }

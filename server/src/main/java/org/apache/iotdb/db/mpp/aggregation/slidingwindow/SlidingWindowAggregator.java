@@ -53,8 +53,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
     this.deque = new LinkedList<>();
   }
 
-  @Override
-  public int processTsBlock(TsBlock tsBlock) {
+  public void processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");
@@ -68,10 +67,8 @@ public abstract class SlidingWindowAggregator extends Aggregator {
       valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
-    return 1;
   }
 
-  @Override
   public void updateTimeRange(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
     evictingExpiredValue();

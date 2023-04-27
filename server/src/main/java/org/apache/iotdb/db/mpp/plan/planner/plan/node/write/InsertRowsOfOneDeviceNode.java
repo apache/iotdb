@@ -21,12 +21,11 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -41,13 +40,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsertNode {
 
@@ -142,17 +141,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree)
-      throws QueryProcessException, MetadataException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.validateAndSetSchema(schemaTree);
-      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
-      }
-    }
   }
 
   @Override
@@ -297,35 +285,20 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public List<PartialPath> getDevicePaths() {
-    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
-      return Collections.emptyList();
-    }
-    return Collections.singletonList(insertRowNodeList.get(0).devicePath);
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertRowNodeList.stream()
+        .map(InsertRowNode::getSchemaValidation)
+        .collect(Collectors.toList());
   }
 
   @Override
-  public List<String[]> getMeasurementsList() {
-    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
-      return Collections.emptyList();
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.updateAfterSchemaValidation();
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
+      }
     }
-    return Collections.singletonList(measurements);
-  }
-
-  @Override
-  public List<TSDataType[]> getDataTypesList() {
-    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
-      return Collections.emptyList();
-    }
-    return Collections.singletonList(dataTypes);
-  }
-
-  @Override
-  public List<Boolean> getAlignedList() {
-    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
-      return Collections.emptyList();
-    }
-    return Collections.singletonList(insertRowNodeList.get(0).isAligned);
   }
 
   @Override

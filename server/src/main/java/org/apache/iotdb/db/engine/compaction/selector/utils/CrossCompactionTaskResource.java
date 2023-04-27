@@ -32,6 +32,8 @@ public class CrossCompactionTaskResource {
 
   private long totalMemoryCost;
   private long totalFileSize;
+  private float totalSeqFileSize;
+  private float totalUnseqFileSize;
   private long totalFileNums;
 
   public CrossCompactionTaskResource() {
@@ -72,6 +74,7 @@ public class CrossCompactionTaskResource {
 
   private void addUnseqFile(TsFileResource file) {
     unseqFiles.add(file);
+    totalUnseqFileSize += file.getTsFileSize();
     countStatistic(file);
   }
 
@@ -81,6 +84,7 @@ public class CrossCompactionTaskResource {
 
   private void addSeqFile(TsFileResource file) {
     seqFiles.add(file);
+    totalSeqFileSize += file.getTsFileSize();
     countStatistic(file);
   }
 
@@ -103,6 +107,14 @@ public class CrossCompactionTaskResource {
 
   public long getTotalFileSize() {
     return totalFileSize;
+  }
+
+  public float getTotalSeqFileSize() {
+    return totalSeqFileSize;
+  }
+
+  public float getTotalUnseqFileSize() {
+    return totalUnseqFileSize;
   }
 
   public long getTotalFileNums() {

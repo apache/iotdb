@@ -34,7 +34,7 @@ pipeline {
 
     tools {
         maven 'maven_3_latest'
-        jdk 'jdk_1.8_latest'
+        jdk 'jdk_11_latest'
     }
 
     options {
@@ -58,26 +58,26 @@ pipeline {
             }
         }
 
-        stage('Deploy site') {
-            when {
-                branch 'master'
-            }
-            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
-            agent {
-                node {
-                    label 'git-websites'
-                }
-            }
-            steps {
-                // Publish the site with the scm-publish plugin.
-                sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
-
-                // Clean up the snapshots directory (freeing up more space after deploying).
-                dir("target") {
-                    deleteDir()
-                }
-            }
-        }
+//         stage('Deploy site') {
+//             when {
+//                 branch 'master'
+//             }
+//             // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+//             agent {
+//                 node {
+//                     label 'git-websites'
+//                 }
+//             }
+//             steps {
+//                 // Publish the site with the scm-publish plugin.
+//                 sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+//
+//                 // Clean up the snapshots directory (freeing up more space after deploying).
+//                 dir("target") {
+//                     deleteDir()
+//                 }
+//             }
+//         }
 
         stage('Build and UT') {
             when {
@@ -158,7 +158,9 @@ pipeline {
 
         stage('Deploy') {
             when {
-                branch 'master'
+                expression {
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
+                }
             }
             steps {
                 echo 'Deploying'

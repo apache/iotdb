@@ -19,12 +19,12 @@
 
 -->
 
-# 连续查询（Continuous Query, CQ）
+## 连续查询（Continuous Query, CQ）
 
-## 简介
+### 简介
 连续查询(Continuous queries, aka CQ) 是对实时数据周期性地自动执行的查询，并将查询结果写入指定的时间序列中。
 
-## 语法
+### 语法
 
 ```sql
 CREATE (CONTINUOUS QUERY | CQ) <cq_id> 
@@ -52,7 +52,7 @@ END
 > 2. GROUP BY TIME CLAUSE在连续查询中的语法稍有不同，它不能包含原来的第一个参数，即 [start_time, end_time)，IoTDB会自动填充这个缺失的参数。如果指定，IoTDB将会抛出异常。
 > 3. 如果连续查询中既没有GROUP BY TIME子句，也没有指定EVERY子句，IoTDB将会抛出异常。
 
-### 连续查询语法中参数含义的描述
+#### 连续查询语法中参数含义的描述
 
 - `<cq_id>` 为连续查询指定一个全局唯一的标识。
 - `<every_interval>` 指定了连续查询周期性执行的间隔。现在支持的时间单位有：ns, us, ms, s, m, h, d, w, 并且它的值不能小于用户在`iotdb-confignode.properties`配置文件中指定的`continuous_query_min_every_interval`。这是一个可选参数，默认等于group by子句中的`group_by_interval`。
@@ -74,28 +74,28 @@ END
 >     - 如果<start_time_offset>小于<every_interval>，在连续的两次查询执行的时间窗口中间将会有未覆盖的时间范围
 > - start_time_offset 应该大于end_time_offset
 
-#### `<start_time_offset>`等于`<every_interval>`
+##### `<start_time_offset>`等于`<every_interval>`
 
-![1](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
+![1](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
 
-#### `<start_time_offset>`大于`<every_interval>`
+##### `<start_time_offset>`大于`<every_interval>`
 
-![2](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
+![2](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
 
-#### `<start_time_offset>`小于`<every_interval>`
+##### `<start_time_offset>`小于`<every_interval>`
 
-![3](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
+![3](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
 
-#### `<every_interval>`不为0
+##### `<every_interval>`不为0
 
-![4](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
+![4](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
 
 - `TIMEOUT POLICY` 指定了我们如何处理“前一个时间窗口还未执行完时，下一个窗口的执行时间已经到达的场景，默认值是`BLOCKED`.
     - `BLOCKED`意味着即使下一个窗口的执行时间已经到达，我们依旧需要阻塞等待前一个时间窗口的查询执行完再开始执行下一个窗口。如果使用`BLOCKED`策略，所有的时间窗口都将会被依此执行，但是如果遇到执行查询的时间长于周期性间隔时，连续查询的结果会迟于最新的时间窗口范围。
     - `DISCARD`意味着如果前一个时间窗口还未执行完，我们会直接丢弃下一个窗口的执行时间。如果使用`DISCARD`策略，可能会有部分时间窗口得不到执行。但是一旦前一个查询执行完后，它将会使用最新的时间窗口，所以它的执行结果总能赶上最新的时间窗口范围，当然是以部分时间窗口得不到执行为代价。
 
 
-## 连续查询的用例
+### 连续查询的用例
 
 下面是用例数据，这是一个实时的数据流，我们假设数据都按时到达。
 
@@ -115,7 +115,7 @@ END
 +-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
 ````
 
-### 配置连续查询执行的周期性间隔
+#### 配置连续查询执行的周期性间隔
 
 在`RESAMPLE`子句中使用`EVERY`参数指定连续查询的执行间隔，如果没有指定，默认等于`group_by_interval`。
 
@@ -173,7 +173,7 @@ At **2021-05-11T22:19:00.000+08:00**, `cq1` executes a query within the time ran
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
 
-### 配置连续查询的时间窗口大小
+#### 配置连续查询的时间窗口大小
 
 使用`RANGE`子句中的`start_time_offset`参数指定连续查询每次执行的时间窗口的开始时间偏移，如果没有指定，默认值等于`EVERY`参数。
 
@@ -248,7 +248,7 @@ At **2021-05-11T22:19:00.000+08:00**, `cq2` executes a query within the time ran
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
 
-### 同时配置连续查询执行的周期性间隔和时间窗口大小
+#### 同时配置连续查询执行的周期性间隔和时间窗口大小
 
 使用`RESAMPLE`子句中的`EVERY`参数和`RANGE`参数分别指定连续查询的执行间隔和窗口大小。并且使用`fill()`来填充没有值的时间区间。
 
@@ -313,7 +313,7 @@ At **2021-05-11T22:19:00.000+08:00**, `cq3` executes a query within the time ran
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
 
-### 配置连续查询每次查询执行时间窗口的结束时间
+#### 配置连续查询每次查询执行时间窗口的结束时间
 
 使用`RESAMPLE`子句中的`EVERY`参数和`RANGE`参数分别指定连续查询的执行间隔和窗口大小。并且使用`fill()`来填充没有值的时间区间。
 
@@ -372,7 +372,7 @@ At **2021-05-11T22:19:00.000+08:00**, `cq4` executes a query within the time ran
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
 
-### 没有GROUP BY TIME子句的连续查询
+#### 没有GROUP BY TIME子句的连续查询
 
 不使用`GROUP BY TIME`子句，并在`RESAMPLE`子句中显式使用`EVERY`参数指定连续查询的执行间隔。
 
@@ -478,9 +478,9 @@ At **2021-05-11T22:19:00.000+08:00**, `cq5` executes a query within the time ran
 +-----------------------------+-------------------------------+-----------+
 ````
 
-## 连续查询的管理
+### 连续查询的管理
 
-### 查询系统已有的连续查询
+#### 查询系统已有的连续查询
 
 展示集群中所有的已注册的连续查询
 
@@ -490,7 +490,7 @@ SHOW (CONTINUOUS QUERIES | CQS)
 
 `SHOW (CONTINUOUS QUERIES | CQS)`会将结果集按照`cq_id`排序。
 
-#### 例子
+##### 例子
 
 ```sql
 SHOW CONTINUOUS QUERIES;
@@ -503,7 +503,7 @@ SHOW CONTINUOUS QUERIES;
 | s1_count_cq  | CREATE CQ s1_count_cq<br/>BEGIN<br/>SELECT count(s1)<br/>INTO root.sg_count.d.count_s1<br/>FROM root.sg.d<br/>GROUP BY(30m)<br/>END   | active |
 
 
-### 删除已有的连续查询
+#### 删除已有的连续查询
 
 删除指定的名为cq_id的连续查询：
 
@@ -513,7 +513,7 @@ DROP (CONTINUOUS QUERY | CQ) <cq_id>
 
 DROP CQ并不会返回任何结果集。
 
-#### 例子
+##### 例子
 
 删除名为s1_count_cq的连续查询：
 
@@ -521,28 +521,28 @@ DROP CQ并不会返回任何结果集。
 DROP CONTINUOUS QUERY s1_count_cq;
 ```
 
-### 修改已有的连续查询
+#### 修改已有的连续查询
 
 目前连续查询一旦被创建就不能再被修改。如果想要修改某个连续查询，只能先用`DROP`命令删除它，然后再用`CREATE`命令重新创建。
 
 
-## 连续查询的使用场景
+### 连续查询的使用场景
 
-### 对数据进行降采样并对降采样后的数据使用不同的保留策略
+#### 对数据进行降采样并对降采样后的数据使用不同的保留策略
 
 可以使用连续查询，定期将高频率采样的原始数据（如每秒1000个点），降采样（如每秒仅保留一个点）后保存到另一个 database 的同名序列中。高精度的原始数据所在 database 的`TTL`可能设置的比较短，比如一天，而低精度的降采样后的数据所在的 database `TTL`可以设置的比较长，比如一个月，从而达到快速释放磁盘空间的目的。
 
-### 预计算代价昂贵的查询
+#### 预计算代价昂贵的查询
 
 我们可以通过连续查询对一些重复的查询进行预计算，并将查询结果保存在某些目标序列中，这样真实查询并不需要真的再次去做计算，而是直接查询目标序列的结果，从而缩短了查询的时间。
 
 > 预计算查询结果尤其对一些可视化工具渲染时序图和工作台时有很大的加速作用。
 
-### 作为子查询的替代品
+#### 作为子查询的替代品
 
 IoTDB现在不支持子查询，但是我们可以通过创建连续查询得到相似的功能。我们可以将子查询注册为一个连续查询，并将子查询的结果物化到目标序列中，外层查询再直接查询哪个目标序列。
 
-#### 例子
+##### 例子
 
 IoTDB并不会接收如下的嵌套子查询。这个查询会计算s1序列每隔30分钟的非空值数量的平均值：
 
@@ -577,7 +577,7 @@ SELECT avg(count_s1) from root.sg_count.d;
 ```
 
 
-## 连续查询相关的配置参数
+### 连续查询相关的配置参数
 | 参数名 | 描述                   | 类型 | 默认值 |
 | :---------------------------------- |----------------------|----------|---------------|
 | `continuous_query_submit_thread` | 用于周期性提交连续查询执行任务的线程数  | int32    | 2             |

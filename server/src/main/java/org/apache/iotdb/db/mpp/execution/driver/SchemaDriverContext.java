@@ -27,9 +27,8 @@ public class SchemaDriverContext extends DriverContext {
   private final ISchemaRegion schemaRegion;
 
   public SchemaDriverContext(
-      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
-    // TODO whether schema driver need to be split to pipeline, default 0 now
-    super(fragmentInstanceContext, 0);
+      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion, int pipelineId) {
+    super(fragmentInstanceContext, pipelineId);
     this.schemaRegion = schemaRegion;
   }
 

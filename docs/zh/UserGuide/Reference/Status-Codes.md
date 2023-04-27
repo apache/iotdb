@@ -19,7 +19,7 @@
 
 -->
 
-# 状态码
+## 状态码
 
 IoTDB 引入了**状态码**这一概念。例如，因为 IoTDB 需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
 
@@ -109,8 +109,8 @@ try {
 | 711  | TSBLOCK_SERIALIZE_ERROR           | TsBlock 序列化错误             |
 | 712  | INTERNAL_REQUEST_TIME_OUT         | MPP 操作超时                  |
 | 713  | INTERNAL_REQUEST_RETRY_ERROR      | 内部操作重试失败                  |
-| 714    | NO_SUCH_QUERY                     | 查询不存在                               |
-| 715    | QUERY_WAS_KILLED                  | 查询执行时被终止                          |
+| 714  | NO_SUCH_QUERY                     | 查询不存在                     |
+| 715  | QUERY_WAS_KILLED                  | 查询执行时被终止                  |
 | 800  | UNINITIALIZED_AUTH_ERROR          | 授权模块未初始化                  |
 | 801  | WRONG_LOGIN_PASSWORD              | 用户名或密码错误                  |
 | 802  | NOT_LOGIN                         | 没有登录                      |
@@ -134,6 +134,7 @@ try {
 | 904  | CONSENSUS_NOT_INITIALIZED         | 共识层未初始化，不能提供服务            |
 | 905  | REGION_LEADER_CHANGE_ERROR        | Region leader 迁移失败        |
 | 906  | NO_AVAILABLE_REGION_GROUP         | 无法找到可用的 Region 副本组        |
+| 907  | LACK_DATA_PARTITION_ALLOCATION    | 调用创建数据分区方法的返回结果里缺少信息      |
 | 1000 | DATANODE_ALREADY_REGISTERED       | DataNode 在集群中已经注册         |
 | 1001 | NO_ENOUGH_DATANODE                | DataNode 数量不足，无法移除节点或创建副本 |
 | 1002 | ADD_CONFIGNODE_ERROR              | 新增 ConfigNode 失败          |

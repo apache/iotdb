@@ -34,12 +34,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +64,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   // Record all the FragmentInstances belonged to same PlanFragment
   Map<PlanFragmentId, FragmentInstance> instanceMap;
   // Record which PlanFragment the PlanNode belongs
-  Map<PlanNodeId, PlanFragmentId> planNodeMap;
+  Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
   List<FragmentInstance> fragmentInstanceList;
 
   public SimpleFragmentParallelPlanner(
@@ -93,13 +93,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
-    // If one PlanFragment will produce several FragmentInstance, the instanceIdx will be increased
-    // one by one
-    PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getPlanNodeTree());
     Filter timeFilter = analysis.getGlobalTimeFilter();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            new PlanFragment(fragment.getId(), rootCopy),
+            fragment,
             fragment.getId().genFragmentInstanceId(),
             timeFilter,
             queryContext.getQueryType(),
@@ -201,34 +198,39 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void calculateNodeTopologyBetweenInstance() {
     for (FragmentInstance instance : fragmentInstanceList) {
       PlanNode rootNode = instance.getFragment().getPlanNodeTree();
-      if (rootNode instanceof FragmentSinkNode) {
-        // Set target Endpoint for FragmentSinkNode
-        FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;
-        PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
-        FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
-        sinkNode.setDownStream(
-            downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint(),
-            downStreamInstance.getId(),
-            downStreamNodeId);
+      if (rootNode instanceof MultiChildrenSinkNode) {
+        MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) rootNode;
+        sinkNode
+            .getDownStreamChannelLocationList()
+            .forEach(
+                downStreamChannelLocation -> {
+                  // Set target Endpoint for FragmentSinkNode
+                  PlanNodeId downStreamNodeId =
+                      new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
+                  FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
+                  downStreamChannelLocation.setRemoteEndpoint(
+                      downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
+                  downStreamChannelLocation.setRemoteFragmentInstanceId(
+                      downStreamInstance.getId().toThrift());
 
-        // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
-        PlanNode downStreamExchangeNode =
-            downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
-        ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(
-                instance.getHostDataNode().getMPPDataExchangeEndPoint(),
-                instance.getId(),
-                sinkNode.getPlanNodeId());
+                  // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
+                  PlanNode downStreamExchangeNode = planNodeMap.get(downStreamNodeId).right;
+                  ((ExchangeNode) downStreamExchangeNode)
+                      .setUpstream(
+                          instance.getHostDataNode().getMPPDataExchangeEndPoint(),
+                          instance.getId(),
+                          sinkNode.getPlanNodeId());
+                });
       }
     }
   }
 
   private FragmentInstance findDownStreamInstance(PlanNodeId exchangeNodeId) {
-    return instanceMap.get(planNodeMap.get(exchangeNodeId));
+    return instanceMap.get(planNodeMap.get(exchangeNodeId).left);
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
-    planNodeMap.put(root.getPlanNodeId(), planFragmentId);
+    planNodeMap.put(root.getPlanNodeId(), new Pair<>(planFragmentId, root));
     for (PlanNode child : root.getChildren()) {
       recordPlanNodeRelation(child, planFragmentId);
     }

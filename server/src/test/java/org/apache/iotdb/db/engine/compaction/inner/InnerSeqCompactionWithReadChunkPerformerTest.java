@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -227,7 +227,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
               }
               ICompactionPerformer performer =
                   new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource);
-              performer.setSummary(new CompactionTaskSummary());
+              performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
@@ -455,7 +455,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             }
             ICompactionPerformer performer =
                 new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
-            performer.setSummary(new CompactionTaskSummary());
+            performer.setSummary(new FastCompactionTaskSummary());
             performer.perform();
             CompactionUtils.moveTargetFile(
                 Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
@@ -733,7 +733,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
               }
               ICompactionPerformer performer =
                   new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
-              performer.setSummary(new CompactionTaskSummary());
+              performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);

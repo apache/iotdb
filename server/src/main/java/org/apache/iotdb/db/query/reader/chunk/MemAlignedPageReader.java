@@ -31,16 +31,22 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
 public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
+
   private Filter valueFilter;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
+
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
@@ -85,9 +91,38 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     return batchData.flip();
   }
 
+  private boolean pageSatisfy() {
+    if (valueFilter != null) {
+      // TODO accept valueStatisticsList to filter
+      return valueFilter.satisfy(getStatistics());
+    } else {
+      // For aligned series, When we only query some measurements under an aligned device, if the
+      // values of these queried measurements at a timestamp are all null, the timestamp will not be
+      // selected.
+      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+      // this check here.
+      long rowCount = getTimeStatistics().getCount();
+      for (Statistics statistics : getValueStatisticsList()) {
+        if (statistics == null || statistics.hasNullValue(rowCount)) {
+          return true;
+        }
+      }
+      // When the number of points in all value pages is the same as that in the time page, it means
+      // that there is no null value, and all timestamps will be selected.
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
+    if (!pageSatisfy()) {
+      return builder.build();
+    }
 
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
@@ -109,10 +144,23 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     }
 
     // build time column
+    int readEndIndex = tsBlock.getPositionCount();
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      if (satisfyInfo[row] && hasValue[row]) {
+      if (!satisfyInfo[row] || !hasValue[row]) {
+        continue;
+      }
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        satisfyInfo[row] = false;
+        continue;
+      }
+      if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
         builder.declarePosition();
+        paginationController.consumeLimit();
+      } else {
+        readEndIndex = row;
+        break;
       }
     }
 
@@ -120,7 +168,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       Column valueColumn = tsBlock.getColumn(column);
       ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
-      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      for (int row = 0; row < readEndIndex; row++) {
         if (satisfyInfo[row] && hasValue[row]) {
           if (!valueColumn.isNull(row)) {
             valueBuilder.write(valueColumn, row);
@@ -149,6 +197,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     return chunkMetadata.getTimeStatistics();
   }
 
+  private List<Statistics> getValueStatisticsList() {
+    return chunkMetadata.getValueStatisticsList();
+  }
+
   @Override
   public void setFilter(Filter filter) {
     if (valueFilter == null) {
@@ -156,6 +208,11 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     } else {
       valueFilter = new AndFilter(this.valueFilter, filter);
     }
+  }
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
   }
 
   @Override

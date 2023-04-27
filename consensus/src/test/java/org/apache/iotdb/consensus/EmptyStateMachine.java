@@ -39,6 +39,11 @@ public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi 
   }
 
   @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    return request;
+  }
+
+  @Override
   public DataSet read(IConsensusRequest IConsensusRequest) {
     return null;
   }

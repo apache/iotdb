@@ -88,7 +88,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     EnvironmentUtils.cleanAllDir();
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
 
-    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.BALANCE);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
@@ -101,6 +101,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.FAST);
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {

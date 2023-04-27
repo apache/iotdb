@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.List;
 
@@ -52,6 +54,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   // points out of current window.
   private boolean needSkip = false;
 
+  // child.hasNext() may return true even there is no more data, the operator may exit without
+  // updating the cached data in aggregator.
+  // We need hasCachedDataInAggregator to prevent operator exit when there is cached data in
+  // aggregators.
+  private boolean hasCachedDataInAggregator = false;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -61,21 +69,23 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       long maxReturnSize,
       WindowParameter windowParameter) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
-    this.windowManager = genWindowManager(windowParameter, timeRangeIterator);
+    this.windowManager = genWindowManager(windowParameter, timeRangeIterator, ascending);
     this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 
-  private boolean hasMoreData() {
-    return !(inputTsBlock == null || inputTsBlock.isEmpty()) || child.hasNextWithTimer();
+  private boolean hasMoreData() throws Exception {
+    return !(inputTsBlock == null || inputTsBlock.isEmpty())
+        || child.hasNextWithTimer()
+        || hasCachedDataInAggregator;
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return windowManager.hasNext(hasMoreData());
   }
 
   @Override
-  protected boolean calculateNextAggregationResult() {
+  protected boolean calculateNextAggregationResult() throws Exception {
 
     // if needSkip is true, just get the tsBlock directly.
     while (needSkip || !calculateFromRawData()) {
@@ -94,10 +104,14 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       } else {
         // If there are no points belong to last time window, the last time window will not
         // initialize window and aggregators. Specially for time window.
-        if (windowManager.notInitedLastTimeWindow()) {
+        if (windowManager.notInitializedLastTimeWindow()) {
           initWindowAndAggregators();
         }
-        break;
+        // If the window is not initialized, it just returns to avoid invoking
+        // updateResultTsBlock()
+        // but if it's skipping the last window, just break and keep skipping.
+        if (needSkip || windowManager.isCurWindowInit()) break;
+        return false;
       }
     }
 
@@ -118,12 +132,13 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     updateResultTsBlock();
+    // After updating, the data in aggregators is consumed.
+    hasCachedDataInAggregator = false;
 
     return true;
   }
 
   private boolean calculateFromRawData() {
-
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
       return false;
@@ -136,14 +151,49 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
     if (windowManager.satisfiedCurWindow(inputTsBlock)) {
 
-      int lastReadRowIndex = 0;
+      // Get the indexes in tsBlock which needs to be processed by aggregator, and the last row
+      // needed to be processed.
+      int tsBlockSize = inputTsBlock.getPositionCount();
+      IWindow curWindow = windowManager.getCurWindow();
+
+      Column[] controlAndTimeColumn = new Column[2];
+      controlAndTimeColumn[0] = curWindow.getControlColumn(inputTsBlock);
+      controlAndTimeColumn[1] = inputTsBlock.getTimeColumn();
+
+      BitMap needProcess = new BitMap(tsBlockSize);
+      int lastIndexToProcess = -1;
+      boolean hasSkip = false;
+
+      for (int i = 0; i < tsBlockSize; i++) {
+        if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
+          lastIndexToProcess = i;
+          hasSkip = true;
+          continue;
+        }
+        if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
+          break;
+        }
+        needProcess.mark(i);
+        curWindow.mergeOnePoint(controlAndTimeColumn, i);
+        lastIndexToProcess = i;
+      }
+
+      // if no row needs to skip, just send a null parameter.
+      if (!hasSkip) needProcess = null;
+
       for (Aggregator aggregator : aggregators) {
         // Current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        aggregator.processTsBlock(inputTsBlock, needProcess, lastIndexToProcess);
+      }
+      int lastReadRowIndex = lastIndexToProcess + 1;
+      // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
+      // aggregators.
+      if (lastReadRowIndex != 0) {
+        hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
@@ -182,10 +232,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private void initWindowAndAggregators() {
-    windowManager.initCurWindow(inputTsBlock);
-    IWindow curWindow = windowManager.getCurWindow();
+    windowManager.initCurWindow();
     for (Aggregator aggregator : aggregators) {
-      aggregator.updateWindow(curWindow);
+      aggregator.reset();
     }
   }
 }

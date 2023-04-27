@@ -22,9 +22,12 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -38,7 +41,18 @@ public class OpenIdAuthorizerTest {
 
   private static final String OPEN_ID_PUBLIC_JWK =
       "{\"kty\":\"RSA\",\"x5t#S256\":\"TZFbbj6HsRU28HYvrcVnDs03KreV3DE24-Cxb9EPdS4\",\"e\":\"AQAB\",\"use\":\"sig\",\"x5t\":\"l_N2UlC_a624iu5eYFypnB1Wr20\",\"kid\":\"q1-Wm0ozQ5O0mQH8-SJap2ZcN4MmucWwnQWKYxZJ4ow\",\"x5c\":[\"MIICmTCCAYECBgFyRdXW2DANBgkqhkiG9w0BAQsFADAQMQ4wDAYDVQQDDAVJb1REQjAeFw0yMDA1MjQwODM3MjJaFw0zMDA1MjQwODM5MDJaMBAxDjAMBgNVBAMMBUlvVERCMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAozDCZTVc9946VvhZ6E\\/OP8Yx6tJe0i9GR2Q9jR9S3jQoo0haT\\/P1b\\/zvQK52qA1xj6tBVg64xl3+LUxtCvh3HfAM5Q3PeSa0e2MkZaKCt335lKnKCSuaQGYoHULmg\\/FDOgCA0wJYOonGGJkgWmkzSAzdnHmBATosTl0XkBXHTdFOq5HaKw+bfghYp5097Gkl\\/Dp4sixVjIWLTh5l9diy4D\\/XKxadGumPCmTOS5E7y92jiHE64XFe1Q7v1qD+qKJKFvamAMIFPGBKegIajt42IcOIcIaJZnM1lBZApq1a\\/E6oL24QnP\\/j2e9coseDtGNywaADQdO8PaJadH\\/BV4aPCwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQBX4rsWPIAwgSK6BEZmtEkh\\/FMfZtkvCFANpwkCX5Pph8yuk\\/8xrvx30yb4fIgqsxxQk6H+Q1qptm1cXs0tNu1yft+t+B2VuVjrWtkCkV0hAy6eZcdW411Pt523pHoOTxg6ehQd5DsvCIlsvWo83ePTKME+092vfs3irfQcRzc5xINdpopSvZlZuQ83tNEJY8gWvspQZr+uj8AP2x6w0BOrPJIiLlV+peNJuD3UgJKlSfOueKbKeM1kIVOG\\/a2AoEkBgqktnaIWzkXbk475\\/0xfGegsSZrxGR3\\/SA3jegS0sHFCY7\\/Ie\\/UvDgqMjd207oT64jxEGrd4mObxOx7aS0tp\"],\"alg\":\"RS256\",\"n\":\"ozDCZTVc9946VvhZ6E_OP8Yx6tJe0i9GR2Q9jR9S3jQoo0haT_P1b_zvQK52qA1xj6tBVg64xl3-LUxtCvh3HfAM5Q3PeSa0e2MkZaKCt335lKnKCSuaQGYoHULmg_FDOgCA0wJYOonGGJkgWmkzSAzdnHmBATosTl0XkBXHTdFOq5HaKw-bfghYp5097Gkl_Dp4sixVjIWLTh5l9diy4D_XKxadGumPCmTOS5E7y92jiHE64XFe1Q7v1qD-qKJKFvamAMIFPGBKegIajt42IcOIcIaJZnM1lBZApq1a_E6oL24QnP_j2e9coseDtGNywaADQdO8PaJadH_BV4aPCw\"}";
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static CommonConfig config;
+
+  @Before
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
+    config = CommonDescriptor.getInstance().getConfig();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
   @Test
   public void loginWithJWT() throws AuthException, ParseException {

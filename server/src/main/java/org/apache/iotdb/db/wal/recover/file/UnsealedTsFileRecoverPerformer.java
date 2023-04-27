@@ -233,7 +233,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
-                  recoveryMemTable, writer, databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+                  recoveryMemTable,
+                  writer,
+                  databaseName + FILE_NAME_SEPARATOR + dataRegionId,
+                  dataRegionId);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());

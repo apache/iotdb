@@ -516,7 +516,6 @@ public class CompactionCheckerUtils {
       IDataBlockReader reader =
           new SeriesDataBlockReader(
               path,
-              path.getSeriesType(),
               EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
               sequenceResources,
               unsequenceResources,

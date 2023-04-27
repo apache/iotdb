@@ -19,13 +19,13 @@
 
 -->
 
-# 导入导出 CSV
+## 导入导出 CSV
 
 CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoTDB 导出到 CSV 文件。
 
-## 使用 export-csv.sh
+### 使用 export-csv.sh
 
-### 运行方法
+#### 运行方法
 
 ```shell
 # Unix/OS X
@@ -58,7 +58,7 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 
 除此之外，如果你没有使用`-s`和`-q`参数，在导出脚本被启动之后你需要按照程序提示输入查询语句，不同的查询结果会被保存到不同的CSV文件中。
 
-### 运行示例
+#### 运行示例
 
 ```shell
 # Unix/OS X
@@ -92,7 +92,7 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10 -t 10000
 ```
 
-### SQL 文件示例
+#### SQL 文件示例
 
 ```sql
 select * from root.**;
@@ -122,15 +122,15 @@ Time,Device,hardware(TEXT),status(BOOLEAN)
 
 布尔类型的数据用`true`或者`false`来表示，此处没有用双引号括起来。文本数据需要使用双引号括起来。
 
-### 注意
+#### 注意
 
 注意，如果导出字段存在如下特殊字符:
 
 1. `,`: 导出程序会在`,`字符前加`\`来进行转义。
 
-## 使用 import-csv.sh
+### 使用 import-csv.sh
 
-### 创建元数据 (可选)
+#### 创建元数据 (可选)
 
 ```sql
 CREATE DATABASE root.fit.d1;
@@ -145,7 +145,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 
 IoTDB 具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用 CSV 导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
 
-### 待导入 CSV 文件示例
+#### 待导入 CSV 文件示例
 
 通过时间对齐，并且header中不包含数据类型的数据。
 
@@ -184,7 +184,7 @@ Time,Device,str(TEXT),int(INT32)
 1970-01-01T08:00:00.002+08:00,root.test.t1,hello world,123
 ```
 
-### 运行方法
+#### 运行方法
 
 ```shell
 # Unix/OS X
@@ -227,7 +227,7 @@ Time,Device,str(TEXT),int(INT32)
   - 用于指定每个导入失败文件写入数据的行数，默认值为10000。
   - 例如：`-linesPerFailedFile 1`
 
-### 运行示例
+#### 运行示例
 
 ```sh
 # Unix/OS X
@@ -252,7 +252,7 @@ Time,Device,str(TEXT),int(INT32)
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed -tp ns -typeInfer boolean=text,float=double -linesPerFailedFile 10
 ```
 
-### 注意
+#### 注意
 
 注意，在导入数据前，需要特殊处理下列的字符：
 
