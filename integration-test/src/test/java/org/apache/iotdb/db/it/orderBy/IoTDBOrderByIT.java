@@ -249,6 +249,20 @@ public class IoTDBOrderByIT {
   }
 
   @Test
+  public void orderByTest17() {
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str desc, str asc";
+    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
+    testNormalOrderBy(sql, Arrays.reverse(ans));
+  }
+
+  @Test
+  public void orderByTest18() {
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str, str";
+    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
+    testNormalOrderBy(sql, ans);
+  }
+
+  @Test
   public void orderByTest15() {
     String sql = "select num+bigNum,floatNum from root.sg.d order by str";
     int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
@@ -755,7 +769,7 @@ public class IoTDBOrderByIT {
     testNormalOrderByAlignByDevice(sql, Arrays.reverse(ans));
   }
 
-  private void testNormalOrderByMixAlignBy(String sql, int[] ans, boolean deviceAsc) {
+  private void testNormalOrderByMixAlignBy(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -764,7 +778,7 @@ public class IoTDBOrderByIT {
             metaData, new String[] {"Time", "Device", "num", "bigNum", "floatNum", "str", "bool"});
         int i = 0;
         int total = 0;
-        String device = deviceAsc ? "root.sg.d" : "root.sg.d2";
+        String device = "root.sg.d";
         while (resultSet.next()) {
 
           String actualTime = resultSet.getString(1);
@@ -784,10 +798,9 @@ public class IoTDBOrderByIT {
           assertEquals(res[ans[i]][5], actualBool);
 
           if (device.equals("root.sg.d2")) {
-            if (deviceAsc) i++;
+            i++;
             device = "root.sg.d";
           } else {
-            if (!deviceAsc) i++;
             device = "root.sg.d2";
           }
 
@@ -802,7 +815,7 @@ public class IoTDBOrderByIT {
     }
   }
 
-  private void testDeviceViewOrderByMixAlignBy(String sql, int[] ans, boolean deviceAsc) {
+  private void testDeviceViewOrderByMixAlignBy(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -811,7 +824,7 @@ public class IoTDBOrderByIT {
             metaData, new String[] {"Time", "Device", "num", "bigNum", "floatNum", "str", "bool"});
         int i = 0;
         int total = 0;
-        String device = deviceAsc ? "root.sg.d" : "root.sg.d2";
+        String device = "root.sg.d2";
         while (resultSet.next()) {
 
           String actualTime = resultSet.getString(1);
@@ -918,7 +931,7 @@ public class IoTDBOrderByIT {
     String sql =
         "select num,bigNum,floatNum,str,bool from root.** order by bigNum desc, time desc, device asc align by device";
     int[] ans = {14, 6, 0, 12, 2, 8, 9, 7, 4, 5, 1, 3, 10, 11, 13};
-    testNormalOrderByMixAlignBy(sql, ans, true);
+    testNormalOrderByMixAlignBy(sql, ans);
   }
 
   @Test
@@ -926,7 +939,7 @@ public class IoTDBOrderByIT {
     int[] ans = {14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
     String sql =
         "select num,bigNum,floatNum,str,bool from root.** order by time desc, bigNum desc, device asc align by device";
-    testNormalOrderByMixAlignBy(sql, ans, true);
+    testNormalOrderByMixAlignBy(sql, ans);
   }
 
   @Test
@@ -934,7 +947,7 @@ public class IoTDBOrderByIT {
     int[] ans = {6, 14, 0, 12, 2, 8, 9, 7, 4, 5, 1, 3, 10, 11, 13};
     String sql =
         "select num,bigNum,floatNum,str,bool from root.** order by device desc, bigNum desc, time asc align by device";
-    testDeviceViewOrderByMixAlignBy(sql, ans, false);
+    testDeviceViewOrderByMixAlignBy(sql, ans);
   }
 
   @Test
@@ -942,7 +955,7 @@ public class IoTDBOrderByIT {
     String sql =
         "select num,bigNum,floatNum,str,bool from root.** order by device desc, time asc, bigNum desc align by device";
     int[] ans = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-    testDeviceViewOrderByMixAlignBy(sql, ans, false);
+    testDeviceViewOrderByMixAlignBy(sql, ans);
   }
 
   @Test

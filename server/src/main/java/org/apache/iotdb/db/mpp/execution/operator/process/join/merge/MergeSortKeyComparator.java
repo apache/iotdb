@@ -20,35 +20,21 @@
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.Serializable;
 import java.util.Comparator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MergeSortKeyComparator implements Comparator<MergeSortKey>, Serializable {
 
   private final boolean nullFirst;
   private final int index;
   private final Comparator<MergeSortKey> originalComparator;
-  private static final Map<
-          Pair<Comparator<MergeSortKey>, Pair<Boolean, Integer>>, MergeSortKeyComparator>
-      comparatorCache = new ConcurrentHashMap<>();
 
   public MergeSortKeyComparator(
       int index, boolean nullFirst, Comparator<MergeSortKey> originalComparator) {
     this.nullFirst = nullFirst;
     this.index = index;
     this.originalComparator = originalComparator;
-  }
-
-  public static MergeSortKeyComparator getInstance(
-      int index, boolean nullFirst, Comparator<MergeSortKey> originalComparator) {
-    return comparatorCache.computeIfAbsent(
-        new Pair<>(originalComparator, new Pair<>(nullFirst, index)),
-        comparator -> new MergeSortKeyComparator(index, nullFirst, originalComparator));
   }
 
   @Override
@@ -63,16 +49,5 @@ public class MergeSortKeyComparator implements Comparator<MergeSortKey>, Seriali
     } else {
       return nullFirst ? 1 : -1;
     }
-  }
-
-  @Override
-  public Comparator<MergeSortKey> thenComparing(Comparator<? super MergeSortKey> other) {
-    Objects.requireNonNull(other);
-    return new MergeSortKeyComparator(index, nullFirst, originalComparator.thenComparing(other));
-  }
-
-  @Override
-  public Comparator<MergeSortKey> reversed() {
-    return new MergeSortKeyComparator(index, !nullFirst, originalComparator.reversed());
   }
 }

@@ -1207,11 +1207,8 @@ public class LogicalPlanBuilder {
       return this;
     }
 
-    List<SortItem> sortItems = queryStatement.getSortItemList();
-    queryStatement.updateSortItems(orderByExpressions);
     updateTypeProvider(orderByExpressions);
-
-    OrderByParameter orderByParameter = new OrderByParameter(sortItems);
+    OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }

@@ -33,6 +33,15 @@ import java.util.List;
 
 public class MergeSortComparator {
 
+  private static final Comparator<MergeSortKey> TIME_ASC_COMPARATOR =
+      Comparator.comparingLong(
+          (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
+
+  private static final Comparator<MergeSortKey> TIME_DESC_COMPARATOR =
+      Comparator.comparingLong(
+              (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex))
+          .reversed();
+
   /** @param indexList -1 for time column */
   public static Comparator<MergeSortKey> getComparator(
       List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
@@ -49,8 +58,8 @@ public class MergeSortComparator {
     return new ComparatorChain<>(list);
   }
 
-  private static Comparator<MergeSortKey> genSingleComparator(
-      boolean asc, int index, TSDataType dataType, boolean nullFirst) {
+  public static Comparator<MergeSortKey> getComparator(
+      TSDataType dataType, int index, boolean asc) {
     Comparator<MergeSortKey> comparator;
     switch (dataType) {
       case INT32:
@@ -60,16 +69,10 @@ public class MergeSortComparator {
                     sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
         break;
       case INT64:
-        if (index == -1) {
-          comparator =
-              Comparator.comparingLong(
-                  (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
-        } else {
-          comparator =
-              Comparator.comparingLong(
-                  (MergeSortKey sortKey) ->
-                      sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
-        }
+        comparator =
+            Comparator.comparingLong(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
         break;
       case FLOAT:
         comparator =
@@ -102,8 +105,15 @@ public class MergeSortComparator {
       comparator = comparator.reversed();
     }
 
-    return index != -1
-        ? MergeSortKeyComparator.getInstance(index, nullFirst, comparator)
-        : comparator;
+    return comparator;
+  }
+
+  private static Comparator<MergeSortKey> genSingleComparator(
+      boolean asc, int index, TSDataType dataType, boolean nullFirst) {
+
+    if (index == -1) {
+      return asc ? TIME_ASC_COMPARATOR : TIME_DESC_COMPARATOR;
+    }
+    return new MergeSortKeyComparator(index, nullFirst, getComparator(dataType, index, asc));
   }
 }

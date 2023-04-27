@@ -1385,17 +1385,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext, limitSet);
 
+      String sortKey = sortItem.getSortKey();
+      if (sortKeySet.contains(sortKey)) {
+        continue;
+      } else {
+        sortKeySet.add(sortKey);
+      }
+
       if (sortItem.isExpression()) {
         orderByComponent.addExpressionSortItem(sortItem);
       } else {
         orderByComponent.addSortItem(sortItem);
-      }
-
-      String sortKey = sortItem.getSortKey();
-      if (sortKeySet.contains(sortKey)) {
-        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
-      } else {
-        sortKeySet.add(sortKey);
       }
     }
     return orderByComponent;
