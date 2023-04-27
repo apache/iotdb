@@ -533,12 +533,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
-      if (newRoot instanceof LastQueryMergeNode) {
+      if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
         OrderByParameter orderByParameter =
-            node.getMergeOrderParameter().isEmpty()
-                ? new OrderByParameter(
-                    Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)))
-                : node.getMergeOrderParameter();
+            new OrderByParameter(
+                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
         addSortForEachLastQueryNode(root, orderByParameter);
       }
       root.getChildren().forEach(newRoot::addChild);
