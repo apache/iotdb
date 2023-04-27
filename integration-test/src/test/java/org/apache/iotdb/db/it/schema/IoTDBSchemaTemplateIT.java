@@ -656,4 +656,65 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("CREATE TIMESERIES root.sg1.d2.s INT32");
     }
   }
+
+  @Test
+  public void testShowTemplateSeriesWithFuzzyQuery() throws Exception {
+    // test create schema template repeatedly
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
+      // activate schema template
+      statement.execute("create timeseries using schema template on root.sg1.d1");
+      statement.execute("create timeseries using schema template on root.sg2.d2");
+      statement.execute("create timeseries using schema template on root.sg3.d3");
+
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg2.d2.s1,INT64,RLE,SNAPPY",
+                  "root.sg2.d2.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg3.d3.s1,INT64,RLE,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+      expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
 }

@@ -380,8 +380,9 @@ public class ClusterTemplateManager implements ITemplateManager {
     // and the following logic is equivalent with the above expression
 
     String measurement = pathPattern.getTailNode();
-    if (measurement.contains("*")) {
-      return pathPattern.overlapWith(pathSetTemplate.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+    if (measurement.contains(ONE_LEVEL_PATH_WILDCARD)) {
+      // if measurement is wildcard, e.g. root.sg.d1.**, root.sg.d1.*, root.sg.d1.s*
+      return pathPattern.overlapWithFullPathPrefix(pathSetTemplate);
     }
 
     if (template.hasSchema(measurement)) {
