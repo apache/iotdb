@@ -51,7 +51,7 @@ public class BackupService implements IService {
   /** Record the files in incremental backup. */
   private HashMap<String, File> backupTsFileMap = new HashMap<>();
 
-  private HashMap<String, File> databaseTsFileMap = new HashMap<>();
+  private HashMap<String, TsFileResource> databaseTsFileResourceMap = new HashMap<>();
 
   private AtomicInteger backupByCopyCount = new AtomicInteger();
 
@@ -128,6 +128,40 @@ public class BackupService implements IService {
           "Output path for incremental backup should be a non-empty folder.");
     }
   }
+  
+  private int backupSystemFiles(String outputPath) {
+    String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    List<File> systemFiles = BackupUtils.getAllFilesInOneDir(systemDirPath);
+    for (File file : systemFiles) {
+      String systemFileTargetPath = BackupUtils.getSystemFileTargetPath(file, outputPath);
+      try {
+        if (!BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
+          String systemFileTmpPath = BackupUtils.getSystemFileTmpLinkPath(file);
+          BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
+          backupByCopyTaskList.add(new BackupByCopyTask(systemFileTmpPath, systemFileTargetPath));
+        }
+      } catch (IOException e) {
+        logger.error("Failed to create directory during backup: " + e.getMessage());
+      }
+    }
+    return systemFiles.size();
+  }
+  
+  private int backupConfigFiles(String outputPath) {
+    String configDirPath = BackupUtils.getConfDir();
+    List<File> configFiles = new ArrayList<>();
+    if (configDirPath != null) {
+      configFiles = BackupUtils.getAllFilesInOneDir(configDirPath);
+      for (File file : configFiles) {
+        String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
+        backupByCopyTaskList.add(
+                new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+      }
+    } else {
+      logger.warn("Can't find config directory during backup, skipping.");
+    }
+    return configFiles.size();
+  }
 
   /**
    * Backup given TsFiles, and will backup system files and config files.
@@ -143,7 +177,7 @@ public class BackupService implements IService {
     backupByCopyTaskList.clear();
     for (TsFileResource resource : resources) {
       try {
-        String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource, outputPath);
+        String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
         if (BackupUtils.createTargetDirAndTryCreateLink(
             new File(tsfileTargetPath), resource.getTsFile())) {
           BackupUtils.createTargetDirAndTryCreateLink(
@@ -155,7 +189,7 @@ public class BackupService implements IService {
                 new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
           }
         } else {
-          String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource);
+          String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
           BackupUtils.createTargetDirAndTryCreateLink(
               new File(tsfileTmpPath), resource.getTsFile());
           backupByCopyTaskList.add(new BackupByCopyTask(tsfileTmpPath, tsfileTargetPath));
@@ -183,38 +217,13 @@ public class BackupService implements IService {
       }
     }
 
-    String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    List<File> systemFiles = BackupUtils.getAllFilesInOneDir(systemDirPath);
-    for (File file : systemFiles) {
-      String systemFileTargetPath = BackupUtils.getSystemFileTargetPath(file, outputPath);
-      try {
-        if (!BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
-          String systemFileTmpPath = BackupUtils.getSystemFileTmpLinkPath(file);
-          BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
-          backupByCopyTaskList.add(new BackupByCopyTask(systemFileTmpPath, systemFileTargetPath));
-        }
-      } catch (IOException e) {
-        logger.error("Failed to create directory during backup: " + e.getMessage());
-      }
-    }
-
-    String configDirPath = BackupUtils.getConfDir();
-    List<File> configFiles = new ArrayList<>();
-    if (configDirPath != null) {
-      configFiles = BackupUtils.getAllFilesInOneDir(configDirPath);
-      for (File file : configFiles) {
-        String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
-        backupByCopyTaskList.add(
-            new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
-      }
-    } else {
-      logger.warn("Can't find config directory during backup, skipping.");
-    }
+    int systemFileCount = backupSystemFiles(outputPath);
+    int configFileCount = backupConfigFiles(outputPath);
 
     logger.info(
         String.format(
             "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
-            resources.size(), systemFiles.size(), configFiles.size()));
+            resources.size(), systemFileCount, configFileCount));
     logger.debug(
         String.format(
             "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
@@ -236,20 +245,101 @@ public class BackupService implements IService {
     }
     backupByCopyTaskList.clear();
     prepareBackupTsFileMap(outputPath);
-    prepareDatabaseTsFileMap(resources);
+    prepareDatabaseTsFileResourceMap(resources);
     for (String tsFileName : backupTsFileMap.keySet()) {
-      if (!databaseTsFileMap.containsKey(tsFileName)) {
-        File tsFile = backupTsFileMap.get(tsFileName);
-        tsFile.delete();
-        new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).delete();
-        new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).delete();
+      File tsFile = backupTsFileMap.get(tsFileName);
+      BackupUtils.deleteFileOrDirRecursively(new File(tsFile.getPath() + ModificationFile.FILE_SUFFIX));
+      if (!databaseTsFileResourceMap.containsKey(tsFileName)) {
+        BackupUtils.deleteFileOrDirRecursively(tsFile);
+        BackupUtils.deleteFileOrDirRecursively(new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       } else {
-        databaseTsFileMap.remove(tsFileName);
+        TsFileResource resource = databaseTsFileResourceMap.get(tsFileName);
+        if (resource.getModFile().exists()) {
+          try {
+            String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
+            if (!BackupUtils.createTargetDirAndTryCreateLink(
+                    new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
+                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX))) {
+              String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
+              BackupUtils.createTargetDirAndTryCreateLink(
+                      new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
+                      new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+              backupByCopyTaskList.add(
+                      new BackupByCopyTask(
+                              tsfileTmpPath + ModificationFile.FILE_SUFFIX,
+                              tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+            }
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+        databaseTsFileResourceMap.remove(tsFileName).readUnlock();
       }
       backupTsFileMap.remove(tsFileName);
     }
-    for (File tsFile : databaseTsFileMap.values()) {
-      // TODO: copy files
+    for (TsFileResource resource : databaseTsFileResourceMap.values()) {
+      try {
+        String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
+        if (BackupUtils.createTargetDirAndTryCreateLink(
+                new File(tsfileTargetPath), resource.getTsFile())) {
+          BackupUtils.createTargetDirAndTryCreateLink(
+                  new File(tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX),
+                  new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
+          if (resource.getModFile().exists()) {
+            BackupUtils.createTargetDirAndTryCreateLink(
+                    new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
+                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+          }
+        } else {
+          String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
+          BackupUtils.createTargetDirAndTryCreateLink(
+                  new File(tsfileTmpPath), resource.getTsFile());
+          backupByCopyTaskList.add(new BackupByCopyTask(tsfileTmpPath, tsfileTargetPath));
+          BackupUtils.createTargetDirAndTryCreateLink(
+                  new File(tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX),
+                  new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
+          backupByCopyTaskList.add(
+                  new BackupByCopyTask(
+                          tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX,
+                          tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
+          if (resource.getModFile().exists()) {
+            BackupUtils.createTargetDirAndTryCreateLink(
+                    new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
+                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+            backupByCopyTaskList.add(
+                    new BackupByCopyTask(
+                            tsfileTmpPath + ModificationFile.FILE_SUFFIX,
+                            tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+          }
+        }
+      } catch (IOException e) {
+        logger.error("Failed to create directory during backup: " + e.getMessage());
+      } finally {
+        resource.readUnlock();
+      }
+    }
+    
+    // TODO: delete system/conf dir
+    //BackupUtils.deleteFileOrDirRecursively();
+  
+    int systemFileCount = backupSystemFiles(outputPath);
+    int configFileCount = backupConfigFiles(outputPath);
+  
+    logger.info(
+            String.format(
+                    "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
+                    resources.size(), systemFileCount, configFileCount));
+    logger.debug(
+            String.format(
+                    "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
+  
+    if (backupByCopyTaskList.size() == 0) {
+      logger.info("Backup completed.");
+      return;
+    }
+    backupByCopyCount.set(backupByCopyTaskList.size());
+    for (BackupByCopyTask backupByCopyTask : backupByCopyTaskList) {
+      submitBackupByCopyTask(backupByCopyTask);
     }
   }
 
@@ -262,11 +352,10 @@ public class BackupService implements IService {
     }
   }
 
-  private void prepareDatabaseTsFileMap(List<TsFileResource> resources) {
-    databaseTsFileMap.clear();
+  private void prepareDatabaseTsFileResourceMap(List<TsFileResource> resources) {
+    databaseTsFileResourceMap.clear();
     for (TsFileResource resource : resources) {
-      File tsFile = resource.getTsFile();
-      databaseTsFileMap.put(tsFile.getName(), tsFile);
+      databaseTsFileResourceMap.put(resource.getTsFile().getName(), resource);
     }
   }
 

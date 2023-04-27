@@ -74,11 +74,10 @@ public class BackupUtils {
     return true;
   }
 
-  public static String getTsFileTargetPath(TsFileResource resource, String outputBaseDir)
+  public static String getTsFileTargetPath(File tsFile, String outputBaseDir)
       throws IOException {
     String tsFileDataDir =
-        resource
-            .getTsFile()
+            tsFile
             .getParentFile()
             .getParentFile()
             .getParentFile()
@@ -92,7 +91,7 @@ public class BackupUtils {
           + "data"
           + File.separator
           + "data"
-          + resource.getTsFile().getAbsolutePath().replace(tsFileDataDir, "");
+          + tsFile.getAbsolutePath().replace(tsFileDataDir, "");
     } else {
       for (int i = 0; i < dataDirs.length; ++i) {
         Path dataDirPath = Paths.get(dataDirs[i]);
@@ -102,12 +101,12 @@ public class BackupUtils {
               + File.separator
               + "data"
               + i
-              + resource.getTsFile().getAbsolutePath().replace(tsFileDataDir, "");
+              + tsFile.getAbsolutePath().replace(tsFileDataDir, "");
         }
       }
     }
     throw new IOException(
-        "TsFile " + resource.getTsFile().getAbsolutePath() + " does not match any data directory.");
+        "TsFile " + tsFile.getAbsolutePath() + " does not match any data directory.");
   }
 
   public static String getSystemFileTargetPath(File source, String outputBaseDir) {
@@ -132,11 +131,10 @@ public class BackupUtils {
     return FilePathUtils.regularizePath(outputBaseDir) + "conf" + File.separator + source.getName();
   }
 
-  public static String getTsFileTmpLinkPath(TsFileResource resource) {
-    String absolutePath = resource.getTsFile().getAbsolutePath();
+  public static String getTsFileTmpLinkPath(File tsFile) {
+    String absolutePath = tsFile.getAbsolutePath();
     String dataDir =
-        resource
-            .getTsFile()
+            tsFile
             .getParentFile()
             .getParentFile()
             .getParentFile()
