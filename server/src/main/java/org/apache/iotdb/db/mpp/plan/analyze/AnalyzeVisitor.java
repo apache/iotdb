@@ -1335,6 +1335,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
+    Map<String, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
     // build the device-view outputColumn for the sortNode above the deviceViewNode
     Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
     for (PartialPath device : deviceSet) {
@@ -1362,11 +1363,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceViewOrderByExpression.add(devicerViewExpression);
         orderByExpressionsForOneDevice.add(expressionForItem);
       }
+      deviceToSortItems.put(
+          device.getFullPath(), queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
       deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
     }
 
     analysis.setOrderByExpressions(deviceViewOrderByExpression);
     queryStatement.updateSortItems(deviceViewOrderByExpression);
+    analysis.setDeviceToSortItems(deviceToSortItems);
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
 

@@ -536,6 +536,7 @@ public class LogicalPlanBuilder {
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      Set<Expression> selectExpression,
       QueryStatement queryStatement) {
     List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
@@ -592,6 +593,20 @@ public class LogicalPlanBuilder {
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
+
+    if (queryStatement.needPushDownSort()) {
+      if (selectExpression.size() != deviceViewOutputExpressions.size()) {
+        this.root =
+            new TransformNode(
+                context.getQueryId().genPlanNodeId(),
+                root,
+                selectExpression.toArray(new Expression[0]),
+                queryStatement.isGroupByTime(),
+                queryStatement.getSelectComponent().getZoneId(),
+                queryStatement.getResultTimeOrder());
+      }
+    }
+
     return this;
   }
 
@@ -1195,6 +1210,18 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planOrderBy(
+      Set<Expression> orderByExpressions, List<SortItem> sortItemList) {
+
+    updateTypeProvider(orderByExpressions);
+    OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
+    if (orderByParameter.isEmpty()) {
+      return this;
+    }
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
     return this;
   }
 

@@ -361,6 +361,11 @@ public class QueryStatement extends Statement {
     return orderByComponent.getDeviceOrder();
   }
 
+  // push down only support raw data query currently
+  public boolean needPushDownSort() {
+    return !isAggregationQuery() && hasOrderByExpression() && isOrderByBasedOnDevice();
+  }
+
   public boolean isOrderByBasedOnDevice() {
     return orderByComponent != null && orderByComponent.isBasedOnDevice();
   }
@@ -395,6 +400,24 @@ public class QueryStatement extends Statement {
         expressionIndex++;
       }
     }
+  }
+
+  public List<SortItem> getUpdatedSortItems(Set<Expression> orderByExpressions) {
+    Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
+    List<SortItem> sortItems = getSortItemList();
+    List<SortItem> newSortItems = new ArrayList<>();
+    int expressionIndex = 0;
+    for (int i = 0; i < sortItems.size() && expressionIndex < sortItemExpressions.length; i++) {
+      SortItem sortItem = sortItems.get(i);
+      SortItem newSortItem =
+          new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
+      if (sortItem.isExpression()) {
+        newSortItem.setExpression(sortItemExpressions[expressionIndex]);
+        expressionIndex++;
+      }
+      newSortItems.add(newSortItem);
+    }
+    return newSortItems;
   }
 
   public boolean hasFill() {
