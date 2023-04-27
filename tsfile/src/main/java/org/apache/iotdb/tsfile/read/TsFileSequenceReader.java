@@ -929,7 +929,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           boolean needChunkMetadata)
           throws IOException {
     Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        new HashMap<>();
+        new LinkedHashMap<>();
     List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
     for (int i = 0; i < childrenEntryList.size(); i++) {
       long startOffset = childrenEntryList.get(i).getOffset();

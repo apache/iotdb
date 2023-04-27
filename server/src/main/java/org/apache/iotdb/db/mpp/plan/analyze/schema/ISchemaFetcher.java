@@ -92,6 +92,4 @@ public interface ISchemaFetcher {
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
-
-  void invalidAllCache();
 }

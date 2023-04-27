@@ -52,7 +52,7 @@ public class AlignedChunkReader implements IChunkReader {
   private final ByteBuffer timeChunkDataBuffer;
   // chunk data of all the sub sensors
   private final List<ByteBuffer> valueChunkDataBufferList = new ArrayList<>();
-  private final IUnCompressor unCompressor;
+  private final IUnCompressor timeUnCompressor;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -67,6 +67,27 @@ public class AlignedChunkReader implements IChunkReader {
   private final List<List<TimeRange>> valueDeleteIntervalList;
 
   /**
+   * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
+   * compaction.
+   */
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) throws IOException {
+    this.filter = null;
+    this.timeChunkDataBuffer = timeChunk.getData();
+    this.valueDeleteIntervalList = new ArrayList<>();
+    this.timeChunkHeader = timeChunk.getHeader();
+    this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.currentTimestamp = Long.MIN_VALUE;
+    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+    valueChunkList.forEach(
+        chunk -> {
+          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+          valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
+          valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
+        });
+  }
+
+  /**
    * constructor of ChunkReader.
    *
    * @param filter filter
@@ -77,7 +98,7 @@ public class AlignedChunkReader implements IChunkReader {
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     this.currentTimestamp = Long.MIN_VALUE;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
@@ -101,7 +122,7 @@ public class AlignedChunkReader implements IChunkReader {
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     this.currentTimestamp = currentTimestamp;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
@@ -260,8 +281,7 @@ public class AlignedChunkReader implements IChunkReader {
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, compressedTimePageData);
-
+        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
     // uncompress value page datas
     List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
     List<TSDataType> valueTypes = new ArrayList<>();
@@ -272,9 +292,12 @@ public class AlignedChunkReader implements IChunkReader {
         valueTypes.add(TSDataType.BOOLEAN);
         valueDecoders.add(null);
       } else {
-        uncompressedValuePageDatas.add(
-            uncompressPageData(valuePageHeaders.get(i), compressedValuePageDatas.get(i)));
         ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
+        uncompressedValuePageDatas.add(
+            uncompressPageData(
+                valuePageHeaders.get(i),
+                IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
+                compressedValuePageDatas.get(i)));
         TSDataType valueType = valueChunkHeader.getDataType();
         valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
         valueTypes.add(valueType);
@@ -297,7 +320,8 @@ public class AlignedChunkReader implements IChunkReader {
     return alignedPageReader.getAllSatisfiedData();
   }
 
-  private ByteBuffer uncompressPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
+  private ByteBuffer uncompressPageData(
+      PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
       throws IOException {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];

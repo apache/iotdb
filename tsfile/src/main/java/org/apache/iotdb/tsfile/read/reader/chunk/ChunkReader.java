@@ -100,6 +100,10 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
+  /**
+   * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
+   * compaction.
+   */
   public ChunkReader(Chunk chunk) {
     this.filter = null;
     this.chunkDataBuffer = chunk.getData();

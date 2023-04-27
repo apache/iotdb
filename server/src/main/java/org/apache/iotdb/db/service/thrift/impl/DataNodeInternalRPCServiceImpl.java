@@ -1625,7 +1625,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setMessage("disable datanode succeed");
     // TODO what need to clean?
     ClusterPartitionFetcher.getInstance().invalidAllCache();
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().cleanUp();
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+    }
     DataNodeDevicePathCache.getInstance().cleanUp();
     return status;
   }
