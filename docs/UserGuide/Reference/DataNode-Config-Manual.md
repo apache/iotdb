@@ -311,9 +311,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |   Default   | data/datanode/consensus                                                        |
 |  Effective  | After restarting system                                                        |
 
-* dn\_wal\_dir
+* dn\_wal\_dirs
 
-|    Name     | dn\_wal\_dir                                                             |
+|    Name     | dn\_wal\_dirs                                                            |
 |:-----------:|:-------------------------------------------------------------------------|
 | Description | Write Ahead Log storage path. It is recommended to use an absolute path. |
 |    Type     | String                                                                   |
