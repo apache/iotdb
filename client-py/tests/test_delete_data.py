@@ -114,7 +114,9 @@ def test_delete_date():
             print_message("insert aligned record of one device failed")
 
         # execute delete data
-        session.delete_data(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1)
+        session.delete_data(
+            ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1
+        )
 
         # execute raw data query sql statement
         session_data_set = session.execute_query_statement(
@@ -140,7 +142,9 @@ def test_delete_date():
         assert actual_count == expect_count
 
         # execute delete data
-        session.delete_data_in_range(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3)
+        session.delete_data_in_range(
+            ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3
+        )
 
         # execute raw data query sql statement
         session_data_set = session.execute_query_statement(
@@ -175,4 +179,3 @@ else:
     print("Some test failed, please have a check")
     print("failed count: ", failed_count)
     exit(1)
-

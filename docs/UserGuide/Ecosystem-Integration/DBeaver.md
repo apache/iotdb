@@ -45,11 +45,11 @@ DBeaver is a SQL client software application and a database administration tool.
 2. Start DBeaver
 3. Open Driver Manager
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.22%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/01.png?raw=true)
 
 4. Create a new driver type for IoTDB
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/02.png)
 
 5. Download [Sources](https://iotdb.apache.org/Download/)，unzip it and compile jdbc driver by the following command
 
@@ -58,15 +58,15 @@ DBeaver is a SQL client software application and a database administration tool.
    ```
 6. Find and add a lib named `apache-iotdb-jdbc-{version}-jar-with-dependencies.jar`, which should be under `jdbc/target/`, then select `Find Class`.
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202022-04-26%20at%205.57.32%20PM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/03.png)
 
 8. Edit the driver Settings
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.03.03%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/05.png)
 
 9. Open New DataBase Connection and select iotdb
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.05.44%20AM.png?raw=true) 
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/06.png) 
 
 10. Edit JDBC Connection Settings
 
@@ -75,12 +75,12 @@ DBeaver is a SQL client software application and a database administration tool.
    Username: root
    Password: root
    ```
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/07.png)
 
 11. Test Connection
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/08.png)
 
 12. Enjoy IoTDB with DBeaver
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/09.png)

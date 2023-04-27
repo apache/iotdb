@@ -38,7 +38,7 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 
 - 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
 - 二进制可运行程序：请从 [下载](https://iotdb.apache.org/Download/) 页面下载最新的安装包，解压后即完成安装。
-- 使用 Docker 镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
+- 使用 Docker 镜像：dockerfile 文件位于 [github](https://github.com/apache/iotdb/blob/master/docker/src/main)
 
 #### 源码编译
 

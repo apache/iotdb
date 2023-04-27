@@ -60,7 +60,26 @@ session.close()
 * 初始化 Session
 
 ```python
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session(
+    ip="127.0.0.1",
+    port="6667",
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8"
+)
+```
+
+* 初始化可连接多节点的 Session
+
+```python
+session = Session.init_from_node_urls(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8"
+)
 ```
 
 * 开启 Session，并决定是否开启 RPC 压缩

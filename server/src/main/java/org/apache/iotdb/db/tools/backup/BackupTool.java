@@ -36,13 +36,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 
 public class BackupTool {
   private static final Logger logger = LoggerFactory.getLogger(BackupTool.class);
   private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
   private static TTransport transport;
   private static TSIService.Client client;
-  private static String outputAbsolutePathStr;
+  private static String outputCanonicalPathStr;
+  private static boolean isFullBackup = true;
+
+  private static String FULL_BACKUP_PARAM = "-o";
+  private static String INCREMENTAL_BACKUP_PARAM = "-b";
 
   public static void main(String[] args) {
     Thread.currentThread().setName(ThreadName.BACKUP_CLIENT.getName());
@@ -61,7 +66,7 @@ public class BackupTool {
       client = new TSIService.Client(new TBinaryProtocol(transport));
     }
     try {
-      TSStatus status = client.executeBackup(new TSBackupReq(outputAbsolutePathStr));
+      TSStatus status = client.executeBackup(new TSBackupReq(outputCanonicalPathStr, isFullBackup));
       System.out.println(status.code);
     } catch (TException e) {
       e.printStackTrace();
@@ -70,28 +75,24 @@ public class BackupTool {
   }
 
   private static boolean checkArgs(String[] args) {
-    if (args.length == 0) {
-      logger.error("Too few arguments for backup.");
+    if (args.length != 2) {
+      logger.error("Invalid argument count for backup, should be 2 arguments.");
       return false;
     }
-    String outputPathStr = args[0];
-    File outputPathFile = new File(outputPathStr);
-    if (!outputPathFile.exists()) {
-      if (!outputPathFile.mkdirs()) {
-        logger.error("Can't create output directory for backup.");
-        return false;
-      }
-    } else if (outputPathFile.isFile()) {
-      logger.error("Backup output directory can't be a file.");
+    try {
+      outputCanonicalPathStr = new File(args[1]).getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Invalid backup path.");
       return false;
+    }
+    if (args[0].equals(FULL_BACKUP_PARAM)) {
+      isFullBackup = true;
+    } else if (args[0].equals(INCREMENTAL_BACKUP_PARAM)) {
+      isFullBackup = false;
     } else {
-      String[] fileList = outputPathFile.list();
-      if (fileList != null && fileList.length > 0) {
-        logger.error("Backup output directory should be empty.");
-        return false;
-      }
+      logger.error("Invalid parameter.");
+      return false;
     }
-    outputAbsolutePathStr = outputPathFile.getAbsolutePath();
     return true;
   }
 }

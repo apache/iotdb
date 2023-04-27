@@ -64,7 +64,7 @@ It requires including the packages containing the JDBC classes needed for databa
 
 **NOTE: For faster insertion, the insertTablet() in Session is recommended.**
 
-```Java
+```java
 import java.sql.*;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 

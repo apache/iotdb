@@ -457,6 +457,7 @@ struct TSConnectionInfoResp {
 
 struct TSBackupReq {
   1: required string outputPath
+  2: required bool isFullBackup
 }
 
 service TSIService {

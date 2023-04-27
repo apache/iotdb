@@ -1791,7 +1791,7 @@ public class TSServiceImpl implements TSIService.Iface {
               dataTypes,
               encodings,
               compressors,
-              req.measurementAlias);
+              null);
       TSStatus status = serviceProvider.checkAuthority(plan, session);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -2157,7 +2157,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus executeBackup(TSBackupReq req) {
-    BackupPlan plan = new BackupPlan(req.outputPath);
+    BackupPlan plan = new BackupPlan(req.outputPath, req.isFullBackup);
     return executeNonQueryPlan(plan);
   }
 

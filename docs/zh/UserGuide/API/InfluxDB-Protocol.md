@@ -39,9 +39,9 @@ InfluxDB influxDB = IoTDBInfluxDBFactory.connect(openurl, username, password);
 
 该适配器以 IoTDB Java Session 接口为底层基础，实现了 InfluxDB 的 Java 接口 `interface InfluxDB`，对用户提供了所有 InfluxDB 的接口方法，最终用户可以无感知地使用 InfluxDB 协议向 IoTDB 发起写入和读取请求。
 
-![architecture-design](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
+![architecture-design](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/architecture-design.png?raw=true)
 
-![class-diagram](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
+![class-diagram](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/class-diagram.png?raw=true)
 
 
 #### 2.2 元数据格式转换
@@ -55,7 +55,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 3. tags : 各种有索引的属性。
 4. fields : 各种记录值（没有索引的属性）。
 
-![influxdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
+![influxdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/influxdb-data.png?raw=true)
 
 ##### 2.2.2 IoTDB 元数据
 
@@ -63,7 +63,7 @@ InfluxDB 的元数据是 tag-field 模型，IoTDB 的元数据是树形模型。
 2. path(time series ID)：存储路径。
 3. measurement： 物理量。
 
-![iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
+![iotdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/iotdb-data.png?raw=true)
 
 ##### 2.2.3 两者映射关系
 
@@ -76,7 +76,7 @@ InfluxDB 元数据向 IoTDB 元数据的转换关系可以由下面的公示表�
 
 `root.{database}.{measurement}.{tag value 1}.{tag value 2}...{tag value N-1}.{tag value N}.{field key}`
 
-![influxdb-vs-iotdb-data](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
+![influxdb-vs-iotdb-data](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-InfluxDB/influxdb-vs-iotdb-data.png?raw=true)
 
 如上图所示，可以看出：
 

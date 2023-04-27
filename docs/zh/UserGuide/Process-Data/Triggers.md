@@ -274,7 +274,7 @@ SHOW TRIGGERS
 * `START_TRIGGER`：具备该权限的用户才被允许启动已被停止的触发器。该权限需要与触发器的路径绑定。
 * `STOP_TRIGGER`：具备该权限的用户才被允许停止正在运行的触发器。该权限需要与触发器的路径绑定。
 
-更多用户权限相关的内容，请参考 [权限管理语句](../Operation%20Manual/Administration.md)。
+更多用户权限相关的内容，请参考 [权限管理语句](../Administration-Management/Administration.md)。
 
 ### 实用工具类
 

@@ -16,14 +16,21 @@
 # under the License.
 #
 import logging
+import random
 import struct
 import time
 
-from iotdb.utils.SessionDataSet import SessionDataSet
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
+from iotdb.utils.SessionDataSet import SessionDataSet
+from .thrift.rpc.ttypes import (
+    EndPoint,
+    TSRawDataQueryReq,
+    TSLastDataQueryReq,
+    TSInsertStringRecordsOfOneDeviceReq,
+)
 from .thrift.rpc.TSIService import (
     Client,
     TSCreateTimeseriesReq,
@@ -34,7 +41,6 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
-    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
@@ -60,10 +66,12 @@ logger = logging.getLogger("IoTDB")
 
 class Session(object):
     SUCCESS_CODE = 200
+    MULTIPLE_ERROR = 506
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
+    RETRY_NUM = 3
 
     def __init__(
         self,
@@ -76,6 +84,9 @@ class Session(object):
     ):
         self.__host = host
         self.__port = port
+        self.__hosts = None
+        self.__ports = None
+        self.__default_endpoint = EndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
         self.__fetch_size = fetch_size
@@ -86,21 +97,60 @@ class Session(object):
         self.__session_id = None
         self.__statement_id = None
         self.__zone_id = zone_id
+        self.__enable_rpc_compression = None
+
+    @classmethod
+    def init_from_node_urls(
+        cls,
+        node_urls,
+        user=DEFAULT_USER,
+        password=DEFAULT_PASSWORD,
+        fetch_size=DEFAULT_FETCH_SIZE,
+        zone_id=DEFAULT_ZONE_ID,
+    ):
+        if node_urls is None:
+            raise RuntimeError("node urls is empty")
+        session = Session(None, None, user, password, fetch_size, zone_id)
+        session.__hosts = []
+        session.__ports = []
+        for node_url in node_urls:
+            split = node_url.split(":")
+            session.__hosts.append(split[0])
+            session.__ports.append(split[1])
+        session.__host = session.__hosts[0]
+        session.__port = session.__ports[0]
+        session.__default_endpoint = EndPoint(session.__host, session.__port)
+        return session
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
             return
+        self.__enable_rpc_compression = enable_rpc_compression
+        if self.__hosts is None:
+            self.init_connection(self.__default_endpoint)
+        else:
+            for i in range(0, len(self.__hosts)):
+                self.__default_endpoint = EndPoint(self.__hosts[i], self.__ports[i])
+                try:
+                    self.init_connection(self.__default_endpoint)
+                except Exception as e:
+                    if not self.reconnect():
+                        logger.error("Cluster has no nodes to connect")
+                        raise e
+                break
+
+    def init_connection(self, endpoint):
         self.__transport = TTransport.TFramedTransport(
-            TSocket.TSocket(self.__host, self.__port)
+            TSocket.TSocket(endpoint.ip, endpoint.port)
         )
 
         if not self.__transport.isOpen():
             try:
                 self.__transport.open()
             except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
+                raise e
 
-        if enable_rpc_compression:
+        if self.__enable_rpc_compression:
             self.__client = Client(TCompactProtocol.TCompactProtocol(self.__transport))
         else:
             self.__client = Client(TBinaryProtocol.TBinaryProtocol(self.__transport))
@@ -115,7 +165,7 @@ class Session(object):
 
         try:
             open_resp = self.__client.openSession(open_req)
-
+            Session.verify_success(open_resp.status)
             if self.protocol_version != open_resp.serverProtocolVersion:
                 logger.exception(
                     "Protocol differ, Client version is {}, but Server version is {}".format(
@@ -132,6 +182,7 @@ class Session(object):
         except Exception as e:
             self.__transport.close()
             logger.exception("session closed because: ", exc_info=e)
+            raise e
 
         if self.__zone_id is not None:
             self.set_time_zone(self.__zone_id)
@@ -164,12 +215,21 @@ class Session(object):
         set one storage group
         :param group_name: String, storage group name (starts from root)
         """
-        status = self.__client.setStorageGroup(self.__session_id, group_name)
-        logger.debug(
-            "setting storage group {} message: {}".format(group_name, status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(
+                self.__client.setStorageGroup(self.__session_id, group_name)
+            )
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.setStorageGroup(self.__session_id, group_name)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("create databases fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def delete_storage_group(self, storage_group):
         """
@@ -184,14 +244,23 @@ class Session(object):
         delete multiple storage groups.
         :param storage_group_lst: List, paths of the target storage groups.
         """
-        status = self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
-        logger.debug(
-            "delete storage group(s) {} message: {}".format(
-                storage_group_lst, status.message
+        try:
+            return Session.verify_success(
+                self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.deleteStorageGroups(
+                            self.__session_id, storage_group_lst
+                        )
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("delete database fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def create_time_series(
         self,
@@ -229,12 +298,20 @@ class Session(object):
             attributes,
             alias,
         )
-        status = self.__client.createTimeseries(request)
-        logger.debug(
-            "creating time series {} message: {}".format(ts_path, status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createTimeseries(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("creating time series fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def create_aligned_time_series(
         self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
@@ -259,14 +336,21 @@ class Session(object):
             encoding_lst,
             compressor_lst,
         )
-        status = self.__client.createAlignedTimeseries(request)
-        logger.debug(
-            "creating aligned time series of device {} message: {}".format(
-                measurements_lst, status.message
+        try:
+            return Session.verify_success(
+                self.__client.createAlignedTimeseries(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createAlignedTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("creating time series fails because: ", e1)
+                    raise e1
+            raise e
 
     def create_multi_time_series(
         self,
@@ -305,28 +389,39 @@ class Session(object):
             attributes_lst,
             alias_lst,
         )
-        status = self.__client.createMultiTimeseries(request)
-        logger.debug(
-            "creating multiple time series {} message: {}".format(
-                ts_path_lst, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createMultiTimeseries(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createMultiTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("creating multi time series fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def delete_time_series(self, paths_list):
         """
         delete multiple time series, including data and schema
         :param paths_list: List of time series path, which should be complete (starts from root)
         """
-        status = self.__client.deleteTimeseries(self.__session_id, paths_list)
-        logger.debug(
-            "deleting multiple time series {} message: {}".format(
-                paths_list, status.message
+        try:
+            return Session.verify_success(
+                self.__client.deleteTimeseries(self.__session_id, paths_list)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.deleteTimeseries(self.__session_id, paths_list)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("deleting time series fails because: ", e1)
+                    raise e1
 
     def check_time_series_exists(self, path):
         """
@@ -345,14 +440,21 @@ class Session(object):
         :param paths_list: time series list that the data in.
         :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
+        request = TSDeleteDataReq(
+            self.__session_id, paths_list, -9223372036854775808, end_time
+        )
         try:
-            status = self.__client.deleteData(request)
-            logger.debug(
-                "delete data from {}, message: {}".format(paths_list, status.message)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
-            logger.exception("data deletion fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.deleteData(request))
+                except TTransport.TException as e1:
+                    logger.exception("data deletion fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def delete_data_in_range(self, paths_list, start_time, end_time):
         """
@@ -363,12 +465,17 @@ class Session(object):
         """
         request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
-            status = self.__client.deleteData(request)
-            logger.debug(
-                "delete data from {}, message: {}".format(paths_list, status.message)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
-            logger.exception("data deletion fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.deleteData(request))
+                except TTransport.TException as e1:
+                    logger.exception("data deletion fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """special case for inserting one row of String (TEXT) value"""
@@ -376,18 +483,23 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
-        data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_str_record_req(
-            device_id, timestamp, measurements, data_types, string_values
+            device_id, timestamp, measurements, string_values
         )
-        status = self.__client.insertStringRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertStringRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_str_record(
         self, device_id, timestamp, measurements, string_values
@@ -397,18 +509,23 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
-        data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_str_record_req(
-            device_id, timestamp, measurements, data_types, string_values, True
+            device_id, timestamp, measurements, string_values, True
         )
-        status = self.__client.insertStringRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertStringRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_record(self, device_id, timestamp, measurements, data_types, values):
         """
@@ -426,14 +543,18 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
-        status = self.__client.insertRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecord(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -454,14 +575,18 @@ class Session(object):
         request = self.gen_insert_records_req(
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
-        status = self.__client.insertRecords(request)
-        logger.debug(
-            "insert multiple records to devices {} message: {}".format(
-                device_ids, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertRecords(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecords(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -481,14 +606,18 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
-        status = self.__client.insertRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecord(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -509,14 +638,18 @@ class Session(object):
         request = self.gen_insert_records_req(
             device_ids, times, measurements_lst, type_values_lst, values_lst, True
         )
-        status = self.__client.insertRecords(request)
-        logger.debug(
-            "insert multiple records to devices {} message: {}".format(
-                device_ids, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.insertRecords(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecords(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def test_insert_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -534,14 +667,19 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
-        status = self.__client.testInsertRecord(request)
-        logger.debug(
-            "testing! insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.testInsertRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.testInsertRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("test insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def test_insert_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -562,12 +700,19 @@ class Session(object):
         request = self.gen_insert_records_req(
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
-        status = self.__client.testInsertRecords(request)
-        logger.debug(
-            "testing! insert multiple records, message: {}".format(status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.testInsertRecords(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.testInsertRecords(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("test insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def gen_insert_record_req(
         self, device_id, timestamp, measurements, data_types, values, is_aligned=False
@@ -587,11 +732,11 @@ class Session(object):
         )
 
     def gen_insert_str_record_req(
-        self, device_id, timestamp, measurements, data_types, values, is_aligned=False
+        self, device_id, timestamp, measurements, values, is_aligned=False
     ):
-        if (len(values) != len(data_types)) or (len(values) != len(measurements)):
+        if len(values) != len(measurements):
             raise RuntimeError(
-                "length of data types does not equal to length of values!"
+                "length of measurements does not equal to length of values!"
             )
         return TSInsertStringRecordReq(
             self.__session_id, device_id, measurements, values, timestamp, is_aligned
@@ -648,24 +793,38 @@ class Session(object):
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
-        status = self.__client.insertTablet(self.gen_insert_tablet_req(tablet))
-        logger.debug(
-            "insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablet_req(tablet)
+        try:
+            return Session.verify_success(self.__client.insertTablet(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_tablets(self, tablet_lst):
         """
         insert multiple tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst))
-        logger.debug("insert multiple tablets, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablets_req(tablet_lst)
+        try:
+            return Session.verify_success(self.__client.insertTablets(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablets(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_tablet(self, tablet):
         """
@@ -679,26 +838,38 @@ class Session(object):
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
-        status = self.__client.insertTablet(self.gen_insert_tablet_req(tablet, True))
-        logger.debug(
-            "insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablet_req(tablet, True)
+        try:
+            return Session.verify_success(self.__client.insertTablet(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_tablets(self, tablet_lst):
         """
         insert multiple aligned tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(
-            self.gen_insert_tablets_req(tablet_lst, True)
-        )
-        logger.debug("insert multiple tablets, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablets_req(tablet_lst, True)
+        try:
+            return Session.verify_success(self.__client.insertTablets(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablets(request))
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -751,12 +922,22 @@ class Session(object):
         request = self.gen_insert_records_of_one_device_request(
             device_id, times_list, measurements_list, values_list, types_list
         )
-
-        # send request
-        status = self.__client.insertRecordsOfOneDevice(request)
-        logger.debug("insert records of one device, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(
+                self.__client.insertRecordsOfOneDevice(request)
+            )
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def insert_aligned_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -810,10 +991,22 @@ class Session(object):
         )
 
         # send request
-        status = self.__client.insertRecordsOfOneDevice(request)
-        logger.debug("insert records of one device, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(
+                self.__client.insertRecordsOfOneDevice(request)
+            )
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def gen_insert_records_of_one_device_request(
         self,
@@ -851,14 +1044,21 @@ class Session(object):
          should be used to test other time cost in client
         :param tablet: a tablet of data
         """
-        status = self.__client.testInsertTablet(self.gen_insert_tablet_req(tablet))
-        logger.debug(
-            "testing! insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            request = self.gen_insert_tablet_req(tablet)
+            return Session.verify_success(self.__client.testInsertTablet(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.testInsertTablet(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("test insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def test_insert_tablets(self, tablet_list):
         """
@@ -866,14 +1066,20 @@ class Session(object):
          should be used to test other time cost in client
         :param tablet_list: List of tablets
         """
-        status = self.__client.testInsertTablets(
-            self.gen_insert_tablets_req(tablet_list)
-        )
-        logger.debug(
-            "testing! insert multiple tablets, message: {}".format(status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            request = self.gen_insert_tablets_req(tablet_list)
+            return Session.verify_success(self.__client.testInsertTablets(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.testInsertTablets(request)
+                    )
+                except TTransport.TException as e1:
+                    logger.exception("test insert fails because: ", e1)
+                    raise e1
+            else:
+                raise e
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
         data_type_values = [data_type.value for data_type in tablet.get_data_types()]
@@ -925,7 +1131,20 @@ class Session(object):
         request = TSExecuteStatementReq(
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
-        resp = self.__client.executeQueryStatement(request)
+        try:
+            resp = self.__client.executeQueryStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeQueryStatement(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of query statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
+        Session.verify_success(resp.status)
         return SessionDataSet(
             sql,
             resp.columns,
@@ -948,12 +1167,22 @@ class Session(object):
         try:
             resp = self.__client.executeUpdateStatement(request)
             status = resp.status
-            logger.debug(
-                "execute non-query statement {} message: {}".format(sql, status.message)
-            )
             return Session.verify_success(status)
         except TTransport.TException as e:
-            raise RuntimeError("execution of non-query statement fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeUpdateStatement(request)
+                    status = resp.status
+                    return Session.verify_success(status)
+                except TTransport.TException as e1:
+                    logger.exception(
+                        "execution of non-query statement fails because: ", e1
+                    )
+                    raise e1
+            else:
+                raise e
 
     @staticmethod
     def value_to_bytes(data_types, values):
@@ -1034,6 +1263,137 @@ class Session(object):
         verify success of operation
         :param status: execution result status
         """
+        if status.code == Session.MULTIPLE_ERROR:
+            Session.verify_success_by_list(status.subStatus)
+            return 0
         if status.code == Session.SUCCESS_CODE:
             return 0
-        return -1
+
+        logger.error("error status is %s", status)
+        raise RuntimeError(str(status.code) + ": " + status.message)
+
+    @staticmethod
+    def verify_success_by_list(status_list):
+        """
+        verify success of operation
+        :param status_list: execution result status
+        """
+        message = str(Session.MULTIPLE_ERROR) + ": "
+        for status in status_list:
+            if status.code != Session.SUCCESS_CODE:
+                message += status.message + "; "
+        raise RuntimeError(message)
+
+    def execute_raw_data_query(
+        self, paths: list, start_time: int, end_time: int
+    ) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param start_time: Query start time
+        :param end_time: Query end time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
+        request = TSRawDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            startTime=start_time,
+            endTime=end_time,
+            statementId=self.__statement_id,
+            enableRedirectQuery=False,
+        )
+        try:
+            resp = self.__client.executeRawDataQuery(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeRawDataQuery(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of query statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        """
+        execute query statement and returns SessionDataSet
+        :param paths: String path list
+        :param last_time: Query last time
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        """
+        request = TSLastDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            last_time,
+            self.__statement_id,
+            enableRedirectQuery=False,
+        )
+        try:
+            resp = self.__client.executeLastDataQuery(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeLastDataQuery(request)
+                except TTransport.TException as e1:
+                    logger.exception("execution of query statement fails because: ", e1)
+                    raise e1
+            else:
+                raise e
+        Session.verify_success(resp.status)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def reconnect(self):
+        if self.__hosts is None:
+            return False
+        connected = False
+        for i in range(1, self.RETRY_NUM + 1):
+            if self.__transport is not None:
+                self.__transport.close()
+                curr_host_index = random.randint(0, len(self.__hosts))
+                try_host_num = 0
+                for j in range(curr_host_index, len(self.__hosts)):
+                    if try_host_num == len(self.__hosts):
+                        break
+                    self.__default_endpoint = EndPoint(self.__hosts[j], self.__ports[j])
+                    if j == len(self.__hosts) - 1:
+                        j = -1
+                    try_host_num += 1
+                    try:
+                        self.init_connection(self.__default_endpoint)
+                        connected = True
+                    except TTransport.TException as e:
+                        continue
+                    break
+            if connected:
+                break
+        return connected
