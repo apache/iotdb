@@ -455,14 +455,14 @@ select MasterRepair(t1,t2,t3,m1,m2,m3) from root.test
 用于查询的SQL语句：
 
 ```sql
-select seasonalrepair(s1,'period'=3,'k'=2) from root.test.d2
+select seasonal_repair(s1,'period'=3,'k'=2) from root.test.d2
 ```
 
 输出序列：
 
 ```
 +-----------------------------+--------------------------------------------------+
-|                         Time|seasonalrepair(root.test.d2.s1, 'period'=3, 'k'=2)|
+|                         Time|seasonal_repair(root.test.d2.s1, 'period'=3, 'k'=2)|
 +-----------------------------+--------------------------------------------------+
 |2020-01-01T00:00:02.000+08:00|                                             100.0|
 |2020-01-01T00:00:04.000+08:00|                                             120.0|
@@ -485,14 +485,14 @@ select seasonalrepair(s1,'period'=3,'k'=2) from root.test.d2
 输入序列同上，用于查询的SQL语句如下：
 
 ```sql
-select seasonalrepair(s1,'decomposition'='error-tolerant','period'=3) from root.test.d2
+select seasonal_repair(s1,'decomposition'='error-tolerant','period'=3) from root.test.d2
 ```
 
 输出序列：
 
 ```
 +-----------------------------+-------------------------------------------------------------+
-|                         Time|valuerepair(root.test.d2.s1, 'decomposition'='error-tolerant', 'period'=3)|
+|                         Time|seasonal_repair(root.test.d2.s1, 'decomposition'='error-tolerant', 'period'=3)|
 +-----------------------------+-------------------------------------------------------------+
 |2020-01-01T00:00:02.000+08:00|                                                        100.0|
 |2020-01-01T00:00:04.000+08:00|                                                        120.0|

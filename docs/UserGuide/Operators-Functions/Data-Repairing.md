@@ -465,14 +465,14 @@ Input series:
 SQL for query:
 
 ```sql
-select seasonalrepair(s1,'period'=3,'k'=2) from root.test.d2
+select seasonal_repair(s1,'period'=3,'k'=2) from root.test.d2
 ```
 
 Output series:
 
 ```
 +-----------------------------+--------------------------------------------------+
-|                         Time|seasonalrepair(root.test.d2.s1, 'period'=3, 'k'=2)|
+|                         Time|seasonal_repair(root.test.d2.s1, 'period'=3, 'k'=2)|
 +-----------------------------+--------------------------------------------------+
 |2020-01-01T00:00:02.000+08:00|                                             100.0|
 |2020-01-01T00:00:04.000+08:00|                                             120.0|
@@ -495,14 +495,14 @@ When `decomposition` is 'error-tolerant', error-tolerant decomposition is used.
 Input series is the same as above, the SQL for query is shown below:
 
 ```sql
-select seasonalrepair(s1,'decomposition'='error-tolerant','period'=3) from root.test.d2
+select seasonal_repair(s1,'decomposition'='error-tolerant','period'=3) from root.test.d2
 ```
 
 Output series:
 
 ```
 +-----------------------------+-------------------------------------------------------------+
-|                         Time|valuerepair(root.test.d2.s1, 'decomposition'='error-tolerant', 'period'=3)|
+|                         Time|seasonal_repair(root.test.d2.s1, 'decomposition'='error-tolerant', 'period'=3)|
 +-----------------------------+-------------------------------------------------------------+
 |2020-01-01T00:00:02.000+08:00|                                                        100.0|
 |2020-01-01T00:00:04.000+08:00|                                                        120.0|
