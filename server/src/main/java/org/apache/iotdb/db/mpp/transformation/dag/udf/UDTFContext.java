@@ -44,7 +44,7 @@ public class UDTFContext {
     }
   }
 
-  public void finalizeUDFExecutors(long queryId) {
+  public void finalizeUDFExecutors(String queryId) {
     try {
       for (UDTFExecutor executor : expressionName2Executor.values()) {
         executor.beforeDestroy();
