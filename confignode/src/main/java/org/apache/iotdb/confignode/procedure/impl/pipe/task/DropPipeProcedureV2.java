@@ -105,7 +105,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
-          String.format("Failed to start pipe instance [%s] on data nodes", pipeName));
+          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
     }
   }
 
