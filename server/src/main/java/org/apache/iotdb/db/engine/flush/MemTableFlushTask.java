@@ -186,7 +186,7 @@ public class MemTableFlushTask {
             System.currentTimeMillis() - start,
             TimeUnit.MILLISECONDS,
             Metric.COST_TASK.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             "flush");
 
