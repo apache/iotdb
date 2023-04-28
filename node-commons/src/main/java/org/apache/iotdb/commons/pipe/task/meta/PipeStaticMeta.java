@@ -32,7 +32,7 @@ import java.util.Map;
 public class PipeStaticMeta {
 
   private String pipeName;
-  private long createTime;
+  private long creationTime;
 
   private Map<String, String> collectorAttributes = new HashMap<>();
   private Map<String, String> processorAttributes = new HashMap<>();
@@ -46,12 +46,12 @@ public class PipeStaticMeta {
 
   public PipeStaticMeta(
       String pipeName,
-      long createTime,
+      long creationTime,
       Map<String, String> collectorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes) {
     this.pipeName = pipeName.toUpperCase();
-    this.createTime = createTime;
+    this.creationTime = creationTime;
     this.collectorAttributes = collectorAttributes;
     this.processorAttributes = processorAttributes;
     this.connectorAttributes = connectorAttributes;
@@ -64,8 +64,8 @@ public class PipeStaticMeta {
     return pipeName;
   }
 
-  public long getCreateTime() {
-    return createTime;
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public PipeParameters getCollectorParameters() {
@@ -89,7 +89,7 @@ public class PipeStaticMeta {
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
 
     outputStream.writeInt(collectorAttributes.size());
     for (Map.Entry<String, String> entry : collectorAttributes.entrySet()) {
@@ -117,7 +117,7 @@ public class PipeStaticMeta {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeStaticMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
+    pipeStaticMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
@@ -152,7 +152,7 @@ public class PipeStaticMeta {
     }
     PipeStaticMeta that = (PipeStaticMeta) obj;
     return pipeName.equals(that.pipeName)
-        && createTime == that.createTime
+        && creationTime == that.creationTime
         && collectorAttributes.equals(that.collectorAttributes)
         && processorAttributes.equals(that.processorAttributes)
         && connectorAttributes.equals(that.connectorAttributes);
@@ -170,7 +170,7 @@ public class PipeStaticMeta {
         + pipeName
         + '\''
         + ", createTime="
-        + createTime
+        + creationTime
         + ", collectorAttributes="
         + collectorAttributes
         + ", processorAttributes="

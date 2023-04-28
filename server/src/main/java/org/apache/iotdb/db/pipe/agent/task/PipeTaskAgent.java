@@ -23,8 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PipeTaskAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
@@ -34,7 +38,25 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management //////////////////////////
 
-  public void createPipe(PipeMeta pipeMeta) {}
+  public void createPipe(PipeMeta pipeMeta) {
+    final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+    final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
+
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (existedPipeMeta != null) {
+      if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+        switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+          case STOPPED:
+          case RUNNING:
+          case DROPPED:
+          default:
+        }
+        return;
+      }
+
+      dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+    }
+  }
 
   public void createPipeTaskByConsensusGroup(
       String pipeName,
