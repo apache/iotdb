@@ -456,7 +456,7 @@ public class QueryExecution implements IQueryExecution {
     while (true) {
       try {
         ListenableFuture<?> blocked;
-        synchronized (resultHandle) {
+        synchronized (resultHandle) { // make sure isAborted and isBlocked are an atomic operation
           if (resultHandle.isAborted()) {
             logger.warn("[ResultHandleAborted]");
             stateMachine.transitionToAborted();
