@@ -455,30 +455,27 @@ public class QueryExecution implements IQueryExecution {
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
       try {
-        ListenableFuture<?> blocked;
-        synchronized (resultHandle) { // make sure isAborted and isBlocked are an atomic operation
-          if (resultHandle.isAborted()) {
-            logger.warn("[ResultHandleAborted]");
-            stateMachine.transitionToAborted();
-            if (stateMachine.getFailureStatus() != null) {
-              throw new IoTDBException(
-                  stateMachine.getFailureStatus().getMessage(),
-                  stateMachine.getFailureStatus().code);
-            } else {
-              throw new IoTDBException(
-                  stateMachine.getFailureMessage(),
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-            }
-          } else if (resultHandle.isFinished()) {
-            logger.debug("[ResultHandleFinished]");
-            stateMachine.transitionToFinished();
-            return Optional.empty();
+
+        if (resultHandle.isAborted()) {
+          logger.warn("[ResultHandleAborted]");
+          stateMachine.transitionToAborted();
+          if (stateMachine.getFailureStatus() != null) {
+            throw new IoTDBException(
+                stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+          } else {
+            throw new IoTDBException(
+                stateMachine.getFailureMessage(),
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
-          blocked = resultHandle.isBlocked();
+        } else if (resultHandle.isFinished()) {
+          logger.debug("[ResultHandleFinished]");
+          stateMachine.transitionToFinished();
+          return Optional.empty();
         }
 
         long startTime = System.nanoTime();
         try {
+          ListenableFuture<?> blocked = resultHandle.isBlocked();
           blocked.get();
         } finally {
           QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);

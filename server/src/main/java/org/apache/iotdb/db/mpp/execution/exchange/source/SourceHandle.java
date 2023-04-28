@@ -168,7 +168,6 @@ public class SourceHandle implements ISourceHandle {
   public synchronized ByteBuffer getSerializedTsBlock() {
     long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      checkState();
 
       if (!blocked.isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
@@ -277,7 +276,6 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized ListenableFuture<?> isBlocked() {
-    checkState();
     if (!canGetTsBlockFromRemote) {
       canGetTsBlockFromRemote = true;
       // submit get data task once isBlocked is called to ensure that the blocked future will be
@@ -440,14 +438,6 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public boolean isAborted() {
     return aborted;
-  }
-
-  private void checkState() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("SourceHandle is closed.");
-    }
   }
 
   @Override

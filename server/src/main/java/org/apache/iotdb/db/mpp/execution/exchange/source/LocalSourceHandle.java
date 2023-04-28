@@ -102,7 +102,6 @@ public class LocalSourceHandle implements ISourceHandle {
   public TsBlock receive() {
     long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      checkState();
 
       if (!queue.isBlocked().isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
@@ -166,7 +165,6 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    checkState();
     return nonCancellationPropagating(queue.isBlocked());
   }
 
@@ -235,14 +233,6 @@ public class LocalSourceHandle implements ISourceHandle {
         }
       }
       LOGGER.debug("[EndCloseLocalSourceHandle]");
-    }
-  }
-
-  private void checkState() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("Source Handle is closed.");
     }
   }
 
