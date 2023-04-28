@@ -183,7 +183,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Template getTemplate(String name) {
+  public Template getTemplate(String name) throws IoTDBException {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
@@ -193,10 +193,9 @@ public class ClusterTemplateManager implements ITemplateManager {
         template.deserialize(ByteBuffer.wrap(templateBytes));
         return template;
       } else {
-        throw new RuntimeException(
-            new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
+        throw new IoTDBException(resp.status.getMessage(), resp.status.getCode());
       }
-    } catch (Exception e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
@@ -380,13 +379,9 @@ public class ClusterTemplateManager implements ITemplateManager {
     // and the following logic is equivalent with the above expression
 
     String measurement = pathPattern.getTailNode();
-    if (measurement.equals(MULTI_LEVEL_PATH_WILDCARD)
-        || measurement.equals(ONE_LEVEL_PATH_WILDCARD)) {
-      return pathPattern.overlapWith(
-              pathSetTemplate
-                  .concatNode(MULTI_LEVEL_PATH_WILDCARD)
-                  .concatNode(ONE_LEVEL_PATH_WILDCARD))
-          || pathPattern.overlapWith(pathSetTemplate.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    if (measurement.contains(ONE_LEVEL_PATH_WILDCARD)) {
+      // if measurement is wildcard, e.g. root.sg.d1.**, root.sg.d1.*, root.sg.d1.s*
+      return pathPattern.overlapWithFullPathPrefix(pathSetTemplate);
     }
 
     if (template.hasSchema(measurement)) {

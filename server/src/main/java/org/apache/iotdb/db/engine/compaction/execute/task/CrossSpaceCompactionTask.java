@@ -96,16 +96,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void doCompaction() {
+  public boolean doCompaction() {
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
     } catch (InterruptedException e) {
       LOGGER.error("Interrupted when allocating memory for compaction", e);
-      return;
+      return false;
     }
+    boolean isSuccess = true;
     try {
       if (!tsFileManager.isAllowCompaction()) {
-        return;
+        return true;
       }
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
@@ -118,7 +119,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] Cross space compaction file list is empty, end it",
             storageGroupName,
             dataRegionId);
-        return;
+        return true;
       }
 
       for (TsFileResource resource : selectedSequenceFiles) {
@@ -246,6 +247,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
+      isSuccess = false;
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
@@ -273,6 +275,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLock();
+      return isSuccess;
     }
   }
 

@@ -2229,16 +2229,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2309,16 +2310,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2390,16 +2392,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2472,16 +2475,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(3, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2560,16 +2564,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2647,16 +2652,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2735,16 +2741,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2824,16 +2831,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(3, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new ReadPointCompactionPerformer(),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());

@@ -80,6 +80,15 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
             next.setAbortCause(DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
             scheduler.toAborted(next);
           }
+        } finally {
+          // Clear the interrupted flag on the current thread, driver cancellation may have
+          // triggered an interrupt
+          if (Thread.interrupted()) {
+            if (closed) {
+              // reset interrupted flag if closed before interrupt
+              Thread.currentThread().interrupt();
+            }
+          }
         }
       }
     } finally {

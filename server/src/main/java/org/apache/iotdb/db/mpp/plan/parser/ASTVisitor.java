@@ -85,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponen
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -1372,32 +1373,49 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Order By Clause
   // all SortKeys should be contained by limitSet
   private OrderByComponent parseOrderByClause(
-      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<SortKey> limitSet) {
+      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<String> limitSet) {
     OrderByComponent orderByComponent = new OrderByComponent();
-    Set<SortKey> sortKeySet = new HashSet<>();
+    Set<String> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
         ctx.orderByAttributeClause()) {
-      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
-
-      SortKey sortKey = sortItem.getSortKey();
-      if (!limitSet.contains(sortKey)) {
-        throw new SemanticException(
-            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      // if the order by clause is unique, then the following sort keys will be ignored
+      if (orderByComponent.isUnique()) {
+        break;
       }
+      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext, limitSet);
+
+      String sortKey = sortItem.getSortKey();
       if (sortKeySet.contains(sortKey)) {
-        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
+        continue;
       } else {
         sortKeySet.add(sortKey);
+      }
+
+      if (sortItem.isExpression()) {
+        orderByComponent.addExpressionSortItem(sortItem);
+      } else {
         orderByComponent.addSortItem(sortItem);
       }
     }
     return orderByComponent;
   }
 
-  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
-    return new SortItem(
-        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
-        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
+  private SortItem parseOrderByAttributeClause(
+      IoTDBSqlParser.OrderByAttributeClauseContext ctx, ImmutableSet<String> limitSet) {
+    if (ctx.sortKey() != null) {
+      String sortKey = ctx.sortKey().getText().toUpperCase();
+      if (!limitSet.contains(sortKey)) {
+        throw new SemanticException(
+            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      }
+      return new SortItem(sortKey, ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
+    } else {
+      Expression sortExpression = parseExpression(ctx.expression(), true);
+      return new SortItem(
+          sortExpression,
+          ctx.DESC() != null ? Ordering.DESC : Ordering.ASC,
+          ctx.FIRST() != null ? NullOrdering.FIRST : NullOrdering.LAST);
+    }
   }
 
   // ---- Fill Clause
