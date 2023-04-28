@@ -60,7 +60,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSyncPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -220,9 +219,9 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case SYNC_PIPE_META:
-          client.syncPipeMeta(
-              (TSyncPipeMetaReq) clientHandler.getRequest(requestId),
+        case PUSH_PIPE_META:
+          client.pushPipeMeta(
+              (TPushPipeMetaReq) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

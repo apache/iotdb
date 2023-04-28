@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -37,7 +37,7 @@ public class PipeTaskMeta {
   // TODO: replace it with consensus index
   private final AtomicLong index = new AtomicLong(0L);
   private final AtomicInteger regionLeader = new AtomicInteger(0);
-  private final List<String> exceptionMessages = Collections.synchronizedList(new LinkedList<>());
+  private final Queue<PipeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   private PipeTaskMeta() {}
 
@@ -54,7 +54,7 @@ public class PipeTaskMeta {
     return regionLeader.get();
   }
 
-  public List<String> getExceptionMessages() {
+  public Queue<PipeException> getExceptionMessages() {
     return exceptionMessages;
   }
 
@@ -70,9 +70,6 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(index.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (String exceptionMessage : exceptionMessages) {
-      ReadWriteIOUtils.write(exceptionMessage, outputStream);
-    }
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
@@ -80,9 +77,6 @@ public class PipeTaskMeta {
     PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; ++i) {
-      PipeTaskMeta.exceptionMessages.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
     return PipeTaskMeta;
   }
 

@@ -658,7 +658,7 @@ public class ConfigNodeProcedureEnv {
     TSyncPipeMetaReq request =
         new TSyncPipeMetaReq().setPipeMetas(Collections.singletonList(pipeMeta.serialize()));
     final AsyncClientHandler<TSyncPipeMetaReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.SYNC_PIPE_META, request, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

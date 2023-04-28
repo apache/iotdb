@@ -365,7 +365,7 @@ struct TCheckTimeSeriesExistenceResp{
   2: optional bool exists
 }
 
-struct TSyncPipeMetaReq {
+struct TPushPipeMetaReq {
   1: required list<binary> pipeMetas
 }
 
@@ -749,7 +749,7 @@ service IDataNodeRPCService {
  /**
   * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus syncPipeMeta(TSyncPipeMetaReq req)
+  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
 
  /**
   * Execute CQ on DataNode

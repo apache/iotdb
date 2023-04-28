@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,8 +51,8 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.containsKey(pipeName);
   }
 
-  public List<PipeMeta> getAllPipeMetas() {
-    return (List<PipeMeta>) pipeNameToPipeMetaMap.values();
+  public PipeMeta[] getAllPipeMetas() {
+    return pipeNameToPipeMetaMap.values().toArray(new PipeMeta[0]);
   }
 
   public void clear() {

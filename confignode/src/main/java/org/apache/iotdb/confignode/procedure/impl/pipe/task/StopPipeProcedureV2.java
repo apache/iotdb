@@ -150,7 +150,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
-          String.format("Failed to rollback from start on data nodes for task [%s]", pipeName));
+          String.format("Failed to rollback from stop on data nodes for task [%s]", pipeName));
     }
   }
 
