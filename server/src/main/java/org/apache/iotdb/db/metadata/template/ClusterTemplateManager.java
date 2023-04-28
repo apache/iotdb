@@ -183,7 +183,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Template getTemplate(String name) {
+  public Template getTemplate(String name) throws IoTDBException {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
@@ -193,8 +193,7 @@ public class ClusterTemplateManager implements ITemplateManager {
         template.deserialize(ByteBuffer.wrap(templateBytes));
         return template;
       } else {
-        throw new RuntimeException(
-            new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
+        throw new IoTDBException(resp.status.getMessage(), resp.status.getCode());
       }
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
