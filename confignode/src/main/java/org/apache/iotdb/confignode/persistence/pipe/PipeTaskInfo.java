@@ -53,8 +53,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Getter ///////////////////////////////
 
-  public PipeMetaKeeper getPipeMetaKeeper() {
-    return pipeMetaKeeper;
+  public PipeMeta getPipeMeta(String pipeName) {
+    return pipeMetaKeeper.getPipeMeta(pipeName);
   }
 
   /////////////////////////////// Lock ///////////////////////////////

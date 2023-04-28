@@ -100,7 +100,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPipeManager()
                         .getPipeTaskCoordinator()
                         .getPipeTaskInfo()
-                        .getPipeMetaKeeper()
                         .getPipeMeta(pipeName)))
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -144,7 +143,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getPipeManager()
             .getPipeTaskCoordinator()
             .getPipeTaskInfo()
-            .getPipeMetaKeeper()
             .getPipeMeta(pipeName);
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
     if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()

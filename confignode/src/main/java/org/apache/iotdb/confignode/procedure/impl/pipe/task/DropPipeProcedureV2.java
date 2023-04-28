@@ -79,7 +79,6 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getPipeManager()
             .getPipeTaskCoordinator()
             .getPipeTaskInfo()
-            .getPipeMetaKeeper()
             .getPipeMeta(pipeName);
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
     // Do nothing
