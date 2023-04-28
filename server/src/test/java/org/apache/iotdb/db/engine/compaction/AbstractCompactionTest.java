@@ -472,6 +472,7 @@ public class AbstractCompactionTest {
   protected void validateTargetDatas(
       Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
+    Map<PartialPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
     for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
@@ -482,6 +483,7 @@ public class AbstractCompactionTest {
               Collections.emptyList(),
               true);
       List<TimeValuePair> timeseriesData = entry.getValue();
+      tmpSourceDatas.put(entry.getKey(), new ArrayList<>(timeseriesData));
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
         IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
@@ -498,6 +500,7 @@ public class AbstractCompactionTest {
         fail();
       }
     }
+    sourceDatas.putAll(tmpSourceDatas);
   }
 
   protected void generateModsFile(
