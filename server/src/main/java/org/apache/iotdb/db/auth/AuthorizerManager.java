@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -108,7 +109,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, String path, int privilegeId)
+  public void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
@@ -119,7 +120,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void revokePrivilegeFromUser(String username, String path, int privilegeId)
+  public void revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
@@ -150,7 +151,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
+  public void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
@@ -161,7 +162,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void revokePrivilegeFromRole(String roleName, String path, int privilegeId)
+  public void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
@@ -192,7 +193,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public Set<Integer> getPrivileges(String username, String path) throws AuthException {
+  public Set<Integer> getPrivileges(String username, PartialPath path) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
       return authorizer.getPrivileges(username, path);
@@ -212,7 +213,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, String path, int privilegeId)
+  public boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
       throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
@@ -358,7 +359,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** Check the path */
-  public TSStatus checkPath(String username, List<String> allPath, int permission) {
+  public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
     authReadWriteLock.readLock().lock();
     try {
       return authorityFetcher.checkUserPrivileges(username, allPath, permission);

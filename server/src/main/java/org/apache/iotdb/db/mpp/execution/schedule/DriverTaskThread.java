@@ -24,7 +24,6 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -65,9 +64,9 @@ public class DriverTaskThread extends AbstractDriverThread {
       return;
     }
     IDriver driver = task.getDriver();
-    CpuTimer timer = new CpuTimer();
+    // CpuTimer timer = new CpuTimer();
     ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
-    CpuTimer.CpuDuration duration = timer.elapsedTime();
+    // CpuTimer.CpuDuration duration = timer.elapsedTime();
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
       task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
@@ -76,7 +75,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     }
     long quantaScheduledNanos = ticker.read() - startNanos;
     ExecutionContext context = new ExecutionContext();
-    context.setCpuDuration(duration);
+    // context.setCpuDuration(duration);
     context.setScheduledTimeInNanos(quantaScheduledNanos);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
     if (driver.isFinished()) {

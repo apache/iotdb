@@ -48,7 +48,7 @@ public interface SerializableList {
 
     protected static final int NOT_SERIALIZED = -1;
 
-    protected final long queryId;
+    protected final String queryId;
 
     protected boolean isSerialized;
     protected int serializedByteLength;
@@ -58,7 +58,7 @@ public interface SerializableList {
     protected RandomAccessFile file;
     protected FileChannel fileChannel;
 
-    public SerializationRecorder(long queryId) {
+    public SerializationRecorder(String queryId) {
       this.queryId = queryId;
       isSerialized = false;
       serializedByteLength = NOT_SERIALIZED;
@@ -129,7 +129,7 @@ public interface SerializableList {
       fileChannel = null;
     }
 
-    public long getQueryId() {
+    public String getQueryId() {
       return queryId;
     }
   }

@@ -50,7 +50,7 @@ class NormalSchemaFetcher {
   List<Integer> processNormalTimeSeries(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
     List<Integer> indexOfMissingMeasurements =
-        schemaCache.compute(schemaComputationWithAutoCreation);
+        schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
     // all schema can be taken from cache
     if (indexOfMissingMeasurements.isEmpty()) {
       return indexOfMissingMeasurements;
@@ -98,7 +98,8 @@ class NormalSchemaFetcher {
     List<Integer> indexOfMissingMeasurements;
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
       schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
-      indexOfMissingMeasurements = schemaCache.compute(schemaComputationWithAutoCreation);
+      indexOfMissingMeasurements =
+          schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
       if (!indexOfMissingMeasurements.isEmpty()) {
         indexOfDevicesWithMissingMeasurements.add(i);
         indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);

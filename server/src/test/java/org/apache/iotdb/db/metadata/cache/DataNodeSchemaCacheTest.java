@@ -233,4 +233,54 @@ public class DataNodeSchemaCacheTest {
     schemaTree.setDatabases(Collections.singleton("root.sg1"));
     return schemaTree;
   }
+
+  @Test
+  public void testUpdateLastCache() throws IllegalPathException {
+    String database = "root.db";
+    PartialPath device = new PartialPath("root.db.d");
+
+    String[] measurements = new String[] {"s1", "s2", "s3"};
+    MeasurementSchema[] measurementSchemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT32),
+          new MeasurementSchema("s3", TSDataType.INT32)
+        };
+
+    dataNodeSchemaCache.updateLastCache(
+        database,
+        device,
+        measurements,
+        measurementSchemas,
+        true,
+        index -> new TimeValuePair(1, new TsPrimitiveType.TsInt(1)),
+        index -> index != 1,
+        true,
+        1L);
+
+    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
+    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+
+    dataNodeSchemaCache.updateLastCache(
+        database,
+        device,
+        measurements,
+        measurementSchemas,
+        true,
+        index -> new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        index -> true,
+        true,
+        1L);
+
+    Assert.assertEquals(
+        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
+    Assert.assertEquals(
+        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
+    Assert.assertEquals(
+        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+  }
 }

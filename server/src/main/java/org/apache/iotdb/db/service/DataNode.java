@@ -861,6 +861,9 @@ public class DataNode implements DataNodeMBean {
     // create instances of pipe plugins and do registration
     try {
       for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
+        if (meta.isBuiltin()) {
+          continue;
+        }
         PipeAgent.plugin().doRegister(meta);
       }
     } catch (Exception e) {
@@ -881,6 +884,9 @@ public class DataNode implements DataNodeMBean {
   private List<PipePluginMeta> getJarListForPipePlugin() {
     List<PipePluginMeta> res = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : resourcesInformationHolder.getPipePluginMetaList()) {
+      if (pipePluginMeta.isBuiltin()) {
+        continue;
+      }
       // If jar does not exist, add current pipePluginMeta to list
       if (!PipePluginExecutableManager.getInstance()
           .hasFileUnderInstallDir(pipePluginMeta.getJarName())) {

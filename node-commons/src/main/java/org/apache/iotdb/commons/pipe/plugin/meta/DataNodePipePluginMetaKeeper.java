@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 
 import java.util.Map;
@@ -26,28 +27,39 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DataNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
 
-  private final Map<String, Class<?>> pipeNameToPipeClassMap;
+  private final Map<String, Class<?>> pipePluginNameToClassMap;
 
   public DataNodePipePluginMetaKeeper() {
-    super();
-    pipeNameToPipeClassMap = new ConcurrentHashMap<>();
+    pipePluginNameToClassMap = new ConcurrentHashMap<>();
+
+    loadBuiltInPlugins();
+  }
+
+  @Override
+  protected void loadBuiltInPlugins() {
+    super.loadBuiltInPlugins();
+
+    for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
+      addPluginAndClass(
+          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
+    }
   }
 
   public void addPluginAndClass(String pluginName, Class<?> clazz) {
-    pipeNameToPipeClassMap.put(pluginName.toUpperCase(), clazz);
+    pipePluginNameToClassMap.put(pluginName.toUpperCase(), clazz);
   }
 
   public Class<?> getPluginClass(String pluginName) {
-    return pipeNameToPipeClassMap.get(pluginName.toUpperCase());
+    return pipePluginNameToClassMap.get(pluginName.toUpperCase());
   }
 
   public void removePluginClass(String pluginName) {
-    pipeNameToPipeClassMap.remove(pluginName.toUpperCase());
+    pipePluginNameToClassMap.remove(pluginName.toUpperCase());
   }
 
   public void updatePluginClass(PipePluginMeta pipePluginMeta, PipePluginClassLoader classLoader)
       throws ClassNotFoundException {
-    Class<?> functionClass = Class.forName(pipePluginMeta.getClassName(), true, classLoader);
-    pipeNameToPipeClassMap.put(pipePluginMeta.getPluginName().toUpperCase(), functionClass);
+    final Class<?> functionClass = Class.forName(pipePluginMeta.getClassName(), true, classLoader);
+    pipePluginNameToClassMap.put(pipePluginMeta.getPluginName().toUpperCase(), functionClass);
   }
 }

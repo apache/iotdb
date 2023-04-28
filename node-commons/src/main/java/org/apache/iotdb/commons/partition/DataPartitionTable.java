@@ -173,25 +173,52 @@ public class DataPartitionTable {
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param timeSlotId TimePartitionSlot
-   * @return the timePartition's corresponding dataRegionIds, if timeSlotId == -1, then return all
-   *     the seriesSlot's dataRegionIds
+   * @return the timePartition's corresponding dataRegionIds, if seriesSlotId==-1, then return all
+   *     seriesPartitionTable's dataRegionIds; if timeSlotId == -1, then return all the seriesSlot's
+   *     dataRegionIds.
    */
   public List<TConsensusGroupId> getRegionId(
       TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
-    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+    if (seriesSlotId.getSlotId() == -1) {
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      dataPartitionMap.forEach(
+          (seriesPartitionSlot, seriesPartitionTable) ->
+              regionIds.addAll(seriesPartitionTable.getRegionId(timeSlotId)));
+      return regionIds;
+    } else if (!dataPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
+    } else {
+      SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+      return seriesPartitionTable.getRegionId(timeSlotId);
     }
-    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
-    return seriesPartitionTable.getRegionId(timeSlotId);
   }
 
+  /**
+   * Query timePartition
+   *
+   * @param seriesSlotId SeriesPartitionSlot
+   * @param regionId TConsensusGroupId
+   * @param startTime startTime
+   * @return the timePartition if seriesSlotId==-1&&regionId == -1, then return all timePartition;
+   *     if timeSlotId == -1, then return all the seriesSlot's dataRegionIds.
+   */
   public List<TTimePartitionSlot> getTimeSlotList(
-      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
-    if (!dataPartitionMap.containsKey(seriesSlotId)) {
+      TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
+    if (seriesSlotId.getSlotId() == -1) {
+      // query timePartition of specific database or region
+      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+      dataPartitionMap.forEach(
+          (seriesPartitionSlot, seriesPartitionTable) ->
+              timePartitionSlots.addAll(
+                  seriesPartitionTable.getTimeSlotList(regionId, startTime, endTime)));
+      return timePartitionSlots;
+    } else if (!dataPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
+    } else {
+      // query timePartition of specific seriesPartition
+      SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
+      return seriesPartitionTable.getTimeSlotList(regionId, startTime, endTime);
     }
-    SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
-    return seriesPartitionTable.getTimeSlotList(startTime, endTime);
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList() {

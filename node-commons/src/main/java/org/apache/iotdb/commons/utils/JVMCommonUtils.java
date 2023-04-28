@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -33,6 +34,9 @@ public class JVMCommonUtils {
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
   private static final int CPUS = Runtime.getRuntime().availableProcessors();
+
+  private static final double diskSpaceWarningThreshold =
+      CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
 
   /**
    * get JDK version.
@@ -60,8 +64,14 @@ public class JVMCommonUtils {
     return dirFile.getFreeSpace();
   }
 
+  public static double getDiskFreeRatio(String dir) {
+    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+    dirFile.mkdirs();
+    return 1.0 * dirFile.getFreeSpace() / dirFile.getTotalSpace();
+  }
+
   public static boolean hasSpace(String dir) {
-    return getUsableSpace(dir) > 0;
+    return getDiskFreeRatio(dir) > diskSpaceWarningThreshold;
   }
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
