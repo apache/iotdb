@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -102,6 +103,8 @@ public class SinkChannel implements ISinkChannel {
   private boolean closed = false;
 
   private boolean noMoreTsBlocks = false;
+
+  private final AtomicBoolean invokedOnFinished = new AtomicBoolean(false);
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
@@ -263,9 +266,15 @@ public class SinkChannel implements ISinkChannel {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkListener.onFinish(this);
+    invokeOnFinished();
     closed = true;
     LOGGER.debug("[EndCloseSinkChannel]");
+  }
+
+  private void invokeOnFinished() {
+    if (invokedOnFinished.compareAndSet(false, true)) {
+      sinkListener.onFinish(this);
+    }
   }
 
   @Override
@@ -347,7 +356,7 @@ public class SinkChannel implements ISinkChannel {
       }
     }
     if (isFinished()) {
-      sinkListener.onFinish(this);
+      invokeOnFinished();
     }
   }
 
@@ -523,7 +532,7 @@ public class SinkChannel implements ISinkChannel {
         }
         noMoreTsBlocks = true;
         if (isFinished()) {
-          sinkListener.onFinish(SinkChannel.this);
+          invokeOnFinished();
         }
         sinkListener.onEndOfBlocks(SinkChannel.this);
       }
