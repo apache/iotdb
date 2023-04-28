@@ -196,7 +196,7 @@ public class ClusterTemplateManager implements ITemplateManager {
         throw new RuntimeException(
             new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
       }
-    } catch (Exception e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
