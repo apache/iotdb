@@ -741,11 +741,14 @@ public class ClusterSchemaManager {
       }
     }
 
-    Template template =
-        clusterSchemaInfo
-            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
-            .getTemplateList()
-            .get(0);
+    TemplateInfoResp resp =
+        clusterSchemaInfo.getTemplate(
+            new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()));
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.getStatus();
+    }
+
+    Template template = resp.getTemplateList().get(0);
     boolean needExtend = false;
     for (String measurement : templateExtendInfo.getMeasurements()) {
       if (!template.hasSchema(measurement)) {
