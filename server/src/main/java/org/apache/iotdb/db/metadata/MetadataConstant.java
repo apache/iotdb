@@ -64,11 +64,15 @@ public class MetadataConstant {
   public static final byte ENTITY_MNODE_TYPE = 3;
   public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
 
+  public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
+
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
   public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
   public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
+
+  public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
 
   public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
   public static final String SCHEMA_ENGINE_METRIC_NAME = "schema_file";
@@ -87,6 +91,8 @@ public class MetadataConstant {
         return ENTITY_MNODE_TYPE_NAME;
       case STORAGE_GROUP_ENTITY_MNODE_TYPE:
         return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
+      case LOGICAL_VIEW_MNODE_TYPE:
+        return LOGICAL_VIEW_MNODE_TYPE_NAME;
       default:
         throw new RuntimeException("Undefined MNode type " + type);
     }
