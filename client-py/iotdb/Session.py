@@ -1524,7 +1524,6 @@ class Session(object):
         ):
             return 0
 
-        logger.error("error status is %s", status)
         raise RuntimeError(str(status.code) + ": " + status.message)
 
     @staticmethod
