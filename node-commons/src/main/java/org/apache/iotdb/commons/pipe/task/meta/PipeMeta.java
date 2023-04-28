@@ -70,6 +70,12 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
+  public static PipeMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+    PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
+    PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    return new PipeMeta(staticMeta, runtimeMeta);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

@@ -51,6 +51,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     this.pipeMetaKeeper = new PipeMetaKeeper();
   }
 
+  /////////////////////////////// Getter ///////////////////////////////
+
+  public PipeMetaKeeper getPipeMetaKeeper() {
+    return pipeMetaKeeper;
+  }
+
   /////////////////////////////// Lock ///////////////////////////////
 
   public void acquirePipeTaskInfoLock() {

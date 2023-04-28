@@ -28,8 +28,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,27 +36,20 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status;
-  private final List<String> exceptionMessages;
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap;
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
-    exceptionMessages = new LinkedList<>();
     consensusGroupIdToTaskMetaMap = new ConcurrentHashMap<>();
   }
 
   public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap) {
     status = new AtomicReference<>(PipeStatus.STOPPED);
-    exceptionMessages = new LinkedList<>();
     this.consensusGroupIdToTaskMetaMap = consensusGroupIdToTaskMetaMap;
   }
 
   public AtomicReference<PipeStatus> getStatus() {
     return status;
-  }
-
-  public List<String> getExceptionMessages() {
-    return exceptionMessages;
   }
 
   public Map<TConsensusGroupId, PipeTaskMeta> getConsensusGroupIdToTaskMetaMap() {
@@ -118,13 +109,12 @@ public class PipeRuntimeMeta {
     }
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
-        && exceptionMessages.equals(that.exceptionMessages)
         && consensusGroupIdToTaskMetaMap.equals(that.consensusGroupIdToTaskMetaMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, exceptionMessages, consensusGroupIdToTaskMetaMap);
+    return Objects.hash(status, consensusGroupIdToTaskMetaMap);
   }
 
   @Override
@@ -132,8 +122,6 @@ public class PipeRuntimeMeta {
     return "PipeRuntimeMeta{"
         + "status="
         + status
-        + ", exceptionMessages="
-        + exceptionMessages
         + ", consensusGroupIdToTaskMetaMap="
         + consensusGroupIdToTaskMetaMap
         + '}';

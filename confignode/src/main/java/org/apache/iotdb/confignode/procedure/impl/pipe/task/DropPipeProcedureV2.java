@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -42,6 +43,8 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
 
   private String pipeName;
+
+  private PipeMeta pipeMeta;
 
   public DropPipeProcedureV2() {
     super();
@@ -71,6 +74,14 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
+    pipeMeta =
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .getPipeTaskInfo()
+            .getPipeMetaKeeper()
+            .getPipeMeta(pipeName);
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
     // Do nothing
   }
 
@@ -87,17 +98,14 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeManagementException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    final TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
+    if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException(
-          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
+          String.format("Failed to start pipe instance [%s] on data nodes", pipeName));
     }
   }
 
@@ -130,12 +138,17 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    pipeMeta.serialize(stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    try {
+      pipeMeta = PipeMeta.deserialize(byteBuffer);
+    } catch (IOException ignore) {
+    }
   }
 
   @Override

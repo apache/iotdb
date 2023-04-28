@@ -25,6 +25,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,6 +37,7 @@ public class PipeTaskMeta {
   // TODO: replace it with consensus index
   private final AtomicLong index = new AtomicLong(0L);
   private final AtomicInteger regionLeader = new AtomicInteger(0);
+  private final List<String> exceptionMessages = Collections.synchronizedList(new LinkedList<>());
 
   private PipeTaskMeta() {}
 
@@ -49,6 +54,10 @@ public class PipeTaskMeta {
     return regionLeader.get();
   }
 
+  public List<String> getExceptionMessages() {
+    return exceptionMessages;
+  }
+
   public void setIndex(long index) {
     this.index.set(index);
   }
@@ -60,12 +69,20 @@ public class PipeTaskMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(index.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
+    for (String exceptionMessage : exceptionMessages) {
+      ReadWriteIOUtils.write(exceptionMessage, outputStream);
+    }
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
     PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      PipeTaskMeta.exceptionMessages.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
     return PipeTaskMeta;
   }
 
@@ -83,16 +100,27 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index.get() == that.index.get() && regionLeader.get() == that.regionLeader.get();
+    return index.get() == that.index.get()
+        && exceptionMessages.equals(that.exceptionMessages)
+        && regionLeader.get() == that.regionLeader.get();
   }
 
   @Override
   public int hashCode() {
-    return (int) (index.get() * 31 + regionLeader.get());
+    return Objects.hash(index, exceptionMessages, regionLeader);
   }
 
   @Override
   public String toString() {
-    return "PipeTask{" + "index='" + index + '\'' + ", regionLeader='" + regionLeader + '\'' + '}';
+    return "PipeTask{"
+        + "index='"
+        + index
+        + '\''
+        + ", regionLeader='"
+        + regionLeader
+        + '\''
+        + ", exceptionMessages="
+        + exceptionMessages
+        + '}';
   }
 }

@@ -142,7 +142,8 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
 
   protected abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException;
 
   @Override
   protected OperatePipeTaskState getState(int stateId) {
