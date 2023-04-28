@@ -21,6 +21,8 @@ package org.apache.iotdb.db.auth.user;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -59,12 +61,12 @@ public class LocalFileUserAccessorTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, IllegalPathException {
     User[] users = new User[5];
     for (int i = 0; i < users.length; i++) {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
-        PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
+        PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
         users[i].getPrivilegeList().add(pathPrivilege);
         users[i].getRoleList().add("role" + j);

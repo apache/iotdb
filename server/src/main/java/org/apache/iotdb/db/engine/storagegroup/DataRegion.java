@@ -1149,19 +1149,17 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    for (int i = 0; i < node.getColumns().length; i++) {
-      if (node.getColumns()[i] == null) {
-        continue;
-      }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath(),
-              node.getMeasurements()[i],
-              node.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-    }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            getDatabaseName(),
+            node.getDevicePath(),
+            node.getMeasurements(),
+            node.getMeasurementSchemas(),
+            node.isAligned(),
+            node::composeLastTimeValuePair,
+            index -> node.getColumns()[index] != null,
+            true,
+            latestFlushedTime);
   }
 
   private void insertToTsFileProcessor(
@@ -1191,19 +1189,17 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    for (int i = 0; i < node.getValues().length; i++) {
-      if (node.getValues()[i] == null) {
-        continue;
-      }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath(),
-              node.getMeasurements()[i],
-              node.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-    }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            getDatabaseName(),
+            node.getDevicePath(),
+            node.getMeasurements(),
+            node.getMeasurementSchemas(),
+            node.isAligned(),
+            node::composeTimeValuePair,
+            index -> node.getValues()[index] != null,
+            true,
+            latestFlushedTime);
   }
 
   /**
@@ -1903,7 +1899,12 @@ public class DataRegion implements IDataRegionForQuery {
 
       // delete Last cache record if necessary
       // todo implement more precise process
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      DataNodeSchemaCache.getInstance().takeWriteLock();
+      try {
+        DataNodeSchemaCache.getInstance().invalidateAll();
+      } finally {
+        DataNodeSchemaCache.getInstance().releaseWriteLock();
+      }
 
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2312,7 +2313,12 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    DataNodeSchemaCache.getInstance().invalidateAll();
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().invalidateAll();
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+    }
   }
 
   /**

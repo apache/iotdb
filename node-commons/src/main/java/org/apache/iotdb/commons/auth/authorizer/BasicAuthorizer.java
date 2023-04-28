@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.role.IRoleManager;
 import org.apache.iotdb.commons.auth.user.IUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -137,16 +138,16 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, String path, int privilegeId)
+  public void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
-    String newPath = path;
+    PartialPath newPath = path;
     if (isAdmin(username)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE;
+      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
     if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
       throw new AuthException(
@@ -157,17 +158,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void revokePrivilegeFromUser(String username, String path, int privilegeId)
+  public void revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
     if (isAdmin(username)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, administrator must have all privileges");
     }
-    String p = path;
+    PartialPath newPath = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
-    if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
+    if (!userManager.revokePrivilegeFromUser(username, newPath, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
@@ -209,13 +210,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
+  public void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
-    String p = path;
+    PartialPath newPath = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
-    if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
+    if (!roleManager.grantPrivilegeToRole(roleName, newPath, privilegeId)) {
       throw new AuthException(
           TSStatusCode.ALREADY_HAS_PRIVILEGE,
           String.format(
@@ -224,13 +225,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void revokePrivilegeFromRole(String roleName, String path, int privilegeId)
+  public void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
-    String p = path;
+    PartialPath newPath = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
-    if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
+    if (!roleManager.revokePrivilegeFromRole(roleName, newPath, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
@@ -276,7 +277,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public Set<Integer> getPrivileges(String username, String path) throws AuthException {
+  public Set<Integer> getPrivileges(String username, PartialPath path) throws AuthException {
     if (isAdmin(username)) {
       return ADMIN_PRIVILEGES;
     }
@@ -306,7 +307,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, String path, int privilegeId)
+  public boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
       throws AuthException {
     if (isAdmin(username)) {
       return true;

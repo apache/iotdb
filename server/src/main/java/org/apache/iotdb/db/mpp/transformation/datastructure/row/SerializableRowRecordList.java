@@ -40,7 +40,7 @@ public class SerializableRowRecordList implements SerializableList {
   protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
   public static SerializableRowRecordList newSerializableRowRecordList(
-      long queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
+      String queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
   }

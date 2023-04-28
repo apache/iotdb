@@ -34,12 +34,9 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -149,27 +146,30 @@ public class SeriesPartitionTable {
    * @return the timePartition's corresponding dataRegionIds
    */
   List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
-    if (timeSlotId != null) {
+    if (timeSlotId.getStartTime() != -1) {
       if (!seriesPartitionMap.containsKey(timeSlotId)) {
         return new ArrayList<>();
       }
-      return seriesPartitionMap.get(timeSlotId).stream()
-          .sorted(Comparator.comparing(TConsensusGroupId::getId))
-          .collect(Collectors.toList());
+      return seriesPartitionMap.get(timeSlotId);
     } else {
-      Set<TConsensusGroupId> result = new HashSet<>();
-      seriesPartitionMap.values().forEach(result::addAll);
-      return result.stream()
-          .sorted(Comparator.comparing(TConsensusGroupId::getId))
+      return seriesPartitionMap.values().stream()
+          .flatMap(List::stream)
           .collect(Collectors.toList());
     }
   }
 
-  List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {
-    return seriesPartitionMap.keySet().stream()
-        .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
-        .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
-        .collect(Collectors.toList());
+  List<TTimePartitionSlot> getTimeSlotList(
+      TConsensusGroupId regionId, long startTime, long endTime) {
+    if (regionId.getId() == -1) {
+      return seriesPartitionMap.keySet().stream()
+          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .collect(Collectors.toList());
+    } else {
+      return seriesPartitionMap.keySet().stream()
+          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> seriesPartitionMap.get(e).contains(regionId))
+          .collect(Collectors.toList());
+    }
   }
 
   /**

@@ -20,6 +20,8 @@ package org.apache.iotdb.db.auth.entity;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,11 +31,11 @@ import java.util.Collections;
 public class UserTest {
 
   @Test
-  public void testUser() {
+  public void testUser() throws IllegalPathException {
     User user = new User("user", "password");
-    PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    user.setPrivileges("root.ln", Collections.singleton(1));
+    user.setPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
     Assert.assertEquals(
         "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], isOpenIdUser=false, useWaterMark=false, lastActiveTime=0}",
         user.toString());

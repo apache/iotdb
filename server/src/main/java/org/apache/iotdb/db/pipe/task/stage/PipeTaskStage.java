@@ -19,62 +19,42 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public abstract class PipeTaskStage {
-
-  protected final PipeSubtaskExecutor executor;
-  protected final PipeSubtask subtask;
-
-  protected PipeTaskStage(PipeSubtaskExecutor executor, PipeSubtask subtask) {
-    this.executor = executor;
-    this.subtask = subtask;
-  }
+public interface PipeTaskStage {
 
   /**
    * Create a pipe task stage.
    *
    * @throws PipeException if failed to create a pipe task stage.
    */
-  public final void create() throws PipeException {
-    executor.register(subtask);
-  }
-
+  void create() throws PipeException;
   /**
    * Start a pipe task stage.
    *
    * @throws PipeException if failed to start a pipe task stage.
    */
-  public final void start() throws PipeException {
-    executor.start(subtask.getTaskID());
-  }
+  void start() throws PipeException;
 
   /**
    * Stop a pipe task stage.
    *
    * @throws PipeException if failed to stop a pipe task stage.
    */
-  public final void stop() throws PipeException {
-    executor.stop(subtask.getTaskID());
-  }
+  void stop() throws PipeException;
 
   /**
    * Drop a pipe task stage.
    *
    * @throws PipeException if failed to drop a pipe task stage.
    */
-  public final void drop() throws PipeException {
-    executor.deregister(subtask.getTaskID());
-  }
+  void drop() throws PipeException;
 
   /**
    * Get the pipe subtask.
    *
    * @return the pipe subtask.
    */
-  public final PipeSubtask getSubtask() {
-    return subtask;
-  }
+  PipeSubtask getSubtask();
 }

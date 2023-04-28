@@ -55,7 +55,7 @@ public class UDTFExecutor {
   }
 
   public void beforeStart(
-      long queryId,
+      String queryId,
       float collectorMemoryBudgetInMB,
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,

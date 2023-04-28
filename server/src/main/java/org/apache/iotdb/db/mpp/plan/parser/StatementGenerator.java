@@ -142,7 +142,12 @@ public class StatementGenerator {
 
     // iterate the path list and add it to from operator
     for (String pathStr : rawDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
+      PartialPath path;
+      if (rawDataQueryReq.isLegalPathNodes()) {
+        path = new PartialPath(pathStr.split("\\."));
+      } else {
+        path = new PartialPath(pathStr);
+      }
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
@@ -180,7 +185,12 @@ public class StatementGenerator {
 
     // iterate the path list and add it to from operator
     for (String pathStr : lastDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
+      PartialPath path;
+      if (lastDataQueryReq.isLegalPathNodes()) {
+        path = new PartialPath(pathStr.split("\\."));
+      } else {
+        path = new PartialPath(pathStr);
+      }
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
@@ -216,7 +226,11 @@ public class StatementGenerator {
     SelectComponent selectComponent = new SelectComponent(zoneId);
     List<PartialPath> selectPaths = new ArrayList<>();
     for (String pathStr : req.getPaths()) {
-      selectPaths.add(new PartialPath(pathStr));
+      if (req.isLegalPathNodes()) {
+        selectPaths.add(new PartialPath(pathStr.split("\\.")));
+      } else {
+        selectPaths.add(new PartialPath(pathStr));
+      }
     }
     List<TAggregationType> aggregations = req.getAggregations();
     for (int i = 0; i < aggregations.size(); i++) {

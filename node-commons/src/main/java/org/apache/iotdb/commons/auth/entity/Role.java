@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
@@ -62,20 +63,20 @@ public class Role {
     this.privilegeList = privilegeList;
   }
 
-  public boolean hasPrivilege(String path, int privilegeId) {
+  public boolean hasPrivilege(PartialPath path, int privilegeId) {
     return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void addPrivilege(String path, int privilegeId) {
+  public void addPrivilege(PartialPath path, int privilegeId) {
     AuthUtils.addPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void removePrivilege(String path, int privilegeId) {
+  public void removePrivilege(PartialPath path, int privilegeId) {
     AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
   /** set privileges of path. */
-  public void setPrivileges(String path, Set<Integer> privileges) {
+  public void setPrivileges(PartialPath path, Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
         pathPrivilege.setPrivileges(privileges);
@@ -83,11 +84,11 @@ public class Role {
     }
   }
 
-  public Set<Integer> getPrivileges(String path) throws AuthException {
+  public Set<Integer> getPrivileges(PartialPath path) throws AuthException {
     return AuthUtils.getPrivileges(path, privilegeList);
   }
 
-  public boolean checkPrivilege(String path, int privilegeId) throws AuthException {
+  public boolean checkPrivilege(PartialPath path, int privilegeId) throws AuthException {
     return AuthUtils.checkPrivilege(path, privilegeId, privilegeList);
   }
 

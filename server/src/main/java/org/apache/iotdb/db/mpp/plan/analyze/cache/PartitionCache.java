@@ -673,10 +673,12 @@ public class PartitionCache {
     SeriesPartitionTable cachedSeriesPartitionTable =
         cachedStorageGroupPartitionMap.get(seriesPartitionSlot);
     if (null == cachedSeriesPartitionTable) {
-      logger.debug(
-          "[{} Cache] miss when search device {}",
-          DATA_PARTITION_CACHE_NAME,
-          dataPartitionQueryParam.getDevicePath());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] miss when search device {}",
+            DATA_PARTITION_CACHE_NAME,
+            dataPartitionQueryParam.getDevicePath());
+      }
       return false;
     }
     Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =

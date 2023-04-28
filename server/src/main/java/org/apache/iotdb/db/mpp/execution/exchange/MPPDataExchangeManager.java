@@ -63,6 +63,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -401,7 +402,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private final AtomicInteger cnt;
 
-    private volatile boolean hasDecremented = false;
+    private final AtomicBoolean hasDecremented = new AtomicBoolean(false);
 
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
@@ -441,9 +442,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       }
     }
 
-    private synchronized void decrementCnt() {
-      if (!hasDecremented) {
-        hasDecremented = true;
+    private void decrementCnt() {
+      if (hasDecremented.compareAndSet(false, true)) {
         if (cnt.decrementAndGet() == 0) {
           closeShuffleSinkHandle();
         }

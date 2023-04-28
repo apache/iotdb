@@ -43,6 +43,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -1920,6 +1922,26 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TGetTimeSlotListResp resp = client.getTimeSlotList(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountTimeSlotListResp resp = client.countTimeSlotList(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

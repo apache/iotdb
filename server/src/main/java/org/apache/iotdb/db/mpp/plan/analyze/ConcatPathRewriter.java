@@ -61,6 +61,12 @@ public class ConcatPathRewriter {
             prefixPaths,
             patternTree);
       }
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression sortItemExpression : queryStatement.getExpressionSortItemList()) {
+          ExpressionAnalyzer.constructPatternTreeFromExpression(
+              sortItemExpression, prefixPaths, patternTree);
+        }
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
@@ -68,7 +74,7 @@ public class ConcatPathRewriter {
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
-      // concat GROUP BY VARIATION with FROM
+      // concat GROUP BY with FROM
       if (queryStatement.hasGroupByExpression()) {
         queryStatement
             .getGroupByComponent()
@@ -76,6 +82,11 @@ public class ConcatPathRewriter {
                 contactGroupByWithFrom(
                     queryStatement.getGroupByComponent().getControlColumnExpression(),
                     prefixPaths));
+      }
+      if (queryStatement.hasOrderByExpression()) {
+        List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+        sortItemExpressions.replaceAll(
+            expression -> contactOrderByWithFrom(expression, prefixPaths));
       }
     }
 
@@ -121,6 +132,15 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
     if (resultExpressions.size() != 1) {
       throw new IllegalStateException("Expression in group by should indicate one value");
+    }
+    return resultExpressions.get(0);
+  }
+
+  private Expression contactOrderByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+    if (resultExpressions.size() != 1) {
+      throw new IllegalStateException("Expression in order by should indicate one value");
     }
     return resultExpressions.get(0);
   }

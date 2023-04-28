@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +42,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
@@ -55,47 +57,36 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private boolean deleteAfterLoad;
 
   private TRegionReplicaSet localRegionReplicaSet;
-  private DataPartition dataPartition;
 
   public LoadSingleTsFileNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadSingleTsFileNode(
-      PlanNodeId id,
-      TsFileResource resource,
-      boolean deleteAfterLoad,
-      DataPartition dataPartition) {
+  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
-    this.dataPartition = dataPartition;
   }
 
-  public void checkIfNeedDecodeTsFile() throws IOException {
-    Set<TRegionReplicaSet> allRegionReplicaSet = new HashSet<>();
-    TTimePartitionSlot timePartitionSlot = null;
-    needDecodeTsFile = false;
-    for (String device : resource.getDevices()) {
-      TTimePartitionSlot startSlot =
-          TimePartitionUtils.getTimePartition(resource.getStartTime(device));
-      if (timePartitionSlot == null) {
-        timePartitionSlot = startSlot;
-      }
-      if (!startSlot.equals(timePartitionSlot)
-          || !TimePartitionUtils.getTimePartition(resource.getEndTime(device))
-              .equals(timePartitionSlot)) {
-        needDecodeTsFile = true;
-        return;
-      }
-      allRegionReplicaSet.add(
-          dataPartition.getDataRegionReplicaSetForWriting(device, timePartitionSlot));
-    }
-    needDecodeTsFile = !isDispatchedToLocal(allRegionReplicaSet);
+  public boolean needDecodeTsFile(
+      Function<List<Pair<String, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher)
+      throws IOException {
+    List<Pair<String, TTimePartitionSlot>> slotList = new ArrayList<>();
+    resource
+        .getDevices()
+        .forEach(
+            o -> {
+              slotList.add(
+                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getStartTime(o))));
+              slotList.add(
+                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
+            });
+    needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     if (!needDecodeTsFile && !resource.resourceFileExists()) {
       resource.serialize();
     }
+    return needDecodeTsFile;
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
@@ -118,10 +109,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
   }
 
-  public boolean needDecodeTsFile() {
-    return needDecodeTsFile;
-  }
-
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
   }
@@ -133,10 +120,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
    */
   public TRegionReplicaSet getLocalRegionReplicaSet() {
     return localRegionReplicaSet;
-  }
-
-  public DataPartition getDataPartition() {
-    return dataPartition;
   }
 
   public TsFileResource getTsFileResource() {

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -488,6 +489,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitGetTimeSlotList(GetTimeSlotListStatement getTimeSlotListStatement, C context) {
     return visitStatement(getTimeSlotListStatement, context);
+  }
+
+  public R visitCountTimeSlotList(
+      CountTimeSlotListStatement countTimeSlotListStatement, C context) {
+    return visitStatement(countTimeSlotListStatement, context);
   }
 
   public R visitMigrateRegion(MigrateRegionStatement migrateRegionStatement, C context) {
