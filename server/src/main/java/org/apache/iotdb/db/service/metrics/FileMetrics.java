@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -47,6 +48,11 @@ public class FileMetrics implements IMetricSet {
   private static final WALManager WAL_MANAGER = WALManager.getInstance();
   private final Runtime runtime = Runtime.getRuntime();
   private String[] getOpenFileNumberCommand;
+  private String fileHandlerCntPath = "/proc/%s/fd";
+
+  public FileMetrics() {
+    fileHandlerCntPath = String.format(fileHandlerCntPath, METRIC_CONFIG.getPid());
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -245,9 +251,17 @@ public class FileMetrics implements IMetricSet {
   }
 
   private long getOpenFileHandlersNumber() {
+    long fdCount = 0;
     try {
-      if ((METRIC_CONFIG.getSystemType() == SystemType.LINUX
-              || METRIC_CONFIG.getSystemType() == SystemType.MAC)
+      if (METRIC_CONFIG.getSystemType() == SystemType.LINUX) {
+        // count the fd in the system directory instead of
+        // calling runtime.exec() which could be much slower
+        File fdDir = new File(fileHandlerCntPath);
+        if (fdDir.exists()) {
+          File[] fds = fdDir.listFiles();
+          fdCount = fds == null ? 0 : fds.length;
+        }
+      } else if ((METRIC_CONFIG.getSystemType() == SystemType.MAC)
           && METRIC_CONFIG.getPid().length() != 0) {
         Process process = runtime.exec(getOpenFileNumberCommand);
         StringBuilder result = new StringBuilder();
@@ -258,11 +272,11 @@ public class FileMetrics implements IMetricSet {
             result.append(line);
           }
         }
-        return Long.parseLong(result.toString().trim());
+        fdCount = Long.parseLong(result.toString().trim());
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to get open file number, because ", e);
     }
-    return 0L;
+    return fdCount;
   }
 }
