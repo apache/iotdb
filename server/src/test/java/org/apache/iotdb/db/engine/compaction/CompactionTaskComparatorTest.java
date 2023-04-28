@@ -336,7 +336,9 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    protected void doCompaction() {}
+    protected boolean doCompaction() {
+      return true;
+    }
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
@@ -371,7 +373,9 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    public void doCompaction() {}
+    public boolean doCompaction() {
+      return true;
+    }
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {

@@ -2343,15 +2343,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2369,16 +2370,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Assert.assertEquals(1, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(2, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new FastCompactionPerformer(true),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new FastCompactionPerformer(true),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2423,15 +2425,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2504,15 +2507,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2586,15 +2590,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2612,16 +2617,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(3, sourceFiles.getUnseqFiles().size());
 
-    new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            sourceFiles.getSeqFiles(),
-            sourceFiles.getUnseqFiles(),
-            new FastCompactionPerformer(true),
-            new AtomicInteger(0),
-            sourceFiles.getTotalMemoryCost(),
-            0)
-        .start();
+    Assert.assertTrue(
+        new CrossSpaceCompactionTask(
+                0,
+                tsFileManager,
+                sourceFiles.getSeqFiles(),
+                sourceFiles.getUnseqFiles(),
+                new FastCompactionPerformer(true),
+                new AtomicInteger(0),
+                sourceFiles.getTotalMemoryCost(),
+                0)
+            .start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -2674,15 +2680,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2761,15 +2768,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2849,15 +2857,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
@@ -2938,15 +2947,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new FastCompactionPerformer(false),
-              new AtomicInteger(0),
-              0L)
-          .start();
+      Assert.assertTrue(
+          new InnerSpaceCompactionTask(
+                  0,
+                  tsFileManager,
+                  taskResource,
+                  true,
+                  new FastCompactionPerformer(false),
+                  new AtomicInteger(0),
+                  0L)
+              .start());
     }
 
     // select cross compaction
