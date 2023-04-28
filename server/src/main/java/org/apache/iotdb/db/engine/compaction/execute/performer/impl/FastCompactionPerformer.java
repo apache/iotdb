@@ -81,8 +81,6 @@ public class FastCompactionPerformer
 
   private boolean isCrossCompaction;
 
-  private long tempFileSize = 0L;
-
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,

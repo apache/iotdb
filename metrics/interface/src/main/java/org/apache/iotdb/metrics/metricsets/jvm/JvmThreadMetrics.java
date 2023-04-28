@@ -28,7 +28,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,8 +36,8 @@ import java.util.Map;
 public class JvmThreadMetrics implements IMetricSet {
   private static long lastUpdateTime = 0L;
   private static final long UPDATE_INTERVAL = 10_000L;
-  private static Map<Thread.State, Integer> threadStateCountMap =
-      new HashMap<>(Thread.State.values().length + 1, 1.0f);
+  private static final Map<Thread.State, Integer> threadStateCountMap =
+      new EnumMap<>(Thread.State.class);
 
   @Override
   public void bindTo(AbstractMetricService metricService) {

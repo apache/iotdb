@@ -75,7 +75,6 @@ public class ReadPointCompactionPerformer
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
-  private long tempFileSize = 0L;
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,

@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -47,6 +48,13 @@ public class FileMetrics implements IMetricSet {
   private static final WALManager WAL_MANAGER = WALManager.getInstance();
   private final Runtime runtime = Runtime.getRuntime();
   private String[] getOpenFileNumberCommand;
+
+  @SuppressWarnings("squid:S1075")
+  private String fileHandlerCntPathInLinux = "/proc/%s/fd";
+
+  public FileMetrics() {
+    fileHandlerCntPathInLinux = String.format(fileHandlerCntPathInLinux, METRIC_CONFIG.getPid());
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -245,9 +253,17 @@ public class FileMetrics implements IMetricSet {
   }
 
   private long getOpenFileHandlersNumber() {
+    long fdCount = 0;
     try {
-      if ((METRIC_CONFIG.getSystemType() == SystemType.LINUX
-              || METRIC_CONFIG.getSystemType() == SystemType.MAC)
+      if (METRIC_CONFIG.getSystemType() == SystemType.LINUX) {
+        // count the fd in the system directory instead of
+        // calling runtime.exec() which could be much slower
+        File fdDir = new File(fileHandlerCntPathInLinux);
+        if (fdDir.exists()) {
+          File[] fds = fdDir.listFiles();
+          fdCount = fds == null ? 0 : fds.length;
+        }
+      } else if ((METRIC_CONFIG.getSystemType() == SystemType.MAC)
           && METRIC_CONFIG.getPid().length() != 0) {
         Process process = runtime.exec(getOpenFileNumberCommand);
         StringBuilder result = new StringBuilder();
