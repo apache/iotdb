@@ -31,8 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -47,9 +45,12 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -76,8 +77,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
@@ -372,7 +375,7 @@ public interface IManager {
   TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges */
-  TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
+  TPermissionInfoResp checkUserPrivileges(String username, List<PartialPath> paths, int permission);
 
   /**
    * Register ConfigNode when it is first startup
@@ -539,6 +542,8 @@ public interface IManager {
   /** Drop schema template */
   TSStatus dropSchemaTemplate(String templateName);
 
+  TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
+
   /*
    * delete timeseries
    *
@@ -599,11 +604,36 @@ public interface IManager {
    */
   TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
+  /**
+   * Get RegionId。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetRegionIdResp.
+   */
   TGetRegionIdResp getRegionId(TGetRegionIdReq req);
 
-  TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
+  /**
+   * Get timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetTimeSlotListResp.
+   */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req);
+  /**
+   * Count timeSlot(timePartition)。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TCountTimeSlotListResp.
+   */
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req);
 
-  TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+  /**
+   * Get seriesSlot。used for Show cluster slots information in
+   * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
+   *
+   * @return TGetSeriesSlotListResp.
+   */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
 

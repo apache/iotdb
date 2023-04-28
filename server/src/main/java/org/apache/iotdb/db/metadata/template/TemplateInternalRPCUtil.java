@@ -118,4 +118,14 @@ public class TemplateInternalRPCUtil {
   public static Pair<Integer, String> parseInvalidateTemplateSetInfoBytes(ByteBuffer buffer) {
     return new Pair<>(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readString(buffer));
   }
+
+  public static byte[] generateUpdateTemplateInfoBytes(Template template) {
+    return template.serialize().array();
+  }
+
+  public static Template parseUpdateTemplateInfoBytes(ByteBuffer buffer) {
+    Template template = new Template();
+    template.deserialize(buffer);
+    return template;
+  }
 }

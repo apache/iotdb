@@ -54,8 +54,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePaths
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -101,10 +99,13 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -132,8 +133,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
@@ -167,6 +170,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
+import org.apache.iotdb.db.metadata.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -188,7 +193,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
@@ -584,8 +588,11 @@ public class ConfigManager implements IManager {
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
-    // path doesn't contain * so the size of innerPathList should be 1
-    PartialPath innerPath = path.alterPrefixPath(database).get(0);
+    List<PartialPath> innerPathList = path.alterPrefixPath(database);
+    if (innerPathList.size() == 0) {
+      return new ArrayList<>();
+    }
+    PartialPath innerPath = innerPathList.get(0);
     // The innerPath contains `*` and the only `*` is not in last level
     if (innerPath.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
@@ -621,8 +628,7 @@ public class ConfigManager implements IManager {
       for (int i = 0; i < allDatabases.size(); i++) {
         String database = allDatabases.get(i);
         PartialPath databasePath = allDatabasePaths.get(i);
-        if (path.overlapWith(databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            && !scanAllRegions.containsKey(database)) {
+        if (path.overlapWithFullPathPrefix(databasePath) && !scanAllRegions.containsKey(database)) {
           List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, databasePath);
           if (relatedSlot.isEmpty()) {
             scanAllRegions.put(database, true);
@@ -961,7 +967,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(
-      String username, List<String> paths, int permission) {
+      String username, List<PartialPath> paths, int permission) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserPrivileges(username, paths, permission);
@@ -1542,6 +1548,23 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ByteBuffer buffer = ByteBuffer.wrap(req.getTemplateAlterInfo());
+      TemplateAlterOperationType operationType =
+          TemplateAlterOperationUtil.parseOperationType(buffer);
+      if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+        return clusterSchemaManager.extendSchemaTemplate(
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+      }
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1621,18 +1644,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
+  public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? partitionManager.getTimeSlotList(plan).convertToRpcGetTimeSlotListResp()
+        ? partitionManager.getTimeSlotList(req).convertToRpcGetTimeSlotListResp()
         : new TGetTimeSlotListResp(status);
   }
 
   @Override
-  public TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
+  public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
+        ? partitionManager.countTimeSlotList(req).convertToRpcCountTimeSlotListResp()
+        : new TCountTimeSlotListResp(status);
+  }
+
+  @Override
+  public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getSeriesSlotList(req).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
   }
 

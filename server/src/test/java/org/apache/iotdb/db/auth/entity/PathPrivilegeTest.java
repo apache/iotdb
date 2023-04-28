@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.auth.entity;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,13 +30,13 @@ import java.util.Collections;
 public class PathPrivilegeTest {
 
   @Test
-  public void testPathPrivilege() {
+  public void testPathPrivilege() throws IllegalPathException {
     PathPrivilege pathPrivilege = new PathPrivilege();
-    pathPrivilege.setPath("root.ln");
+    pathPrivilege.setPath(new PartialPath("root.ln"));
     pathPrivilege.setPrivileges(Collections.singleton(1));
     Assert.assertEquals("root.ln : INSERT_TIMESERIES", pathPrivilege.toString());
     PathPrivilege pathPrivilege1 = new PathPrivilege();
-    pathPrivilege1.setPath("root.sg");
+    pathPrivilege1.setPath(new PartialPath("root.sg"));
     pathPrivilege1.setPrivileges(Collections.singleton(1));
     Assert.assertNotEquals(pathPrivilege, pathPrivilege1);
     pathPrivilege.deserialize(pathPrivilege1.serialize());

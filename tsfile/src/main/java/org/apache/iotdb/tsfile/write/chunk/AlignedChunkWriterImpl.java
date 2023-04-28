@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -77,14 +78,53 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
+  /**
+   * This is used to rewrite file. The encoding and compression of the time column should be the
+   * same as the source file.
+   *
+   * @param timeSchema time schema
+   * @param valueSchemaList value schema list
+   */
+  public AlignedChunkWriterImpl(
+      IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
+    timeChunkWriter =
+        new TimeChunkWriter(
+            timeSchema.getMeasurementId(),
+            timeSchema.getCompressor(),
+            timeSchema.getEncodingType(),
+            timeSchema.getTimeEncoder());
+
+    valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
+    for (int i = 0; i < valueSchemaList.size(); i++) {
+      valueChunkWriterList.add(
+          new ValueChunkWriter(
+              valueSchemaList.get(i).getMeasurementId(),
+              valueSchemaList.get(i).getCompressor(),
+              valueSchemaList.get(i).getType(),
+              valueSchemaList.get(i).getEncodingType(),
+              valueSchemaList.get(i).getValueEncoder()));
+    }
+
+    this.valueIndex = 0;
+    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
+  }
+
+  /**
+   * This is used to write 0-level file. The compression of the time column is 'SNAPPY' in the
+   * configuration by default. The encoding of the time column is 'TS_2DIFF' in the configuration by
+   * default.
+   *
+   * @param schemaList value schema list
+   */
   public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+    CompressionType timeCompression = TSFileDescriptor.getInstance().getConfig().getCompressor();
     timeChunkWriter =
         new TimeChunkWriter(
             "",
-            schemaList.get(0).getCompressor(),
+            timeCompression,
             timeEncoding,
             TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType));
 

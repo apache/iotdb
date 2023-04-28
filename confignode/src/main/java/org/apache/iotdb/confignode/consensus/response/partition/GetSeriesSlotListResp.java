@@ -51,7 +51,7 @@ public class GetSeriesSlotListResp implements DataSet {
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.seriesSlotList = seriesSlotList;
+      resp.setSeriesSlotList(seriesSlotList);
     }
 
     return resp;

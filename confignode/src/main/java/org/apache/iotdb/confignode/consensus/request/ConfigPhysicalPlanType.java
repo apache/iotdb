@@ -59,6 +59,8 @@ public enum ConfigPhysicalPlanType {
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
 
+  CountTimeSlotList((short) 310),
+
   /** Partition */
   GetSchemaPartition((short) 400),
   CreateSchemaPartition((short) 401),
@@ -115,6 +117,7 @@ public enum ConfigPhysicalPlanType {
   DropSchemaTemplate((short) 811),
   PreSetSchemaTemplate((short) 812),
   CommitSetSchemaTemplate((short) 813),
+  ExtendSchemaTemplate((short) 814),
 
   /** Deprecated types for sync, restored them for upgrade */
   @Deprecated

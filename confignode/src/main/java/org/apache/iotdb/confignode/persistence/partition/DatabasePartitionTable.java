@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class DatabasePartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePartitionTable.class);
@@ -447,24 +445,15 @@ public class DatabasePartitionTable {
   }
 
   public List<TTimePartitionSlot> getTimeSlotList(
-      TSeriesPartitionSlot seriesSlotId, long startTime, long endTime) {
-    return dataPartitionTable.getTimeSlotList(seriesSlotId, startTime, endTime);
+      TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
+    return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList(TConsensusGroupType type) {
-    switch (type) {
-      case DataRegion:
-        return dataPartitionTable.getSeriesSlotList();
-      case SchemaRegion:
-        return schemaPartitionTable.getSeriesSlotList();
-      case ConfigRegion:
-      default:
-        return Stream.concat(
-                schemaPartitionTable.getSeriesSlotList().stream(),
-                dataPartitionTable.getSeriesSlotList().stream())
-            .distinct()
-            .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
-            .collect(Collectors.toList());
+    if (type == TConsensusGroupType.DataRegion) {
+      return dataPartitionTable.getSeriesSlotList();
+    } else {
+      return schemaPartitionTable.getSeriesSlotList();
     }
   }
   /**

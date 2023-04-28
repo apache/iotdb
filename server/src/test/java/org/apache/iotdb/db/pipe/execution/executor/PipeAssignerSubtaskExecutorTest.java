@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.task.callable.PipeAssignerSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
 
 import org.junit.Before;
 import org.mockito.Mockito;

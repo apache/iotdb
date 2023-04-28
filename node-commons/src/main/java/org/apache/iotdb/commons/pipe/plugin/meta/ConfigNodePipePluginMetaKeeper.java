@@ -33,7 +33,8 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
   protected final Map<String, Integer> jarNameToReferenceCountMap;
 
   public ConfigNodePipePluginMetaKeeper() {
-    super();
+    loadBuiltInPlugins();
+
     jarNameToMd5Map = new HashMap<>();
     jarNameToReferenceCountMap = new HashMap<>();
   }
@@ -67,6 +68,7 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
     }
   }
 
+  @Override
   public void processTakeSnapshot(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(jarNameToMd5Map.size(), outputStream);
     for (Map.Entry<String, String> entry : jarNameToMd5Map.entrySet()) {
@@ -75,14 +77,13 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
       ReadWriteIOUtils.write(jarNameToReferenceCountMap.get(entry.getKey()), outputStream);
     }
 
-    ReadWriteIOUtils.write(pipeNameToPipeMetaMap.size(), outputStream);
-    for (PipePluginMeta pipePluginMeta : pipeNameToPipeMetaMap.values()) {
-      ReadWriteIOUtils.write(pipePluginMeta.serialize(), outputStream);
-    }
+    super.processTakeSnapshot(outputStream);
   }
 
+  @Override
   public void processLoadSnapshot(InputStream inputStream) throws IOException {
-    clear();
+    jarNameToMd5Map.clear();
+    jarNameToReferenceCountMap.clear();
 
     final int jarSize = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < jarSize; i++) {
@@ -93,16 +94,6 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
       jarNameToReferenceCountMap.put(jarName, count);
     }
 
-    final int pipePluginMetaSize = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < pipePluginMetaSize; i++) {
-      final PipePluginMeta pipePluginMeta = PipePluginMeta.deserialize(inputStream);
-      addPipePluginMeta(pipePluginMeta.getPluginName().toUpperCase(), pipePluginMeta);
-    }
-  }
-
-  public void clear() {
-    pipeNameToPipeMetaMap.clear();
-    jarNameToMd5Map.clear();
-    jarNameToReferenceCountMap.clear();
+    super.processLoadSnapshot(inputStream);
   }
 }

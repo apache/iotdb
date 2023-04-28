@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
@@ -66,7 +67,8 @@ public interface IUserManager extends SnapshotProcessor {
    * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
+  boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
@@ -79,7 +81,7 @@ public interface IUserManager extends SnapshotProcessor {
    *     exists.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean revokePrivilegeFromUser(String username, String path, int privilegeId)
+  boolean revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException;
 
   /**

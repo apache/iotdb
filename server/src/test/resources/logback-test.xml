@@ -40,6 +40,7 @@
     <!-- enable me if you want to monitor when files are opened and closed.
     <logger name="FileMonitor" level="info"/>
     -->
+    <logger name="org.apache.iotdb.db.pipe" level="INFO"/>
     <logger name="org.apache.iotdb.db.sync" level="INFO"/>
     <logger name="org.apache.iotdb.db.engine.merge" level="INFO"/>
     <logger name="org.apache.iotdb.db.metadata" level="INFO"/>

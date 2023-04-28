@@ -35,7 +35,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
-  public ElasticSerializableBinaryTVList(long queryId, float memoryLimitInMB, int cacheSize) {
+  public ElasticSerializableBinaryTVList(String queryId, float memoryLimitInMB, int cacheSize) {
     super(TSDataType.TEXT, queryId, memoryLimitInMB, cacheSize);
     byteArrayLengthForMemoryControl = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     totalByteArrayLengthLimit = 0;
