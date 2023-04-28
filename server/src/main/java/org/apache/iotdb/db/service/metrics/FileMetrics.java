@@ -48,10 +48,12 @@ public class FileMetrics implements IMetricSet {
   private static final WALManager WAL_MANAGER = WALManager.getInstance();
   private final Runtime runtime = Runtime.getRuntime();
   private String[] getOpenFileNumberCommand;
-  private String fileHandlerCntPath = "/proc/%s/fd";
+
+  @SuppressWarnings("squid:S1075")
+  private String fileHandlerCntPathInLinux = "/proc/%s/fd";
 
   public FileMetrics() {
-    fileHandlerCntPath = String.format(fileHandlerCntPath, METRIC_CONFIG.getPid());
+    fileHandlerCntPathInLinux = String.format(fileHandlerCntPathInLinux, METRIC_CONFIG.getPid());
   }
 
   @Override
@@ -256,7 +258,7 @@ public class FileMetrics implements IMetricSet {
       if (METRIC_CONFIG.getSystemType() == SystemType.LINUX) {
         // count the fd in the system directory instead of
         // calling runtime.exec() which could be much slower
-        File fdDir = new File(fileHandlerCntPath);
+        File fdDir = new File(fileHandlerCntPathInLinux);
         if (fdDir.exists()) {
           File[] fds = fdDir.listFiles();
           fdCount = fds == null ? 0 : fds.length;

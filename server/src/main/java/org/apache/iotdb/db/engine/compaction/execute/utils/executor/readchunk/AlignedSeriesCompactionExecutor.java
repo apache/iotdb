@@ -130,7 +130,6 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
-    long originTempFileSize = writer.getPos();
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
