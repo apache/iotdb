@@ -104,6 +104,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
       return null;
     }
     size--;
+    Preconditions.checkState(size >= 0, "The size of readyQueue cannot be negative.");
     return output;
   }
 
