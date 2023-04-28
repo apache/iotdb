@@ -342,7 +342,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public void abort(Throwable t) {
+  public synchronized void abort(Throwable t) {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (aborted || closed) {
         return;
