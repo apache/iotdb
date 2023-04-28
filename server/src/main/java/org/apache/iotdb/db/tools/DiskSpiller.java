@@ -48,8 +48,6 @@ public class DiskSpiller {
   private final List<Integer> fileIndex;
   private final List<TSDataType> dataTypeList;
   private final List<ListenableFuture<?>> processingTask;
-
-  private final String CONNECTOR = "-";
   private final String folderPath;
   private final String filePrefix;
   private final String fileSuffix = ".sortTemp";
@@ -154,7 +152,7 @@ public class DiskSpiller {
   public List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
     for (int index : fileIndex) {
-      filePaths.add(filePrefix + CONNECTOR + index + fileSuffix);
+      filePaths.add(filePrefix + "-" + index + fileSuffix);
     }
     return filePaths;
   }

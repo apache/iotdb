@@ -357,4 +357,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setQuotaEnable(quotaEnable);
     return this;
   }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    dnConfig.setSortBufferSize(sortBufferSize);
+    cnConfig.setSortBufferSize(sortBufferSize);
+    return this;
+  }
 }

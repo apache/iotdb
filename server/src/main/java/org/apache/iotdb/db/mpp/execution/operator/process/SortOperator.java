@@ -165,6 +165,10 @@ public class SortOperator implements ProcessOperator {
       int row = mergeSortKey.rowIndex;
       timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(row));
       for (int j = 0; j < valueColumnBuilders.length; j++) {
+        if (tsBlock.getColumn(j).isNull(row)) {
+          valueColumnBuilders[j].appendNull();
+          continue;
+        }
         valueColumnBuilders[j].write(tsBlock.getColumn(j), row);
       }
       tsBlockBuilder.declarePosition();
@@ -278,7 +282,9 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return cachedData == null;
+    return inputOperator.isFinished()
+        && (cachedData == null || cachedData.size() == curRow)
+        && ((diskSpiller.hasSpilledData() && !hasMoreData()) || !diskSpiller.hasSpilledData());
   }
 
   @Override

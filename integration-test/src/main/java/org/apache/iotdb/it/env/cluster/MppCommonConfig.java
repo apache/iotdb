@@ -346,4 +346,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("quota_enable", String.valueOf(quotaEnable));
     return this;
   }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    setProperty("sort_buffer_size", String.valueOf(sortBufferSize));
+    return this;
+  }
 }

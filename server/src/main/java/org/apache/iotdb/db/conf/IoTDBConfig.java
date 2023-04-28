@@ -313,6 +313,14 @@ public class IoTDBConfig {
 
   private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
 
+  /** temp result directory for sortOperator */
+  private String sortTmpDir =
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.TMP_FOLDER_NAME
+          + File.separator
+          + "sortTmp";
+
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
 
@@ -409,6 +417,9 @@ public class IoTDBConfig {
 
   /** Enable the service for MLNode */
   private boolean enableMLNodeService = false;
+
+  /** The buffer for sort operation */
+  private long sortBufferSize = 50 * 1024 * 1024L;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -3773,5 +3784,21 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
+  }
+
+  public void setSortBufferSize(long sortBufferSize) {
+    this.sortBufferSize = sortBufferSize;
+  }
+
+  public long getSortBufferSize() {
+    return sortBufferSize;
+  }
+
+  public void setSortTmpDir(String sortTmpDir) {
+    this.sortTmpDir = sortTmpDir;
+  }
+
+  public String getSortTmpDir() {
+    return sortTmpDir;
   }
 }
