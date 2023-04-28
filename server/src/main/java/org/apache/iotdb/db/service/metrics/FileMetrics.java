@@ -179,7 +179,7 @@ public class FileMetrics implements IMetricSet {
           };
       metricService.createAutoGauge(
           Metric.FILE_COUNT.toString(),
-          MetricLevel.CORE,
+          MetricLevel.IMPORTANT,
           this,
           FileMetrics::getOpenFileHandlersNumber,
           Tag.NAME.toString(),

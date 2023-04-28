@@ -36,7 +36,8 @@ import java.util.Map;
 public class JvmThreadMetrics implements IMetricSet {
   private static long lastUpdateTime = 0L;
   private static final long UPDATE_INTERVAL = 10_000L;
-  private static Map<Thread.State, Integer> threadStateCountMap = new HashMap<>();
+  private static Map<Thread.State, Integer> threadStateCountMap =
+      new HashMap<>(Thread.State.values().length + 1, 1.0f);
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -109,7 +110,7 @@ public class JvmThreadMetrics implements IMetricSet {
         info -> {
           if (info != null) {
             Thread.State state = info.getThreadState();
-            threadStateCountMap.put(state, threadStateCountMap.getOrDefault(state, 0) + 1);
+            threadStateCountMap.compute(state, (k, v) -> v == null ? 1 : v + 1);
           }
         });
   }
