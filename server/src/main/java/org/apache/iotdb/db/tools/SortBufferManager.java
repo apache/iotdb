@@ -23,20 +23,24 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 
 public class SortBufferManager {
 
-  public static long SORT_BUFFER_SIZE = 50 * 1024 * 1024L;
-  private static long bufferUsed = 0;
+  public SortBufferManager() {}
 
-  public static synchronized void allocateOneSortBranch() {
-    boolean checked = check(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
-    if (!checked) throw new IllegalArgumentException("No enough memory for sort");
-    bufferUsed += DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  public long SORT_BUFFER_SIZE = 50 * 1024 * 1024L;
+  private long bufferUsed = 0;
+
+  private final long BUFFER_SIZE_FOR_ONE_BRANCH = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
+  public synchronized void allocateOneSortBranch() {
+    boolean checked = check(BUFFER_SIZE_FOR_ONE_BRANCH);
+    if (!checked) throw new IllegalArgumentException("Not enough memory for sorting");
+    bufferUsed += BUFFER_SIZE_FOR_ONE_BRANCH;
   }
 
-  public static synchronized boolean check(long size) {
+  public synchronized boolean check(long size) {
     return bufferUsed + size < SORT_BUFFER_SIZE;
   }
 
-  public static synchronized boolean allocate(long size) {
+  public synchronized boolean allocate(long size) {
     if (check(size)) {
       bufferUsed += size;
       return true;
@@ -44,27 +48,15 @@ public class SortBufferManager {
     return false;
   }
 
-  public static synchronized void releaseOneSortBranch() {
-    bufferUsed -= DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-  }
-
-  public synchronized void releaseAllSortBranch() {
-    bufferUsed = 0;
+  public synchronized void releaseOneSortBranch() {
+    bufferUsed -= BUFFER_SIZE_FOR_ONE_BRANCH;
   }
 
   public synchronized void setSortBufferSize(long size) {
     SORT_BUFFER_SIZE = size;
   }
 
-  public synchronized long getSortBufferSize() {
-    return SORT_BUFFER_SIZE;
-  }
-
-  public synchronized long getBufferUsed() {
-    return bufferUsed;
-  }
-
-  public static synchronized long getBufferAvailable() {
+  public synchronized long getBufferAvailable() {
     return SORT_BUFFER_SIZE - bufferUsed;
   }
 }

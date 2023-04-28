@@ -34,6 +34,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -41,18 +44,32 @@ import java.util.concurrent.Future;
 import static org.weakref.jmx.internal.guava.util.concurrent.MoreExecutors.directExecutor;
 
 public class DiskSpiller {
+
   private final List<Integer> fileIndex;
   private final List<TSDataType> dataTypeList;
-  private final String filePrefix;
-  private int index;
   private final List<ListenableFuture<?>> processingTask;
 
+  private final String CONNECTOR = "-";
+  private final String folderPath;
+  private final String filePrefix;
+  private final String fileSuffix = ".sortTemp";
+
+  private int index;
+  private boolean folderCreated = false;
+
   public DiskSpiller(String filePrefix, List<TSDataType> dataTypeList) {
+    this.folderPath = filePrefix;
     this.filePrefix = filePrefix + this.getClass().getSimpleName();
     this.index = 0;
     this.dataTypeList = dataTypeList;
     this.fileIndex = new ArrayList<>();
     this.processingTask = new ArrayList<>();
+  }
+
+  public void createFolder(String folderPath) throws IOException {
+    Path path = Paths.get(folderPath);
+    Files.createDirectories(path);
+    folderCreated = true;
   }
 
   public boolean allProcessingTaskFinished() {
@@ -62,11 +79,13 @@ public class DiskSpiller {
     return true;
   }
 
-  public synchronized void spill(List<TsBlock> tsBlocks) {
-    String fileName = filePrefix + index;
+  public synchronized void spill(List<TsBlock> tsBlocks) throws IOException {
+    if (!folderCreated) {
+      createFolder(folderPath);
+    }
+    String fileName = filePrefix + index + fileSuffix;
     fileIndex.add(index);
     index++;
-    SortBufferManager.allocateOneSortBranch();
 
     ListenableFuture<?> future =
         Futures.submit(
@@ -81,23 +100,33 @@ public class DiskSpiller {
     processingTask.add(future);
   }
 
-  public void spillSortedData(List<MergeSortKey> sortedData) {
+  public void spillSortedData(List<MergeSortKey> sortedData) throws IOException {
     List<TsBlock> tsBlocks = new ArrayList<>();
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypeList);
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     ColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+
     for (MergeSortKey mergeSortKey : sortedData) {
       writeMergeSortKey(mergeSortKey, columnBuilders, timeColumnBuilder);
       tsBlockBuilder.declarePosition();
       if (tsBlockBuilder.isFull()) {
         tsBlocks.add(tsBlockBuilder.build());
         tsBlockBuilder.reset();
+        timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
       }
     }
+
+    if (!tsBlockBuilder.isEmpty()) {
+      tsBlocks.add(tsBlockBuilder.build());
+    }
+
     spill(tsBlocks);
   }
 
   private void writeData(List<TsBlock> sortedData, String fileName) throws IOException {
+    Path filePath = Paths.get(fileName);
+    Files.createFile(filePath);
+
     try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
       for (TsBlock tsBlock : sortedData) {
         ByteBuffer tsBlockBuffer = TsBlockSerde.serialize(tsBlock);
@@ -125,7 +154,7 @@ public class DiskSpiller {
   public List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
     for (int index : fileIndex) {
-      filePaths.add(filePrefix + index);
+      filePaths.add(filePrefix + CONNECTOR + index + fileSuffix);
     }
     return filePaths;
   }
@@ -139,7 +168,11 @@ public class DiskSpiller {
     return sortReaders;
   }
 
-  public void clear() {
-    // todo delete the spilled file
+  public void clear() throws IOException {
+    List<String> filePaths = getFilePaths();
+    for (String filePath : filePaths) {
+      Path newPath = Paths.get(filePath);
+      Files.deleteIfExists(newPath);
+    }
   }
 }

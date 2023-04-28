@@ -56,6 +56,7 @@ public class SortOperator implements ProcessOperator {
   private final Comparator<MergeSortKey> comparator;
   private long cachedBytes;
   private final DiskSpiller diskSpiller;
+  private final SortBufferManager sortBufferManager;
 
   // For mergeSort
 
@@ -77,6 +78,7 @@ public class SortOperator implements ProcessOperator {
     this.comparator = comparator;
     this.cachedBytes = 0;
     this.diskSpiller = new DiskSpiller(filePrefix, dataTypes);
+    this.sortBufferManager = new SortBufferManager();
   }
 
   @Override
@@ -117,9 +119,10 @@ public class SortOperator implements ProcessOperator {
     sortReaders = new ArrayList<>();
     if (cachedBytes != 0) {
       cachedData.sort(comparator);
-      if (SortBufferManager.allocate(cachedBytes)) {
+      if (sortBufferManager.allocate(cachedBytes)) {
         sortReaders.add(new MemoryReader(cachedData));
       } else {
+        sortBufferManager.allocateOneSortBranch();
         diskSpiller.spillSortedData(cachedData);
         cachedData = null;
       }
@@ -134,7 +137,7 @@ public class SortOperator implements ProcessOperator {
 
   private void cacheTsBlock(TsBlock tsBlock) throws IOException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
-    if (bytesSize + cachedBytes < SortBufferManager.SORT_BUFFER_SIZE) {
+    if (bytesSize + cachedBytes < sortBufferManager.SORT_BUFFER_SIZE) {
       cachedBytes += bytesSize;
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         cachedData.add(new MergeSortKey(tsBlock, i));
@@ -143,7 +146,13 @@ public class SortOperator implements ProcessOperator {
       cachedData.sort(comparator);
       diskSpiller.spillSortedData(cachedData);
       cachedData.clear();
-      cachedBytes = 0;
+      cachedBytes = bytesSize;
+      // if current memory cannot put this tsBlock, an exception will be thrown in spillSortedData()
+      // because there should be at least tsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES for
+      // one branch.
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        cachedData.add(new MergeSortKey(tsBlock, i));
+      }
     }
   }
 
@@ -192,7 +201,7 @@ public class SortOperator implements ProcessOperator {
         isEmpty[i] = false;
       } else {
         noMoreData[i] = true;
-        SortBufferManager.releaseOneSortBranch();
+        sortBufferManager.releaseOneSortBranch();
       }
     }
 
@@ -220,13 +229,13 @@ public class SortOperator implements ProcessOperator {
         mergeSortHeap.push(mergeSortKey);
       } else {
         noMoreData[readerIndex] = true;
-        SortBufferManager.releaseOneSortBranch();
+        sortBufferManager.releaseOneSortBranch();
       }
 
       // break if time is out or tsBlockBuilder is full or sortBuffer is not enough
       if (System.nanoTime() - startTime > maxRuntime
           || tsBlockBuilder.isFull()
-          || tsBlockBuilder.getSizeInBytes() >= SortBufferManager.getBufferAvailable()) {
+          || tsBlockBuilder.getSizeInBytes() >= sortBufferManager.getBufferAvailable()) {
         break;
       }
     }
@@ -244,6 +253,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   private boolean hasMoreData() {
+    if (noMoreData == null) return true;
     for (boolean noMore : noMoreData) {
       if (!noMore) {
         return true;
@@ -275,7 +285,7 @@ public class SortOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemory()
         + inputOperator.calculateRetainedSizeAfterCallingNext()
-        + SortBufferManager.SORT_BUFFER_SIZE;
+        + sortBufferManager.SORT_BUFFER_SIZE;
   }
 
   @Override
@@ -287,6 +297,10 @@ public class SortOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return inputOperator.calculateRetainedSizeAfterCallingNext()
-        + SortBufferManager.SORT_BUFFER_SIZE;
+        + sortBufferManager.SORT_BUFFER_SIZE;
+  }
+
+  public void setSortBufferSize(long size) {
+    sortBufferManager.setSortBufferSize(size);
   }
 }
