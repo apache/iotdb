@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.execution.operator.window.subWindowQueue.Abstract
 import org.apache.iotdb.db.mpp.execution.operator.window.subWindowQueue.CycleWindowQueue;
 import org.apache.iotdb.db.mpp.execution.operator.window.subWindowQueue.SingleWindowQueue;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -95,16 +96,16 @@ public class WindowConcatOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 }

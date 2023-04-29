@@ -103,7 +103,7 @@ public abstract class AbstractWindowQueue {
     cachedBytes += tsBlock.getRetainedSizeInBytes();
     count += tsBlock.getPositionCount();
 
-    //    strict the number of rows in a TsBlock
+    //    strict the number of rows in a TsBlock, currently it's not used
     //    return cachedBytes >= TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     return false;
   }
