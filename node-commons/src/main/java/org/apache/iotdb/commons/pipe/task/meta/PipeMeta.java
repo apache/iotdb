@@ -47,6 +47,11 @@ public class PipeMeta {
     return runtimeMeta;
   }
 
+  public boolean isPipeNameAndCreationTimeMatched(PipeMeta pipeMeta) {
+    return this.staticMeta.getPipeName().equals(pipeMeta.getStaticMeta().getPipeName())
+        && this.staticMeta.getCreateTime() == pipeMeta.getStaticMeta().getCreateTime();
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
