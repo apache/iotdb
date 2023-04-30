@@ -70,7 +70,7 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  public static PipeMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+  public static PipeMeta deserialize(ByteBuffer byteBuffer) {
     PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
     PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);

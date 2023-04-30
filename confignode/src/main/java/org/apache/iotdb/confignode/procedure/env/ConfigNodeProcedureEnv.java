@@ -69,7 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSyncPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -652,12 +652,12 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> syncPipeMeta(PipeMeta pipeMeta) throws IOException {
+  public List<TSStatus> pushPipeMeta(PipeMeta pipeMeta) throws IOException {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    TSyncPipeMetaReq request =
-        new TSyncPipeMetaReq().setPipeMetas(Collections.singletonList(pipeMeta.serialize()));
-    final AsyncClientHandler<TSyncPipeMetaReq, TSStatus> clientHandler =
+    TPushPipeMetaReq request =
+        new TPushPipeMetaReq().setPipeMetas(Collections.singletonList(pipeMeta.serialize()));
+    final AsyncClientHandler<TPushPipeMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();

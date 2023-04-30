@@ -66,8 +66,6 @@ public class PipeRuntimeMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    // ignore exception messages
-
     ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
         consensusGroupIdToTaskMetaMap.entrySet()) {
@@ -81,12 +79,10 @@ public class PipeRuntimeMeta {
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
 
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
-
-    // ignore exception messages
 
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {

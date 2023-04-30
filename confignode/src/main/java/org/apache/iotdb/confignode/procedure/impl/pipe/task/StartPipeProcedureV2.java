@@ -94,18 +94,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeManagementException, IOException {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    if (RpcUtils.squashResponseStatusList(
-                env.syncPipeMeta(
-                    env.getConfigManager()
-                        .getPipeManager()
-                        .getPipeTaskCoordinator()
-                        .getPipeTaskInfo()
-                        .getPipeMeta(pipeName)))
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to start pipe instance [%s] on data nodes", pipeName));
-    }
+    pushPipeMeta(migrateStatus(pipeName, PipeStatus.RUNNING, env), "start", env);
   }
 
   @Override
@@ -138,18 +127,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeManagementException, IOException {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    PipeMeta pipeMeta =
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMeta(pipeName);
-    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-    if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to rollback from start on data nodes for task [%s]", pipeName));
-    }
+    pushPipeMeta(migrateStatus(pipeName, PipeStatus.STOPPED, env), "stop", env);
   }
 
   @Override

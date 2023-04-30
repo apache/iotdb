@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -37,7 +39,7 @@ public class PipeTaskMeta {
   // TODO: replace it with consensus index
   private final AtomicLong index = new AtomicLong(0L);
   private final AtomicInteger regionLeader = new AtomicInteger(0);
-  private final Queue<PipeException> exceptionMessages = new ConcurrentLinkedQueue<>();
+  private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   private PipeTaskMeta() {}
 
@@ -54,7 +56,7 @@ public class PipeTaskMeta {
     return regionLeader.get();
   }
 
-  public Queue<PipeException> getExceptionMessages() {
+  public Queue<PipeRuntimeException> getExceptionMessages() {
     return exceptionMessages;
   }
 
@@ -70,6 +72,11 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(index.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
+    for (PipeRuntimeException exceptionMessage : exceptionMessages) {
+      ReadWriteIOUtils.write(
+          exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
+      ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
+    }
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
@@ -77,6 +84,16 @@ public class PipeTaskMeta {
     PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
     int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
+      if (critical) {
+        PipeTaskMeta.exceptionMessages.add(
+            new PipeRuntimeCriticalException(ReadWriteIOUtils.readString(byteBuffer)));
+      } else {
+        PipeTaskMeta.exceptionMessages.add(
+            new PipeRuntimeNonCriticalException(ReadWriteIOUtils.readString(byteBuffer)));
+      }
+    }
     return PipeTaskMeta;
   }
 

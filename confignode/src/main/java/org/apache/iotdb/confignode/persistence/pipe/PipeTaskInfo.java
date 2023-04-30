@@ -51,10 +51,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     this.pipeMetaKeeper = new PipeMetaKeeper();
   }
 
-  /////////////////////////////// Getter ///////////////////////////////
+  /////////////////////////////// Controller ///////////////////////////////
 
-  public PipeMeta getPipeMeta(String pipeName) {
-    return pipeMetaKeeper.getPipeMeta(pipeName);
+  public PipeMeta migrateStatus(String pipeName, PipeStatus status) {
+    PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    pipeMeta.getRuntimeMeta().getStatus().set(status);
+    return pipeMeta;
   }
 
   /////////////////////////////// Lock ///////////////////////////////

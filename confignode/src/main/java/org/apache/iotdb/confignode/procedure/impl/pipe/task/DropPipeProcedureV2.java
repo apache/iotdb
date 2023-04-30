@@ -74,14 +74,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
-    pipeMeta =
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMeta(pipeName);
-    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-    // Do nothing
+    pipeMeta = migrateStatus(pipeName, PipeStatus.DROPPED, env);
   }
 
   @Override
@@ -101,11 +94,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeManagementException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    if (RpcUtils.squashResponseStatusList(env.syncPipeMeta(pipeMeta)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
-    }
+    pushPipeMeta(pipeMeta, "drop", env);
   }
 
   @Override
@@ -144,10 +133,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    try {
-      pipeMeta = PipeMeta.deserialize(byteBuffer);
-    } catch (IOException ignore) {
-    }
+    pipeMeta = PipeMeta.deserialize(byteBuffer);
   }
 
   @Override

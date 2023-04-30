@@ -136,15 +136,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    if (RpcUtils.squashResponseStatusList(
-                env.syncPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta)))
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to create pipe instance [%s] on data nodes",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta), "create", env);
   }
 
   @Override
@@ -184,15 +176,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         createPipeRequest.getPipeName());
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
-    if (RpcUtils.squashResponseStatusList(
-                env.syncPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta)))
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to rollback from operate on data nodes for task [%s]",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta), "drop", env);
   }
 
   @Override

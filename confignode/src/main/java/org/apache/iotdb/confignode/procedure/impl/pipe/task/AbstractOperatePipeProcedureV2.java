@@ -20,6 +20,8 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -27,6 +29,9 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,5 +163,25 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
   @Override
   protected OperatePipeTaskState getInitialState() {
     return OperatePipeTaskState.VALIDATE_TASK;
+  }
+
+  protected PipeMeta migrateStatus(
+      String pipeName, PipeStatus status, ConfigNodeProcedureEnv env) {
+    return env.getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .getPipeTaskInfo()
+        .migrateStatus(pipeName, status);
+  }
+
+  protected void pushPipeMeta(PipeMeta pipeMeta, String operation, ConfigNodeProcedureEnv env)
+      throws IOException {
+    if (RpcUtils.squashResponseStatusList(env.pushPipeMeta(pipeMeta)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException(
+          String.format(
+              "Failed to [%s] pipe instance [%s] on data nodes",
+              operation, pipeMeta.getStaticMeta().getPipeName()));
+    }
   }
 }
