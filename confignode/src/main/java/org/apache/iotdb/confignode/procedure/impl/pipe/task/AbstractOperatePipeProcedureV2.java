@@ -165,8 +165,7 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
-  protected PipeMeta migrateStatus(
-      String pipeName, PipeStatus status, ConfigNodeProcedureEnv env) {
+  protected PipeMeta migrateStatus(String pipeName, PipeStatus status, ConfigNodeProcedureEnv env) {
     return env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
