@@ -85,6 +85,7 @@ public class SortOperatorTest {
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(200);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, SORT_OPERATOR_TEST_SG);
   }
@@ -188,7 +189,9 @@ public class SortOperatorTest {
 
       OperatorContext operatorContext = driverContext.getOperatorContexts().get(3);
       String filePrefix =
-          operatorContext
+          "target"
+              + File.separator
+              + operatorContext
                   .getDriverContext()
                   .getFragmentInstanceContext()
                   .getId()
@@ -222,9 +225,8 @@ public class SortOperatorTest {
   // with data spilling
   @Test
   public void sortOperatorSpillingTest() throws Exception {
-    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(400);
+    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
     SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true);
-    root.setSortBufferSize(5000);
     int lastValue = -1;
     int count = 0;
     while (root.isBlocked().isDone() && root.hasNext()) {

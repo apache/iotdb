@@ -55,9 +55,9 @@ public class DiskSpiller {
   private int index;
   private boolean folderCreated = false;
 
-  public DiskSpiller(String filePrefix, List<TSDataType> dataTypeList) {
-    this.folderPath = filePrefix;
-    this.filePrefix = filePrefix + this.getClass().getSimpleName();
+  public DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
+    this.folderPath = folderPath;
+    this.filePrefix = filePrefix + this.getClass().getSimpleName() + "-";
     this.index = 0;
     this.dataTypeList = dataTypeList;
     this.fileIndex = new ArrayList<>();
@@ -152,16 +152,17 @@ public class DiskSpiller {
   public List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
     for (int index : fileIndex) {
-      filePaths.add(filePrefix + "-" + index + fileSuffix);
+      filePaths.add(filePrefix + index + fileSuffix);
     }
     return filePaths;
   }
 
-  public List<SortReader> getReaders() throws FileNotFoundException {
+  public List<SortReader> getReaders(SortBufferManager sortBufferManager)
+      throws FileNotFoundException {
     List<String> filePaths = getFilePaths();
     List<SortReader> sortReaders = new ArrayList<>();
     for (String filePath : filePaths) {
-      sortReaders.add(new FileSpillerReader(filePath));
+      sortReaders.add(new FileSpillerReader(filePath, sortBufferManager));
     }
     return sortReaders;
   }

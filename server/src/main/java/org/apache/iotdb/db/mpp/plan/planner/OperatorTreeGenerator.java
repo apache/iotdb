@@ -1629,9 +1629,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 .getFragmentInstanceId()
             + File.separator
             + operatorContext.getDriverContext().getPipelineId()
-            + File.separator
-            + node.getPlanNodeId();
-
+            + File.separator;
     return new SortOperator(
         operatorContext,
         child,

@@ -25,17 +25,27 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 
 public class SortBufferManager {
 
-  public SortBufferManager() {}
-
   public long SORT_BUFFER_SIZE = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
-  private long bufferUsed = 0;
+
+  private long bufferUsed;
 
   private final long BUFFER_SIZE_FOR_ONE_BRANCH = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
+  private final long BUFFER_AVAILABLE_FOR_ALL_BRANCH;
+  private long readerBuffer = 0;
+  private long branchNum = 0;
+
+  public SortBufferManager() {
+    this.BUFFER_AVAILABLE_FOR_ALL_BRANCH = SORT_BUFFER_SIZE - DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    // the initial value is the buffer for output.
+    this.bufferUsed = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
 
   public synchronized void allocateOneSortBranch() {
     boolean checked = check(BUFFER_SIZE_FOR_ONE_BRANCH);
     if (!checked) throw new IllegalArgumentException("Not enough memory for sorting");
     bufferUsed += BUFFER_SIZE_FOR_ONE_BRANCH;
+    branchNum++;
   }
 
   public synchronized boolean check(long size) {
@@ -51,14 +61,17 @@ public class SortBufferManager {
   }
 
   public synchronized void releaseOneSortBranch() {
-    bufferUsed -= BUFFER_SIZE_FOR_ONE_BRANCH;
+    branchNum--;
+    if (branchNum != 0) readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
   }
 
   public synchronized void setSortBufferSize(long size) {
     SORT_BUFFER_SIZE = size;
   }
 
-  public synchronized long getBufferAvailable() {
-    return SORT_BUFFER_SIZE - bufferUsed;
+  public synchronized long getReaderBufferAvailable() {
+    if (readerBuffer != 0) return readerBuffer;
+    readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
+    return readerBuffer;
   }
 }

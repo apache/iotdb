@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 
-import java.io.IOException;
 import java.util.List;
 
 public class MemoryReader implements SortReader {
@@ -43,7 +43,12 @@ public class MemoryReader implements SortReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() throws IoTDBException {
     return cachedData != null && rowIndex != cachedData.size();
+  }
+
+  @Override
+  public void close() throws IoTDBException {
+    // do nothing
   }
 }

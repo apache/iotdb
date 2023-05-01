@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
-
-import java.io.IOException;
 
 public interface SortReader {
 
   MergeSortKey next();
 
-  boolean hasNext() throws IOException;
+  boolean hasNext() throws IoTDBException;
+
+  void close() throws IoTDBException;
 }

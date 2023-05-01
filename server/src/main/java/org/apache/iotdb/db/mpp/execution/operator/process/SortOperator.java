@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.tools.DiskSpiller;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.tools.SortBufferManager;
 import org.apache.iotdb.db.tools.SortReader;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -34,8 +36,13 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -50,7 +57,9 @@ public class SortOperator implements ProcessOperator {
   // Use to output the result in memory.
   // Because the memory may be larger than tsBlockBuilder's max size
   // so the data may be return in multiple times.
-  private int curRow = 0;
+  private int curRow = -1;
+
+  private final String filePrePath;
 
   private List<MergeSortKey> cachedData;
   private final Comparator<MergeSortKey> comparator;
@@ -65,11 +74,13 @@ public class SortOperator implements ProcessOperator {
   private boolean[] noMoreData;
   private boolean[] isEmpty;
 
+  Logger logger = LoggerFactory.getLogger(SortOperator.class);
+
   public SortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
-      String filePrefix,
+      String folderPath,
       Comparator<MergeSortKey> comparator) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
@@ -77,7 +88,8 @@ public class SortOperator implements ProcessOperator {
     this.cachedData = new ArrayList<>();
     this.comparator = comparator;
     this.cachedBytes = 0;
-    this.diskSpiller = new DiskSpiller(filePrefix, dataTypes);
+    this.filePrePath = folderPath + operatorContext.getOperatorId() + "-";
+    this.diskSpiller = new DiskSpiller(folderPath, filePrePath, dataTypes);
     this.sortBufferManager = new SortBufferManager();
   }
 
@@ -96,10 +108,18 @@ public class SortOperator implements ProcessOperator {
 
     if (!inputOperator.hasNextWithTimer()) {
       if (diskSpiller.hasSpilledData()) {
-        prepareSortReaders();
-        return mergeSort();
+        try {
+          prepareSortReaders();
+          return mergeSort();
+        } catch (Exception e) {
+          clear();
+          throw e;
+        }
       } else {
-        cachedData.sort(comparator);
+        if (curRow == -1) {
+          cachedData.sort(comparator);
+          curRow = 0;
+        }
         return buildTsBlockInMemory();
       }
     }
@@ -108,34 +128,46 @@ public class SortOperator implements ProcessOperator {
     if (tsBlock == null) {
       return null;
     }
-    cacheTsBlock(tsBlock);
+
+    try {
+      cacheTsBlock(tsBlock);
+    } catch (IoTDBException e) {
+      clear();
+      throw e;
+    }
 
     return null;
   }
 
-  private void prepareSortReaders() throws IOException {
+  private void prepareSortReaders() throws IoTDBException {
     if (sortReaders != null) return;
 
-    sortReaders = new ArrayList<>();
-    if (cachedBytes != 0) {
-      cachedData.sort(comparator);
-      if (sortBufferManager.allocate(cachedBytes)) {
-        sortReaders.add(new MemoryReader(cachedData));
-      } else {
-        sortBufferManager.allocateOneSortBranch();
-        diskSpiller.spillSortedData(cachedData);
-        cachedData = null;
+    try {
+
+      sortReaders = new ArrayList<>();
+      if (cachedBytes != 0) {
+        cachedData.sort(comparator);
+        if (sortBufferManager.allocate(cachedBytes)) {
+          sortReaders.add(new MemoryReader(cachedData));
+        } else {
+          sortBufferManager.allocateOneSortBranch();
+          diskSpiller.spillSortedData(cachedData);
+          cachedData = null;
+        }
       }
+      sortReaders.addAll(diskSpiller.getReaders(sortBufferManager));
+      // if reader is finished
+      noMoreData = new boolean[sortReaders.size()];
+      // need to read data from reader when isEmpty is true
+      isEmpty = new boolean[sortReaders.size()];
+      Arrays.fill(isEmpty, true);
+    } catch (Exception e) {
+      clear();
+      throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    sortReaders.addAll(diskSpiller.getReaders());
-    // if reader is finished
-    noMoreData = new boolean[sortReaders.size()];
-    // need to read data from reader when isEmpty is true
-    isEmpty = new boolean[sortReaders.size()];
-    Arrays.fill(isEmpty, true);
   }
 
-  private void cacheTsBlock(TsBlock tsBlock) throws IOException {
+  private synchronized void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
     if (bytesSize + cachedBytes < sortBufferManager.SORT_BUFFER_SIZE) {
       cachedBytes += bytesSize;
@@ -144,7 +176,7 @@ public class SortOperator implements ProcessOperator {
       }
     } else {
       cachedData.sort(comparator);
-      diskSpiller.spillSortedData(cachedData);
+      spill();
       cachedData.clear();
       cachedBytes = bytesSize;
       // if current memory cannot put this tsBlock, an exception will be thrown in spillSortedData()
@@ -156,20 +188,30 @@ public class SortOperator implements ProcessOperator {
     }
   }
 
+  private void spill() throws IoTDBException {
+    try {
+      sortBufferManager.allocateOneSortBranch();
+      diskSpiller.spillSortedData(cachedData);
+    } catch (IOException e) {
+      clear();
+      throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
   private TsBlock buildTsBlockInMemory() {
+    tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int i = curRow; i < cachedData.size(); i++) {
       MergeSortKey mergeSortKey = cachedData.get(i);
       TsBlock tsBlock = mergeSortKey.tsBlock;
-      int row = mergeSortKey.rowIndex;
-      timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(row));
+      timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(mergeSortKey.rowIndex));
       for (int j = 0; j < valueColumnBuilders.length; j++) {
-        if (tsBlock.getColumn(j).isNull(row)) {
+        if (tsBlock.getColumn(j).isNull(mergeSortKey.rowIndex)) {
           valueColumnBuilders[j].appendNull();
           continue;
         }
-        valueColumnBuilders[j].write(tsBlock.getColumn(j), row);
+        valueColumnBuilders[j].write(tsBlock.getColumn(j), mergeSortKey.rowIndex);
       }
       tsBlockBuilder.declarePosition();
       curRow++;
@@ -178,12 +220,10 @@ public class SortOperator implements ProcessOperator {
       }
     }
 
-    TsBlock tsBlock = tsBlockBuilder.build();
-    tsBlockBuilder.reset();
-    return tsBlock;
+    return tsBlockBuilder.build();
   }
 
-  private TsBlock mergeSort() throws IOException {
+  private TsBlock mergeSort() throws IoTDBException {
 
     if (!diskSpiller.allProcessingTaskFinished()) return null;
 
@@ -237,16 +277,14 @@ public class SortOperator implements ProcessOperator {
       }
 
       // break if time is out or tsBlockBuilder is full or sortBuffer is not enough
-      if (System.nanoTime() - startTime > maxRuntime
-          || tsBlockBuilder.isFull()
-          || tsBlockBuilder.getSizeInBytes() >= sortBufferManager.getBufferAvailable()) {
+      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
         break;
       }
     }
     return tsBlockBuilder.build();
   }
 
-  private MergeSortKey readNextMergeSortKey(int readerIndex) throws IOException {
+  private MergeSortKey readNextMergeSortKey(int readerIndex) throws IoTDBException {
     SortReader sortReader = sortReaders.get(readerIndex);
     if (sortReader.hasNext()) {
       MergeSortKey mergeSortKey = sortReader.next();
@@ -266,6 +304,22 @@ public class SortOperator implements ProcessOperator {
     return false;
   }
 
+  public void clear() {
+    if (!diskSpiller.hasSpilledData()) return;
+    try {
+      diskSpiller.clear();
+      Path path = Paths.get(filePrePath);
+      Files.deleteIfExists(path);
+      if (sortReaders != null) {
+        for (SortReader sortReader : sortReaders) {
+          sortReader.close();
+        }
+      }
+    } catch (Exception e) {
+      logger.error("delete spilled file error: {}", e.getMessage());
+    }
+  }
+
   @Override
   public boolean hasNext() throws Exception {
     return inputOperator.hasNextWithTimer()
@@ -276,7 +330,7 @@ public class SortOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     cachedData = null;
-    diskSpiller.clear();
+    clear();
     inputOperator.close();
   }
 
@@ -304,9 +358,5 @@ public class SortOperator implements ProcessOperator {
   public long calculateRetainedSizeAfterCallingNext() {
     return inputOperator.calculateRetainedSizeAfterCallingNext()
         + sortBufferManager.SORT_BUFFER_SIZE;
-  }
-
-  public void setSortBufferSize(long size) {
-    sortBufferManager.setSortBufferSize(size);
   }
 }
