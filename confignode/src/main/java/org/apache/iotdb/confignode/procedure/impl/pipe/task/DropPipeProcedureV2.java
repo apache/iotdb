@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -124,14 +125,21 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
-    pipeMeta.serialize(stream);
+    if (pipeMeta != null) {
+      ReadWriteIOUtils.write(true, stream);
+      pipeMeta.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeMeta = PipeMeta.deserialize(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeMeta = PipeMeta.deserialize(byteBuffer);
+    }
   }
 
   @Override
@@ -143,11 +151,13 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     DropPipeProcedureV2 that = (DropPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName);
+    return pipeName.equals(that.pipeName)
+        && (pipeMeta == null && that.pipeMeta == null
+            || pipeMeta != null && pipeMeta.equals(that.pipeMeta));
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(pipeMeta, pipeName);
   }
 }

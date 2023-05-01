@@ -111,9 +111,7 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index.get() == that.index.get()
-        && exceptionMessages.equals(that.exceptionMessages)
-        && regionLeader.get() == that.regionLeader.get();
+    return index.get() == that.index.get() && regionLeader.get() == that.regionLeader.get();
   }
 
   @Override
