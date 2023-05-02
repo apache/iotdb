@@ -149,6 +149,7 @@
         <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
+        <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
         <antlr4.version>4.8-1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
@@ -282,6 +283,11 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>[${guava.version},)</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lmax</groupId>
+                <artifactId>disruptor</artifactId>
+                <version>${disrupter.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-cli</groupId>

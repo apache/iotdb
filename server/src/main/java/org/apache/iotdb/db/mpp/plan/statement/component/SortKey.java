@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public enum SortKey {
-  TIME,
-  TIMESERIES,
-  DEVICE,
-  QUERYID,
-  DATANODEID,
-  ELAPSEDTIME,
-  STATEMENT
+public class SortKey {
+  public static final String TIME = "TIME";
+  public static final String TIMESERIES = "TIMESERIES";
+  public static final String DEVICE = "DEVICE";
+  public static final String QUERYID = "QUERYID";
+  public static final String DATANODEID = "DATANODEID";
+  public static final String ELAPSEDTIME = "ELAPSEDTIME";
+  public static final String STATEMENT = "STATEMENT";
 }

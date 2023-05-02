@@ -406,10 +406,6 @@ public class ValueChunkWriter {
     return compressionType;
   }
 
-  public Statistics<? extends Serializable> getStatistics() {
-    return statistics;
-  }
-
   /** only used for test */
   public PublicBAOS getPageBuffer() {
     return pageBuffer;

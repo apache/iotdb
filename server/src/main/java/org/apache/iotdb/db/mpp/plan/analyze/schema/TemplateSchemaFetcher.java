@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
@@ -43,14 +43,14 @@ class TemplateSchemaFetcher {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final ITemplateManager templateManager;
-  private final DataNodeTemplateSchemaCache templateSchemaCache;
+  private final DataNodeSchemaCache templateSchemaCache;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor;
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor;
 
   TemplateSchemaFetcher(
       ITemplateManager templateManager,
-      DataNodeTemplateSchemaCache templateSchemaCache,
+      DataNodeSchemaCache templateSchemaCache,
       AutoCreateSchemaExecutor autoCreateSchemaExecutor,
       ClusterSchemaFetchExecutor clusterSchemaFetchExecutor) {
     this.templateManager = templateManager;
@@ -80,7 +80,7 @@ class TemplateSchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements =
-        templateSchemaCache.conformsToTemplateCache(schemaComputationWithAutoCreation);
+        templateSchemaCache.computeWithTemplate(schemaComputationWithAutoCreation);
     // all schema can be taken from cache
     if (indexOfMissingMeasurements.isEmpty()) {
       return indexOfMissingMeasurements;
@@ -157,7 +157,7 @@ class TemplateSchemaFetcher {
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
       schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
       indexOfMissingMeasurements =
-          templateSchemaCache.conformsToTemplateCache(schemaComputationWithAutoCreation);
+          templateSchemaCache.computeWithTemplate(schemaComputationWithAutoCreation);
       if (!indexOfMissingMeasurements.isEmpty()) {
         indexOfDevicesWithMissingMeasurements.add(i);
         indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);

@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -110,6 +111,11 @@ public class AlignedPath extends PartialPath {
     super(vectorPath);
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
+  }
+
+  public void sortMeasurement(Comparator<String> comparator) {
+    measurementList.sort(comparator);
+    schemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId, comparator));
   }
 
   @Override

@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -429,7 +430,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
               TsFileResource targetResource =
@@ -733,7 +734,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
@@ -1036,7 +1037,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =

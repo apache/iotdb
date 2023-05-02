@@ -226,10 +226,6 @@ DEVICE
     : D E V I C E
     ;
 
-DEVICEID
-    : D E V I C E I D
-    ;
-
 DEVICES
     : D E V I C E S
     ;
@@ -272,6 +268,10 @@ FILL
 
 FILE
     : F I L E
+    ;
+
+FIRST
+    : F I R S T
     ;
 
 FLUSH
@@ -416,6 +416,10 @@ NONE
 
 NOW
     : N O W
+    ;
+
+NULLS
+    : N U L L S
     ;
 
 OF
@@ -708,6 +712,10 @@ TIMESERIES
 
 TIMESLOTID
     : T I M E S L O T I D
+    ;
+
+TIMEPARTITION
+    : T I M E P A R T I T I O N
     ;
 
 TIMESTAMP
