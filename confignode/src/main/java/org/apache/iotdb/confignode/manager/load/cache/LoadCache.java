@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -187,7 +188,7 @@ public class LoadCache {
    */
   public Map<Integer, Pair<NodeStatistics, NodeStatistics>> updateNodeStatistics() {
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
-        new ConcurrentHashMap<>();
+        new HashMap<>();
     nodeCacheMap.forEach(
         (nodeId, nodeCache) -> {
           NodeStatistics preNodeStatistics = nodeCache.getPreviousStatistics().deepCopy();
@@ -208,7 +209,7 @@ public class LoadCache {
   public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
       updateRegionGroupStatistics() {
     Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
-        differentRegionGroupStatisticsMap = new ConcurrentHashMap<>();
+        differentRegionGroupStatisticsMap = new HashMap<>();
     regionGroupCacheMap.forEach(
         (regionGroupId, regionGroupCache) -> {
           RegionGroupStatistics preRegionGroupStatistics =
@@ -225,7 +226,7 @@ public class LoadCache {
 
   public Map<TConsensusGroupId, Pair<Integer, Integer>> updateRegionGroupLeader() {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionGroupLeaderMap =
-        new ConcurrentHashMap<>();
+        new HashMap<>();
     regionRouteCacheMap.forEach(
         (regionGroupId, regionRouteCache) -> {
           int prevLeader = regionRouteCache.getLeaderId();
