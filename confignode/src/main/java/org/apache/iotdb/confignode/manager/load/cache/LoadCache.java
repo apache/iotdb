@@ -187,8 +187,7 @@ public class LoadCache {
    * @return a map of changed NodeStatistics
    */
   public Map<Integer, Pair<NodeStatistics, NodeStatistics>> updateNodeStatistics() {
-    Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
-        new HashMap<>();
+    Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap = new HashMap<>();
     nodeCacheMap.forEach(
         (nodeId, nodeCache) -> {
           NodeStatistics preNodeStatistics = nodeCache.getPreviousStatistics().deepCopy();
@@ -225,8 +224,7 @@ public class LoadCache {
   }
 
   public Map<TConsensusGroupId, Pair<Integer, Integer>> updateRegionGroupLeader() {
-    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionGroupLeaderMap =
-        new HashMap<>();
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionGroupLeaderMap = new HashMap<>();
     regionRouteCacheMap.forEach(
         (regionGroupId, regionRouteCache) -> {
           int prevLeader = regionRouteCache.getLeaderId();
