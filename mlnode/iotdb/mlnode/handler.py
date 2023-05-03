@@ -52,12 +52,12 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             model_config['output_vars'] = data_config['output_vars']
 
             # create model & check model config legitimacy
-            model, model_config = create_forecast_model(**model_config)
+            # model, model_config = create_forecast_model(**model_config)
 
             model_config['input_vars'] = data_config['input_vars']
             model_config['output_vars'] = data_config['output_vars']
             # create task & check task config legitimacy
-            task = self.__task_manager.create_training_task(dataset, model, model_config, task_config)
+            task = self.__task_manager.create_training_task(dataset, data_config, model_config, task_config)
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
