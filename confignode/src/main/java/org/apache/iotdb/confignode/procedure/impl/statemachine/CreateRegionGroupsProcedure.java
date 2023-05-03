@@ -201,7 +201,6 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
-        env.broadcastRegionGroup();
         return Flow.NO_MORE_STATE;
     }
 

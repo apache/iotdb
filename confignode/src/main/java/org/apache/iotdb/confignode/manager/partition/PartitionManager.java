@@ -785,7 +785,7 @@ public class PartitionManager {
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
 
     // Get cached result
-    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
     regionInfoListResp
         .getRegionInfoList()
         .forEach(
