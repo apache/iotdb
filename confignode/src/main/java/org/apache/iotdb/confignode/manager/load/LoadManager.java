@@ -330,7 +330,7 @@ public class LoadManager {
   /**
    * Get the latest RegionPriorityMap.
    *
-   * @return Map<RegionGroupId, RegionPriority>
+   * @return Map<RegionGroupId, RegionPriority>.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     return loadCache.getRegionPriorityMap();

@@ -529,7 +529,7 @@ public class LoadCache {
   }
 
   /**
-   * Wait for the specified RegionGroups to finish leader election
+   * Wait for the specified RegionGroups to finish leader election.
    *
    * @param regionGroupIds Specified RegionGroupIds
    */

@@ -243,17 +243,15 @@ public class RouteBalancer {
 
     Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentRegionPriorityMap =
         new ConcurrentHashMap<>();
-    for (TConsensusGroupId regionGroupId : optimalRegionPriorityMap.keySet()) {
-      if (!optimalRegionPriorityMap
-          .get(regionGroupId)
-          .equals(currentPriorityMap.get(regionGroupId))) {
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
+        optimalRegionPriorityMap.entrySet()) {
+      TConsensusGroupId regionGroupId = regionPriorityEntry.getKey();
+      TRegionReplicaSet optimalRegionPriority = regionPriorityEntry.getValue();
+      if (!optimalRegionPriority.equals(currentPriorityMap.get(regionGroupId))) {
         differentRegionPriorityMap.put(
             regionGroupId,
-            new Pair<>(
-                currentPriorityMap.get(regionGroupId),
-                optimalRegionPriorityMap.get(regionGroupId)));
-        getLoadManager()
-            .forceUpdateRegionPriority(regionGroupId, optimalRegionPriorityMap.get(regionGroupId));
+            new Pair<>(currentPriorityMap.get(regionGroupId), optimalRegionPriority));
+        getLoadManager().forceUpdateRegionPriority(regionGroupId, optimalRegionPriority);
       }
     }
     return differentRegionPriorityMap;
