@@ -765,6 +765,10 @@ public class PartitionManager {
     getConsensusManager().write(preDeleteDatabasePlan);
   }
 
+  public boolean isDatabasePreDeleted(String database) {
+    return partitionInfo.isDatabasePreDeleted(database);
+  }
+
   /**
    * Get TSeriesPartitionSlot
    *
