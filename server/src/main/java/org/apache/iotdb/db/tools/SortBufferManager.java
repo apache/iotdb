@@ -42,9 +42,8 @@ public class SortBufferManager {
   }
 
   public synchronized void allocateOneSortBranch() {
-    boolean checked = check(BUFFER_SIZE_FOR_ONE_BRANCH);
-    if (!checked) throw new IllegalArgumentException("Not enough memory for sorting");
-    bufferUsed += BUFFER_SIZE_FOR_ONE_BRANCH;
+    boolean success = allocate(BUFFER_SIZE_FOR_ONE_BRANCH);
+    if (!success) throw new IllegalArgumentException("Not enough memory for sorting");
     branchNum++;
   }
 
@@ -63,10 +62,6 @@ public class SortBufferManager {
   public synchronized void releaseOneSortBranch() {
     branchNum--;
     if (branchNum != 0) readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
-  }
-
-  public synchronized void setSortBufferSize(long size) {
-    SORT_BUFFER_SIZE = size;
   }
 
   public synchronized long getReaderBufferAvailable() {

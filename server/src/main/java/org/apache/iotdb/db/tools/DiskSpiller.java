@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -54,6 +56,7 @@ public class DiskSpiller {
 
   private int index;
   private boolean folderCreated = false;
+  private boolean allProcessingTaskFinished = false;
 
   public DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
     this.folderPath = folderPath;
@@ -70,10 +73,23 @@ public class DiskSpiller {
     folderCreated = true;
   }
 
-  public boolean allProcessingTaskFinished() {
+  public boolean allProcessingTaskFinished() throws IoTDBException {
+    if (allProcessingTaskFinished) return true;
     for (Future<?> future : processingTask) {
       if (!future.isDone()) return false;
+      // check if there is exception in the processing task
+      try {
+        boolean finished = (boolean) future.get();
+        if (!finished) {
+          throw new IoTDBException(
+              "Failed to spill data to disk", TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        }
+      } catch (Exception e) {
+        throw new IoTDBException(
+            e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
     }
+    allProcessingTaskFinished = true;
     return true;
   }
 
@@ -86,15 +102,7 @@ public class DiskSpiller {
     index++;
 
     ListenableFuture<?> future =
-        Futures.submit(
-            () -> {
-              try {
-                writeData(tsBlocks, fileName);
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            },
-            directExecutor());
+        Futures.submit(() -> writeData(tsBlocks, fileName), directExecutor());
     processingTask.add(future);
   }
 
@@ -121,16 +129,21 @@ public class DiskSpiller {
     spill(tsBlocks);
   }
 
-  private void writeData(List<TsBlock> sortedData, String fileName) throws IOException {
-    Path filePath = Paths.get(fileName);
-    Files.createFile(filePath);
+  private boolean writeData(List<TsBlock> sortedData, String fileName) {
+    try {
+      Path filePath = Paths.get(fileName);
+      Files.createFile(filePath);
 
-    try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
-      for (TsBlock tsBlock : sortedData) {
-        ByteBuffer tsBlockBuffer = TsBlockSerde.serialize(tsBlock);
-        ReadWriteIOUtils.write(tsBlockBuffer, fileOutputStream);
+      try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
+        for (TsBlock tsBlock : sortedData) {
+          ByteBuffer tsBlockBuffer = TsBlockSerde.serialize(tsBlock);
+          ReadWriteIOUtils.write(tsBlockBuffer, fileOutputStream);
+        }
       }
+    } catch (Exception e) {
+      return false;
     }
+    return true;
   }
 
   private void writeMergeSortKey(

@@ -162,12 +162,11 @@ public class SortOperator implements ProcessOperator {
       isEmpty = new boolean[sortReaders.size()];
       Arrays.fill(isEmpty, true);
     } catch (Exception e) {
-      clear();
       throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
-  private synchronized void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
+  private void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
     if (bytesSize + cachedBytes < sortBufferManager.SORT_BUFFER_SIZE) {
       cachedBytes += bytesSize;
@@ -179,9 +178,6 @@ public class SortOperator implements ProcessOperator {
       spill();
       cachedData.clear();
       cachedBytes = bytesSize;
-      // if current memory cannot put this tsBlock, an exception will be thrown in spillSortedData()
-      // because there should be at least tsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES for
-      // one branch.
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         cachedData.add(new MergeSortKey(tsBlock, i));
       }
@@ -190,10 +186,12 @@ public class SortOperator implements ProcessOperator {
 
   private void spill() throws IoTDBException {
     try {
+      // if current memory cannot put this tsBlock, an exception will be thrown in spillSortedData()
+      // because there should be at least tsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES for
+      // one branch.
       sortBufferManager.allocateOneSortBranch();
       diskSpiller.spillSortedData(cachedData);
     } catch (IOException e) {
-      clear();
       throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
@@ -350,8 +348,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    return inputOperator.calculateMaxReturnSize()
-        + TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
