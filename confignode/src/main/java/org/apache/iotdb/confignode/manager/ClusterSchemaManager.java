@@ -125,6 +125,13 @@ public class ClusterSchemaManager {
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
 
+    if (getPartitionManager().isDatabasePreDeleted(databaseSchemaPlan.getSchema().getName())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.METADATA_ERROR,
+          String.format(
+              "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
+    }
+
     try {
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
