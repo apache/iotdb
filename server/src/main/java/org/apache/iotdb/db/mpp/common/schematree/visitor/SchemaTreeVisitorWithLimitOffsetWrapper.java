@@ -102,6 +102,12 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
   }
 
   @Override
+  protected boolean isTargetNodeType(SchemaNode node) {
+    // do nothing
+    return false;
+  }
+
+  @Override
   public void reset() {
     visitor.reset();
     count = 0;

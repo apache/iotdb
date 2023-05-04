@@ -675,10 +675,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
           for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
             sourceState = sourceStateMatchInfo.getMatchedState(i);
             transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo, true);
-            if (stateMatchInfo.getMatchedStateSize() > 0 && stateMatchInfo.hasFinalState()) {
+            if (stateMatchInfo.getMatchedStateSize() > 0) {
               stateMatchInfo.setSourceStateOrdinal(i);
               stateMatchInfo.setSourceTransitionIterator(transitionIterator);
-              break;
+              if (stateMatchInfo.hasFinalState()) {
+                break;
+              }
             }
           }
 
@@ -900,7 +902,5 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
-  protected boolean isTargetNodeType(N node) {
-    return false;
-  }
+  protected abstract boolean isTargetNodeType(N node);
 }
