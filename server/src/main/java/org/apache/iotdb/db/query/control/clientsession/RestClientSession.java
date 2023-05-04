@@ -47,7 +47,7 @@ public class RestClientSession extends IClientSession {
 
   @Override
   TSConnectionType getConnectionType() {
-    return TSConnectionType.MQTT_BASED;
+    return TSConnectionType.REST_BASED;
   }
 
   @Override
