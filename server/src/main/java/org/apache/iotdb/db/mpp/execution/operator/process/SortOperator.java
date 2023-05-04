@@ -27,6 +27,7 @@ import org.apache.iotdb.db.tools.SortBufferManager;
 import org.apache.iotdb.db.tools.SortReader;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -62,7 +63,7 @@ public class SortOperator implements ProcessOperator {
   private final String filePrePath;
 
   private List<MergeSortKey> cachedData;
-  private final Comparator<MergeSortKey> comparator;
+  private final Comparator<SortKey> comparator;
   private long cachedBytes;
   private final DiskSpiller diskSpiller;
   private final SortBufferManager sortBufferManager;
@@ -81,7 +82,7 @@ public class SortOperator implements ProcessOperator {
       Operator inputOperator,
       List<TSDataType> dataTypes,
       String folderPath,
-      Comparator<MergeSortKey> comparator) {
+      Comparator<SortKey> comparator) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
@@ -238,7 +239,7 @@ public class SortOperator implements ProcessOperator {
       SortReader sortReader = sortReaders.get(i);
       if (sortReader.hasNext()) {
         MergeSortKey mergeSortKey = sortReader.next();
-        mergeSortKey.columnIndex = i;
+        mergeSortKey.tsBlockIndex = i;
         mergeSortHeap.push(mergeSortKey);
         isEmpty[i] = false;
       } else {
@@ -265,7 +266,7 @@ public class SortOperator implements ProcessOperator {
       }
       tsBlockBuilder.declarePosition();
 
-      int readerIndex = mergeSortKey.columnIndex;
+      int readerIndex = mergeSortKey.tsBlockIndex;
       mergeSortKey = readNextMergeSortKey(readerIndex);
       if (mergeSortKey != null) {
         mergeSortHeap.push(mergeSortKey);
@@ -286,7 +287,7 @@ public class SortOperator implements ProcessOperator {
     SortReader sortReader = sortReaders.get(readerIndex);
     if (sortReader.hasNext()) {
       MergeSortKey mergeSortKey = sortReader.next();
-      mergeSortKey.columnIndex = readerIndex;
+      mergeSortKey.tsBlockIndex = readerIndex;
       return mergeSortKey;
     }
     return null;

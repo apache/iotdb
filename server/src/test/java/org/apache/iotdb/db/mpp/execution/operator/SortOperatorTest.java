@@ -43,7 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -183,9 +183,9 @@ public class SortOperatorTest {
 
       if (!getSortOperator) return timeJoinOperator1;
 
-      Comparator<MergeSortKey> comparator =
+      Comparator<SortKey> comparator =
           Comparator.comparing(
-              (MergeSortKey sortKey) -> sortKey.tsBlock.getColumn(0).getInt(sortKey.rowIndex));
+              (SortKey sortKey) -> sortKey.tsBlock.getColumn(0).getInt(sortKey.rowIndex));
 
       OperatorContext operatorContext = driverContext.getOperatorContexts().get(3);
       String filePrefix =
