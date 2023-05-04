@@ -44,13 +44,15 @@ public class FileSpillerReader implements SortReader {
   private int rowIndex;
   private boolean isEnd = false;
   private final SortBufferManager sortBufferManager;
+  private final TsBlockSerde serde;
 
-  public FileSpillerReader(String fileName, SortBufferManager sortBufferManager)
+  public FileSpillerReader(String fileName, SortBufferManager sortBufferManager, TsBlockSerde serde)
       throws FileNotFoundException {
     this.fileInputStream = new FileInputStream(fileName);
     this.cacheBlocks = new ArrayList<>();
     this.rowIndex = 0;
     this.sortBufferManager = sortBufferManager;
+    this.serde = serde;
   }
 
   @Override
@@ -87,7 +89,7 @@ public class FileSpillerReader implements SortReader {
       int capacity = BytesUtils.bytesToInt(bytes);
       byte[] tsBlockBytes = ReadWriteIOUtils.readBytes(fileInputStream, capacity);
       ByteBuffer buffer = ByteBuffer.wrap(tsBlockBytes);
-      TsBlock cachedTsBlock = TsBlockSerde.deserialize(buffer);
+      TsBlock cachedTsBlock = serde.deserialize(buffer);
       cacheBlocks.add(cachedTsBlock);
       return cachedTsBlock.getRetainedSizeInBytes();
     } catch (IOException e) {

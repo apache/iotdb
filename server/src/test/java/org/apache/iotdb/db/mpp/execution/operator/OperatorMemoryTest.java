@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -480,9 +481,15 @@ public class OperatorMemoryTest {
             "",
             null);
 
-    assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
-    assertEquals(1024, sortOperator.calculateMaxReturnSize());
-    assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(
+        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateMaxPeekMemory());
+    assertEquals(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+        sortOperator.calculateMaxReturnSize());
+    assertEquals(
+        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

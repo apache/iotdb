@@ -57,6 +57,7 @@ public class DiskSpiller {
   private int index;
   private boolean folderCreated = false;
   private boolean allProcessingTaskFinished = false;
+  private final TsBlockSerde serde = new TsBlockSerde();
 
   public DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
     this.folderPath = folderPath;
@@ -136,7 +137,7 @@ public class DiskSpiller {
 
       try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
         for (TsBlock tsBlock : sortedData) {
-          ByteBuffer tsBlockBuffer = TsBlockSerde.serialize(tsBlock);
+          ByteBuffer tsBlockBuffer = serde.serialize(tsBlock);
           ReadWriteIOUtils.write(tsBlockBuffer, fileOutputStream);
         }
       }
@@ -175,7 +176,7 @@ public class DiskSpiller {
     List<String> filePaths = getFilePaths();
     List<SortReader> sortReaders = new ArrayList<>();
     for (String filePath : filePaths) {
-      sortReaders.add(new FileSpillerReader(filePath, sortBufferManager));
+      sortReaders.add(new FileSpillerReader(filePath, sortBufferManager, serde));
     }
     return sortReaders;
   }
