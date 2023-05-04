@@ -36,6 +36,11 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
   }
 
   @Override
+  protected boolean isTargetNodeType(SchemaNode node) {
+    return node.isEntity();
+  }
+
+  @Override
   protected boolean acceptInternalMatchedNode(SchemaNode node) {
     return false;
   }

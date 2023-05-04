@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -729,7 +730,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         SchemaRegionTestUtil.showTimeseries(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**")));
-    HashSet<String> expectedPathList =
+    Set<String> expectedPathList =
         new HashSet<>(
             Arrays.asList(
                 "root.laptop.d0",
@@ -740,7 +741,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d2.s2"));
     int expectedSize = 6;
     Assert.assertEquals(expectedSize, result.size());
-    HashSet<String> actualPathList = new HashSet<>();
+    Set<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
       actualPathList.add(result.get(index).getFullPath());
     }
@@ -761,6 +762,45 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     expectedSize = 4;
     Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+  }
+
+  @Test
+  public void testGetMatchedDevicesWithSpecialPattern() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.test", 0);
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList("root.test.d1.s", "root.test.dac.device1.s", "root.test.dac.device1.d1.s"));
+
+    List<IDeviceSchemaInfo> expectedList =
+        Arrays.asList(
+            new ShowDevicesResult("root.test.d1", false),
+            new ShowDevicesResult("root.test.dac.device1", false),
+            new ShowDevicesResult("root.test.dac.device1.d1", false));
+    List<IDeviceSchemaInfo> actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**.d*")));
+    // Compare hash sets because the order does not matter.
+    Set<IDeviceSchemaInfo> expectedHashset = new HashSet<>(expectedList);
+    Set<IDeviceSchemaInfo> actualHashset = new HashSet<>(actualResult);
+    Assert.assertEquals(expectedHashset, actualHashset);
+
+    List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**.d*.*")));
+    Set<String> expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.test.d1.s", "root.test.dac.device1.s", "root.test.dac.device1.d1.s"));
+    int expectedSize = 3;
+    Assert.assertEquals(expectedSize, result.size());
+    Set<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
       actualPathList.add(result.get(index).getFullPath());
     }

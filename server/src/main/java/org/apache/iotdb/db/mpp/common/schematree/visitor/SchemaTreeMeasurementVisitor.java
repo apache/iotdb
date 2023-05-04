@@ -38,6 +38,11 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
+  protected boolean isTargetNodeType(SchemaNode node) {
+    return node.isMeasurement();
+  }
+
+  @Override
   protected IFAState tryGetNextState(
       SchemaNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
     IFATransition transition;
