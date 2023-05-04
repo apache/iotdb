@@ -49,7 +49,7 @@ public class DiskSpiller {
 
   private final List<Integer> fileIndex;
   private final List<TSDataType> dataTypeList;
-  private final List<ListenableFuture<?>> processingTask;
+  private final List<ListenableFuture<Boolean>> processingTask;
   private final String folderPath;
   private final String filePrefix;
   private final String fileSuffix = ".sortTemp";
@@ -75,11 +75,11 @@ public class DiskSpiller {
 
   public boolean allProcessingTaskFinished() throws IoTDBException {
     if (allProcessingTaskFinished) return true;
-    for (Future<?> future : processingTask) {
+    for (Future<Boolean> future : processingTask) {
       if (!future.isDone()) return false;
       // check if there is exception in the processing task
       try {
-        boolean finished = (boolean) future.get();
+        boolean finished = future.get();
         if (!finished) {
           throw new IoTDBException(
               "Failed to spill data to disk", TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -101,7 +101,7 @@ public class DiskSpiller {
     fileIndex.add(index);
     index++;
 
-    ListenableFuture<?> future =
+    ListenableFuture<Boolean> future =
         Futures.submit(() -> writeData(tsBlocks, fileName), directExecutor());
     processingTask.add(future);
   }

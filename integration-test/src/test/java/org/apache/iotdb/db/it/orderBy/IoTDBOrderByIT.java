@@ -99,7 +99,7 @@ public class IoTDBOrderByIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(10 * 1024 * 1024L);
+    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
