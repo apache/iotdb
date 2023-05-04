@@ -2177,7 +2177,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             costTime,
             TimeUnit.MILLISECONDS,
             Metric.PERFORMANCE_OVERVIEW.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.INTERFACE.toString(),
             operation.toString(),
             Tag.TYPE.toString(),

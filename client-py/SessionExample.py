@@ -20,7 +20,6 @@
 import numpy as np
 
 from iotdb.Session import Session
-from iotdb.template.InternalNode import InternalNode
 from iotdb.template.MeasurementNode import MeasurementNode
 from iotdb.template.Template import Template
 from iotdb.utils.BitMap import BitMap

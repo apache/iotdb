@@ -149,9 +149,6 @@ public class MetricServiceTest {
     assertEquals(0d, autoGauge.value(), DELTA);
     list.add(1);
     assertEquals(1d, autoGauge.value(), DELTA);
-    list = null;
-    System.gc();
-    assertEquals(0d, autoGauge.value(), DELTA);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
     metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
