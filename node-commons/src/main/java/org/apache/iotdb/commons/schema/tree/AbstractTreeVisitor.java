@@ -597,7 +597,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         }
 
         // check whether accept the first matched state
-        if (isTargetNodeType(child) && !matchedState.isFinal()) {
+        if (mayTargetNodeType(child) && !matchedState.isFinal()) {
           // not accept the first matched state since this node may be a target result, check the
           // other states
           if (patternFA.mayTransitionOverlap() && transitionIterator.hasNext()) {
@@ -671,7 +671,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         child = iterator.next();
 
         stateMatchInfo = new StateMultiMatchInfo(patternFA);
-        if (isTargetNodeType(child)) {
+        if (mayTargetNodeType(child)) {
           for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
             sourceState = sourceStateMatchInfo.getMatchedState(i);
             transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo, true);
@@ -902,5 +902,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
-  protected abstract boolean isTargetNodeType(N node);
+  /**
+   * May node can be accepted if it reaches final state. Its implementation should not depend on the
+   * context.
+   *
+   * @param node node to be checked
+   * @return false is if node must not be accepted. Otherwise, return true.
+   */
+  protected abstract boolean mayTargetNodeType(N node);
 }

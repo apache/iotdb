@@ -102,7 +102,7 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
   }
 
   @Override
-  protected boolean isTargetNodeType(SchemaNode node) {
+  protected boolean mayTargetNodeType(SchemaNode node) {
     // do nothing
     return false;
   }

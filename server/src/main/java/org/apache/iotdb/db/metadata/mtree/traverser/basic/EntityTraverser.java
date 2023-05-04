@@ -44,8 +44,11 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
   }
 
   @Override
-  protected boolean isTargetNodeType(N node) {
-    return node.isDevice();
+  protected boolean mayTargetNodeType(N node) {
+    if (node.isDevice()) {
+      return !usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId();
+    }
+    return false;
   }
 
   @Override

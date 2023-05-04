@@ -806,4 +806,63 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     }
     Assert.assertEquals(expectedPathList, actualPathList);
   }
+
+  @Test
+  public void testGetMatchedDevicesWithSpecialPattern2() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.test", 0);
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.test.abc57.bcde22.def89.efg1",
+            "root.test.abc57.bcde22.def89.efg2",
+            "root.test.abc57.bcd22.def89.efg1",
+            "root.test.abc57.bcd22.def89.efg2"));
+
+    // case1: show devices root.**.*b*.*
+    List<IDeviceSchemaInfo> expectedList =
+        Arrays.asList(
+            new ShowDevicesResult("root.test.abc57.bcde22.def89", false),
+            new ShowDevicesResult("root.test.abc57.bcd22.def89", false));
+    List<IDeviceSchemaInfo> actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**.*b*.*")));
+    // Compare hash sets because the order does not matter.
+    Set<IDeviceSchemaInfo> expectedHashset = new HashSet<>(expectedList);
+    Set<IDeviceSchemaInfo> actualHashset = new HashSet<>(actualResult);
+    Assert.assertEquals(expectedHashset, actualHashset);
+
+    // case2: show timeseries root.**.*e*.*e*
+    List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**.*e*.*e*")));
+    Set<String> expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.test.abc57.bcde22.def89.efg1",
+                "root.test.abc57.bcde22.def89.efg2",
+                "root.test.abc57.bcd22.def89.efg1",
+                "root.test.abc57.bcd22.def89.efg2"));
+    int expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    Set<String> actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+
+    // case3: show timeseries root.**.*e*
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**.*e*")));
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+  }
 }

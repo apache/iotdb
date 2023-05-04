@@ -38,7 +38,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
-  protected boolean isTargetNodeType(SchemaNode node) {
+  protected boolean mayTargetNodeType(SchemaNode node) {
     return node.isMeasurement();
   }
 

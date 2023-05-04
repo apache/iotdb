@@ -51,7 +51,7 @@ public abstract class MNodeTraverser<R, N extends IMNode<N>> extends Traverser<R
   }
 
   @Override
-  protected boolean isTargetNodeType(N node) {
+  protected boolean mayTargetNodeType(N node) {
     return true;
   }
 
