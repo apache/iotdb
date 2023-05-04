@@ -22,7 +22,6 @@
 Tips: All English Slides and videos are on slideshare.net and Youtube; 
 All Chinese Slides and videos are on slidestalk.com and bilibili.
 (所有的中文材料都在 slidestalk.com 和 bilibili上.)
-S
 ## Meetups and Talks
 * 2023.04.15, 2023 IoTDB Core Technology Meetup 3: EMQ X IoTDB Meet Up: The Data Foundation Of Intelligent Vehicles. IoTDB 核心技术 Meetup 3: IoTDB X EMQ: 智能汽车的数据基座 Meetup. Shanghai, China.
   * (Chinese 中文)Best Application Practices of IoTDB in the Scenarios of IoV and Intelligent Car Factories. [IoTDB 在车联网与智慧车厂场景的最佳应用实践](#ZNQCJZ). Reporter: Yuan Tian.
