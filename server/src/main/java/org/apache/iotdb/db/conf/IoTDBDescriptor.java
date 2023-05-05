@@ -670,7 +670,7 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "min_cross_compaction_unseq_file_level",
                 Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
-    
+
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
             properties.getProperty(
