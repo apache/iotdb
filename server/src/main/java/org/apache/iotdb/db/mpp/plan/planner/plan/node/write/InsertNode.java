@@ -236,7 +236,7 @@ public abstract class InsertNode extends WritePlanNode {
 
   // region partial insert
   @TestOnly
-  public void markFailedMeasurement(int index, Exception cause) {
+  public void markFailedMeasurement(int index) {
     throw new UnsupportedOperationException();
   }
 
@@ -247,15 +247,6 @@ public abstract class InsertNode extends WritePlanNode {
       }
     }
     return false;
-  }
-
-  public boolean hasFailedMeasurements() {
-    for (Object o : measurements) {
-      if (o == null) {
-        failedMeasurementNumber++;
-      }
-    }
-    return failedMeasurementNumber != 0;
   }
 
   public void setFailedMeasurementNumber(int failedMeasurementNumber) {
