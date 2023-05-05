@@ -25,15 +25,18 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,38 +46,53 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class AsyncPlanNodeSender {
+
   private static final Logger logger = LoggerFactory.getLogger(AsyncPlanNodeSender.class);
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
-  private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+
+  private final Map<TEndPoint, Pair<List<Integer>, TSendBatchPlanNodeReq>> batchRequests;
+  private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
   private final AtomicLong pendingNumber;
+  private final long startSendTime;
 
   public AsyncPlanNodeSender(
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager,
       List<FragmentInstance> instances) {
+    this.startSendTime = System.nanoTime();
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.instances = instances;
-    this.instanceId2RespMap = new ConcurrentHashMap<>();
-    this.pendingNumber = new AtomicLong(instances.size());
+    this.batchRequests = new HashMap<>();
+    for (int i = 0; i < instances.size(); i++) {
+      Pair<List<Integer>, TSendBatchPlanNodeReq> value =
+          this.batchRequests.computeIfAbsent(
+              instances.get(i).getHostDataNode().getInternalEndPoint(),
+              x -> new Pair<>(new ArrayList<>(), new TSendBatchPlanNodeReq()));
+      value.getLeft().add(i);
+      value
+          .getRight()
+          .addToRequests(
+              new TSendSinglePlanNodeReq(
+                  new TPlanNode(
+                      instances.get(i).getFragment().getPlanNodeTree().serializeToByteBuffer()),
+                  instances.get(i).getRegionReplicaSet().getRegionId()));
+    }
+    this.instanceId2RespMap = new ConcurrentHashMap<>(instances.size() + 1, 1);
+    this.pendingNumber = new AtomicLong(batchRequests.keySet().size());
   }
 
   public void sendAll() {
-    long startSendTime = System.nanoTime();
-    for (int i = 0; i < instances.size(); ++i) {
-      FragmentInstance instance = instances.get(i);
+    for (Map.Entry<TEndPoint, Pair<List<Integer>, TSendBatchPlanNodeReq>> entry :
+        batchRequests.entrySet()) {
       AsyncSendPlanNodeHandler handler =
-          new AsyncSendPlanNodeHandler(i, pendingNumber, instanceId2RespMap, startSendTime);
+          new AsyncSendPlanNodeHandler(
+              entry.getValue().getLeft(), pendingNumber, instanceId2RespMap, startSendTime);
       try {
-        TSendPlanNodeReq sendPlanNodeReq =
-            new TSendPlanNodeReq(
-                new TPlanNode(instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                instance.getRegionReplicaSet().getRegionId());
         AsyncDataNodeInternalServiceClient client =
-            asyncInternalServiceClientManager.borrowClient(
-                instance.getHostDataNode().getInternalEndPoint());
-        client.sendPlanNode(sendPlanNodeReq, handler);
+            asyncInternalServiceClientManager.borrowClient(entry.getKey());
+        client.sendBatchPlanNode(entry.getValue().getRight(), handler);
       } catch (Exception e) {
         handler.onError(e);
       }
@@ -92,7 +110,7 @@ public class AsyncPlanNodeSender {
   public List<TSStatus> getFailureStatusList() {
     List<TSStatus> failureStatusList = new ArrayList<>();
     TSStatus status;
-    for (Map.Entry<Integer, TSendPlanNodeResp> entry : instanceId2RespMap.entrySet()) {
+    for (Map.Entry<Integer, TSendSinglePlanNodeResp> entry : instanceId2RespMap.entrySet()) {
       status = entry.getValue().getStatus();
       if (!entry.getValue().accepted) {
         if (status == null) {
@@ -122,7 +140,7 @@ public class AsyncPlanNodeSender {
   }
 
   public Future<FragInstanceDispatchResult> getResult() {
-    for (Map.Entry<Integer, TSendPlanNodeResp> entry : instanceId2RespMap.entrySet()) {
+    for (Map.Entry<Integer, TSendSinglePlanNodeResp> entry : instanceId2RespMap.entrySet()) {
       if (!entry.getValue().accepted) {
         logger.warn(
             "dispatch write failed. status: {}, code: {}, message: {}, node {}",
