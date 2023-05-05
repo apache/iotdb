@@ -94,6 +94,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       boolean isAligned,
       String[] measurements,
       TSDataType[] dataTypes,
+      long[] times,
+      BitMap[] bitMaps,
+      Object[] columns,
+      int rowCount) {
+    super(id, devicePath, isAligned, measurements, dataTypes);
+    this.times = times;
+    this.bitMaps = bitMaps;
+    this.columns = columns;
+    this.rowCount = rowCount;
+  }
+
+  public InsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
       MeasurementSchema[] measurementSchemas,
       long[] times,
       BitMap[] bitMaps,

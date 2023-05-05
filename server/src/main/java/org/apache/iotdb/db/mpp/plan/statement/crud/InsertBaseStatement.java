@@ -18,20 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -122,36 +116,6 @@ public abstract class InsertBaseStatement extends Statement {
   public abstract List<ISchemaValidation> getSchemaValidationList();
 
   public void updateAfterSchemaValidation() throws QueryProcessException {}
-
-  public void validateSchema(Analysis analysis) {
-    final long startTime = System.nanoTime();
-    try {
-      SchemaValidator.validate(this);
-    } catch (SemanticException e) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      if (e.getCause() instanceof IoTDBException) {
-        IoTDBException ioTDBException = (IoTDBException) e.getCause();
-        analysis.setFailStatus(
-            RpcUtils.getStatus(ioTDBException.getErrorCode(), ioTDBException.getMessage()));
-      } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-      }
-      return;
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
-    }
-    boolean hasFailedMeasurement = hasFailedMeasurements();
-    String partialInsertMessage;
-    if (hasFailedMeasurement) {
-      partialInsertMessage =
-          String.format(
-              "Fail to insert measurements %s caused by %s",
-              getFailedMeasurements(), getFailedMessages());
-      LOGGER.warn(partialInsertMessage);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
-    }
-  }
 
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes(int index)

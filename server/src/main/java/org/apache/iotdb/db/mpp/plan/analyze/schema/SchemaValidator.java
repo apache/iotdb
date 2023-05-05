@@ -35,17 +35,15 @@ import java.util.List;
 
 public class SchemaValidator {
 
-  private static final ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-
-  public static void validate(InsertBaseStatement insertStatement) {
+  public static void validate(ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement) {
     try {
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement
           || insertStatement instanceof InsertRowsOfOneDeviceStatement) {
-        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
+        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
             insertStatement.getSchemaValidationList());
       } else {
-        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidation());
+        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidation());
       }
       insertStatement.updateAfterSchemaValidation();
     } catch (QueryProcessException e) {
@@ -54,13 +52,14 @@ public class SchemaValidator {
   }
 
   public static ISchemaTree validate(
+      ISchemaFetcher schemaFetcher,
       List<PartialPath> devicePaths,
       List<String[]> measurements,
       List<TSDataType[]> dataTypes,
       List<TSEncoding[]> encodings,
       List<CompressionType[]> compressionTypes,
       List<Boolean> isAlignedList) {
-    return SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
+    return schemaFetcher.fetchSchemaListWithAutoCreate(
         devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList);
   }
 }
