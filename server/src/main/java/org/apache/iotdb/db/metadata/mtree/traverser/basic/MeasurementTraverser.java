@@ -42,6 +42,11 @@ public abstract class MeasurementTraverser<R> extends Traverser<R> {
   }
 
   @Override
+  protected boolean mayTargetNodeType(IMNode node) {
+    return node.isMeasurement();
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     return node.isMeasurement();
   }
