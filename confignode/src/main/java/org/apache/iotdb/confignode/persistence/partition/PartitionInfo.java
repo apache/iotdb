@@ -259,6 +259,11 @@ public class PartitionInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public boolean isDatabasePreDeleted(String database) {
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    return databasePartitionTable != null && !databasePartitionTable.isNotPreDeleted();
+  }
+
   /**
    * Thread-safely delete StorageGroup
    *
