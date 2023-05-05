@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,17 +37,19 @@ public class SchemaValidator {
 
   private static final ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  public static void validate(InsertNode insertNode) {
+  public static void validate(InsertBaseStatement insertStatement) {
     try {
-      if (insertNode instanceof BatchInsertNode) {
+      if (insertStatement instanceof InsertRowsStatement
+          || insertStatement instanceof InsertMultiTabletsStatement
+          || insertStatement instanceof InsertRowsOfOneDeviceStatement) {
         SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
-            ((BatchInsertNode) insertNode).getSchemaValidationList());
+            insertStatement.getSchemaValidationList());
       } else {
-        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertNode.getSchemaValidation());
+        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidation());
       }
-      insertNode.updateAfterSchemaValidation();
+      insertStatement.updateAfterSchemaValidation();
     } catch (QueryProcessException e) {
-      throw new SemanticException(e);
+      throw new SemanticException(e.getMessage());
     }
   }
 

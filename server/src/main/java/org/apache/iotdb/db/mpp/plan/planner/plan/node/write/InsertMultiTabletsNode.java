@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNode {
+public class InsertMultiTabletsNode extends InsertNode {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
@@ -136,11 +136,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    return false;
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
@@ -191,13 +186,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public List<ISchemaValidation> getSchemaValidationList() {
-    return insertTabletNodeList.stream()
-        .map(InsertTabletNode::getSchemaValidation)
-        .collect(Collectors.toList());
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
@@ -279,8 +267,4 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
     throw new NotImplementedException();
   }
 
-  @Override
-  public Object getFirstValueOfIndex(int index) {
-    throw new NotImplementedException();
-  }
 }

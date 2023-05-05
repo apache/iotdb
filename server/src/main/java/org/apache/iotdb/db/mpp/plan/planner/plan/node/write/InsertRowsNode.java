@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class InsertRowsNode extends InsertNode implements BatchInsertNode {
+public class InsertRowsNode extends InsertNode {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -122,11 +122,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    return false;
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -154,23 +149,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public List<ISchemaValidation> getSchemaValidationList() {
-    return insertRowNodeList.stream()
-        .map(InsertRowNode::getSchemaValidation)
-        .collect(Collectors.toList());
-  }
-
-  @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.updateAfterSchemaValidation();
-      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
-      }
-    }
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -267,8 +245,4 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     throw new NotImplementedException();
   }
 
-  @Override
-  public Object getFirstValueOfIndex(int index) {
-    throw new NotImplementedException();
-  }
 }

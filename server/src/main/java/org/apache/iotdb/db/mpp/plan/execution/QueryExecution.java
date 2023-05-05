@@ -202,7 +202,7 @@ public class QueryExecution implements IQueryExecution {
     if (skipExecute()) {
       logger.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
-        stateMachine.transitionToFailed(new RuntimeException(analysis.getFailMessage()));
+        stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
         constructResultForMemorySource();
         stateMachine.transitionToRunning();
@@ -224,6 +224,11 @@ public class QueryExecution implements IQueryExecution {
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
+
+    // set partial insert error message
+    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+      stateMachine.transitionToFailed(analysis.getFailStatus());
+    }
   }
 
   private void checkTimeOutForQuery() {

@@ -136,6 +136,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -2025,32 +2026,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertTabletStatement);
+    insertTabletStatement.validateSchema(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletStatement.getTimePartitionSlots());
 
-    return getAnalysisForWriting(
-        insertTabletStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
   public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowStatement);
+    insertRowStatement.validateSchema(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(
         Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
 
-    return getAnalysisForWriting(
-        insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
   public Analysis visitInsertRows(
       InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowsStatement);
+    insertRowsStatement.validateSchema(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
@@ -2068,13 +2085,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysisForWriting(insertRowsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
   }
 
   @Override
   public Analysis visitInsertMultiTablets(
       InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertMultiTabletsStatement);
+    insertMultiTabletsStatement.validateSchema(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
@@ -2093,13 +2116,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysisForWriting(insertMultiTabletsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
   }
 
   @Override
   public Analysis visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowsOfOneDeviceStatement);
+    insertRowsOfOneDeviceStatement.validateSchema(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(
@@ -2107,8 +2136,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setTimePartitionSlotList(
         insertRowsOfOneDeviceStatement.getTimePartitionSlots());
 
-    return getAnalysisForWriting(
-        insertRowsOfOneDeviceStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
@@ -2193,16 +2221,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   /** get analysis according to statement and params */
   private Analysis getAnalysisForWriting(
-      Statement statement, List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    Analysis analysis = new Analysis();
-    analysis.setStatement(statement);
+      Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams) {
 
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage(
-          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
+              "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE."));
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;

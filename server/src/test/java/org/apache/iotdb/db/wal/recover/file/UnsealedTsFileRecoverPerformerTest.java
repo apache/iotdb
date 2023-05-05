@@ -297,6 +297,7 @@ public class UnsealedTsFileRecoverPerformerTest {
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT64},
+            null,
             new long[] {time},
             null,
             new Integer[] {1},

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -36,12 +35,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -224,36 +221,8 @@ public class RegionWriteExecutor {
     private RegionExecutionResult executeDataInsert(
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
-      // data insertion should be blocked by data deletion, especially when deleting timeseries
-      final long startTime = System.nanoTime();
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
-        try {
-          SchemaValidator.validate(insertNode);
-        } catch (SemanticException e) {
-          response.setAccepted(false);
-          response.setMessage(e.getMessage());
-          if (e.getCause() instanceof IoTDBException) {
-            IoTDBException ioTDBException = (IoTDBException) e.getCause();
-            response.setStatus(
-                RpcUtils.getStatus(ioTDBException.getErrorCode(), ioTDBException.getMessage()));
-          } else {
-            response.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-          }
-          return response;
-        } finally {
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(
-              System.nanoTime() - startTime);
-        }
-        boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
-        String partialInsertMessage = null;
-        if (hasFailedMeasurement) {
-          partialInsertMessage =
-              String.format(
-                  "Fail to insert measurements %s caused by %s",
-                  insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
-          LOGGER.warn(partialInsertMessage);
-        }
 
         ConsensusWriteResponse writeResponse =
             fireTriggerAndInsert(context.getRegionId(), insertNode);
@@ -261,17 +230,10 @@ public class RegionWriteExecutor {
         // TODO need consider more status
         if (writeResponse.getStatus() != null) {
           response.setAccepted(
-              !hasFailedMeasurement
-                  && TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      == writeResponse.getStatus().getCode());
+              TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
             response.setMessage(writeResponse.getStatus().message);
             response.setStatus(writeResponse.getStatus());
-          } else if (hasFailedMeasurement) {
-            response.setMessage(partialInsertMessage);
-            response.setStatus(
-                RpcUtils.getStatus(
-                    TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
           } else {
             response.setMessage(writeResponse.getStatus().message);
           }

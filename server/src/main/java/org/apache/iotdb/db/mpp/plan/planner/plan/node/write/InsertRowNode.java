@@ -66,7 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaValidation {
+public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
@@ -93,6 +93,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
       Object[] values,
       boolean isNeedInferType) {
     super(id, devicePath, isAligned, measurements, dataTypes);
+    this.time = time;
+    this.values = values;
+    this.isNeedInferType = isNeedInferType;
+  }
+
+  public InsertRowNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      MeasurementSchema[] measurementSchemas,
+      long time,
+      Object[] values,
+      boolean isNeedInferType) {
+    super(id, devicePath, isAligned, measurements, dataTypes);
+    this.measurementSchemas = measurementSchemas;
     this.time = time;
     this.values = values;
     this.isNeedInferType = isNeedInferType;
@@ -157,16 +174,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     }
   }
 
-  @Override
-  public TSEncoding getEncoding(int index) {
-    return null;
-  }
-
-  @Override
-  public CompressionType getCompressionType(int index) {
-    return null;
-  }
-
   public Object[] getValues() {
     return values;
   }
@@ -197,81 +204,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      logger.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
-      values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
-      dataTypes[columnIndex] = dataType;
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * transfer String[] values to specific data types when isNeedInferType is true. <br>
-   * Notice: measurementSchemas must be initialized before calling this method
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType() throws QueryProcessException {
-
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      // null when time series doesn't exist
-      if (measurementSchemas[i] == null) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw new QueryProcessException(
-              new PathNotExistException(
-                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-        } else {
-          markFailedMeasurement(
-              i,
-              new QueryProcessException(
-                  new PathNotExistException(
-                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
-        }
-        continue;
-      }
-      // parse string value to specific type
-      dataTypes[i] = measurementSchemas[i].getType();
-      try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-      } catch (Exception e) {
-        logger.warn(
-            "data type of {}.{} is not consistent, registered type {}, inserting timestamp {}, value {}",
-            devicePath,
-            measurements[i],
-            dataTypes[i],
-            time,
-            values[i]);
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw e;
-        } else {
-          markFailedMeasurement(i, e);
-        }
-      }
-    }
-    isNeedInferType = false;
-  }
-
-  @Override
   public void markFailedMeasurement(int index, Exception cause) {
     if (measurements[index] == null) {
       return;
     }
-
-    if (failedMeasurementIndex2Info == null) {
-      failedMeasurementIndex2Info = new HashMap<>();
-    }
-
-    FailedMeasurementInfo failedMeasurementInfo =
-        new FailedMeasurementInfo(measurements[index], dataTypes[index], values[index], cause);
-    failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
-
     measurements[index] = null;
     dataTypes[index] = null;
     values[index] = null;
@@ -525,11 +461,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   @Override
   public long getMinTime() {
     return getTime();
-  }
-
-  @Override
-  public Object getFirstValueOfIndex(int index) {
-    return values[index];
   }
 
   // region serialize & deserialize methods for WAL
@@ -809,50 +740,5 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
-  }
-
-  @Override
-  public void validateDeviceSchema(boolean isAligned) {
-    if (this.isAligned != isAligned) {
-      throw new SemanticException(
-          new AlignedTimeseriesException(
-              String.format(
-                  "timeseries under this device are%s aligned, " + "please use %s interface",
-                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
-              devicePath.getFullPath()));
-    }
-  }
-
-  @Override
-  public ISchemaValidation getSchemaValidation() {
-    return this;
-  }
-
-  @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
-    if (isNeedInferType) {
-      transferType();
-    }
-  }
-
-  @Override
-  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
-    if (measurementSchemas == null) {
-      measurementSchemas = new MeasurementSchema[measurements.length];
-    }
-    if (measurementSchemaInfo == null) {
-      measurementSchemas[index] = null;
-    } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
-    }
-    if (isNeedInferType) {
-      return;
-    }
-
-    try {
-      selfCheckDataTypes(index);
-    } catch (DataTypeMismatchException | PathNotExistException e) {
-      throw new SemanticException(e);
-    }
   }
 }
