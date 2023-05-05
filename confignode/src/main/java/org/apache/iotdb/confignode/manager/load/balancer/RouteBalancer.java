@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -34,7 +32,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.GreedyLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFlowLeaderBalancer;
@@ -50,14 +47,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -73,6 +64,7 @@ public class RouteBalancer {
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       CONF.getSchemaRegionConsensusProtocolClass();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -89,36 +81,16 @@ public class RouteBalancer {
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
 
-  private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
-      ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
-
-  // Key: RegionGroupId
-  // Value: Pair<Timestamp, LeaderDataNodeId>, where
-  // the left value stands for sampling timestamp
-  // and the right value stands for the index of DataNode that leader resides.
-  private final Map<TConsensusGroupId, Pair<Long, Integer>> leaderCache;
-
   private final IManager configManager;
 
   /** RegionRouteMap */
-  private final RegionRouteMap regionRouteMap;
   // For generating optimal RegionLeaderMap
   private final ILeaderBalancer leaderBalancer;
   // For generating optimal RegionPriorityMap
   private final IPriorityBalancer priorityRouter;
 
-  /** Leader Balancing service */
-  // TODO: leader balancing should be triggered by cluster events
-  private Future<?> currentLeaderBalancingFuture;
-
-  private final ScheduledExecutorService leaderBalancingExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LeaderBalancing-Service");
-  private final Object scheduleMonitor = new Object();
-
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
-    this.regionRouteMap = new RegionRouteMap();
-    this.leaderCache = new ConcurrentHashMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
       case ILeaderBalancer.GREEDY_POLICY:
@@ -142,163 +114,34 @@ public class RouteBalancer {
   }
 
   /**
-   * Cache the latest leader of a RegionGroup.
+   * Balance cluster RegionGroup leader distribution through configured algorithm
    *
-   * @param regionGroupId the id of the RegionGroup
-   * @param leaderSample the latest leader of a RegionGroup
+   * @return Map<RegionGroupId, Pair<old leader index, new leader index>>
    */
-  public void cacheLeaderSample(TConsensusGroupId regionGroupId, Pair<Long, Integer> leaderSample) {
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && IS_DATA_REGION_IOT_CONSENSUS) {
-      // The leadership of IoTConsensus protocol is decided by ConfigNode-leader
-      return;
-    }
-
-    leaderCache.putIfAbsent(regionGroupId, leaderSample);
-    synchronized (leaderCache.get(regionGroupId)) {
-      if (leaderCache.get(regionGroupId).getLeft() < leaderSample.getLeft()) {
-        leaderCache.replace(regionGroupId, leaderSample);
-      }
-    }
-  }
-
-  /**
-   * Invoking periodically to update the RegionRouteMap
-   *
-   * @return True if the RegionRouteMap has changed, false otherwise
-   */
-  public boolean updateRegionRouteMap() {
-    synchronized (regionRouteMap) {
-      return updateRegionLeaderMap() | updateRegionPriorityMap();
-    }
-  }
-
-  private boolean updateRegionLeaderMap() {
-    AtomicBoolean isLeaderChanged = new AtomicBoolean(false);
-    leaderCache.forEach(
-        (regionGroupId, leadershipSample) -> {
-          if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-              && IS_DATA_REGION_IOT_CONSENSUS) {
-            // Ignore IoTConsensus consensus protocol
-            return;
-          }
-
-          if (leadershipSample.getRight() != regionRouteMap.getLeader(regionGroupId)) {
-            // Update leader
-            regionRouteMap.setLeader(regionGroupId, leadershipSample.getRight());
-            isLeaderChanged.set(true);
-          }
-        });
-    return isLeaderChanged.get();
-  }
-
-  private boolean updateRegionPriorityMap() {
-    Map<TConsensusGroupId, Integer> regionLeaderMap = regionRouteMap.getRegionLeaderMap();
-    Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
-
-    // Balancing region priority in each SchemaRegionGroup
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionPriorityMap =
-        priorityRouter.generateOptimalRoutePriority(
-            getPartitionManager().getAllReplicaSets(TConsensusGroupType.SchemaRegion),
-            regionLeaderMap,
-            dataNodeLoadScoreMap);
-    // Balancing region priority in each DataRegionGroup
-    latestRegionPriorityMap.putAll(
-        priorityRouter.generateOptimalRoutePriority(
-            getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion),
-            regionLeaderMap,
-            dataNodeLoadScoreMap));
-
-    if (!latestRegionPriorityMap.equals(regionRouteMap.getRegionPriorityMap())) {
-      regionRouteMap.setRegionPriorityMap(latestRegionPriorityMap);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /**
-   * Select leader for the specified RegionGroup greedily. The selected leader will be the DataNode
-   * that currently has the fewest leaders
-   *
-   * @param regionGroupId The specified RegionGroup
-   * @param dataNodeIds The indices of DataNodes where the RegionReplicas reside
-   */
-  public void greedySelectLeader(TConsensusGroupId regionGroupId, List<Integer> dataNodeIds) {
-    synchronized (regionRouteMap) {
-      // Map<DataNodeId, The number of leaders>
-      Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
-      regionRouteMap
-          .getRegionLeaderMap()
-          .forEach(
-              (consensusGroupId, leaderId) -> {
-                if (TConsensusGroupType.DataRegion.equals(consensusGroupId.getType())) {
-                  leaderCounter
-                      .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
-                      .getAndIncrement();
-                }
-              });
-
-      int newLeaderId = -1;
-      int minCount = Integer.MAX_VALUE;
-      AtomicInteger zero = new AtomicInteger(0);
-      for (int dataNodeId : dataNodeIds) {
-        int leaderCount = leaderCounter.getOrDefault(dataNodeId, zero).get();
-        if (leaderCount < minCount) {
-          newLeaderId = dataNodeId;
-          minCount = leaderCount;
-        }
-      }
-      regionRouteMap.setLeader(regionGroupId, newLeaderId);
-    }
-  }
-
-  /** Start the route balancing service */
-  public void startRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture == null) {
-        currentLeaderBalancingFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                leaderBalancingExecutor,
-                this::balancingRegionLeader,
-                0,
-                // Execute route balancing service in every 20 loops of heartbeat service
-                NodeManager.HEARTBEAT_INTERVAL * 20,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("Route-Balancing service is started successfully.");
-      }
-    }
-  }
-
-  /** Stop the route balancing service */
-  public void stopRouteBalancingService() {
-    synchronized (scheduleMonitor) {
-      if (currentLeaderBalancingFuture != null) {
-        currentLeaderBalancingFuture.cancel(false);
-        currentLeaderBalancingFuture = null;
-        leaderCache.clear();
-        regionRouteMap.clear();
-        LOGGER.info("Route-Balancing service is stopped successfully.");
-      }
-    }
-  }
-
-  private void balancingRegionLeader() {
+  public Map<TConsensusGroupId, Pair<Integer, Integer>> balanceRegionLeader() {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
+        new ConcurrentHashMap<>();
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
-      balancingRegionLeader(TConsensusGroupType.SchemaRegion);
+      differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.SchemaRegion));
+    }
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
+      differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.DataRegion));
     }
 
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
-      balancingRegionLeader(TConsensusGroupType.DataRegion);
-    }
+    return differentRegionLeaderMap;
   }
 
-  private void balancingRegionLeader(TConsensusGroupType regionGroupType) {
+  private Map<TConsensusGroupId, Pair<Integer, Integer>> balanceRegionLeader(
+      TConsensusGroupType regionGroupType) {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
+        new ConcurrentHashMap<>();
+
     // Collect the latest data and generate the optimal leader distribution
-    Map<TConsensusGroupId, Integer> leaderDistribution =
+    Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
+    Map<TConsensusGroupId, Integer> optimalLeadderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
             getPartitionManager().getAllReplicaSetsMap(regionGroupType),
-            regionRouteMap.getRegionLeaderMap(),
+            currentLeaderMap,
             getNodeManager()
                 .filterDataNodeThroughStatus(
                     NodeStatus.Unknown, NodeStatus.ReadOnly, NodeStatus.Removing)
@@ -311,9 +154,9 @@ public class RouteBalancer {
     AtomicInteger requestId = new AtomicInteger(0);
     AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
-    leaderDistribution.forEach(
+    optimalLeadderMap.forEach(
         (regionGroupId, newLeaderId) -> {
-          if (newLeaderId != -1 && newLeaderId != regionRouteMap.getLeader(regionGroupId)) {
+          if (newLeaderId != -1 && !newLeaderId.equals(currentLeaderMap.get(regionGroupId))) {
             String consensusProtocolClass;
             switch (regionGroupId.getType()) {
               case SchemaRegion:
@@ -334,17 +177,15 @@ public class RouteBalancer {
                 clientHandler,
                 regionGroupId,
                 getNodeManager().getRegisteredDataNode(newLeaderId).getLocation());
+            differentRegionLeaderMap.put(
+                regionGroupId, new Pair<>(currentLeaderMap.get(regionGroupId), newLeaderId));
           }
         });
-
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
       AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler, 1);
     }
-  }
-
-  public void changeLeaderForIoTConsensus(TConsensusGroupId regionGroupId, int newLeaderId) {
-    regionRouteMap.setLeader(regionGroupId, newLeaderId);
+    return differentRegionLeaderMap;
   }
 
   private void changeRegionLeader(
@@ -357,7 +198,7 @@ public class RouteBalancer {
       case ConsensusFactory.IOT_CONSENSUS:
         // For IoTConsensus protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
-        regionRouteMap.setLeader(regionGroupId, newLeader.getDataNodeId());
+        getLoadManager().forceUpdateRegionLeader(regionGroupId, newLeader.getDataNodeId());
         break;
       case ConsensusFactory.RATIS_CONSENSUS:
       default:
@@ -374,36 +215,46 @@ public class RouteBalancer {
     }
   }
 
-  /** Initialize the regionRouteMap when the ConfigNode-Leader is switched */
-  public void initRegionRouteMap() {
-    synchronized (regionRouteMap) {
-      regionRouteMap.clear();
-      if (IS_DATA_REGION_IOT_CONSENSUS) {
-        // Greedily pick leader for all existed DataRegionGroups
-        List<TRegionReplicaSet> dataRegionGroups =
-            getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
-        for (TRegionReplicaSet dataRegionGroup : dataRegionGroups) {
-          greedySelectLeader(
-              dataRegionGroup.getRegionId(),
-              dataRegionGroup.getDataNodeLocations().stream()
-                  .map(TDataNodeLocation::getDataNodeId)
-                  .collect(Collectors.toList()));
-        }
+  /**
+   * Balance cluster RegionGroup route priority through configured algorithm
+   *
+   * @return Map<RegionGroupId, Pair<old route priority, new route priority>>
+   */
+  public Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+      balanceRegionPriority() {
+
+    Map<TConsensusGroupId, TRegionReplicaSet> currentPriorityMap =
+        getLoadManager().getRegionPriorityMap();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
+    Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
+
+    // Balancing region priority in each SchemaRegionGroup
+    Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
+        priorityRouter.generateOptimalRoutePriority(
+            getPartitionManager().getAllReplicaSets(TConsensusGroupType.SchemaRegion),
+            regionLeaderMap,
+            dataNodeLoadScoreMap);
+    // Balancing region priority in each DataRegionGroup
+    optimalRegionPriorityMap.putAll(
+        priorityRouter.generateOptimalRoutePriority(
+            getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion),
+            regionLeaderMap,
+            dataNodeLoadScoreMap));
+
+    Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentRegionPriorityMap =
+        new ConcurrentHashMap<>();
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
+        optimalRegionPriorityMap.entrySet()) {
+      TConsensusGroupId regionGroupId = regionPriorityEntry.getKey();
+      TRegionReplicaSet optimalRegionPriority = regionPriorityEntry.getValue();
+      if (!optimalRegionPriority.equals(currentPriorityMap.get(regionGroupId))) {
+        differentRegionPriorityMap.put(
+            regionGroupId,
+            new Pair<>(currentPriorityMap.get(regionGroupId), optimalRegionPriority));
+        getLoadManager().forceUpdateRegionPriority(regionGroupId, optimalRegionPriority);
       }
-      updateRegionRouteMap();
     }
-  }
-
-  public Map<TConsensusGroupId, Integer> getLatestRegionLeaderMap() {
-    return regionRouteMap.getRegionLeaderMap();
-  }
-
-  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionPriorityMap() {
-    return regionRouteMap.getRegionPriorityMap();
-  }
-
-  public RegionRouteMap getRegionRouteMap() {
-    return regionRouteMap;
+    return differentRegionPriorityMap;
   }
 
   private NodeManager getNodeManager() {

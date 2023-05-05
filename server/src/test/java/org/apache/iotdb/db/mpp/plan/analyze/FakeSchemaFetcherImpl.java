@@ -128,7 +128,13 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
+    return null;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias) {
     return null;
   }
 
@@ -141,7 +147,4 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     return null;
   }
-
-  @Override
-  public void invalidAllCache() {}
 }

@@ -51,7 +51,7 @@ public class GetTimeSlotListResp implements DataSet {
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.timeSlotList = timeSlotList;
+      resp.setTimeSlotList(timeSlotList);
     }
 
     return resp;

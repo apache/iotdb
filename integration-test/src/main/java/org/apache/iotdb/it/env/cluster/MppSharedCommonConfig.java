@@ -350,4 +350,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setWriteMemoryProportion(writeMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    dnConfig.setQuotaEnable(quotaEnable);
+    cnConfig.setQuotaEnable(quotaEnable);
+    return this;
+  }
 }

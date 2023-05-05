@@ -26,24 +26,45 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipePluginMeta {
 
-  private String pluginName;
+  private final String pluginName;
+  private final String className;
 
-  private String className;
+  // jarName and jarMD5 are used to identify the jar file.
+  // they could be null if the plugin is built-in. they should be both null or both not null.
+  private final boolean isBuiltin;
+  private final String jarName;
+  private final String jarMD5;
 
-  private String jarName;
+  public PipePluginMeta(
+      String pluginName, String className, boolean isBuiltin, String jarName, String jarMD5) {
+    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.className = Objects.requireNonNull(className);
 
-  private String jarMD5;
+    this.isBuiltin = isBuiltin;
+    if (isBuiltin) {
+      this.jarName = jarName;
+      this.jarMD5 = jarMD5;
+    } else {
+      this.jarName = Objects.requireNonNull(jarName);
+      this.jarMD5 = Objects.requireNonNull(jarMD5);
+    }
+  }
 
-  private PipePluginMeta() {}
+  public PipePluginMeta(String pluginName, String className) {
+    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.className = Objects.requireNonNull(className);
 
-  public PipePluginMeta(String pluginName, String className, String jarName, String jarMD5) {
-    this.pluginName = pluginName.toUpperCase();
-    this.className = className;
-    this.jarName = jarName;
-    this.jarMD5 = jarMD5;
+    this.isBuiltin = true;
+    this.jarName = null;
+    this.jarMD5 = null;
+  }
+
+  public boolean isBuiltin() {
+    return isBuiltin;
   }
 
   public String getPluginName() {
@@ -72,17 +93,18 @@ public class PipePluginMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pluginName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
+    ReadWriteIOUtils.write(isBuiltin, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(jarMD5, outputStream);
   }
 
   public static PipePluginMeta deserialize(ByteBuffer byteBuffer) {
-    PipePluginMeta pipePluginMeta = new PipePluginMeta();
-    pipePluginMeta.pluginName = ReadWriteIOUtils.readString(byteBuffer);
-    pipePluginMeta.className = ReadWriteIOUtils.readString(byteBuffer);
-    pipePluginMeta.jarName = ReadWriteIOUtils.readString(byteBuffer);
-    pipePluginMeta.jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    return pipePluginMeta;
+    final String pluginName = ReadWriteIOUtils.readString(byteBuffer);
+    final String className = ReadWriteIOUtils.readString(byteBuffer);
+    final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
+    final String jarName = ReadWriteIOUtils.readString(byteBuffer);
+    final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {
@@ -101,8 +123,9 @@ public class PipePluginMeta {
     PipePluginMeta that = (PipePluginMeta) obj;
     return pluginName.equals(that.pluginName)
         && className.equals(that.className)
-        && jarName.equals(that.jarName)
-        && jarMD5.equals(that.jarMD5);
+        && isBuiltin == that.isBuiltin
+        && Objects.equals(jarName, that.jarName)
+        && Objects.equals(jarMD5, that.jarMD5);
   }
 
   @Override
@@ -119,6 +142,8 @@ public class PipePluginMeta {
         + ", className='"
         + className
         + '\''
+        + ", isBuiltin="
+        + isBuiltin
         + ", jarName='"
         + jarName
         + '\''

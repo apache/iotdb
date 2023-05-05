@@ -118,11 +118,20 @@ public class MetaUtils {
 
   public static List<PartialPath> groupAlignedSeriesWithOrder(
       List<PartialPath> fullPaths, OrderByParameter orderByParameter) {
-    List<PartialPath> res = groupAlignedSeries(fullPaths, new HashMap<>());
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    List<PartialPath> res = groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
     res.sort(
         orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
             ? Comparator.naturalOrder()
             : Comparator.reverseOrder());
+    // sort the measurements of AlignedPath
+    Comparator<String> comparator =
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? Comparator.naturalOrder()
+            : Comparator.reverseOrder();
+    for (AlignedPath alignedPath : deviceToAlignedPathMap.values()) {
+      alignedPath.sortMeasurement(comparator);
+    }
     return res;
   }
 

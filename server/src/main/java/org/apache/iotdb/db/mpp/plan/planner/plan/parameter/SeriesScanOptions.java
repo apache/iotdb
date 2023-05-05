@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 public class SeriesScanOptions {
@@ -50,9 +49,7 @@ public class SeriesScanOptions {
       long offset,
       Set<String> allSensors) {
     this.globalTimeFilter = globalTimeFilter;
-    if (!Objects.equals(globalTimeFilter, queryFilter)) {
-      this.queryFilter = queryFilter;
-    }
+    this.queryFilter = queryFilter;
     this.limit = limit;
     this.offset = offset;
     this.allSensors = allSensors;

@@ -43,12 +43,17 @@ public class FilterSerializeTest {
           ValueFilter.gtEq("filter"),
           ValueFilter.lt(0.1),
           ValueFilter.ltEq(0.01f),
-          ValueFilter.not(ValueFilter.eq(true)),
+          FilterFactory.not(ValueFilter.eq(true)),
           ValueFilter.notEq(false),
           ValueFilter.notEq(false),
-          ValueFilter.in(new HashSet<>(Arrays.asList("a", "b")), false),
-          ValueFilter.in(new HashSet<>(Arrays.asList("c", "d")), true),
+          ValueFilter.in(new HashSet<>(Arrays.asList("a", "b"))),
+          ValueFilter.notIn(new HashSet<>(Arrays.asList("c", "d"))),
           ValueFilter.regexp("s.*"),
+          ValueFilter.like("s.*"),
+          ValueFilter.notRegexp("s.*"),
+          ValueFilter.notLike("s.*"),
+          ValueFilter.between(1, 100),
+          ValueFilter.notBetween(1, 100)
         };
     for (Filter filter : filters) {
       validateSerialization(filter);
@@ -64,11 +69,13 @@ public class FilterSerializeTest {
           TimeFilter.gtEq(3),
           TimeFilter.lt(4),
           TimeFilter.ltEq(5),
-          TimeFilter.not(ValueFilter.eq(6)),
+          FilterFactory.not(ValueFilter.eq(6)),
           TimeFilter.notEq(7),
           TimeFilter.notEq(7),
-          TimeFilter.in(new HashSet<>(Arrays.asList(1L, 2L)), false),
-          TimeFilter.in(new HashSet<>(Arrays.asList(3L, 4L)), true),
+          TimeFilter.in(new HashSet<>(Arrays.asList(1L, 2L))),
+          TimeFilter.notIn(new HashSet<>(Arrays.asList(3L, 4L))),
+          TimeFilter.between(1, 100),
+          TimeFilter.notBetween(1, 100)
         };
     for (Filter filter : filters) {
       validateSerialization(filter);
@@ -80,7 +87,7 @@ public class FilterSerializeTest {
     Filter[] filters =
         new Filter[] {
           FilterFactory.and(TimeFilter.eq(1), ValueFilter.eq(1)),
-          FilterFactory.or(ValueFilter.gt(2L), TimeFilter.not(ValueFilter.eq(6)))
+          FilterFactory.or(ValueFilter.gt(2L), FilterFactory.not(ValueFilter.eq(6)))
         };
     for (Filter filter : filters) {
       validateSerialization(filter);

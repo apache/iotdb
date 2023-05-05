@@ -20,11 +20,12 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,27 +33,34 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
-public class IoTDBSessionSchemaTemplateIT {
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
 
   private ISession session;
+
+  public IoTDBSessionSchemaTemplateIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
@@ -284,5 +292,103 @@ public class IoTDBSessionSchemaTemplateIT {
     assertEquals(
         new HashSet<>(Arrays.asList("root.db.v4.GPS", "root.db.v5.GPS", "root.db.v6.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template2")));
+  }
+
+  @Test
+  public void testInsertRecordsWithTemplate() throws Exception {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    session.createSchemaTemplate(temp1);
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+
+    List<String> devices = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<String> measurements = Arrays.asList(new String[] {"x", "y"});
+    List<Long> times = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+    List<String> value = Arrays.asList(new String[] {"1.23", "2.34"});
+    for (int i = 0; i < 101; i++) {
+      devices.add("root.db.v1.d" + i);
+      measurementsList.add(measurements);
+      times.add(12345L + i);
+      values.add(value);
+    }
+
+    session.insertRecords(devices, times, measurementsList, values);
+    SessionDataSet dataSet;
+    RowRecord row;
+    for (int i = 0; i < 10; i++) {
+      dataSet =
+          session.executeQueryStatement(
+              String.format("SELECT * from root.db.v1.d%d", (int) (Math.random() * 100)));
+      while (dataSet.hasNext()) {
+        row = dataSet.next();
+        Assert.assertEquals("1.23", row.getFields().get(0).toString());
+        Assert.assertEquals("2.34", row.getFields().get(1).toString());
+      }
+    }
+  }
+
+  @Test
+  public void testHybridAutoCreateSchema()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    Template temp2 = getTemplate("template2");
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+    session.createSchemaTemplate(temp2);
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+
+    session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.v1.d1"));
+
+    session.setSchemaTemplate("template2", "root.db.v4");
+
+    List<String> deviceIds =
+        Arrays.asList("root.db.v1.d1", "root.db.v1.d2", "root.db.v2.d1", "root.db.v4.d1");
+    List<Long> timestamps = Arrays.asList(1L, 1L, 1L, 1L);
+    List<String> measurements = Arrays.asList("x", "y", "z");
+    List<List<String>> allMeasurements =
+        Arrays.asList(measurements, measurements, measurements, measurements);
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT);
+    List<List<TSDataType>> allTsDataTypes =
+        Arrays.asList(tsDataTypes, tsDataTypes, tsDataTypes, tsDataTypes);
+    List<Object> values = Arrays.asList(1f, 2f, "3");
+    List<List<Object>> allValues = Arrays.asList(values, values, values, values);
+
+    session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+
+    Set<String> expectedSeries =
+        new HashSet<>(
+            Arrays.asList(
+                "root.db.v1.d1.x",
+                "root.db.v1.d1.y",
+                "root.db.v1.d1.z",
+                "root.db.v1.d2.x",
+                "root.db.v1.d2.y",
+                "root.db.v1.d2.z",
+                "root.db.v2.d1.x",
+                "root.db.v2.d1.y",
+                "root.db.v2.d1.z",
+                "root.db.v4.d1.x",
+                "root.db.v4.d1.y",
+                "root.db.v4.d1.z"));
+
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
+        expectedSeries.remove(iterator.getString(1));
+      }
+    }
+
+    Assert.assertTrue(expectedSeries.isEmpty());
   }
 }

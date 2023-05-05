@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -35,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
@@ -86,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponen
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -109,6 +109,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -148,6 +149,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -758,7 +760,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     try {
-      URI uri = new URI(uriString);
+      new URI(uriString);
     } catch (URISyntaxException e) {
       throw new SemanticException(String.format("Invalid URI: %s", uriString));
     }
@@ -1371,32 +1373,49 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Order By Clause
   // all SortKeys should be contained by limitSet
   private OrderByComponent parseOrderByClause(
-      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<SortKey> limitSet) {
+      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<String> limitSet) {
     OrderByComponent orderByComponent = new OrderByComponent();
-    Set<SortKey> sortKeySet = new HashSet<>();
+    Set<String> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
         ctx.orderByAttributeClause()) {
-      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
-
-      SortKey sortKey = sortItem.getSortKey();
-      if (!limitSet.contains(sortKey)) {
-        throw new SemanticException(
-            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      // if the order by clause is unique, then the following sort keys will be ignored
+      if (orderByComponent.isUnique()) {
+        break;
       }
+      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext, limitSet);
+
+      String sortKey = sortItem.getSortKey();
       if (sortKeySet.contains(sortKey)) {
-        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
+        continue;
       } else {
         sortKeySet.add(sortKey);
+      }
+
+      if (sortItem.isExpression()) {
+        orderByComponent.addExpressionSortItem(sortItem);
+      } else {
         orderByComponent.addSortItem(sortItem);
       }
     }
     return orderByComponent;
   }
 
-  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
-    return new SortItem(
-        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
-        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
+  private SortItem parseOrderByAttributeClause(
+      IoTDBSqlParser.OrderByAttributeClauseContext ctx, ImmutableSet<String> limitSet) {
+    if (ctx.sortKey() != null) {
+      String sortKey = ctx.sortKey().getText().toUpperCase();
+      if (!limitSet.contains(sortKey)) {
+        throw new SemanticException(
+            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      }
+      return new SortItem(sortKey, ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
+    } else {
+      Expression sortExpression = parseExpression(ctx.expression(), true);
+      return new SortItem(
+          sortExpression,
+          ctx.DESC() != null ? Ordering.DESC : Ordering.ASC,
+          ctx.FIRST() != null ? NullOrdering.FIRST : NullOrdering.LAST);
+    }
   }
 
   // ---- Fill Clause
@@ -3015,6 +3034,31 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.ALIGNED() != null);
   }
 
+  @Override
+  public Statement visitAlterSchemaTemplate(IoTDBSqlParser.AlterSchemaTemplateContext ctx) {
+    String name = parseIdentifier(ctx.templateName.getText());
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+
+    for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+        ctx.templateMeasurementClause()) {
+      measurements.add(
+          parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
+      parseAttributeClause(
+          templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+    }
+
+    return new AlterSchemaTemplateStatement(
+        name,
+        measurements,
+        dataTypes,
+        encodings,
+        compressors,
+        TemplateAlterOperationType.EXTEND_TEMPLATE);
+  }
+
   void parseAttributeClause(
       IoTDBSqlParser.AttributeClausesContext ctx,
       List<TSDataType> dataTypes,
@@ -3377,48 +3421,76 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
-    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(ctx.path.getText(), type);
-    if (ctx.seriesSlot != null) {
-      getRegionIdStatement.setSeriesSlotId(
-          new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetRegionIdStatement getRegionIdStatement = new GetRegionIdStatement(type);
+    if (ctx.database != null) {
+      getRegionIdStatement.setDatabase(ctx.database.getText());
     } else {
-      getRegionIdStatement.setDeviceId(ctx.deviceId.getText());
+      getRegionIdStatement.setDevice(ctx.device.getText());
     }
-    if (ctx.timeSlot != null) {
-      getRegionIdStatement.setTimeSlotId(
-          new TTimePartitionSlot(
-              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
-    } else if (ctx.timeStamp != null) {
-      getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
+    if (ctx.time != null) {
+      long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getRegionIdStatement.setTimeStamp(timestamp);
+      }
     }
     return getRegionIdStatement;
   }
 
   @Override
   public Statement visitGetSeriesSlotList(IoTDBSqlParser.GetSeriesSlotListContext ctx) {
-    GetSeriesSlotListStatement getSeriesSlotListStatement =
-        new GetSeriesSlotListStatement(ctx.prefixPath().getText());
-    if (ctx.DATA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.DataRegion);
-    } else if (ctx.SCHEMA() != null) {
-      getSeriesSlotListStatement.setPartitionType(TConsensusGroupType.SchemaRegion);
-    }
-    return getSeriesSlotListStatement;
+    TConsensusGroupType type =
+        ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
+    return new GetSeriesSlotListStatement(ctx.database.getText(), type);
   }
 
   @Override
   public Statement visitGetTimeSlotList(IoTDBSqlParser.GetTimeSlotListContext ctx) {
-    GetTimeSlotListStatement getTimeSlotListStatement =
-        new GetTimeSlotListStatement(
-            ctx.prefixPath().getText(),
-            new TSeriesPartitionSlot(Integer.parseInt(ctx.seriesSlot.getText())));
+    GetTimeSlotListStatement getTimeSlotListStatement = new GetTimeSlotListStatement();
+    if (ctx.database != null) {
+      getTimeSlotListStatement.setDatabase(ctx.database.getText());
+    } else if (ctx.device != null) {
+      getTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
     if (ctx.startTime != null) {
-      getTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+      long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setStartTime(timestamp);
+      }
     }
     if (ctx.endTime != null) {
-      getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+      long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
+      if (timestamp < 0) {
+        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+      } else {
+        getTimeSlotListStatement.setEndTime(timestamp);
+      }
     }
     return getTimeSlotListStatement;
+  }
+
+  @Override
+  public Statement visitCountTimeSlotList(IoTDBSqlParser.CountTimeSlotListContext ctx) {
+    CountTimeSlotListStatement countTimeSlotListStatement = new CountTimeSlotListStatement();
+    if (ctx.database != null) {
+      countTimeSlotListStatement.setDatabase(ctx.database.getText());
+    } else if (ctx.device != null) {
+      countTimeSlotListStatement.setDevice(ctx.device.getText());
+    } else if (ctx.regionId != null) {
+      countTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
+    }
+    if (ctx.startTime != null) {
+      countTimeSlotListStatement.setStartTime(Long.parseLong(ctx.startTime.getText()));
+    }
+    if (ctx.endTime != null) {
+      countTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
+    }
+    return countTimeSlotListStatement;
   }
 
   @Override
@@ -3450,9 +3522,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseAttributeValue(attributePair.attributeValue()));
     }
 
+    quotas
+        .keySet()
+        .forEach(
+            quotaType -> {
+              switch (quotaType) {
+                case IoTDBConstant.COLUMN_DEVICES:
+                  break;
+                case IoTDBConstant.COLUMN_TIMESERIES:
+                  break;
+                case IoTDBConstant.SPACE_QUOTA_DISK:
+                  break;
+                default:
+                  throw new SemanticException("Wrong space quota type: " + quotaType);
+              }
+            });
+
     if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
       if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDeviceNum(-1);
+        setSpaceQuotaStatement.setDeviceNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
         throw new SemanticException("Please set the number of devices greater than 0");
       } else {
@@ -3462,7 +3550,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
       if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setTimeSeriesNum(-1);
+        setSpaceQuotaStatement.setTimeSeriesNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
         throw new SemanticException("Please set the number of timeseries greater than 0");
       } else {
@@ -3472,7 +3560,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
       if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setSpaceQuotaStatement.setDiskSize(-1);
+        setSpaceQuotaStatement.setDiskSize(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         setSpaceQuotaStatement.setDiskSize(
             parseSpaceQuotaSizeUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
@@ -3502,9 +3590,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       TTimedQuota timedQuota;
       String request = quotas.get(IoTDBConstant.REQUEST_NUM_PER_UNIT_TIME);
       if (request.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        timedQuota = new TTimedQuota(1000, Long.MAX_VALUE);
+        timedQuota = new TTimedQuota(IoTDBConstant.SEC, Long.MAX_VALUE);
       } else {
-        String[] split = request.toLowerCase().split("req/");
+        String[] split = request.toLowerCase().split(IoTDBConstant.REQ_SPLIT_UNIT);
         if (Long.parseLong(split[0]) < 0) {
           throw new SemanticException("Please set the number of requests greater than 0");
         }
@@ -3532,7 +3620,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       TTimedQuota timedQuota;
       String size = quotas.get(IoTDBConstant.REQUEST_SIZE_PER_UNIT_TIME);
       if (size.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        timedQuota = new TTimedQuota(1000, Long.MAX_VALUE);
+        timedQuota = new TTimedQuota(IoTDBConstant.SEC, Long.MAX_VALUE);
       } else {
         String[] split = size.toLowerCase().split("/");
         timedQuota =
@@ -3559,7 +3647,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (quotas.containsKey(IoTDBConstant.MEMORY_SIZE_PER_READ)) {
       String mem = quotas.get(IoTDBConstant.MEMORY_SIZE_PER_READ);
       if (mem.equals(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setThrottleQuotaStatement.setMemLimit(-1);
+        setThrottleQuotaStatement.setMemLimit(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         setThrottleQuotaStatement.setMemLimit(parseThrottleQuotaSizeUnit(mem));
       }
@@ -3568,7 +3656,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (quotas.containsKey(IoTDBConstant.CPU_NUMBER_PER_READ)) {
       String cpuLimit = quotas.get(IoTDBConstant.CPU_NUMBER_PER_READ);
       if (cpuLimit.contains(IoTDBConstant.QUOTA_UNLIMITED)) {
-        setThrottleQuotaStatement.setCpuLimit(-1);
+        setThrottleQuotaStatement.setCpuLimit(IoTDBConstant.UNLIMITED_VALUE);
       } else {
         int cpuNum = Integer.parseInt(cpuLimit);
         if (cpuNum <= 0) {
@@ -3595,14 +3683,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private long parseThrottleQuotaTimeUnit(String timeUnit) {
     switch (timeUnit.toLowerCase()) {
-      case "sec":
-        return 1000;
-      case "min":
-        return 60 * 1000;
-      case "hour":
-        return 60 * 60 * 1000;
-      case "day":
-        return 24 * 60 * 60 * 1000;
+      case IoTDBConstant.SEC_UNIT:
+        return IoTDBConstant.SEC;
+      case IoTDBConstant.MIN_UNIT:
+        return IoTDBConstant.MIN;
+      case IoTDBConstant.HOUR_UNIT:
+        return IoTDBConstant.HOUR;
+      case IoTDBConstant.DAY_UNIT:
+        return IoTDBConstant.DAY;
       default:
         throw new SemanticException(
             "When setting the request, the unit is incorrect. Please use 'sec', 'min', 'hour', 'day' as the unit");
@@ -3615,19 +3703,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (size <= 0) {
       throw new SemanticException("Please set the size greater than 0");
     }
-    switch (unit.toLowerCase()) {
-      case "b":
+    switch (unit.toUpperCase()) {
+      case IoTDBConstant.B_UNIT:
         return size;
-      case "k":
-        return size * 1024;
-      case "m":
-        return size * 1024 * 1024;
-      case "g":
-        return size * 1024 * 1024 * 1024;
-      case "t":
-        return size * 1024 * 1024 * 1024 * 1024;
-      case "p":
-        return size * 1024 * 1024 * 1024 * 1024 * 1024;
+      case IoTDBConstant.KB_UNIT:
+        return size * IoTDBConstant.KB;
+      case IoTDBConstant.MB_UNIT:
+        return size * IoTDBConstant.MB;
+      case IoTDBConstant.GB_UNIT:
+        return size * IoTDBConstant.GB;
+      case IoTDBConstant.TB_UNIT:
+        return size * IoTDBConstant.TB;
+      case IoTDBConstant.PB_UNIT:
+        return size * IoTDBConstant.PB;
       default:
         throw new SemanticException(
             "When setting the size/time, the unit is incorrect. Please use 'B', 'K', 'M', 'G', 'P', 'T' as the unit");
@@ -3640,15 +3728,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (disk <= 0) {
       throw new SemanticException("Please set the disk size greater than 0");
     }
-    switch (unit.toLowerCase()) {
-      case "m":
+    switch (unit.toUpperCase()) {
+      case IoTDBConstant.MB_UNIT:
         return disk;
-      case "g":
-        return disk * 1024;
-      case "t":
-        return disk * 1024 * 1024;
-      case "p":
-        return disk * 1024 * 1024 * 1024;
+      case IoTDBConstant.GB_UNIT:
+        return disk * IoTDBConstant.KB;
+      case IoTDBConstant.TB_UNIT:
+        return disk * IoTDBConstant.MB;
+      case IoTDBConstant.PB_UNIT:
+        return disk * IoTDBConstant.GB;
       default:
         throw new SemanticException(
             "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");
@@ -3661,9 +3749,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("Limit configuration is not enabled, please enable it first.");
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
-    List<PartialPath> databases = null;
     if (ctx.prefixPath() != null) {
-      databases = new ArrayList<>();
+      List<PartialPath> databases = new ArrayList<>();
       for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         databases.add(parsePrefixPath(prefixPathContext));
       }

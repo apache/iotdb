@@ -71,7 +71,7 @@ public class IoTDBConfig {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
-  private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
+  private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
@@ -159,6 +159,8 @@ public class IoTDBConfig {
   /** The proportion of write memory for loading TsFile */
   private double loadTsFileProportion = 0.125;
 
+  private final int maxLoadingDeviceNumber = 10000;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -183,19 +185,19 @@ public class IoTDBConfig {
   private int maxWalNodesNum = 0;
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 3;
+  private volatile long fsyncWalDelayInMs = 1000;
 
   /** Buffer size of each wal node. Unit: byte */
-  private int walBufferSize = 16 * 1024 * 1024;
+  private int walBufferSize = 32 * 1024 * 1024;
 
   /** Buffer entry size of each wal buffer. Unit: byte */
   private int walBufferEntrySize = 16 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 50;
+  private int walBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024L;
+  private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
@@ -439,6 +441,13 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
+
+  /**
+   * Enable compaction memory control or not. If true and estimated memory size of one compaction
+   * task exceeds the threshold, system will block the compaction. It only works for cross space
+   * compaction currently.
+   */
+  private boolean enableCompactionMemControl = true;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -953,6 +962,8 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 1000;
 
+  private int devicePathCacheSize = 500_000;
+
   /** Cache size of user and role */
   private int authorCacheSize = 100;
 
@@ -1071,7 +1082,7 @@ public class IoTDBConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
-  /** multi-tenancy */
+  /** Resource control */
   private boolean quotaEnable = false;
 
   /**
@@ -2783,6 +2794,14 @@ public class IoTDBConfig {
     this.compactionPriority = compactionPriority;
   }
 
+  public boolean isEnableCompactionMemControl() {
+    return enableCompactionMemControl;
+  }
+
+  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
+    this.enableCompactionMemControl = enableCompactionMemControl;
+  }
+
   public long getTargetCompactionFileSize() {
     return targetCompactionFileSize;
   }
@@ -3153,6 +3172,14 @@ public class IoTDBConfig {
     this.partitionCacheSize = partitionCacheSize;
   }
 
+  public int getDevicePathCacheSize() {
+    return devicePathCacheSize;
+  }
+
+  public void setDevicePathCacheSize(int devicePathCacheSize) {
+    this.devicePathCacheSize = devicePathCacheSize;
+  }
+
   public int getAuthorCacheSize() {
     return authorCacheSize;
   }
@@ -3307,6 +3334,10 @@ public class IoTDBConfig {
 
   public double getLoadTsFileProportion() {
     return loadTsFileProportion;
+  }
+
+  public int getMaxLoadingDeviceNumber() {
+    return maxLoadingDeviceNumber;
   }
 
   public static String getEnvironmentVariables() {

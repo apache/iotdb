@@ -32,7 +32,9 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -105,6 +107,13 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
             new AlignedPath(TEST_DEVICE, "s3"));
     List<TSDataType> dataTypes =
         Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32);
+    List<TSEncoding> encodings =
+        Arrays.asList(TSEncoding.PLAIN, TSEncoding.PLAIN, TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED,
+            CompressionType.UNCOMPRESSED);
 
     // prepare file 1
     File seqFile1 = new File(TestConstant.getTestTsFilePath(TEST_DATABASE, 0, 0, 1));
@@ -118,7 +127,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       List<TimeRange> pages = new ArrayList<>();
       // prepare f1-c1-p1
       pages.add(new TimeRange(0L, 9L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -139,7 +149,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
 
       // prepare f2-c1-p1
       AlignedChunkWriterImpl alignedChunkWriter =
-          (AlignedChunkWriterImpl) createChunkWriter(writtenPaths, dataTypes, true).get(0);
+          (AlignedChunkWriterImpl)
+              createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true).get(0);
       TimePageWriter timePageWriter = alignedChunkWriter.getTimeChunkWriter().getPageWriter();
       // write time page
       for (long timestamp = 10L; timestamp <= 19L; timestamp++) {
@@ -207,7 +218,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       // prepare f3-c1-p1
       List<TimeRange> pages = new ArrayList<>();
       pages.add(new TimeRange(20L, 29L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -217,7 +229,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
 
       // prepare f3-c2-p1
       AlignedChunkWriterImpl alignedChunkWriter =
-          (AlignedChunkWriterImpl) createChunkWriter(writtenPaths, dataTypes, true).get(0);
+          (AlignedChunkWriterImpl)
+              createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true).get(0);
       TimePageWriter timePageWriter = alignedChunkWriter.getTimeChunkWriter().getPageWriter();
       // write time page
       for (long timestamp = 30L; timestamp <= 39L; timestamp++) {
@@ -285,13 +298,15 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       // prepare f4-c1-p1
       List<TimeRange> pages = new ArrayList<>();
       pages.add(new TimeRange(40L, 49L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
 
       // prepare f4-c1-p2
       AlignedChunkWriterImpl alignedChunkWriter =
-          (AlignedChunkWriterImpl) createChunkWriter(writtenPaths, dataTypes, true).get(0);
+          (AlignedChunkWriterImpl)
+              createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true).get(0);
       TimePageWriter timePageWriter = alignedChunkWriter.getTimeChunkWriter().getPageWriter();
       // write time page
       for (long timestamp = 50L; timestamp <= 59L; timestamp++) {
@@ -343,7 +358,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       // prepare f4-c1-p3
       pages.clear();
       pages.add(new TimeRange(60L, 69L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
 
@@ -354,7 +370,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       pages.clear();
       // prepare f4-c2-p1
       pages.add(new TimeRange(70L, 79L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -377,7 +394,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       pages.add(new TimeRange(70L, 79L));
       // prepare f5-c1-p2
       pages.add(new TimeRange(80L, 89L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, true)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
         writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();

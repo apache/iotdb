@@ -343,7 +343,30 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public void abort(Throwable t) {
-    abort();
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted || closed) {
+        return;
+      }
+      if (blocked != null && !blocked.isDone()) {
+        blocked.setException(t);
+      }
+      if (blockedOnMemory != null) {
+        bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+      }
+      sequenceIdToDataBlockSize.clear();
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
+      aborted = true;
+      sourceHandleListener.onAborted(this);
+    }
   }
 
   @Override
