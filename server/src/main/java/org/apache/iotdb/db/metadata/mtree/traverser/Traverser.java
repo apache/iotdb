@@ -21,6 +21,8 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
@@ -171,5 +173,64 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
     this.skipPreDeletedSchema = skipPreDeletedSchema;
+  }
+
+  @Override
+  protected IFAState tryGetNextState(
+      IMNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
+    IFATransition transition;
+    IFAState state;
+    if (node.isMeasurement()) {
+      String alias = node.getAsMeasurementMNode().getAlias();
+      if (alias != null) {
+        transition = preciseMatchTransitionMap.get(alias);
+        if (transition != null) {
+          state = patternFA.getNextState(sourceState, transition);
+          if (state.isFinal()) {
+            return state;
+          }
+        }
+      }
+      transition = preciseMatchTransitionMap.get(node.getName());
+      if (transition != null) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
+      }
+      return null;
+    }
+
+    transition = preciseMatchTransitionMap.get(node.getName());
+    if (transition == null) {
+      return null;
+    }
+    return patternFA.getNextState(sourceState, transition);
+  }
+
+  @Override
+  protected IFAState tryGetNextState(IMNode node, IFAState sourceState, IFATransition transition) {
+    IFAState state;
+    if (node.isMeasurement()) {
+      String alias = node.getAsMeasurementMNode().getAlias();
+      if (alias != null && transition.isMatch(alias)) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
+      }
+      if (transition.isMatch(node.getName())) {
+        state = patternFA.getNextState(sourceState, transition);
+        if (state.isFinal()) {
+          return state;
+        }
+      }
+      return null;
+    }
+
+    if (transition.isMatch(node.getName())) {
+      return patternFA.getNextState(sourceState, transition);
+    }
+    return null;
   }
 }

@@ -52,6 +52,11 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
   }
 
   @Override
+  protected boolean mayTargetNodeType(IMNode node) {
+    return true;
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     if (targetLevel >= 0) {
       if (getSizeOfAncestor() > targetLevel) {

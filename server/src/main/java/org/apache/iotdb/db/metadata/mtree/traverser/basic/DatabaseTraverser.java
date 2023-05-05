@@ -44,6 +44,11 @@ public abstract class DatabaseTraverser<R> extends Traverser<R> {
   }
 
   @Override
+  protected boolean mayTargetNodeType(IMNode node) {
+    return collectInternal || node.isStorageGroup();
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     return node.isStorageGroup();
   }

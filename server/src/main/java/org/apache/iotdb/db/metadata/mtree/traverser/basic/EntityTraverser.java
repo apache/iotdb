@@ -45,6 +45,14 @@ public abstract class EntityTraverser<R> extends Traverser<R> {
   }
 
   @Override
+  protected boolean mayTargetNodeType(IMNode node) {
+    if (node.isEntity()) {
+      return !usingTemplate || schemaTemplateId == node.getAsEntityMNode().getSchemaTemplateId();
+    }
+    return false;
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     if (node.isEntity()) {
       return !usingTemplate || schemaTemplateId == node.getSchemaTemplateId();
