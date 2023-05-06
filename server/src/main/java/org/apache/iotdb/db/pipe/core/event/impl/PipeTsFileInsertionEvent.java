@@ -24,15 +24,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.File;
 
-import java.io.File;
-
 public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
-  private final File tsFile;
-
-  public PipeTsFileInsertionEvent(File tsFile) {
-    this.tsFile = tsFile;
-  }
-
   private final File tsFile;
 
   public PipeTsFileInsertionEvent(File tsFile) {

@@ -23,9 +23,14 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.pipe.core.collector.PipeCollector;
-import org.apache.iotdb.db.pipe.core.event.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
+
+import org.apache.commons.lang.NotImplementedException;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -43,7 +48,21 @@ public class PipeHistoricalTsFileCollector implements PipeCollector {
   }
 
   @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    throw new NotImplementedException("Not implement for validate.");
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+      throws Exception {
+    throw new NotImplementedException("Not implement for customize.");
+  }
+
+  @Override
   public void start() {
+    if (hasBeenStarted.get()) {
+      return;
+    }
     hasBeenStarted.set(true);
 
     DataRegion dataRegion =
@@ -70,11 +89,6 @@ public class PipeHistoricalTsFileCollector implements PipeCollector {
     } finally {
       dataRegion.writeUnlock();
     }
-  }
-
-  @Override
-  public boolean hasBeenStarted() {
-    return hasBeenStarted.get();
   }
 
   @Override
