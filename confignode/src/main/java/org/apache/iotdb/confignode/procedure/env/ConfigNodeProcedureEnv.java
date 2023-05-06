@@ -37,7 +37,6 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -58,7 +57,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -81,6 +79,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -527,9 +526,15 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
   }
 
+  /**
+   * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
+   * use this RegionGroup to allocate new Partitions
+   *
+   * @param regionGroupId Specified RegionGroup
+   * @param regionStatusMap Map<DataNodeId, RegionStatus>
+   */
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    // Force activating RegionGroup
     long currentTime = System.currentTimeMillis();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
@@ -537,27 +542,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
-
-    // Select leader greedily for iot consensus protocol
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.IOT_CONSENSUS.equals(
-            ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
-      List<Integer> availableDataNodes = new ArrayList<>();
-      for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
-        if (RegionStatus.isNormalStatus(statusEntry.getValue())) {
-          availableDataNodes.add(statusEntry.getKey());
-        }
-      }
-      getLoadManager().getRouteBalancer().greedySelectLeader(regionGroupId, availableDataNodes);
-    }
-
-    // Force update RegionRouteMap
-    getLoadManager().getRouteBalancer().updateRegionRouteMap();
-  }
-
-  public void broadcastRegionGroup() {
-    // Broadcast the latest RegionRouteMap
-    getLoadManager().broadcastLatestRegionRouteMap();
+    // Wait for leader election
+    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

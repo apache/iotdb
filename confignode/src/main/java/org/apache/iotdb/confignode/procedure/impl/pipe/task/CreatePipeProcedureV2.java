@@ -101,7 +101,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
     env.getConfigManager()
         .getLoadManager()
-        .getLatestRegionLeaderMap()
+        .getRegionLeaderMap()
         .forEach(
             (region, leader) -> {
               consensusGroupIdToTaskMetaMap.put(region, new PipeTaskMeta(0, leader));
