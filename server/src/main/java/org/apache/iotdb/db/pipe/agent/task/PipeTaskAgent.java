@@ -42,20 +42,51 @@ public class PipeTaskAgent {
     final String pipeName = pipeMeta.getStaticMeta().getPipeName();
     final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
 
+    // check if the pipe has already been created before
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
       if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
         switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
           case STOPPED:
           case RUNNING:
+            LOGGER.info(
+                "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
+                pipeName,
+                creationTime,
+                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            return;
           case DROPPED:
+            LOGGER.info(
+                "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Recreating.",
+                pipeName,
+                creationTime,
+                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            // break to drop the pipe meta and recreate it
+            break;
           default:
+            throw new IllegalStateException(
+                "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
         }
-        return;
       }
 
+      // drop the pipe if
+      // 1. the pipe with the same name but with different creation time has been created before
+      // 2. the pipe with the same name and the same creation time has been dropped before, but the
+      //  pipe task meta has not been cleaned up
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
+
+    // build pipe task by consensus group
+    pipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupIdToTaskMetaMap()
+        .forEach(
+            ((consensusGroupId, pipeTaskMeta) -> {
+              createPipeTaskByConsensusGroup(
+                  pipeName, creationTime, consensusGroupId, pipeTaskMeta);
+            }));
+    // add pipe meta to pipe meta keeper
+    pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
   }
 
   public void createPipeTaskByConsensusGroup(
