@@ -190,9 +190,9 @@
         <!-- for REST service -->
         <swagger.core.version>1.6.2</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
-        <openapi.generator.version>5.0.0</openapi.generator.version>
+        <openapi.generator.version>5.0.1</openapi.generator.version>
         <!-- cli -->
-        <progressbar.version>0.9.3</progressbar.version>
+        <progressbar.version>0.9.5</progressbar.version>
         <!-- zeppelin -->
         <zeppelin.version>0.9.0-preview2</zeppelin.version>
         <!-- for java 11-->

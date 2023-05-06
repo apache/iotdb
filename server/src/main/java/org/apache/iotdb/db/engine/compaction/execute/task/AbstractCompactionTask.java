@@ -161,6 +161,10 @@ public abstract class AbstractCompactionTask {
     return crossTask;
   }
 
+  public long getTemporalFileSize() {
+    return summary.getTemporalFileSize();
+  }
+
   public boolean isInnerSeqTask() {
     return innerSeqTask;
   }
