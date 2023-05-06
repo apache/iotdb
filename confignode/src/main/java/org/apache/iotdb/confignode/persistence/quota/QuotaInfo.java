@@ -49,6 +49,7 @@ public class QuotaInfo implements SnapshotProcessor {
   private static final Logger logger = LoggerFactory.getLogger(QuotaInfo.class);
 
   private final ReentrantReadWriteLock spaceQuotaReadWriteLock;
+  // diskSize unit : M
   private final Map<String, TSpaceQuota> spaceQuotaLimit;
   private final Map<String, TSpaceQuota> spaceQuotaUsage;
   private final Map<String, TThrottleQuota> throttleQuotaLimit;

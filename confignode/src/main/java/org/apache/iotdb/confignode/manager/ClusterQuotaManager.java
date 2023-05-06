@@ -25,17 +25,21 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.quotas.SpaceQuotaType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSpaceResourceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSpaceResourceResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -182,6 +186,7 @@ public class ClusterQuotaManager {
   }
 
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
+    // TODO: Datanode failed to receive rpc
     ConsensusWriteResponse response =
         configManager
             .getConsensusManager()
@@ -283,8 +288,98 @@ public class ClusterQuotaManager {
                   regionDiskCount.addAndGet(regionDisk.get(dataRegionId));
                 }
               });
-      quotaInfo.getSpaceQuotaUsage().get(entry.getKey()).setDiskSize(regionDiskCount.get());
+      quotaInfo
+          .getSpaceQuotaUsage()
+          .get(entry.getKey())
+          .setDiskSize(
+              regionDiskCount.get()
+                  * ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
     }
+  }
+
+  public TShowSpaceResourceResp showSpaceResource() {
+    TShowSpaceResourceResp showSpaceResourceResp = new TShowSpaceResourceResp();
+    // get resource
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<Object, TSpaceResourceResp> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.GET_SPACE_RESOURCE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    List<TSpaceResourceResp> responseList = clientHandler.getResponseList();
+    long totalSpace = 0;
+    long freeSpace = 0;
+    long maxMemory = 0;
+    for (TSpaceResourceResp spaceResourceResp : responseList) {
+      if (spaceResourceResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        totalSpace += spaceResourceResp.getTotalSpace();
+        freeSpace += spaceResourceResp.getFreeSpace();
+        maxMemory += spaceResourceResp.getMaxMemory();
+      }
+    }
+    Map<String, Map<String, Long>> spaceResource = new HashMap<>();
+    Map<String, Long> resource = new HashMap<>();
+    // Allocated
+    long deviceNumAllocated = 0;
+    long timeSeriesNumAllocated = 0;
+    long diskSizeAllocated = 0;
+    // Used
+    long diskSizeUsed = 0;
+    if (!quotaInfo.getSpaceQuotaLimit().isEmpty()) {
+      deviceNumAllocated =
+          quotaInfo.getSpaceQuotaLimit().values().stream()
+              .mapToLong(TSpaceQuota::getDeviceNum)
+              .sum();
+      timeSeriesNumAllocated =
+          quotaInfo.getSpaceQuotaLimit().values().stream()
+              .mapToLong(TSpaceQuota::getTimeserieNum)
+              .sum();
+      // diskSize Unit : M
+      diskSizeAllocated =
+          quotaInfo.getSpaceQuotaLimit().values().stream().mapToLong(TSpaceQuota::getDiskSize).sum()
+              / IoTDBConstant.KB;
+      diskSizeUsed =
+          quotaInfo.getSpaceQuotaUsage().values().stream().mapToLong(TSpaceQuota::getDiskSize).sum()
+              / IoTDBConstant.KB;
+    }
+
+    // device num
+    long deviceNum =
+        maxMemory
+            / 20
+            / (180 + 2 * 100)
+            / ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
+
+    resource.put(IoTDBConstant.TOTAL, deviceNum);
+    resource.put(IoTDBConstant.NON_USED, 0L);
+    resource.put(IoTDBConstant.ALLOCATED, deviceNumAllocated);
+    resource.put(IoTDBConstant.AVAILABLE, deviceNum - deviceNumAllocated);
+    resource.put(IoTDBConstant.USED, 0L);
+    spaceResource.put(SpaceQuotaType.deviceNum.name(), resource);
+
+    // TimeSeries num
+    resource = new HashMap<>();
+    resource.put(IoTDBConstant.TOTAL, deviceNum);
+    resource.put(IoTDBConstant.NON_USED, 0L);
+    resource.put(IoTDBConstant.ALLOCATED, timeSeriesNumAllocated);
+    resource.put(IoTDBConstant.AVAILABLE, deviceNum - timeSeriesNumAllocated);
+    resource.put(IoTDBConstant.USED, 0L);
+    spaceResource.put(SpaceQuotaType.timeSeriesNum.name(), resource);
+
+    // Disk Size
+    resource = new HashMap<>();
+    // totalSpace, freeSpace Unit : B
+    totalSpace = totalSpace / IoTDBConstant.KB / IoTDBConstant.KB / IoTDBConstant.KB;
+    freeSpace = freeSpace / IoTDBConstant.KB / IoTDBConstant.KB / IoTDBConstant.KB;
+    resource.put(IoTDBConstant.TOTAL, totalSpace);
+    resource.put(IoTDBConstant.NON_USED, totalSpace - freeSpace - diskSizeUsed);
+    resource.put(IoTDBConstant.ALLOCATED, diskSizeAllocated);
+    resource.put(IoTDBConstant.AVAILABLE, freeSpace + diskSizeUsed - diskSizeAllocated);
+    resource.put(IoTDBConstant.USED, diskSizeUsed);
+    spaceResource.put(SpaceQuotaType.diskSize.name(), resource);
+
+    showSpaceResourceResp.setSpaceResource(spaceResource);
+    showSpaceResourceResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return showSpaceResourceResp;
   }
 
   private PartitionManager getPartitionManager() {

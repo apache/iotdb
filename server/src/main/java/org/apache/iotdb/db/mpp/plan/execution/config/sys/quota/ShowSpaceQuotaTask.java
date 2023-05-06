@@ -69,6 +69,7 @@ public class ShowSpaceQuotaTask implements IConfigTask {
           builder.getTimeColumnBuilder().writeLong(0L);
           builder.getColumnBuilder(0).writeBinary(Binary.valueOf(spaceQuotaEntry.getKey()));
           builder.getColumnBuilder(1).writeBinary(Binary.valueOf(SpaceQuotaType.diskSize.name()));
+          // DiskSize Unit : M
           builder
               .getColumnBuilder(2)
               .writeBinary(

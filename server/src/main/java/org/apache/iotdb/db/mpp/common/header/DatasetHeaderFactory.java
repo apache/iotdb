@@ -188,4 +188,8 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowTrailsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, true);
   }
+
+  public static DatasetHeader getShowSpaceResourceHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceResourceColumnHeaders, true);
+  }
 }

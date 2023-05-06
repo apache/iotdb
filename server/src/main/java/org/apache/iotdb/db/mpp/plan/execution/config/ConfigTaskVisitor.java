@@ -78,6 +78,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.StopPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetSpaceQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceResourceTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeSinkTask;
@@ -143,6 +144,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceResourceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -501,6 +503,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, TaskContext context) {
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSpaceResource(
+      ShowSpaceResourceStatement showSpaceResourceStatement, TaskContext context) {
+    return new ShowSpaceResourceTask(showSpaceResourceStatement);
   }
 
   /** ML Model Management */

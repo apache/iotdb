@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -150,23 +149,23 @@ public class ShowThrottleQuotaTask implements IConfigTask {
       case IoTDBConstant.REQUEST_NUM_PER_UNIT_TIME:
         return timedQuota.getSoftLimit()
             + IoTDBConstant.REQ_UNIT
-            + File.separator
+            + "/"
             + toTimeUnit(timedQuota.getTimeUnit());
       case IoTDBConstant.REQUEST_SIZE_PER_UNIT_TIME:
         if (timedQuota.getSoftLimit() < IoTDBConstant.KB) {
           return timedQuota.getSoftLimit()
               + IoTDBConstant.B_UNIT
-              + File.separator
+              + "/"
               + toTimeUnit(timedQuota.getTimeUnit());
         } else if (timedQuota.getSoftLimit() < IoTDBConstant.MB) {
           return timedQuota.getSoftLimit() / IoTDBConstant.KB
               + IoTDBConstant.KB_UNIT
-              + File.separator
+              + "/"
               + toTimeUnit(timedQuota.getTimeUnit());
         } else {
           return timedQuota.getSoftLimit() / IoTDBConstant.KB / IoTDBConstant.KB
               + IoTDBConstant.MB_UNIT
-              + File.separator
+              + "/"
               + toTimeUnit(timedQuota.getTimeUnit());
         }
       default:

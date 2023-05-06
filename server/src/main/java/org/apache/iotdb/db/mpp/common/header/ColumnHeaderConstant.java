@@ -182,6 +182,13 @@ public class ColumnHeaderConstant {
   public static final String HYPERPARAMETER = "Hyperparameter";
   public static final String MODEL_PATH = "ModelPath";
 
+  // column names for show space resource
+  public static final String TOTAL = "Total";
+  public static final String NON_IOTDB_USED = "Non-IoTDB-Used";
+  public static final String AVAILABLE = "Available";
+  public static final String ALLOCATED = "Allocated";
+  public static final String IOTDB_USED = "IoTDB-used";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -452,4 +459,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
           new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
           new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSpaceResourceColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TYPE, TSDataType.TEXT),
+          new ColumnHeader(TOTAL, TSDataType.TEXT),
+          new ColumnHeader(NON_IOTDB_USED, TSDataType.TEXT),
+          new ColumnHeader(ALLOCATED, TSDataType.TEXT),
+          new ColumnHeader(AVAILABLE, TSDataType.TEXT),
+          new ColumnHeader(IOTDB_USED, TSDataType.TEXT));
 }

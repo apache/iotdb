@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -109,9 +108,7 @@ public class DefaultOperationQuota implements OperationQuota {
         case BATCH_INSERT:
           // InsertTabletStatement
           InsertTabletStatement insertTabletStatement = (InsertTabletStatement) s;
-          for (BitMap bitMap : insertTabletStatement.getBitMaps()) {
-            avgSize += bitMap.getSize();
-          }
+          avgSize += calculationWrite(insertTabletStatement.getColumns());
           break;
         case BATCH_INSERT_ONE_DEVICE:
           // InsertRowsOfOneDeviceStatement
@@ -144,9 +141,9 @@ public class DefaultOperationQuota implements OperationQuota {
             for (int i = 0;
                 i < insertMultiTabletsStatement.getInsertTabletStatementList().size();
                 i++) {
-              for (BitMap bitMap :
-                  insertMultiTabletsStatement.getInsertTabletStatementList().get(i).getBitMaps()) {
-                avgSize += bitMap.getSize();
+              for (InsertTabletStatement insertTablet :
+                  insertMultiTabletsStatement.getInsertTabletStatementList()) {
+                avgSize += calculationWrite(insertTablet.getColumns());
               }
             }
           }

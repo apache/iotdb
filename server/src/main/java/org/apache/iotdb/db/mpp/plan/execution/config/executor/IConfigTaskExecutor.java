@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceResourceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -196,6 +197,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showSpaceQuota(ShowSpaceQuotaStatement showSpaceQuotaStatement);
 
   TSpaceQuotaResp getSpaceQuota();
+
+  SettableFuture<ConfigTaskResult> showSpaceResource(
+      ShowSpaceResourceStatement showSpaceResourceStatement);
 
   SettableFuture<ConfigTaskResult> setThrottleQuota(
       SetThrottleQuotaStatement setThrottleQuotaStatement);

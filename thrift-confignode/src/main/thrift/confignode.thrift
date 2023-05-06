@@ -766,6 +766,11 @@ struct TShowThrottleReq{
   1: optional string userName;
 }
 
+struct TShowSpaceResourceResp{
+  1: optional map<string, map<string, i64>> spaceResource
+  2: required common.TSStatus status
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1394,5 +1399,8 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Show space resource */
+  TShowSpaceResourceResp showSpaceResource()
 }
 

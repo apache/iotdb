@@ -38,7 +38,12 @@ public class ThrottleQuotaLimit {
   public void setQuotas(TSetThrottleQuotaReq req) {
     if (!req.getThrottleQuota().getThrottleLimit().isEmpty()) {
       userQuotaLimiter.put(
-          req.getUserName(), QuotaLimiter.fromThrottle(req.getThrottleQuota().getThrottleLimit()));
+          req.getUserName(),
+          QuotaLimiter.fromThrottle(
+              req.getThrottleQuota().getThrottleLimit(),
+              userQuotaLimiter.get(req.getUserName()) == null
+                  ? new QuotaLimiter()
+                  : userQuotaLimiter.get(req.getUserName())));
     }
     memLimit.put(req.getUserName(), req.getThrottleQuota().getMemLimit());
     cpuLimit.put(req.getUserName(), req.getThrottleQuota().cpuLimit);
@@ -59,6 +64,7 @@ public class ThrottleQuotaLimit {
   public boolean checkCpu(String userName, int cpuNum) {
     if (cpuLimit.get(userName) == null
         || cpuLimit.get(userName) == 0
+        || cpuLimit.get(userName) == -1
         || cpuLimit.get(userName) > cpuNum) {
       return true;
     }
@@ -68,6 +74,7 @@ public class ThrottleQuotaLimit {
   public boolean checkMemory(String userName, long estimatedMemory) {
     if (memLimit.get(userName) == null
         || memLimit.get(userName) == 0
+        || memLimit.get(userName) == -1
         || memLimit.get(userName) > estimatedMemory) {
       return true;
     }

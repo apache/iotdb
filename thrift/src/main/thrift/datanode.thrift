@@ -460,6 +460,13 @@ struct TRecordModelMetricsReq {
   5: required list<double> values
 }
 
+struct TSpaceResourceResp {
+  1: required i64 totalSpace
+  2: required i64 freeSpace
+  3: required i64 maxMemory
+  4: required common.TSStatus status
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -781,6 +788,11 @@ service IDataNodeRPCService {
    * Set throttle quota
    **/
   common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+
+  /**
+   * Get space resource
+   **/
+  TSpaceResourceResp getSpaceResource();
 }
 
 service MPPDataExchangeService {

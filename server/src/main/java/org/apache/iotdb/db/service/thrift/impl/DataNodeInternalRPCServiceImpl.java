@@ -177,6 +177,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSpaceResourceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -956,6 +957,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
     return throttleQuotaManager.setThrottleQuota(req);
+  }
+
+  @Override
+  public TSpaceResourceResp getSpaceResource() throws TException {
+    long totalDisk =
+        (long)
+            MetricService.getInstance()
+                .getAutoGauge(
+                    Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                    MetricLevel.CORE,
+                    Tag.NAME.toString(),
+                    "system")
+                .value();
+    long freeDisk =
+        (long)
+            MetricService.getInstance()
+                .getAutoGauge(
+                    Metric.SYS_DISK_FREE_SPACE.toString(),
+                    MetricLevel.CORE,
+                    Tag.NAME.toString(),
+                    "system")
+                .value();
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    return new TSpaceResourceResp(
+        totalDisk, freeDisk, maxMemory, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
