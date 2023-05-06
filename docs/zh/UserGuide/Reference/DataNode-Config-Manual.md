@@ -274,7 +274,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 元数据存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                              |
 |  默认值   | data/datanode/system（Windows：data\\datanode\\system）                |
-| 改后生效方式 | 热加载                                                                |
+| 改后生效方式 | 重启服务生效                                                                    |
 
 * dn\_data\_dirs
 
@@ -283,7 +283,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 数据存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                             |
 |  默认值   | data/datanode/data（Windows：data\\datanode\\data）                   |
-| 改后生效方式 | 热加载                                                               |
+| 改后生效方式 | 重启服务生效                                                                   |
 
 * dn\_multi\_dir\_strategy
 
@@ -294,6 +294,15 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |  默认值   | MaxDiskUsableSpaceFirstStrategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 改后生效方式 | 热加载                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
+* dn\_consensus\_dir
+
+|   名字   | dn\_consensus\_dir                                                       |
+|:------:|:-------------------------------------------------------------------------|
+|   描述   | IoTDB 共识层日志存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。    |
+|   类型   | String                                                                   |
+|  默认值   | data/datanode/consensus（Windows：data\\datanode\\consensus）               |
+| 改后生效方式 | 重启服务生效                                                                         |
+
 * dn\_wal\_dir
 
 |   名字   | dn\_wal\_dir                                                         |
@@ -301,7 +310,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 写前日志存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                               |
 |  默认值   | data/datanode/wal（Windows：data\\datanode\\wal）                       |
-| 改后生效方式 | 热加载                                                                 |
+| 改后生效方式 | 重启服务生效                                                                     |
 
 * dn\_tracing\_dir
 
@@ -310,7 +319,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 追踪根目录路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                              |
 |  默认值   | datanode/tracing                                                    |
-| 改后生效方式 | 热加载                                                                |
+| 改后生效方式 | 重启服务生效                                                                    |
 
 * dn\_sync\_dir
 
@@ -318,8 +327,8 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:------:|:----------------------------------------------------------------------|
 |   描述   | IoTDB sync 存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                                |
-|  默认值   | data/datanode/sync                        |
-| 改后生效方式 | 热加载                                                                  |
+|  默认值   | data/datanode/sync                                                    |
+| 改后生效方式 | 重启服务生效                                                                      |
 
 #### Metric 配置
 

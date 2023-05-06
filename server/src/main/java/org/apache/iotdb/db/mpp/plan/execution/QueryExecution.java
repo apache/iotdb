@@ -126,6 +126,9 @@ public class QueryExecution implements IQueryExecution {
   // We use this SourceHandle to fetch the TsBlock from it.
   private ISourceHandle resultHandle;
 
+  // used for cleaning resultHandle up exactly once
+  private final AtomicBoolean resultHandleCleanUp;
+
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       syncInternalServiceClientManager;
 
@@ -186,6 +189,7 @@ public class QueryExecution implements IQueryExecution {
           }
         });
     this.stopped = new AtomicBoolean(false);
+    this.resultHandleCleanUp = new AtomicBoolean(false);
   }
 
   @FunctionalInterface
@@ -259,6 +263,7 @@ public class QueryExecution implements IQueryExecution {
     context.prepareForRetry();
     // re-stop
     this.stopped.compareAndSet(true, false);
+    this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
@@ -407,7 +412,7 @@ public class QueryExecution implements IQueryExecution {
     // We don't need to deal with MemorySourceHandle because it doesn't register to memory pool
     // We don't need to deal with LocalSourceHandle because the SharedTsBlockQueue uses the upstream
     // FragmentInstanceId to register
-    if (resultHandle instanceof SourceHandle) {
+    if (resultHandleCleanUp.compareAndSet(false, true) && resultHandle instanceof SourceHandle) {
       TFragmentInstanceId fragmentInstanceId = resultHandle.getLocalFragmentInstanceId();
       MPPDataExchangeService.getInstance()
           .getMPPDataExchangeManager()
