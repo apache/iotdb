@@ -230,7 +230,8 @@ public class IoTDBOrderByIT {
 
   @Test
   public void orderByTest6() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc";
+    String sql =
+        "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc, time asc";
     int[] ans = {6, 14, 0, 12, 2, 8, 9, 7, 4, 5, 1, 3, 10, 11, 13};
     testNormalOrderBy(sql, ans);
   }
