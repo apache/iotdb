@@ -30,7 +30,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,7 @@ public class AsyncPlanNodeSender {
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
 
-  private final Map<TEndPoint, Pair<List<Integer>, TSendBatchPlanNodeReq>> batchRequests;
+  private final Map<TEndPoint, BatchRequestWithIndex> batchRequests;
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
   private final AtomicLong pendingNumber;
   private final long startSendTime;
@@ -66,14 +65,12 @@ public class AsyncPlanNodeSender {
     this.instances = instances;
     this.batchRequests = new HashMap<>();
     for (int i = 0; i < instances.size(); i++) {
-      Pair<List<Integer>, TSendBatchPlanNodeReq> value =
-          this.batchRequests.computeIfAbsent(
+      this.batchRequests
+          .computeIfAbsent(
               instances.get(i).getHostDataNode().getInternalEndPoint(),
-              x -> new Pair<>(new ArrayList<>(), new TSendBatchPlanNodeReq()));
-      value.getLeft().add(i);
-      value
-          .getRight()
-          .addToRequests(
+              x -> new BatchRequestWithIndex())
+          .addSinglePlanNodeReq(
+              i,
               new TSendSinglePlanNodeReq(
                   new TPlanNode(
                       instances.get(i).getFragment().getPlanNodeTree().serializeToByteBuffer()),
@@ -84,15 +81,14 @@ public class AsyncPlanNodeSender {
   }
 
   public void sendAll() {
-    for (Map.Entry<TEndPoint, Pair<List<Integer>, TSendBatchPlanNodeReq>> entry :
-        batchRequests.entrySet()) {
+    for (Map.Entry<TEndPoint, BatchRequestWithIndex> entry : batchRequests.entrySet()) {
       AsyncSendPlanNodeHandler handler =
           new AsyncSendPlanNodeHandler(
-              entry.getValue().getLeft(), pendingNumber, instanceId2RespMap, startSendTime);
+              entry.getValue().getIndexes(), pendingNumber, instanceId2RespMap, startSendTime);
       try {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());
-        client.sendBatchPlanNode(entry.getValue().getRight(), handler);
+        client.sendBatchPlanNode(entry.getValue().getBatchRequest(), handler);
       } catch (Exception e) {
         handler.onError(e);
       }
@@ -159,5 +155,29 @@ public class AsyncPlanNodeSender {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  /**
+   * This class is used to aggregate PlanNode of the same datanode into one rpc. In order to ensure
+   * the one-to-one correspondence between response and request, the corresponding index needs to be
+   * recorded.
+   */
+  static class BatchRequestWithIndex {
+
+    private final List<Integer> indexes = new ArrayList<>();
+    private final TSendBatchPlanNodeReq batchRequest = new TSendBatchPlanNodeReq();
+
+    void addSinglePlanNodeReq(int index, TSendSinglePlanNodeReq singleRequest) {
+      indexes.add(index);
+      batchRequest.addToRequests(singleRequest);
+    }
+
+    public List<Integer> getIndexes() {
+      return indexes;
+    }
+
+    public TSendBatchPlanNodeReq getBatchRequest() {
+      return batchRequest;
+    }
   }
 }
