@@ -20,101 +20,67 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
-
-import static org.weakref.jmx.internal.guava.util.concurrent.MoreExecutors.directExecutor;
 
 public class DiskSpiller {
 
-  private final List<Integer> fileIndex;
   private final List<TSDataType> dataTypeList;
-  private final List<ListenableFuture<Boolean>> processingTask;
   private final String folderPath;
   private final String filePrefix;
   private final String fileSuffix = ".sortTemp";
 
-  private int index;
+  private int fileIndex;
   private boolean folderCreated = false;
-  private boolean allProcessingTaskFinished = false;
   private final TsBlockSerde serde = new TsBlockSerde();
 
   public DiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
     this.folderPath = folderPath;
-    this.filePrefix = filePrefix + this.getClass().getSimpleName() + "-";
-    this.index = 0;
+    this.filePrefix = filePrefix + "-";
+    this.fileIndex = 0;
     this.dataTypeList = dataTypeList;
-    this.fileIndex = new ArrayList<>();
-    this.processingTask = new ArrayList<>();
   }
 
-  public void createFolder(String folderPath) throws IOException {
+  private void createFolder(String folderPath) throws IOException {
     Path path = Paths.get(folderPath);
     Files.createDirectories(path);
     folderCreated = true;
   }
 
-  public boolean allProcessingTaskFinished() throws IoTDBException {
-    if (allProcessingTaskFinished) return true;
-    for (Future<Boolean> future : processingTask) {
-      if (!future.isDone()) return false;
-      // check if there is exception in the processing task
-      try {
-        boolean finished = future.get();
-        if (!finished) {
-          throw new IoTDBException(
-              "Failed to spill data to disk", TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-        }
-      } catch (Exception e) {
-        throw new IoTDBException(
-            e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
-    }
-    allProcessingTaskFinished = true;
-    return true;
-  }
-
-  public synchronized void spill(List<TsBlock> tsBlocks) throws IOException {
+  private void spill(List<TsBlock> tsBlocks) throws IOException, IoTDBException {
     if (!folderCreated) {
       createFolder(folderPath);
     }
-    String fileName = filePrefix + index + fileSuffix;
-    fileIndex.add(index);
-    index++;
+    String fileName = filePrefix + fileIndex + fileSuffix;
+    fileIndex++;
 
-    ListenableFuture<Boolean> future =
-        Futures.submit(() -> writeData(tsBlocks, fileName), directExecutor());
-    processingTask.add(future);
+    writeData(tsBlocks, fileName);
   }
 
-  public void spillSortedData(List<MergeSortKey> sortedData) throws IOException {
+  // todo: directly serialize the sorted line instead of copy into a new tsBlock
+  public void spillSortedData(List<SortKey> sortedData) throws IoTDBException {
     List<TsBlock> tsBlocks = new ArrayList<>();
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypeList);
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     ColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
 
-    for (MergeSortKey mergeSortKey : sortedData) {
-      writeMergeSortKey(mergeSortKey, columnBuilders, timeColumnBuilder);
+    for (SortKey sortKey : sortedData) {
+      writeSortKey(sortKey, columnBuilders, timeColumnBuilder);
       tsBlockBuilder.declarePosition();
       if (tsBlockBuilder.isFull()) {
         tsBlocks.add(tsBlockBuilder.build());
@@ -127,65 +93,74 @@ public class DiskSpiller {
       tsBlocks.add(tsBlockBuilder.build());
     }
 
-    spill(tsBlocks);
-  }
-
-  private boolean writeData(List<TsBlock> sortedData, String fileName) {
     try {
-      Path filePath = Paths.get(fileName);
-      Files.createFile(filePath);
-
-      try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
-        for (TsBlock tsBlock : sortedData) {
-          ByteBuffer tsBlockBuffer = serde.serialize(tsBlock);
-          ReadWriteIOUtils.write(tsBlockBuffer, fileOutputStream);
-        }
-      }
-    } catch (Exception e) {
-      return false;
+      spill(tsBlocks);
+    } catch (IOException e) {
+      throw new IoTDBException(
+          "Create file error: " + filePrefix + fileIndex + fileSuffix,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    return true;
   }
 
-  private void writeMergeSortKey(
-      MergeSortKey mergeSortKey, ColumnBuilder[] columnBuilders, ColumnBuilder timeColumnBuilder) {
-    timeColumnBuilder.writeLong(mergeSortKey.tsBlock.getTimeByIndex(mergeSortKey.rowIndex));
+  private void writeData(List<TsBlock> sortedData, String fileName)
+      throws IOException, IoTDBException {
+    Path filePath = Paths.get(fileName);
+    Files.createFile(filePath);
+    try (FileChannel fileChannel = FileChannel.open(filePath, StandardOpenOption.WRITE)) {
+      for (TsBlock tsBlock : sortedData) {
+        ByteBuffer tsBlockBuffer = serde.serialize(tsBlock);
+        ByteBuffer length = ByteBuffer.allocate(4);
+        length.putInt(tsBlockBuffer.capacity());
+        length.flip();
+        fileChannel.write(length);
+        fileChannel.write(tsBlockBuffer);
+      }
+    } catch (IOException e) {
+      throw new IoTDBException(
+          "Can't write intermediate sorted data to file: " + fileName,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+  }
+
+  private void writeSortKey(
+      SortKey sortKey, ColumnBuilder[] columnBuilders, ColumnBuilder timeColumnBuilder) {
+    timeColumnBuilder.writeLong(sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
     for (int i = 0; i < columnBuilders.length; i++) {
-      if (mergeSortKey.tsBlock.getColumn(i).isNull(mergeSortKey.rowIndex)) {
+      if (sortKey.tsBlock.getColumn(i).isNull(sortKey.rowIndex)) {
         columnBuilders[i].appendNull();
       } else {
-        columnBuilders[i].write(mergeSortKey.tsBlock.getColumn(i), mergeSortKey.rowIndex);
+        columnBuilders[i].write(sortKey.tsBlock.getColumn(i), sortKey.rowIndex);
       }
     }
   }
 
   public boolean hasSpilledData() {
-    return !fileIndex.isEmpty();
+    return fileIndex != 0;
   }
 
-  public List<String> getFilePaths() {
+  private List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
-    for (int index : fileIndex) {
-      filePaths.add(filePrefix + index + fileSuffix);
+    for (int i = 0; i < fileIndex; i++) {
+      filePaths.add(filePrefix + i + fileSuffix);
     }
     return filePaths;
   }
 
-  public List<SortReader> getReaders(SortBufferManager sortBufferManager)
-      throws FileNotFoundException {
+  public List<SortReader> getReaders(SortBufferManager sortBufferManager) throws IoTDBException {
     List<String> filePaths = getFilePaths();
     List<SortReader> sortReaders = new ArrayList<>();
-    for (String filePath : filePaths) {
-      sortReaders.add(new FileSpillerReader(filePath, sortBufferManager, serde));
+    try {
+      for (String filePath : filePaths) {
+        sortReaders.add(new FileSpillerReader(filePath, sortBufferManager, serde));
+      }
+    } catch (IOException e) {
+      throw new IoTDBException(
+          "Can't get file for FileSpillerReader, check if the file exists: " + filePaths,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return sortReaders;
-  }
-
-  public void clear() throws IOException {
-    List<String> filePaths = getFilePaths();
-    for (String filePath : filePaths) {
-      Path newPath = Paths.get(filePath);
-      Files.deleteIfExists(newPath);
-    }
   }
 }

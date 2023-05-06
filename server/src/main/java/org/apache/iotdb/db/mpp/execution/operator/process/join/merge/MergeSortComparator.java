@@ -50,6 +50,7 @@ public class MergeSortComparator {
     List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
     for (int i = 0; i < indexList.size(); i++) {
       int index = indexList.get(i);
+      if (index == -2) continue;
       TSDataType dataType = dataTypeList.get(i);
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
       boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;

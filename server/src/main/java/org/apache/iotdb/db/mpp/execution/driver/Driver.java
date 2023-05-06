@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -36,10 +37,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -378,7 +375,11 @@ public abstract class Driver implements IDriver {
 
     try {
       root.close();
-      cleanTmpFile();
+
+      if (driverContext.mayHaveTmpFile()) {
+        cleanTmpFile();
+      }
+
       sink.setNoMoreTsBlocks();
 
       // record operator execution statistics to metrics
@@ -411,18 +412,17 @@ public abstract class Driver implements IDriver {
     return inFlightException;
   }
 
-  private void cleanTmpFile() throws IOException {
-    String tmpSortDir =
+  private void cleanTmpFile() {
+    String pipeLineSortDir =
         IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
             + File.separator
             + driverContext.getFragmentInstanceContext().getId().getFragmentInstanceId()
+            + File.separator
+            + driverContext.getPipelineId()
             + File.separator;
-    String pipeLineDir = tmpSortDir + driverContext.getPipelineId() + File.separator;
-    Path tmpPipeLineDir = Paths.get(pipeLineDir);
-    if (!Files.exists(tmpPipeLineDir)) return;
-    Files.deleteIfExists(tmpPipeLineDir);
-    Path tmpDir = Paths.get(tmpSortDir);
-    Files.deleteIfExists(tmpDir);
+    File tmpPipeLineDir = new File(pipeLineSortDir);
+    if (!tmpPipeLineDir.exists()) return;
+    FileUtils.deleteDirectory(tmpPipeLineDir);
   }
 
   private static Throwable addSuppressedException(

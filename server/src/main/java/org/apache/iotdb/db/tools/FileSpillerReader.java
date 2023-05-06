@@ -24,13 +24,12 @@ import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,19 +37,22 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 
 public class FileSpillerReader implements SortReader {
 
-  FileInputStream fileInputStream;
+  private final FileChannel fileChannel;
   private final List<TsBlock> cacheBlocks;
+  private final SortBufferManager sortBufferManager;
+  private final String fileName;
+  private final TsBlockSerde serde;
+
   private int tsBlockIndex;
   private int rowIndex;
   private boolean isEnd = false;
-  private final SortBufferManager sortBufferManager;
-  private final TsBlockSerde serde;
 
   public FileSpillerReader(String fileName, SortBufferManager sortBufferManager, TsBlockSerde serde)
-      throws FileNotFoundException {
-    this.fileInputStream = new FileInputStream(fileName);
+      throws IOException {
+    this.fileChannel = FileChannel.open(Paths.get(fileName), StandardOpenOption.READ);
     this.cacheBlocks = new ArrayList<>();
     this.rowIndex = 0;
+    this.fileName = fileName;
     this.sortBufferManager = sortBufferManager;
     this.serde = serde;
   }
@@ -80,20 +82,25 @@ public class FileSpillerReader implements SortReader {
   }
 
   private long read() throws IoTDBException {
-    byte[] bytes = new byte[4];
     try {
-      int readLen = fileInputStream.read(bytes);
+      ByteBuffer bytes = ByteBuffer.allocate(4);
+      int readLen = fileChannel.read(bytes);
       if (readLen == -1) {
         return -1;
       }
-      int capacity = BytesUtils.bytesToInt(bytes);
-      byte[] tsBlockBytes = ReadWriteIOUtils.readBytes(fileInputStream, capacity);
-      ByteBuffer buffer = ByteBuffer.wrap(tsBlockBytes);
-      TsBlock cachedTsBlock = serde.deserialize(buffer);
+      bytes.flip();
+      int capacity = bytes.getInt();
+      ByteBuffer tsBlockBytes = ByteBuffer.allocate(capacity);
+      fileChannel.read(tsBlockBytes);
+      tsBlockBytes.flip();
+      TsBlock cachedTsBlock = serde.deserialize(tsBlockBytes);
       cacheBlocks.add(cachedTsBlock);
       return cachedTsBlock.getRetainedSizeInBytes();
     } catch (IOException e) {
-      throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      throw new IoTDBException(
+          "Can't read a new tsBlock in FileSpillerReader: " + fileName,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
@@ -125,9 +132,12 @@ public class FileSpillerReader implements SortReader {
   @Override
   public void close() throws IoTDBException {
     try {
-      fileInputStream.close();
+      fileChannel.close();
     } catch (IOException e) {
-      throw new IoTDBException(e.getMessage(), TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      throw new IoTDBException(
+          "Can't close fileChannel in FileSpillerReader: " + fileName,
+          e,
+          TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 }

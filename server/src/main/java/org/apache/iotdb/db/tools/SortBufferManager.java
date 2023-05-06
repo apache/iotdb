@@ -25,7 +25,8 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 
 public class SortBufferManager {
 
-  public long SORT_BUFFER_SIZE = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+  public static final long SORT_BUFFER_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
 
   private long bufferUsed;
 
@@ -41,17 +42,17 @@ public class SortBufferManager {
     this.bufferUsed = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
-  public synchronized void allocateOneSortBranch() {
+  public void allocateOneSortBranch() {
     boolean success = allocate(BUFFER_SIZE_FOR_ONE_BRANCH);
     if (!success) throw new IllegalArgumentException("Not enough memory for sorting");
     branchNum++;
   }
 
-  public synchronized boolean check(long size) {
+  private boolean check(long size) {
     return bufferUsed + size < SORT_BUFFER_SIZE;
   }
 
-  public synchronized boolean allocate(long size) {
+  public boolean allocate(long size) {
     if (check(size)) {
       bufferUsed += size;
       return true;
@@ -59,12 +60,12 @@ public class SortBufferManager {
     return false;
   }
 
-  public synchronized void releaseOneSortBranch() {
+  public void releaseOneSortBranch() {
     branchNum--;
     if (branchNum != 0) readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
   }
 
-  public synchronized long getReaderBufferAvailable() {
+  public long getReaderBufferAvailable() {
     if (readerBuffer != 0) return readerBuffer;
     readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
     return readerBuffer;

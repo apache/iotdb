@@ -349,7 +349,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSortBufferSize(long sortBufferSize) {
-    setProperty("sort_buffer_size", String.valueOf(sortBufferSize));
+    setProperty("sort_buffer_size_in_bytes", String.valueOf(sortBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    setProperty("max_tsblock_size_in_bytes", String.valueOf(maxTsBlockSizeInByte));
     return this;
   }
 }

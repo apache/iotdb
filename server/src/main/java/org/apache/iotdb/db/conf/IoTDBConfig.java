@@ -315,11 +315,7 @@ public class IoTDBConfig {
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.TMP_FOLDER_NAME
-          + File.separator
-          + "sortTmp";
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;

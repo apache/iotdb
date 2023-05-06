@@ -1061,7 +1061,7 @@ public class IoTDBDescriptor {
     conf.setSortBufferSize(
         Long.parseLong(
             properties
-                .getProperty("sort_buffer_size", Long.toString(conf.getSortBufferSize()))
+                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
                 .trim()));
 
     // tmp filePath for sort operator

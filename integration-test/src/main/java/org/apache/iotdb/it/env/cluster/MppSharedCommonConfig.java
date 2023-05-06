@@ -364,4 +364,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setSortBufferSize(sortBufferSize);
     return this;
   }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    dnConfig.setMaxTsBlockSizeInByte(maxTsBlockSizeInByte);
+    cnConfig.setMaxTsBlockSizeInByte(maxTsBlockSizeInByte);
+    return this;
+  }
 }

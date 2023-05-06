@@ -102,7 +102,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
                     minMergeSortKey.tsBlock, minMergeSortKey.tsBlock.getPositionCount() - 1),
                 mergeSortHeap.peek())
             < 0) {
-      inputTsBlocks[minMergeSortKey.tsBlockIndex] = null;
+      inputTsBlocks[minMergeSortKey.inputChannelIndex] = null;
       return minMergeSortKey.rowIndex == 0
           ? minMergeSortKey.tsBlock
           : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
@@ -127,7 +127,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       }
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
-        inputTsBlocks[mergeSortKey.tsBlockIndex] = null;
+        inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
         if (!mergeSortHeap.isEmpty()
             && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
           break;

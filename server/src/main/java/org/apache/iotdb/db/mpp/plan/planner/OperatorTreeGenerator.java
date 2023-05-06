@@ -865,6 +865,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 sortItemDataTypeList.add(dataTypes.get(i));
                 break;
               }
+              // there is no related column in outputColumnNames
+              if (i == outputColumnNames.size() - 1) {
+                sortItemIndexList.add(-2);
+                sortItemDataTypeList.add(null);
+              }
             }
           }
         });
@@ -1629,7 +1634,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 .getFragmentInstanceId()
             + File.separator
             + operatorContext.getDriverContext().getPipelineId()
+            + File.separator
+            + operatorContext.getOperatorId()
             + File.separator;
+
+    context.getDriverContext().setHaveTmpFile(true);
+    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+
     return new SortOperator(
         operatorContext,
         child,

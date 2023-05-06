@@ -28,10 +28,12 @@ public class MemoryReader implements SortReader {
 
   // all the data in MemoryReader lies in memory
   private final List<MergeSortKey> cachedData;
+  private final int size;
   private int rowIndex;
 
   public MemoryReader(List<MergeSortKey> cachedTsBlock) {
     this.cachedData = cachedTsBlock;
+    this.size = cachedTsBlock.size();
     this.rowIndex = 0;
   }
 
@@ -44,7 +46,7 @@ public class MemoryReader implements SortReader {
 
   @Override
   public boolean hasNext() throws IoTDBException {
-    return cachedData != null && rowIndex != cachedData.size();
+    return cachedData != null && rowIndex != size;
   }
 
   @Override
