@@ -28,13 +28,13 @@ public abstract class PipeRuntimeException extends PipeException {
   }
 
   @Override
-  public final boolean equals(Object obj) {
+  public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeException
         && Objects.equals(getMessage(), ((PipeRuntimeException) obj).getMessage());
   }
 
   @Override
-  public final int hashCode() {
+  public int hashCode() {
     return Objects.hash(getMessage());
   }
 }

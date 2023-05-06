@@ -28,6 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -118,7 +119,7 @@ public class PipeTaskMeta {
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return index.get() == that.index.get()
         && regionLeader.get() == that.regionLeader.get()
-        && exceptionMessages.equals(that.exceptionMessages);
+        && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }
 
   @Override

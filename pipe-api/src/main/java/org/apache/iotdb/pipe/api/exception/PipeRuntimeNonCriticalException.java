@@ -19,9 +19,22 @@
 
 package org.apache.iotdb.pipe.api.exception;
 
+import java.util.Objects;
+
 public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
 
   public PipeRuntimeNonCriticalException(String message) {
     super(message);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof PipeRuntimeNonCriticalException
+        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage());
+  }
+
+  @Override
+  public int hashCode() {
+    return getMessage().hashCode();
   }
 }
