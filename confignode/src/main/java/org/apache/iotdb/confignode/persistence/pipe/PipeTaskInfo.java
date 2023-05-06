@@ -51,14 +51,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     this.pipeMetaKeeper = new PipeMetaKeeper();
   }
 
-  /////////////////////////////// Controller ///////////////////////////////
-
-  public PipeMeta migrateStatus(String pipeName, PipeStatus status) {
-    PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    pipeMeta.getRuntimeMeta().getStatus().set(status);
-    return pipeMeta;
-  }
-
   /////////////////////////////// Lock ///////////////////////////////
 
   public void acquirePipeTaskInfoLock() {
@@ -150,6 +142,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     pipeMetaKeeper.removePipeMeta(plan.getPipeName());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public Iterable<PipeMeta> getPipeMetaList() {
+    return pipeMetaKeeper.getPipeMetaList();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

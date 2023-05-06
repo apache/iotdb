@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -82,7 +81,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -652,11 +650,11 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> pushPipeMeta(PipeMeta pipeMeta) throws IOException {
+  public List<TSStatus> pushPipeMetaToDataNodes(List<ByteBuffer> pipeMetaBinaryList) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    TPushPipeMetaReq request =
-        new TPushPipeMetaReq().setPipeMetas(Collections.singletonList(pipeMeta.serialize()));
+    final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
+
     final AsyncClientHandler<TPushPipeMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);

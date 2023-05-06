@@ -20,10 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -134,7 +132,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta), "create", env);
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -173,8 +171,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
-    pushPipeMeta(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta), "drop", env);
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override

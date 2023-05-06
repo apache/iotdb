@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -35,15 +33,12 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropPipeProcedureV2.class);
 
   private String pipeName;
-
-  private PipeMeta pipeMeta;
 
   public DropPipeProcedureV2() {
     super();
@@ -73,7 +68,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
-    pipeMeta = migrateStatus(pipeName, PipeStatus.DROPPED, env);
+    // Do nothing
   }
 
   @Override
@@ -93,7 +88,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeManagementException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMeta(pipeMeta, "drop", env);
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -125,21 +120,12 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
-    if (pipeMeta != null) {
-      ReadWriteIOUtils.write(true, stream);
-      pipeMeta.serialize(stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      pipeMeta = PipeMeta.deserialize(byteBuffer);
-    }
   }
 
   @Override
@@ -151,13 +137,11 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     DropPipeProcedureV2 that = (DropPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName)
-        && (pipeMeta == null && that.pipeMeta == null
-            || pipeMeta != null && pipeMeta.equals(that.pipeMeta));
+    return pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeMeta, pipeName);
+    return pipeName.hashCode();
   }
 }
