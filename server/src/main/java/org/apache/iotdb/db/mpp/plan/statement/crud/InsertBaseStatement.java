@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -29,20 +28,12 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class InsertBaseStatement extends Statement {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertBaseStatement.class);
-
-  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
-      PerformanceOverviewMetrics.getInstance();
 
   /**
    * if use id table, this filed is id form of device path <br>

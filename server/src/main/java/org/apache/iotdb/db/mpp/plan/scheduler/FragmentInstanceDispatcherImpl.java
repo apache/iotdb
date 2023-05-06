@@ -37,7 +37,6 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -132,7 +131,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
     List<TSStatus> failureStatusList = new ArrayList<>();
     for (FragmentInstance instance : instances) {
-      // TODO:(hhn)
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
@@ -171,10 +169,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
     for (FragmentInstance instance : instances) {
-      PlanNode planNode = instance.getFragment().getPlanNodeTree();
-      // TODO:(hhn)
-      if (planNode instanceof InsertNode) {}
-
       TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         localInstances.add(instance);

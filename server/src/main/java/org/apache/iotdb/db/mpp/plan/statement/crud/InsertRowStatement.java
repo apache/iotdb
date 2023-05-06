@@ -206,7 +206,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
       } catch (Exception e) {
         LOGGER.warn(
-            "data type of {}.{} is not consistent, registered type {}, inserting timestamp {}, value {}",
+            "data type of {}.{} is not consistent, "
+                + "registered type {}, inserting timestamp {}, value {}",
             devicePath,
             measurements[i],
             dataTypes[i],

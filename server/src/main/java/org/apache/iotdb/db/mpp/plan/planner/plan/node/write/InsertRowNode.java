@@ -41,9 +41,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -54,8 +51,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class InsertRowNode extends InsertNode implements WALEntryValue {
-
-  private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -70,6 +65,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     super(id);
   }
 
+  @TestOnly
   public InsertRowNode(
       PlanNodeId id,
       PartialPath devicePath,

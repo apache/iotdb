@@ -2152,9 +2152,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } catch (SemanticException e) {
       analysis.setFinishQueryAfterAnalyze(true);
       if (e.getCause() instanceof IoTDBException) {
-        IoTDBException ioTDBException = (IoTDBException) e.getCause();
+        IoTDBException exception = (IoTDBException) e.getCause();
         analysis.setFailStatus(
-            RpcUtils.getStatus(ioTDBException.getErrorCode(), ioTDBException.getMessage()));
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
       } else {
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
       }
@@ -2266,7 +2266,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-              "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE."));
+              "Database not exists and failed to create automatically "
+                  + "because enable_auto_create_schema is FALSE."));
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
