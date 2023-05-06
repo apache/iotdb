@@ -99,6 +99,10 @@ public abstract class InsertBaseStatement extends Statement {
     return dataTypes;
   }
 
+  public TSDataType getDataType(int index) {
+    return dataTypes[index];
+  }
+
   public void setDataTypes(TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
   }
@@ -238,26 +242,4 @@ public abstract class InsertBaseStatement extends Statement {
     }
   }
   // endregion
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    InsertBaseStatement that = (InsertBaseStatement) o;
-    return isAligned == that.isAligned
-        && Objects.equals(devicePath, that.devicePath)
-        && Arrays.equals(measurementSchemas, that.measurementSchemas)
-        && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(dataTypes, that.dataTypes);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(super.hashCode(), devicePath, isAligned);
-    result = 31 * result + Arrays.hashCode(measurementSchemas);
-    result = 31 * result + Arrays.hashCode(measurements);
-    result = 31 * result + Arrays.hashCode(dataTypes);
-    return result;
-  }
 }
