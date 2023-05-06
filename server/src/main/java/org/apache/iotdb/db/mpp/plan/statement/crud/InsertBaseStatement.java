@@ -32,11 +32,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertBaseStatement extends Statement {
@@ -97,10 +95,6 @@ public abstract class InsertBaseStatement extends Statement {
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
-  }
-
-  public TSDataType getDataType(int index) {
-    return dataTypes[index];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
