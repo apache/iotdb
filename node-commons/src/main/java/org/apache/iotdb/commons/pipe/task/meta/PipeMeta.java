@@ -47,11 +47,6 @@ public class PipeMeta {
     return runtimeMeta;
   }
 
-  public boolean isPipeNameAndCreationTimeMatched(PipeMeta pipeMeta) {
-    return this.staticMeta.getPipeName().equals(pipeMeta.getStaticMeta().getPipeName())
-        && this.staticMeta.getCreateTime() == pipeMeta.getStaticMeta().getCreateTime();
-  }
-
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -70,14 +65,14 @@ public class PipeMeta {
   }
 
   public static PipeMeta deserialize(FileInputStream fileInputStream) throws IOException {
-    PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
-    PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
   public static PipeMeta deserialize(ByteBuffer byteBuffer) {
-    PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
-    PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 

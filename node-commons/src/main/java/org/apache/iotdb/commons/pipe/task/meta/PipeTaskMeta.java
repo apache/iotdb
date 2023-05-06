@@ -56,8 +56,15 @@ public class PipeTaskMeta {
     return regionLeader.get();
   }
 
-  public Queue<PipeRuntimeException> getExceptionMessages() {
+  public Iterable<PipeRuntimeException> getExceptionMessages() {
     return exceptionMessages;
+  }
+
+  public void trackException(boolean critical, String message) {
+    exceptionMessages.add(
+        critical
+            ? new PipeRuntimeCriticalException(message)
+            : new PipeRuntimeNonCriticalException(message));
   }
 
   public void setIndex(long index) {
@@ -72,7 +79,7 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(index.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (PipeRuntimeException exceptionMessage : exceptionMessages) {
+    for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
           exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
       ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
@@ -83,16 +90,14 @@ public class PipeTaskMeta {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
     PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
-      if (critical) {
-        PipeTaskMeta.exceptionMessages.add(
-            new PipeRuntimeCriticalException(ReadWriteIOUtils.readString(byteBuffer)));
-      } else {
-        PipeTaskMeta.exceptionMessages.add(
-            new PipeRuntimeNonCriticalException(ReadWriteIOUtils.readString(byteBuffer)));
-      }
+      final boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
+      final String message = ReadWriteIOUtils.readString(byteBuffer);
+      PipeTaskMeta.exceptionMessages.add(
+          critical
+              ? new PipeRuntimeCriticalException(message)
+              : new PipeRuntimeNonCriticalException(message));
     }
     return PipeTaskMeta;
   }
@@ -111,12 +116,14 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index.get() == that.index.get() && regionLeader.get() == that.regionLeader.get();
+    return index.get() == that.index.get()
+        && regionLeader.get() == that.regionLeader.get()
+        && exceptionMessages.equals(that.exceptionMessages);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(index, exceptionMessages, regionLeader);
+    return Objects.hash(index, regionLeader, exceptionMessages);
   }
 
   @Override

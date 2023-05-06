@@ -126,4 +126,9 @@ public class PipeParameters {
   public int hashCode() {
     return attributes.hashCode();
   }
+
+  @Override
+  public String toString() {
+    return attributes.toString();
+  }
 }
