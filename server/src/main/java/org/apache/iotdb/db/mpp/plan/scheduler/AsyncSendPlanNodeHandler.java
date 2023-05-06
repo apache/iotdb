@@ -51,9 +51,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   }
 
   @Override
-  public void onComplete(TSendBatchPlanNodeResp tSendPlanNodeResp) {
-    for (int i = 0; i < tSendPlanNodeResp.getResponses().size(); i++) {
-      instanceId2RespMap.put(instanceIds.get(i), tSendPlanNodeResp.getResponses().get(i));
+  public void onComplete(TSendBatchPlanNodeResp sendBatchPlanNodeResp) {
+    for (int i = 0; i < sendBatchPlanNodeResp.getResponses().size(); i++) {
+      instanceId2RespMap.put(instanceIds.get(i), sendBatchPlanNodeResp.getResponses().get(i));
     }
     if (pendingNumber.decrementAndGet() == 0) {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
