@@ -31,6 +31,9 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import org.apache.commons.math3.distribution.LogNormalDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,10 +51,11 @@ public class InsertCsvDataIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static Session session;
   private static int originCompactionThreadNum;
-  private static final List<String> deviceList = new ArrayList<>();
+  private static final List<String> deviceList = new ArrayList<>(), sgList = new ArrayList<>();
   private static final List<Integer> sizeList = new ArrayList<>();
-  private static final int baseSize = 8192 * 6713;
-  private static final int TABLET_SIZE = 8192;
+  //  private static final int baseSize = (int) (1e9 + 1e7); // 8192 * 6713;
+  private static final int baseSize = (int) (262144 * 100);
+  private static final int TABLET_SIZE = 262144, TABLET_NUM = baseSize / TABLET_SIZE;
   private static final int deviceNumL = 0, deviceNumR = 1;
   private static final List<String> seriesList = new ArrayList<>();
   private static final List<TSDataType> dataTypeList = new ArrayList<>();
@@ -62,7 +66,7 @@ public class InsertCsvDataIT {
   @BeforeClass
   public static void setUp() throws Exception {
     for (int i = deviceNumL; i < deviceNumR; i++) {
-      deviceList.add("root.Summary1.d" + i);
+      deviceList.add("root.Synthetic.d" + i);
       sizeList.add(baseSize * (i + 1));
     }
     for (int i = 0; i < series_num; i++) {
@@ -90,12 +94,19 @@ public class InsertCsvDataIT {
 
   private static void prepareTimeSeriesData()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    System.out.println("\t\t????" + deviceList + "||||" + seriesList);
+    //    System.out.println("\t\t????" + deviceList + "||||" + seriesList);
     long START_TIME = System.currentTimeMillis();
     final int START_SERIES = 0;
     for (String device : deviceList) {
+      String sgName = device.substring(0, device.lastIndexOf(".d"));
       for (int seriesID = START_SERIES; seriesID < series_num; seriesID++) {
         String series = seriesList.get(seriesID);
+        try {
+          session.executeNonQueryStatement("delete storage group " + sgName);
+          Thread.sleep(500);
+        } catch (Exception e) {
+          // no-op
+        }
         session.createTimeseries(
             device + "." + series,
             dataTypeList.get(seriesID),
@@ -112,7 +123,20 @@ public class InsertCsvDataIT {
               seriesList.get(seriesID), dataTypeList.get(seriesID), TSEncoding.PLAIN));
     }
 
-    Random random = new Random(233);
+    double Emax = 300;
+    //    double num;
+    LogNormalDistribution Rlog1 = new LogNormalDistribution(4, 0.0004);
+    UniformRealDistribution R01 = new UniformRealDistribution(0, 1);
+    DoubleArrayList ddddd = new DoubleArrayList();
+    for (int i = 0; i < baseSize; i++) {
+      double num;
+      if (R01.sample() < 0.1) num = Math.pow(10, Emax * (Math.pow(R01.sample(), 2) * 2 - 1));
+      else num = Rlog1.sample();
+      ddddd.add(num);
+    }
+
+    START_TIME = System.currentTimeMillis();
+    XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom(233);
 
     for (int deviceID = 0; deviceID < deviceNumR - deviceNumL; deviceID++) {
       String device = deviceList.get(deviceID);
@@ -137,8 +161,16 @@ public class InsertCsvDataIT {
             String series = seriesList.get(seriesID);
 
             if (seriesID == 0) {
-              double num = random.nextDouble();
-              ((double[]) values[seriesID])[row] = num;
+              //              double Emax = 300;
+              //              double num;
+              //              LogNormalDistribution Rlog1 = new LogNormalDistribution(4, 0.0004);
+              //              UniformRealDistribution R01 = new UniformRealDistribution(0, 1);
+              //              num = Rlog1.sample();
+              //              if (R01.sample() < 0.1)
+              //                num = Math.pow(10, Emax * (Math.pow(R01.sample(), 2) * 2 - 1));
+              //              ((double[]) values[seriesID])[row] = num;
+              //              ddddd
+              ((double[]) values[seriesID])[row] = ddddd.getDouble((int) timestamps[row]);
             } else if (seriesID == 1) {
               double num = index;
               ((double[]) values[seriesID])[row] = num;
@@ -155,18 +187,19 @@ public class InsertCsvDataIT {
         session.insertTablet(tablet);
         //        session.executeNonQueryStatement("flush");
       }
+      session.executeNonQueryStatement("flush");
     }
     System.out.println(
-        "\t\t create designed data cost time:" + (System.currentTimeMillis() - START_TIME));
+        "\t\t create designed data cost time:\t" + (System.currentTimeMillis() - START_TIME));
   }
 
   static final long real_data_series_base_time = 1L << 32;
 
   private static void insertDataFromTXT()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    final int TEST_CASE = 1;
+    final int TEST_CASE = 10;
     String[] fileList = new String[10], sgName = new String[10];
-    String sketch_size = "4096T4";
+    String sketch_size = "256Byte";
     fileList[0] = "1_bitcoin.csv";
     sgName[0] = "root.bitcoin" + sketch_size;
     fileList[1] = "2_SpacecraftThruster.txt";
@@ -182,8 +215,8 @@ public class InsertCsvDataIT {
     //    fileList[5] = "tmp_0_131.txt";
     //    fileList[6] = "tmp_1_131.txt";
     //    fileList[7] = "tmp_0_356.txt";
-    for (int fileID : new int[] {0}) {
-      System.out.println("\t\t" + fileList[fileID] + "\t" + sketch_size + "\t\t");
+    for (int fileID : new int[] {0, 1, 2}) {
+      System.out.print("\t\t" + fileList[fileID] + "\t" + sketch_size + "\t\t");
       System.out.print("\t\t\t");
 
       String filename = fileList[fileID];
@@ -193,8 +226,11 @@ public class InsertCsvDataIT {
 
       for (int T = 0; T < TEST_CASE; T++) {
         try {
+          session.executeNonQueryStatement("delete timeseries " + sgName[fileID] + ".d0.s0");
           session.executeNonQueryStatement("delete storage group " + sgName[fileID]);
-          Thread.sleep(4000);
+          //          System.out.println("???");
+          Thread.sleep(1000);
+          //          System.out.println("!!!");
         } catch (Exception e) {
           // no-op
         }
@@ -223,11 +259,13 @@ public class InsertCsvDataIT {
         long CNT_TIME = 0; // new Date().getTime();
         long INGEST_TIME = 0;
         while (true) {
-          vv.clear();
-          for (String tmps = reader.readLine();
-              tmps != null && vv.size() < TABLET_SIZE * 1000;
-              tmps = reader.readLine()) vv.add(Double.parseDouble(tmps));
-
+          //          vv.clear();
+          if (vv.isEmpty()) {
+            //            System.out.println("\t\t\treaddddddddddddddddddd");
+            for (String tmps = reader.readLine();
+                tmps != null && vv.size() < baseSize /*TABLET_SIZE * 200*/;
+                tmps = reader.readLine()) vv.add(Double.parseDouble(tmps));
+          }
           INGEST_TIME -= new Date().getTime();
           for (int i = 0; i < vv.size() / TABLET_SIZE; i++) {
             Tablet tablet = new Tablet(device, schemaList, TABLET_SIZE);
@@ -239,17 +277,19 @@ public class InsertCsvDataIT {
               ((double[]) values[0])[row] = vv.getDouble(i * TABLET_SIZE + j);
             }
             session.insertTablet(tablet);
-            if (++chunk_num == 6713) break;
+            if (++chunk_num == TABLET_NUM) break;
           }
           INGEST_TIME += new Date().getTime();
-          if (chunk_num == 6713) break;
+          if (chunk_num == TABLET_NUM) break;
           if (vv.size() < TABLET_SIZE) break;
         }
+        //        System.out.print("\tingest_time:\t" + INGEST_TIME);
         System.out.print("\t" + INGEST_TIME);
         System.out.flush();
       }
       System.out.println();
     }
+    //    System.out.println();
   }
 
   private static void append(int chunkToAppend)
@@ -300,8 +340,8 @@ public class InsertCsvDataIT {
   @Test
   public void insertDATA() {
     try {
-      //      prepareTimeSeriesData();
-      insertDataFromTXT();
+      for (int i = 0; i < 10; i++) prepareTimeSeriesData();
+      //      insertDataFromTXT();
       //      append(5);
       //      insertDataFromTXT();
       //      insertDataFromTXT(3, 3, 0);

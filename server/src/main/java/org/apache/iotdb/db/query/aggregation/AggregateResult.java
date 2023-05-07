@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public abstract class AggregateResult {
 
@@ -46,7 +47,7 @@ public abstract class AggregateResult {
   private int intValue;
   private long longValue;
   private float floatValue;
-  private double doubleValue;
+  protected double doubleValue;
   private Binary binaryValue;
 
   protected boolean hasCandidateResult;
@@ -402,5 +403,37 @@ public abstract class AggregateResult {
    */
   public boolean groupByLevelBeforeAggregation() {
     return false;
+  }
+
+  public void setAttributes(Map<String, String> attrs) {
+    // no-op
+  }
+
+  public double getCntL() {
+    return -Double.MAX_VALUE;
+  }
+
+  public double getCntR() {
+    return Double.MAX_VALUE;
+  }
+
+  public int getLastLtCountFromPageData() {
+    return -233;
+  }
+
+  public boolean canUpdateFromLtCount() {
+    return false;
+  }
+
+  public void updateFromLtCount(int ltCount) {
+    // no-op
+  }
+
+  public boolean ignoreUpdateInThisPass() {
+    return false;
+  }
+
+  public void informUnSeq() {
+    // no-op
   }
 }

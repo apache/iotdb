@@ -1,7 +1,8 @@
 package org.apache.iotdb.tsfile.utils;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+
 import java.util.Arrays;
-import java.util.Random;
 
 // based on KLL Sketch in DataSketch. See
 // https://github.com/apache/datasketches-java/tree/master/src/main/java/org/apache/datasketches/kll
@@ -12,7 +13,10 @@ public abstract class KLLSketchForQuantile {
   boolean level0Sorted;
   int cntLevel;
   int[] levelPos, levelMaxSize;
-  long XORSHIFT = new Random().nextInt(); // 0x2333333319260817L;
+  double itemRate = -233; // (Sum of weight) & (N) may not be equal.
+  //  long XORSHIFT=new Random(/*System.nanoTime()*/).nextInt();//0x2333333319260817L;
+  public XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom(/*11111*/ );
+  //  static public XoRoShiRo128PlusRandom random = new XoRoShiRo128PlusRandom(11111);
   //  Random test_random = new Random();
 
   public KLLSketchForQuantile() {}
@@ -33,13 +37,14 @@ public abstract class KLLSketchForQuantile {
       System.out.print("[" + (levelPos[i + 1] - levelPos[i]) + "]");
       System.out.print("\t");
     }
-    System.out.println();
+    System.out.println("\tmaxLV=" + (cntLevel - 1));
   }
 
   public void showNum() {
     for (int i = 0; i < cntLevel; i++) {
       System.out.print("\t|");
       for (int j = levelPos[i]; j < levelPos[i + 1]; j++) System.out.print(num[j] + ",");
+      //      System.out.print(longToResult(num[j])+", ");
       System.out.print("|\t");
     }
     System.out.println();
@@ -60,11 +65,11 @@ public abstract class KLLSketchForQuantile {
   protected void compact() {}
 
   protected int getNextRand01() { // xor shift *
-    XORSHIFT ^= XORSHIFT >>> 12;
-    XORSHIFT ^= XORSHIFT << 25;
-    XORSHIFT ^= XORSHIFT >>> 27;
-    return (int) ((XORSHIFT * 0x2545F4914F6CDD1DL) & 1);
-    //    return test_random.nextInt()&1;
+    //    XORSHIFT^=XORSHIFT>>>12;
+    //    XORSHIFT^=XORSHIFT<<25;
+    //    XORSHIFT^=XORSHIFT>>>27;
+    //    return (int) ((XORSHIFT*0x2545F4914F6CDD1DL)&1);
+    return random.nextInt() & 1;
   }
 
   protected void randomlyHalveDownToLeft(int L, int R) {
@@ -84,34 +89,54 @@ public abstract class KLLSketchForQuantile {
   protected int findRankInLevel(int level, long v) {
     int L = levelPos[level], R = levelPos[level + 1];
     if (level == 0 && !level0Sorted) {
+      //      if(L<R)System.out.println("\t\t??level0:"+L+"..."+R);
       Arrays.sort(num, L, R);
       level0Sorted = true;
     }
     R--;
-    if (L > R || num[L] >= v) return 0;
+    if (L > R || num[L] > v) return 0;
     while (L < R) {
       int mid = (L + R + 1) >> 1;
-      if (num[mid] < v) L = mid;
+      if (num[mid] <= v) L = mid;
       else R = mid - 1;
     }
     return (L - levelPos[level] + 1) * (1 << level);
   }
 
+  protected double longToResult(long result) {
+    result = (result >>> 63) == 0 ? result : result ^ Long.MAX_VALUE;
+    return Double.longBitsToDouble(result);
+  }
+
+  private void getItemRate() {
+    long weightSum = 0;
+    for (int i = 0; i < cntLevel; i++) weightSum += (long) (levelPos[i + 1] - levelPos[i]) << i;
+    itemRate = weightSum == N ? 1.0 : (1.0 * N / weightSum);
+    //    for(int
+    // i=levelPos[cntLevel-1];i<levelPos[cntLevel];i++)System.out.print("\t\t"+longToResult(num[i]));System.out.println();
+    //    itemRate=1.0;
+    //    System.out.println("\t\t\t\t\titemRate:"+itemRate+"\t\tN:"+N+"\tweightSum:"+weightSum);
+  }
+
   public int getApproxRank(long v) {
+    if (itemRate < 0) getItemRate();
     int approxRank = 0;
-    for (int i = 0; i < cntLevel; i++) {
-      approxRank += findRankInLevel(i, v);
-      //      for (int j = levelPos[i]; j < levelPos[i + 1]; j++)
-      //        if (num[j] < v) approxRank += 1 << i;
-    }
-    return approxRank;
+    for (int i = 0; i < cntLevel; i++)
+      if (levelPos[i] < levelPos[i + 1]) {
+        approxRank += findRankInLevel(i, v);
+        //      for (int j = levelPos[i]; j < levelPos[i + 1]; j++)
+        //        if (num[j] < v) approxRank += 1 << i;
+      }
+    return itemRate == 1.0 ? approxRank : (int) Math.round(approxRank * itemRate);
   }
 
   public long findMaxValueWithRank(long K) {
     long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
     while (L < R) {
       mid = L + ((R - L) >>> 1);
-      if (mid == L) mid++;
+      if (L == mid) mid++;
+      //
+      // System.out.println("\t\t2fenA\t\t"+L+"..."+R+"\t\tmid="+mid+"\t\t"+(getApproxRank(mid)>=K));
       if (getApproxRank(mid) <= K) L = mid;
       else R = mid - 1;
     }
@@ -122,8 +147,10 @@ public abstract class KLLSketchForQuantile {
     long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
     while (L < R) {
       mid = L + ((R - L) >>> 1);
-      if (mid == R) mid--;
-      if (getApproxRank(mid) >= K) R = mid;
+      //
+      //
+      // System.out.println("\t\t2fenB\t\t"+L+"..."+R+"\t\tmid="+mid+"\t\t"+(getApproxRank(mid)>=K));
+      if (getApproxRank(mid) > K) R = mid;
       else L = mid + 1;
     }
     return L;
@@ -152,9 +179,5 @@ public abstract class KLLSketchForQuantile {
       level0Sorted = true;
     }
     return num[L + K];
-  }
-
-  public void active() {
-    // no-op
   }
 }
