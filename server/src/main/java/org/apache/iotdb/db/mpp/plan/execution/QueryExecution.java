@@ -109,10 +109,10 @@ public class QueryExecution implements IQueryExecution {
 
   private final List<PlanOptimizer> planOptimizers;
 
-  private final Statement rawStatement;
-  private Analysis analysis;
+  protected final Statement rawStatement;
+  protected Analysis analysis;
   private LogicalQueryPlan logicalPlan;
-  private DistributedQueryPlan distributedPlan;
+  protected DistributedQueryPlan distributedPlan;
 
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
@@ -139,9 +139,9 @@ public class QueryExecution implements IQueryExecution {
 
   private long totalExecutionTime;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  protected static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
-  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+  protected static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
   public QueryExecution(
@@ -226,7 +226,7 @@ public class QueryExecution implements IQueryExecution {
     schedule();
   }
 
-  private void checkTimeOutForQuery() {
+  protected void checkTimeOutForQuery() {
     // only check query operation's timeout because we will never limit write operation's execution
     // time
     if (isQuery()) {
@@ -285,7 +285,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
-  private Analysis analyze(
+  protected Analysis analyze(
       Statement statement,
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
@@ -362,7 +362,7 @@ public class QueryExecution implements IQueryExecution {
     checkTimeOutForQuery();
   }
 
-  private String printFragmentInstances(List<FragmentInstance> instances) {
+  protected String printFragmentInstances(List<FragmentInstance> instances) {
     StringBuilder ret = new StringBuilder();
     for (FragmentInstance instance : instances) {
       ret.append(System.lineSeparator()).append(instance);
