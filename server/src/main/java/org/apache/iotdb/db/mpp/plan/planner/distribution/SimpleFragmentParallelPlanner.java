@@ -57,15 +57,17 @@ import java.util.Map;
 public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private static final Logger logger = LoggerFactory.getLogger(SimpleFragmentParallelPlanner.class);
 
-  private SubPlan subPlan;
-  private Analysis analysis;
-  private MPPQueryContext queryContext;
+  private final SubPlan subPlan;
+  private final Analysis analysis;
+  private final MPPQueryContext queryContext;
 
   // Record all the FragmentInstances belonged to same PlanFragment
-  Map<PlanFragmentId, FragmentInstance> instanceMap;
+  private final Map<PlanFragmentId, FragmentInstance> instanceMap;
   // Record which PlanFragment the PlanNode belongs
-  Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
-  List<FragmentInstance> fragmentInstanceList;
+  private final Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
+  private final List<FragmentInstance> fragmentInstanceList;
+  // Record which dataNode each instance allocated to
+  private final Map<TDataNodeLocation, List<FragmentInstance>> locationToInstanceMap;
 
   public SimpleFragmentParallelPlanner(
       SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
@@ -75,6 +77,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();
+    this.locationToInstanceMap = new HashMap<>();
   }
 
   @Override
@@ -89,6 +92,13 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     for (PlanFragment fragment : fragments) {
       recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
       produceFragmentInstance(fragment);
+    }
+    for (Map.Entry<TDataNodeLocation, List<FragmentInstance>> entry :
+        locationToInstanceMap.entrySet()) {
+      List<FragmentInstance> fragmentInstances = entry.getValue();
+      int instanceNumInDataNode = fragmentInstances.size();
+      fragmentInstances.forEach(
+          instance -> instance.setInstanceNumInDataNode(instanceNumInDataNode));
     }
   }
 
@@ -137,6 +147,9 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
+    locationToInstanceMap
+        .computeIfAbsent(fragmentInstance.getHostDataNode(), x -> new ArrayList<>())
+        .add(fragmentInstance);
   }
 
   private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {

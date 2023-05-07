@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -75,6 +77,8 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
+  private int degreeOfParallelism = 1;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -84,9 +88,12 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      FragmentInstance fragmentInstance) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo);
+        new FragmentInstanceContext(id, stateMachine, fragmentInstance.getSessionInfo());
+    instanceContext.setDegreeOfParallelism(calculateDegreeOfParallelism(fragmentInstance));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -95,11 +102,16 @@ public class FragmentInstanceContext extends QueryContext {
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+      FragmentInstance fragmentInstance) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            fragmentInstance.getSessionInfo(),
+            dataRegion,
+            fragmentInstance.getTimeFilter());
+    instanceContext.setDegreeOfParallelism(calculateDegreeOfParallelism(fragmentInstance));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -374,5 +386,25 @@ public class FragmentInstanceContext extends QueryContext {
     timeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+  }
+
+  private static int calculateDegreeOfParallelism(FragmentInstance fragmentInstance) {
+    int systemDop = IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+    int instanceNumInDataNode = fragmentInstance.getInstanceNumInDataNode();
+    if (instanceNumInDataNode >= systemDop) {
+      return 1;
+    } else if (fragmentInstance.isRoot()) {
+      return systemDop / instanceNumInDataNode + systemDop % instanceNumInDataNode;
+    } else {
+      return systemDop / instanceNumInDataNode;
+    }
+  }
+
+  public void setDegreeOfParallelism(int degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
+  }
+
+  public int getDegreeOfParallelism() {
+    return degreeOfParallelism;
   }
 }

@@ -89,6 +89,7 @@ public class LocalExecutionPlanContext {
     this.nextPipelineId = new AtomicInteger(0);
     this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
+    this.degreeOfParallelism = instanceContext.getDegreeOfParallelism();
   }
 
   // For creating subContext, differ from parent context mainly in driver context
@@ -119,6 +120,7 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = Long.MAX_VALUE;
     this.driverContext =
         new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
+    this.degreeOfParallelism = instanceContext.getDegreeOfParallelism();
     this.pipelineDriverFactories = new ArrayList<>();
   }
 
