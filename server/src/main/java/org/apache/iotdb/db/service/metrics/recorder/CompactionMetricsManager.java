@@ -21,16 +21,23 @@ package org.apache.iotdb.db.service.metrics.recorder;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionMetricsManager {
   private static final CompactionMetricsManager INSTANCE = new CompactionMetricsManager();
+  private long lastUpdateTime = 0L;
+  private static final long UPDATE_INTERVAL = 10_000L;
   private final AtomicInteger waitingSeqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingCrossCompactionTaskNum = new AtomicInteger(0);
@@ -120,39 +127,8 @@ public class CompactionMetricsManager {
             "compaction");
   }
 
-  public void reportAddTaskToWaitingQueue(boolean isCrossTask, boolean isSeq) {
-    if (isCrossTask) {
-      waitingCrossCompactionTaskNum.incrementAndGet();
-    } else if (isSeq) {
-      waitingSeqInnerCompactionTaskNum.incrementAndGet();
-    } else {
-      waitingUnseqInnerCompactionTaskNum.incrementAndGet();
-    }
-  }
-
-  public void reportPollTaskFromWaitingQueue(boolean isCrossTask, boolean isSeq) {
-    if (isCrossTask) {
-      waitingCrossCompactionTaskNum.decrementAndGet();
-    } else if (isSeq) {
-      waitingSeqInnerCompactionTaskNum.decrementAndGet();
-    } else {
-      waitingUnseqInnerCompactionTaskNum.decrementAndGet();
-    }
-  }
-
-  public void reportTaskStartRunning(boolean isCrossTask, boolean isSeq) {
-    if (isCrossTask) {
-      runningCrossCompactionTaskNum.incrementAndGet();
-    } else if (isSeq) {
-      runningSeqInnerCompactionTaskNum.incrementAndGet();
-    } else {
-      runningUnseqInnerCompactionTaskNum.incrementAndGet();
-    }
-  }
-
   public void reportTaskFinishOrAbort(boolean isCrossTask, boolean isSeq, long timeCost) {
     if (isCrossTask) {
-      runningCrossCompactionTaskNum.decrementAndGet();
       finishCrossCompactionTaskNum.incrementAndGet();
       MetricService.getInstance()
           .timer(
@@ -163,7 +139,6 @@ public class CompactionMetricsManager {
               Tag.NAME.toString(),
               "cross_compaction");
     } else if (isSeq) {
-      runningSeqInnerCompactionTaskNum.decrementAndGet();
       finishSeqInnerCompactionTaskNum.incrementAndGet();
       MetricService.getInstance()
           .timer(
@@ -174,7 +149,6 @@ public class CompactionMetricsManager {
               Tag.NAME.toString(),
               "inner_seq_compaction");
     } else {
-      runningUnseqInnerCompactionTaskNum.decrementAndGet();
       finishUnseqInnerCompactionTaskNum.incrementAndGet();
       MetricService.getInstance()
           .timer(
@@ -192,34 +166,75 @@ public class CompactionMetricsManager {
   }
 
   public int getWaitingUnseqInnerCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return waitingUnseqInnerCompactionTaskNum.get();
   }
 
   public int getWaitingCrossCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return waitingCrossCompactionTaskNum.get();
   }
 
   public int getRunningSeqInnerCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return runningSeqInnerCompactionTaskNum.get();
   }
 
   public int getRunningUnseqInnerCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return runningUnseqInnerCompactionTaskNum.get();
   }
 
   public int getRunningCrossCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return runningCrossCompactionTaskNum.get();
   }
 
   public int getFinishSeqInnerCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return finishSeqInnerCompactionTaskNum.get();
   }
 
   public int getFinishUnseqInnerCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return finishUnseqInnerCompactionTaskNum.get();
   }
 
   public int getFinishCrossCompactionTaskNum() {
+    updateCompactionTaskInfo();
     return finishCrossCompactionTaskNum.get();
+  }
+
+  private void updateCompactionTaskInfo() {
+    if (System.currentTimeMillis() - lastUpdateTime < UPDATE_INTERVAL) {
+      return;
+    }
+    lastUpdateTime = System.currentTimeMillis();
+    Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> compactionTaskStatisticMap =
+        CompactionTaskManager.getInstance().getCompactionTaskStatistic();
+    this.waitingSeqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+    this.waitingUnseqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+    this.waitingCrossCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+    this.runningSeqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Running, 0));
+    this.runningUnseqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Running, 0));
+    this.runningCrossCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.Running, 0));
   }
 }
