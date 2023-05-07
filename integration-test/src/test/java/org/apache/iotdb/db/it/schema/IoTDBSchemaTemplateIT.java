@@ -578,7 +578,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
-      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3");
       // activate schema template
       statement.execute("create timeseries using schema template on root.sg1.d1");
       statement.execute("create timeseries using schema template on root.sg2.d2");
