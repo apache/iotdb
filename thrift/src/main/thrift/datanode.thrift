@@ -373,14 +373,8 @@ struct TCheckTimeSeriesExistenceResp{
   2: optional bool exists
 }
 
-struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeMeta
-}
-
-struct TOperatePipeOnDataNodeReq {
-    1: required string pipeName
-    // ordinal of {@linkplain SyncOperation}
-    2: required i8 operation
+struct TPushPipeMetaReq {
+  1: required list<binary> pipeMetas
 }
 
 // ====================================================
@@ -761,14 +755,9 @@ service IDataNodeRPCService {
   TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 
  /**
-  * Create PIPE on DataNode
+  * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
-
- /**
-  * Start, stop or drop PIPE on DataNode
-  */
-  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
 
  /**
   * Execute CQ on DataNode
