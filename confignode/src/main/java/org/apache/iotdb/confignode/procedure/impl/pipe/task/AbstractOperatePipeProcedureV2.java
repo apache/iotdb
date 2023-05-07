@@ -129,8 +129,11 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case VALIDATE_TASK:
-        rollbackFromValidateTask(env);
-        env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+        try {
+          rollbackFromValidateTask(env);
+        } finally {
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+        }
         break;
       case CALCULATE_INFO_FOR_TASK:
         rollbackFromCalculateInfoForTask(env);
