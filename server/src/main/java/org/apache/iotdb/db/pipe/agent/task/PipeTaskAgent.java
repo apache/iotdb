@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,11 +58,12 @@ public class PipeTaskAgent {
             return;
           case DROPPED:
             LOGGER.info(
-                "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Recreating.",
+                "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
+                    + "Current status = {}. Try dropping the pipe and recreating it.",
                 pipeName,
                 creationTime,
                 existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-            // break to drop the pipe meta and recreate it
+            // break to drop the pipe and recreate it
             break;
           default:
             throw new IllegalStateException(
@@ -137,6 +137,33 @@ public class PipeTaskAgent {
   public void dropPipeTaskByConsensusGroup(
       String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
 
+  public void dropPipe(String pipeName) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+      return;
+    }
+
+    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // but the pipe task meta has not been cleaned up (in case of failure when executing
+    // dropPipeTaskByConsensusGroup).
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+    // drop pipe task by consensus group
+    existedPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupIdToTaskMetaMap()
+        .forEach(
+            ((consensusGroupId, pipeTaskMeta) -> {
+              dropPipeTaskByConsensusGroup(pipeName, consensusGroupId);
+            }));
+    // remove pipe meta from pipe meta keeper
+    pipeMetaKeeper.removePipeMeta(pipeName);
+  }
+
+  public void dropPipeTaskByConsensusGroup(String pipeName, TConsensusGroupId consensusGroupId) {}
+
   public void startPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
@@ -148,11 +175,12 @@ public class PipeTaskAgent {
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      throw new PipeManagementException(
-          String.format(
-              "Inconsistency between pipe meta and startPipe request detected. "
-                  + "Pipe %s (creation time = %d) has been created but does not match the creation time (%d) in startPipe request.",
-              pipeName, existedPipeMeta.getStaticMeta().getCreationTime(), creationTime));
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in startPipe request. Skip starting.",
+          pipeName,
+          existedPipeMeta.getStaticMeta().getCreationTime(),
+          creationTime);
+      return;
     }
 
     switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
@@ -208,11 +236,12 @@ public class PipeTaskAgent {
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      throw new PipeManagementException(
-          String.format(
-              "Inconsistency between pipe meta and stopPipe request detected. "
-                  + "Pipe %s (creation time = %d) has been created but does not match the creation time (%d) in stopPipe request.",
-              pipeName, existedPipeMeta.getStaticMeta().getCreationTime(), creationTime));
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in stopPipe request. Skip stopping.",
+          pipeName,
+          existedPipeMeta.getStaticMeta().getCreationTime(),
+          creationTime);
+      return;
     }
 
     switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
