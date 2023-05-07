@@ -100,6 +100,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.SimpleAggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
@@ -353,6 +354,39 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());
     }
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitSimpleAggregationQuery(
+      SimpleAggregationQueryStatement queryStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(queryStatement);
+
+    // check for semantic errors
+    queryStatement.semanticCheck();
+
+    // concat path and construct path pattern tree
+    PathPatternTree patternTree = new PathPatternTree();
+    List<PartialPath> sourcePaths = queryStatement.getSourcePaths();
+    sourcePaths.forEach(patternTree::appendPathPattern);
+
+    // request schema fetch API
+    logger.debug("[StartFetchSchema]");
+    long startTime = System.nanoTime();
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    logger.debug("[EndFetchSchema]");
+
+    // If there is no leaf node in the schema tree, the query should be completed immediately
+    if (schemaTree.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    // extract global time filter from query filter and determine if there is a value filter
+    analyzeGlobalTimeFilter(analysis, queryStatement);
+
     return analysis;
   }
 
