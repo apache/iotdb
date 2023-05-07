@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -32,11 +31,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -136,15 +132,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    if (RpcUtils.squashResponseStatusList(
-                env.createPipeOnDataNodes(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta)))
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to create pipe instance [%s] on data nodes",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -178,22 +166,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    final TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(createPipeRequest.getPipeName())
-            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to rollback from operate on data nodes for task [%s]",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
