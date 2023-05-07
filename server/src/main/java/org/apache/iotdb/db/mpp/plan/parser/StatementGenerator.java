@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.SimpleAggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -213,11 +214,7 @@ public class StatementGenerator {
   public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    QueryStatement queryStatement = new QueryStatement();
-
-    FromComponent fromComponent = new FromComponent();
-    fromComponent.addPrefixPath(new PartialPath("", false));
-    queryStatement.setFromComponent(fromComponent);
+    SimpleAggregationQueryStatement queryStatement = new SimpleAggregationQueryStatement();
 
     SelectComponent selectComponent = new SelectComponent(zoneId);
     List<PartialPath> selectPaths = new ArrayList<>();

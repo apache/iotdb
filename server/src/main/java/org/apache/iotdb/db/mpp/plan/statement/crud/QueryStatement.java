@@ -72,9 +72,9 @@ import java.util.Set;
  */
 public class QueryStatement extends Statement {
 
-  private SelectComponent selectComponent;
+  protected SelectComponent selectComponent;
   private FromComponent fromComponent;
-  private WhereCondition whereCondition;
+  protected WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
   // row limit for result set. The default value is 0, which means no limit
@@ -94,7 +94,7 @@ public class QueryStatement extends Statement {
   private ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
   // `GROUP BY TIME` clause
-  private GroupByTimeComponent groupByTimeComponent;
+  protected GroupByTimeComponent groupByTimeComponent;
 
   // `GROUP BY LEVEL` clause
   private GroupByLevelComponent groupByLevelComponent;
