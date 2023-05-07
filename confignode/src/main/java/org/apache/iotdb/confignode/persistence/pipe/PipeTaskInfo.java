@@ -161,7 +161,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .getConsensusGroupIdToTaskMetaMap()
                     .forEach(
                         (regionId, pipeTaskMeta) ->
-                            pipeTaskMeta.setRegionLeader(plan.getNewLeaderMap().get(regionId))));
+                            pipeTaskMeta.setRegionLeader(
+                                plan.getNewLeaderMap()
+                                    .getOrDefault(regionId, pipeTaskMeta.getRegionLeader()))));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
