@@ -28,6 +28,19 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * State transition diagram of a pipe task:
+ *
+ * <p><code>
+ * |----------------|                     |---------| --> start pipe --> |---------|                   |---------|
+ * | initial status | --> create pipe --> | STOPPED |                    | RUNNING | --> drop pipe --> | DROPPED |
+ * |----------------|                     |---------| <-- stop  pipe <-- |---------|                   |---------|
+ *                                             |                                                            |
+ *                                             | ----------------------> drop pipe -----------------------> |
+ * </code>
+ *
+ * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
+ */
 public class PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
@@ -90,7 +103,7 @@ public class PipeTaskAgent {
     // add pipe meta to pipe meta keeper
     // note that we do not need to set the status of pipe meta here, because the status of pipe meta
     // is already set to STOPPED when it is created
-    pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+    pipeMetaKeeper.addPipeMeta(pipeName, pipeMeta);
   }
 
   public void createPipeTaskByConsensusGroup(
