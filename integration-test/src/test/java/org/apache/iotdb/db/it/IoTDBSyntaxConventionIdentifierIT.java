@@ -1063,4 +1063,44 @@ public class IoTDBSyntaxConventionIdentifierIT {
       fail();
     }
   }
+
+  @Test
+  public void testNodeNameWithWildcard() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.device_123.s1 INT32");
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_12*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*12*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*e*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }
