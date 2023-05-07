@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.coordinator.HandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
@@ -118,6 +119,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DROP_PIPE_PROCEDURE_V2:
         procedure = new DropPipeProcedureV2();
+        break;
+      case HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new HandleLeaderChangeProcedure();
         break;
       case CREATE_CQ_PROCEDURE:
         procedure =

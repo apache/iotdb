@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.HandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -146,6 +147,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public Iterable<PipeMeta> getPipeMetaList() {
     return pipeMetaKeeper.getPipeMetaList();
+  }
+
+  /////////////////////////////// Pipe Runtime Management ///////////////////////////////
+
+  public TSStatus handleLeaderChange(HandleLeaderChangePlan plan) {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                pipeMeta
+                    .getRuntimeMeta()
+                    .getConsensusGroupIdToTaskMetaMap()
+                    .forEach(
+                        (regionId, pipeTaskMeta) ->
+                            pipeTaskMeta.setRegionLeader(plan.getNewLeaderMap().get(regionId))));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
