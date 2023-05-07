@@ -270,6 +270,10 @@ FILE
     : F I L E
     ;
 
+FIRST
+    : F I R S T
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -412,6 +416,10 @@ NONE
 
 NOW
     : N O W
+    ;
+
+NULLS
+    : N U L L S
     ;
 
 OF

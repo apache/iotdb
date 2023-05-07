@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALNode;
 
@@ -91,6 +92,8 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
         if (walNode.getLogDirectory().exists()) {
           FileUtils.deleteDirectory(walNode.getLogDirectory());
         }
+        WALManager.getInstance().subtractTotalDiskUsage(walNode.getDiskUsage());
+        WALManager.getInstance().subtractTotalFileNum(walNode.getFileNum());
       }
     } finally {
       nodesLock.unlock();

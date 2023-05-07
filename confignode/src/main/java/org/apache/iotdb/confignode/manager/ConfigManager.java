@@ -193,7 +193,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
@@ -589,8 +588,11 @@ public class ConfigManager implements IManager {
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
-    // path doesn't contain * so the size of innerPathList should be 1
-    PartialPath innerPath = path.alterPrefixPath(database).get(0);
+    List<PartialPath> innerPathList = path.alterPrefixPath(database);
+    if (innerPathList.size() == 0) {
+      return new ArrayList<>();
+    }
+    PartialPath innerPath = innerPathList.get(0);
     // The innerPath contains `*` and the only `*` is not in last level
     if (innerPath.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
@@ -626,8 +628,7 @@ public class ConfigManager implements IManager {
       for (int i = 0; i < allDatabases.size(); i++) {
         String database = allDatabases.get(i);
         PartialPath databasePath = allDatabasePaths.get(i);
-        if (path.overlapWith(databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))
-            && !scanAllRegions.containsKey(database)) {
+        if (path.overlapWithFullPathPrefix(databasePath) && !scanAllRegions.containsKey(database)) {
           List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, databasePath);
           if (relatedSlot.isEmpty()) {
             scanAllRegions.put(database, true);
@@ -757,7 +758,7 @@ public class ConfigManager implements IManager {
           partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
-              getLoadManager().getLatestRegionRouteMap());
+              getLoadManager().getRegionPriorityMap());
 
       LOGGER.info(
           "getNodePathsPartition receive devicePaths: {}, level: {}, return TSchemaNodeManagementResp: {}",
@@ -1331,7 +1332,7 @@ public class ConfigManager implements IManager {
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().getLatestRegionRouteMap());
+      resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
 
     return resp;

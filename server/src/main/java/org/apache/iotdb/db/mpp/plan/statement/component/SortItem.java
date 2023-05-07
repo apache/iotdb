@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -28,15 +29,31 @@ import java.util.Objects;
 
 public class SortItem {
 
-  private final SortKey sortKey;
+  private String sortKey;
   private final Ordering ordering;
+  private final NullOrdering nullOrdering;
 
-  public SortItem(SortKey sortKey, Ordering ordering) {
-    this.sortKey = sortKey;
-    this.ordering = ordering;
+  // only used in analyzing period
+  private Expression expression;
+
+  public SortItem(String sortKey, Ordering ordering) {
+    this(sortKey, ordering, NullOrdering.LAST);
   }
 
-  public SortKey getSortKey() {
+  public SortItem(String sortKey, Ordering ordering, NullOrdering nullOrdering) {
+    this.sortKey = sortKey;
+    this.ordering = ordering;
+    this.nullOrdering = nullOrdering;
+  }
+
+  public SortItem(Expression expression, Ordering ordering, NullOrdering nullOrdering) {
+    this.expression = expression;
+    this.ordering = ordering;
+    this.nullOrdering = nullOrdering;
+    this.sortKey = expression.getExpressionString();
+  }
+
+  public String getSortKey() {
     return sortKey;
   }
 
@@ -44,24 +61,44 @@ public class SortItem {
     return ordering;
   }
 
+  public NullOrdering getNullOrdering() {
+    return nullOrdering;
+  }
+
+  public void setExpression(Expression expression) {
+    this.expression = expression;
+    this.sortKey = expression.getExpressionString();
+  }
+
+  public Expression getExpression() {
+    return expression;
+  }
+
+  public boolean isExpression() {
+    return expression != null;
+  }
+
   public SortItem reverse() {
-    return new SortItem(getSortKey(), getOrdering().reverse());
+    return new SortItem(getSortKey(), getOrdering().reverse(), getNullOrdering().reverse());
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(sortKey.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(sortKey, byteBuffer);
     ReadWriteIOUtils.write(ordering.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(nullOrdering.ordinal(), byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(sortKey.ordinal(), stream);
+    ReadWriteIOUtils.write(sortKey, stream);
     ReadWriteIOUtils.write(ordering.ordinal(), stream);
+    ReadWriteIOUtils.write(nullOrdering.ordinal(), stream);
   }
 
   public static SortItem deserialize(ByteBuffer byteBuffer) {
-    SortKey sortKey = SortKey.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    String sortKey = ReadWriteIOUtils.readString(byteBuffer);
     Ordering ordering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    return new SortItem(sortKey, ordering);
+    NullOrdering nullOrdering = NullOrdering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return new SortItem(sortKey, ordering, nullOrdering);
   }
 
   @Override
@@ -73,15 +110,17 @@ public class SortItem {
       return false;
     }
     SortItem sortItem = (SortItem) o;
-    return sortKey == sortItem.sortKey && ordering == sortItem.ordering;
+    return Objects.equals(sortKey, sortItem.sortKey)
+        && ordering == sortItem.ordering
+        && nullOrdering == sortItem.nullOrdering;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(sortKey, ordering);
+    return Objects.hash(sortKey, ordering, nullOrdering);
   }
 
   public String toSQLString() {
-    return getSortKey().toString() + " " + getOrdering().toString();
+    return getSortKey() + " " + getOrdering().toString() + " " + getNullOrdering().toString();
   }
 }

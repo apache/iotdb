@@ -94,7 +94,7 @@ public class WALNode implements IWALNode {
   /** directory to store this node's files */
   private final File logDirectory;
   /** wal buffer */
-  private final IWALBuffer buffer;
+  private final WALBuffer buffer;
   /** manage checkpoints */
   private final CheckpointManager checkpointManager;
   /**
@@ -324,8 +324,8 @@ public class WALNode implements IWALNode {
           totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
         }
       }
-      WALManager.getInstance().subtractTotalDiskUsage(deletedFilesSize);
-      WALManager.getInstance().subtractTotalFileNum(deletedFilesNum);
+      buffer.subtractDiskUsage(deletedFilesSize);
+      buffer.subtractFileNum(deletedFilesNum);
       logger.debug(
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,
@@ -814,6 +814,14 @@ public class WALNode implements IWALNode {
           identifier,
           walFlushListener.getCause());
     }
+  }
+
+  public long getDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  public long getFileNum() {
+    return buffer.getFileNum();
   }
 
   @TestOnly

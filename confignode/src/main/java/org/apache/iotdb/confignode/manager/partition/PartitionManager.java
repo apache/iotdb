@@ -765,6 +765,10 @@ public class PartitionManager {
     getConsensusManager().write(preDeleteDatabasePlan);
   }
 
+  public boolean isDatabasePreDeleted(String database) {
+    return partitionInfo.isDatabasePreDeleted(database);
+  }
+
   /**
    * Get TSeriesPartitionSlot
    *
@@ -781,7 +785,7 @@ public class PartitionManager {
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
 
     // Get cached result
-    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
     regionInfoListResp
         .getRegionInfoList()
         .forEach(

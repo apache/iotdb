@@ -276,6 +276,55 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void showDevicesWithWildcardTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "show devices root.l*.wf01.w*",
+            "show devices root.ln.*f01.*",
+            "show devices root.l*.*f*.*1",
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,",
+                    "root.ln.wf01.wt02,true,",
+                    "root.ln1.wf01.wt01,false,",
+                    "root.ln2.wf01.wt01,false,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,",
+                    "root.ln1.wf01.wt01,false,",
+                    "root.ln2.wf01.wt01,false,"))
+          };
+
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            String string = builder.toString();
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
+          }
+          assertEquals(0, standard.size());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
   public void showChildPaths() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

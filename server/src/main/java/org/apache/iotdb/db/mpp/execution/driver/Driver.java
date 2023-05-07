@@ -125,7 +125,7 @@ public abstract class Driver implements IDriver {
         tryWithLock(
             100,
             TimeUnit.MILLISECONDS,
-            true,
+            false,
             () -> {
               // only keep doing query processing if driver state is still alive
               if (state.get() == State.ALIVE) {

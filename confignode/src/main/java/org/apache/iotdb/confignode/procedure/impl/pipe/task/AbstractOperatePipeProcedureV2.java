@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -27,11 +28,17 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -45,6 +52,9 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
       LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
 
   private static final int RETRY_THRESHOLD = 3;
+
+  // only used in rollback to reduce the number of network calls
+  protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   abstract PipeTaskOperation getOperation();
 
@@ -126,10 +136,21 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
         rollbackFromCalculateInfoForTask(env);
         break;
       case WRITE_CONFIG_NODE_CONSENSUS:
-        rollbackFromWriteConfigNodeConsensus(env);
+        // rollbackFromWriteConfigNodeConsensus can be called before rollbackFromOperateOnDataNodes
+        // so we need to check if rollbackFromOperateOnDataNodes is successful executed
+        // if yes, we don't need to call rollbackFromWriteConfigNodeConsensus again
+        if (!isRollbackFromOperateOnDataNodesSuccessful) {
+          rollbackFromWriteConfigNodeConsensus(env);
+        }
         break;
       case OPERATE_ON_DATA_NODES:
+        // we have to make sure that rollbackFromOperateOnDataNodes is executed before
+        // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
+        // executed based on the consensus of config nodes that is written by
+        // rollbackFromWriteConfigNodeConsensus
+        rollbackFromWriteConfigNodeConsensus(env);
         rollbackFromOperateOnDataNodes(env);
+        isRollbackFromOperateOnDataNodesSuccessful = true;
         break;
       default:
         LOGGER.error("Unsupported roll back STATE [{}]", state);
@@ -142,7 +163,8 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
 
   protected abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException;
 
   @Override
   protected OperatePipeTaskState getState(int stateId) {
@@ -157,5 +179,22 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
   @Override
   protected OperatePipeTaskState getInitialState() {
     return OperatePipeTaskState.VALIDATE_TASK;
+  }
+
+  protected void pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (PipeMeta pipeMeta :
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .getPipeTaskInfo()
+            .getPipeMetaList()) {
+      pipeMetaBinaryList.add(pipeMeta.serialize());
+    }
+
+    if (RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList)).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeManagementException("Failed to push pipe meta list to data nodes");
+    }
   }
 }

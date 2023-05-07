@@ -37,7 +37,7 @@ public class ElasticSerializableRowRecordList {
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
   protected TSDataType[] dataTypes;
-  protected long queryId;
+  protected String queryId;
   protected float memoryLimitInMB;
   protected int internalRowRecordListCapacity;
   protected int numCacheBlock;
@@ -65,7 +65,7 @@ public class ElasticSerializableRowRecordList {
    * @param numCacheBlock Number of cache blocks.
    */
   public ElasticSerializableRowRecordList(
-      TSDataType[] dataTypes, long queryId, float memoryLimitInMB, int numCacheBlock)
+      TSDataType[] dataTypes, String queryId, float memoryLimitInMB, int numCacheBlock)
       throws QueryProcessException {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
@@ -110,7 +110,7 @@ public class ElasticSerializableRowRecordList {
 
   protected ElasticSerializableRowRecordList(
       TSDataType[] dataTypes,
-      long queryId,
+      String queryId,
       float memoryLimitInMB,
       int internalRowRecordListCapacity,
       int numCacheBlock) {
