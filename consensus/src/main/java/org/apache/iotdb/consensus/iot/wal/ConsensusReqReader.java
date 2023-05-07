@@ -80,6 +80,9 @@ public interface ConsensusReqReader {
   /** Get current search index */
   long getCurrentSearchIndex();
 
+  /** Get current wal file version */
+  long getCurrentWALFileVersion();
+
   /** Get total size of wal files */
   long getTotalSize();
 }

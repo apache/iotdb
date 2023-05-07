@@ -101,7 +101,12 @@ public class WALFakeNode implements IWALNode {
 
   @Override
   public long getCurrentSearchIndex() {
-    throw new UnsupportedOperationException();
+    return 0;
+  }
+
+  @Override
+  public long getCurrentWALFileVersion() {
+    return 0;
   }
 
   @Override

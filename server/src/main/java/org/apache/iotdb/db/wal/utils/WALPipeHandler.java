@@ -27,8 +27,6 @@ import org.apache.iotdb.db.wal.node.WALNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-
 /**
  * This handler is used by the Pipe to find the corresponding insert node. Besides, it can try to
  * pin/unpin the wal entries by the memTable id.
@@ -64,8 +62,7 @@ public class WALPipeHandler {
   /**
    * Unpin the wal files of the given memory table.
    *
-   * @throws MemTablePinException If the memTable has been flushed or cannot find corresponding pin
-   *     operation
+   * @throws MemTablePinException If there aren't corresponding pin operations
    */
   public void unpinMemTable() throws MemTablePinException {
     if (walNode == null || memTableId < 0) {
@@ -86,7 +83,7 @@ public class WALPipeHandler {
       }
     }
     // wait until the position is ready
-    while (walEntryPosition.canRead()) {
+    while (!walEntryPosition.canRead()) {
       try {
         synchronized (this) {
           this.wait();
@@ -110,10 +107,15 @@ public class WALPipeHandler {
 
   public void setWalNode(WALNode walNode) {
     this.walNode = walNode;
+    this.walEntryPosition.setWalNode(walNode);
   }
 
-  public void setEntryPosition(File walFile, long position) {
-    this.walEntryPosition.setEntryPosition(walFile, position);
+  public WALEntryPosition getWalEntryPosition() {
+    return walEntryPosition;
+  }
+
+  public void setEntryPosition(long walFileVersionId, long position) {
+    this.walEntryPosition.setEntryPosition(walFileVersionId, position);
     this.value = null;
     synchronized (this) {
       this.notifyAll();

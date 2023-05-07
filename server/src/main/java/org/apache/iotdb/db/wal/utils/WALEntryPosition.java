@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.wal.node.WALNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,14 +34,18 @@ import java.util.Objects;
  */
 public class WALEntryPosition {
   private static final WALInsertNodeCache CACHE = WALInsertNodeCache.getInstance();
-  private volatile File walFile;
+  private volatile long walFileVersionId = -1;
   private volatile long position;
   private volatile int size;
+  /** wal node, null when wal is disabled */
+  private WALNode walNode = null;
+  /** wal file is not null when openReadFileChannel method has been called */
+  private File walFile = null;
 
   public WALEntryPosition() {}
 
-  public WALEntryPosition(File walFile, long position, int size) {
-    this.walFile = walFile;
+  public WALEntryPosition(long walFileVersionId, long position, int size) {
+    this.walFileVersionId = walFileVersionId;
     this.position = position;
     this.size = size;
   }
@@ -48,7 +53,7 @@ public class WALEntryPosition {
   /** Read the wal entry and parse it to the InsertNode. Use LRU cache to accelerate read. */
   public InsertNode readInsertNodeViaCache() throws IOException {
     if (!canRead()) {
-      throw new IOException("Target file hasn't been specified.");
+      throw new IOException("This entry isn't ready for read.");
     }
     return CACHE.get(this);
   }
@@ -58,7 +63,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("Target file hasn't been specified.");
     }
-    try (FileChannel channel = FileChannel.open(walFile.toPath(), StandardOpenOption.READ)) {
+    try (FileChannel channel = openReadFileChannel()) {
       ByteBuffer buffer = ByteBuffer.allocate(size);
       channel.position(position);
       channel.read(buffer);
@@ -67,14 +72,54 @@ public class WALEntryPosition {
     }
   }
 
-  /** Return true only when the tuple(file, position, size) is ready. */
-  public boolean canRead() {
-    return walFile != null;
+  /**
+   * open the read file channel for this wal entry, this method will retry automatically when the
+   * file is sealed when opening the file channel
+   */
+  public FileChannel openReadFileChannel() throws IOException {
+    if (isInSealedFile()) {
+      walFile = walNode.getWALFile(walFileVersionId);
+      return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
+    } else {
+      try {
+        walFile = walNode.getWALFile(walFileVersionId);
+        return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
+      } catch (IOException e) {
+        // unsealed file may be renamed after sealed, so we should try again
+        if (isInSealedFile()) {
+          walFile = walNode.getWALFile(walFileVersionId);
+          return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
-  public void setEntryPosition(File walFile, long position) {
+  /** Return true only when the tuple(file, position, size) is ready. */
+  public boolean canRead() {
+    return walFileVersionId >= 0;
+  }
+
+  /** Return true only when this wal file is sealed. */
+  public boolean isInSealedFile() {
+    if (walNode == null || !canRead()) {
+      throw new RuntimeException("This entry isn't ready for read.");
+    }
+    return walFileVersionId < walNode.getCurrentWALFileVersion();
+  }
+
+  public void setWalNode(WALNode walNode) {
+    this.walNode = walNode;
+  }
+
+  public void setEntryPosition(long walFileVersionId, long position) {
     this.position = position;
-    this.walFile = walFile;
+    this.walFileVersionId = walFileVersionId;
+  }
+
+  public long getWalFileVersionId() {
+    return walFileVersionId;
   }
 
   public File getWalFile() {
@@ -95,7 +140,7 @@ public class WALEntryPosition {
 
   @Override
   public int hashCode() {
-    return Objects.hash(walFile, position);
+    return Objects.hash(walFileVersionId, position);
   }
 
   @Override
@@ -107,6 +152,6 @@ public class WALEntryPosition {
       return false;
     }
     WALEntryPosition that = (WALEntryPosition) o;
-    return walFile.equals(that.walFile) && position == that.position;
+    return walFileVersionId == that.walFileVersionId && position == that.position;
   }
 }

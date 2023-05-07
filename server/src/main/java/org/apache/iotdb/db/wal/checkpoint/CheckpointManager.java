@@ -268,8 +268,7 @@ public class CheckpointManager implements AutoCloseable {
   /**
    * Unpin the wal files of the given memory table.
    *
-   * @throws MemTablePinException If the memTable has been flushed or cannot find corresponding pin
-   *     operation
+   * @throws MemTablePinException If there aren't corresponding pin operations
    */
   public void unpinMemTable(long memTableId) throws MemTablePinException {
     infoLock.lock();

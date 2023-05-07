@@ -35,7 +35,6 @@ import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -428,7 +427,7 @@ public class WALBuffer extends AbstractWALBuffer {
     @Override
     public void run() {
       long start = System.nanoTime();
-      File syncTargetFile = currentWALFileWriter.getLogFile();
+      long walFileVersionId = currentWALFileVersion;
       long position = currentWALFileWriter.size();
       currentWALFileWriter.updateFileStatus(fileStatus);
 
@@ -455,7 +454,7 @@ public class WALBuffer extends AbstractWALBuffer {
       if (info.rollWALFileWriterListener != null
           || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
         try {
-          syncTargetFile = rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
+          rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           forceSuccess = true;
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.succeed();
@@ -490,7 +489,7 @@ public class WALBuffer extends AbstractWALBuffer {
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
           if (fsyncListener.getWalPipeHandler() != null) {
-            fsyncListener.getWalPipeHandler().setEntryPosition(syncTargetFile, position);
+            fsyncListener.getWalPipeHandler().setEntryPosition(walFileVersionId, position);
             position += fsyncListener.getWalPipeHandler().getSize();
           }
         }

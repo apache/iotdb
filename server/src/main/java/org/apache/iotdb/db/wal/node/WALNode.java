@@ -774,10 +774,14 @@ public class WALNode implements IWALNode {
   }
 
   @Override
+  public long getCurrentWALFileVersion() {
+    return buffer.getCurrentWALFileVersion();
+  }
+
+  @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
   }
-
   // endregion
 
   @Override
@@ -788,6 +792,11 @@ public class WALNode implements IWALNode {
 
   public File getLogDirectory() {
     return logDirectory;
+  }
+
+  /** Get the .wal file starts with the specified version id */
+  public File getWALFile(long versionId) {
+    return WALFileUtils.getWALFile(logDirectory, versionId);
   }
 
   /** Return true when all wal entries all consumed and flushed */
@@ -810,5 +819,10 @@ public class WALNode implements IWALNode {
   @TestOnly
   long getCurrentLogVersion() {
     return buffer.getCurrentWALFileVersion();
+  }
+
+  @TestOnly
+  CheckpointManager getCheckpointManager() {
+    return checkpointManager;
   }
 }
