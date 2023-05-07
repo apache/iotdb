@@ -575,10 +575,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
       // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
-      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
       // activate schema template
       statement.execute("create timeseries using schema template on root.sg1.d1");
       statement.execute("create timeseries using schema template on root.sg2.d2");
