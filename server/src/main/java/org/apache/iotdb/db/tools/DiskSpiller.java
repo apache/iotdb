@@ -66,7 +66,7 @@ public class DiskSpiller {
     if (!folderCreated) {
       createFolder(folderPath);
     }
-    String fileName = filePrefix + fileIndex + fileSuffix;
+    String fileName = filePrefix + String.format("%05d", fileIndex) + fileSuffix;
     fileIndex++;
 
     writeData(tsBlocks, fileName);
@@ -97,7 +97,7 @@ public class DiskSpiller {
       spill(tsBlocks);
     } catch (IOException e) {
       throw new IoTDBException(
-          "Create file error: " + filePrefix + fileIndex + fileSuffix,
+          "Create file error: " + filePrefix + (fileIndex - 1) + fileSuffix,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -143,7 +143,7 @@ public class DiskSpiller {
   private List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
     for (int i = 0; i < fileIndex; i++) {
-      filePaths.add(filePrefix + i + fileSuffix);
+      filePaths.add(filePrefix + String.format("%05d", i) + fileSuffix);
     }
     return filePaths;
   }

@@ -146,7 +146,8 @@ public class FragmentInstanceExecution {
               String tmpFilePath =
                   IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
                       + File.separator
-                      + context.getId().getFragmentInstanceId();
+                      + context.getId().getFullId()
+                      + File.separator;
               File tmpFile = new File(tmpFilePath);
               if (tmpFile.exists()) {
                 FileUtils.deleteDirectory(tmpFile);

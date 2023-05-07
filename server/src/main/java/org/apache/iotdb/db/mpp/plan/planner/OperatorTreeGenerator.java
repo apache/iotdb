@@ -1627,15 +1627,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     String filePrefix =
         IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
             + File.separator
-            + operatorContext
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getId()
-                .getFragmentInstanceId()
+            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
             + File.separator
             + operatorContext.getDriverContext().getPipelineId()
-            + File.separator
-            + operatorContext.getOperatorId()
             + File.separator;
 
     context.getDriverContext().setHaveTmpFile(true);

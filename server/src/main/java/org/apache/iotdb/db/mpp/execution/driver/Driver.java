@@ -416,7 +416,7 @@ public abstract class Driver implements IDriver {
     String pipeLineSortDir =
         IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
             + File.separator
-            + driverContext.getFragmentInstanceContext().getId().getFragmentInstanceId()
+            + driverContext.getFragmentInstanceContext().getId().getFullId()
             + File.separator
             + driverContext.getPipelineId()
             + File.separator;
