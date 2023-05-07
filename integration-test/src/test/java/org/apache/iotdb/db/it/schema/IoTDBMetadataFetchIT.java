@@ -282,7 +282,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new String[] {
             "show devices root.l*.wf01.w*",
             "show devices root.ln.*f01.*",
-            "show devices root.l*.*f*.*1",
+            "show devices root.l*.*f*.*t01",
           };
       Set<String>[] standards =
           new Set[] {
