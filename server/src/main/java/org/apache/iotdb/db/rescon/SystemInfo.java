@@ -191,7 +191,8 @@ public class SystemInfo {
       // required memory cost is greater than the total memory budget for compaction
       throw new CompactionMemoryNotEnoughException(
           String.format(
-              "Required memory cost %d bytes is greater than the total memory budget for compaction %d bytes",
+              "Required memory cost %d bytes is greater than "
+                  + "the total memory budget for compaction %d bytes",
               memoryCost, memorySizeForCompaction));
     }
     long startTime = System.currentTimeMillis();

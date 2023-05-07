@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -200,8 +201,8 @@ public class BufferedPipeDataQueueTest {
   }
 
   /**
-   * Step1: recover pipeDataQueue (with an empty latest pipelog) Step2: offer new pipeData Step3:
-   * check result
+   * Step1: recover pipeDataQueue (with an empty latest pipelog). Step2: offer new pipeData. Step3:
+   * check result.
    */
   @Test
   public void testOfferAfterRecoveryWithEmptyPipeLog() {
@@ -296,7 +297,7 @@ public class BufferedPipeDataQueueTest {
     }
   }
 
-  /** Step1: recover pipeDataQueue (without empty latest pipelog) Step2: check result */
+  /** Step1: recover pipeDataQueue (without empty latest pipelog). Step2: check result. */
   @Test
   public void testRecoveryWithEmptyPipeLog() {
     try {
@@ -386,7 +387,7 @@ public class BufferedPipeDataQueueTest {
     }
   }
 
-  /** Step1: recover pipeDataQueue (without empty latest pipelog) Step2: check result */
+  /** Step1: recover pipeDataQueue (without empty latest pipelog). Step2: check result. */
   @Test
   public void testRecoveryWithoutEmptyPipeLog() {
     try {
