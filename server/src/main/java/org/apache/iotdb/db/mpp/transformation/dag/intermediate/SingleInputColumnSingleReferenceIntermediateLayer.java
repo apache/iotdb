@@ -54,7 +54,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
   public SingleInputColumnSingleReferenceIntermediateLayer(
       Expression expression,
-      long queryId,
+      String queryId,
       float memoryBudgetInMB,
       LayerPointReader parentLayerPointReader) {
     super(expression, queryId, memoryBudgetInMB);

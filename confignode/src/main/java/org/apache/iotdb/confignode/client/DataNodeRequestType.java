@@ -67,12 +67,7 @@ public enum DataNodeRequestType {
   DROP_PIPE_PLUGIN,
 
   /** Pipe Task */
-  CREATE_PIPE,
-  /**
-   * DROP_PIPE, START_PIPE, STOP_PIPE Merge them into OPERATE_PIPE since these requests only require
-   * pipe name
-   */
-  OPERATE_PIPE,
+  PUSH_PIPE_META,
 
   /** CQ */
   EXECUTE_CQ,

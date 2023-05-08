@@ -20,7 +20,7 @@
 package org.apache.iotdb.pipe.api.collector;
 
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import java.io.IOException;
 import java.util.function.BiConsumer;

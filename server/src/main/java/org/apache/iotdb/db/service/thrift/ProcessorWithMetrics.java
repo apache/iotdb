@@ -69,7 +69,7 @@ public class ProcessorWithMetrics extends Processor {
             cost,
             TimeUnit.MILLISECONDS,
             Metric.ENTRY.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             msg.name);
   }

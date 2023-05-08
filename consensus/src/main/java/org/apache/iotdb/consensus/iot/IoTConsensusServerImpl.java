@@ -138,9 +138,12 @@ public class IoTConsensusServerImpl {
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
-    long currentSearchIndex = reader.getCurrentSearchIndex();
+    this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
-    this.searchIndex = new AtomicLong(currentSearchIndex);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.metrics = new IoTConsensusServerMetrics(this);
   }
@@ -817,12 +820,14 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * only one configuration means single replica, then we can set safelyDeletedSearchIndex to
-   * Long.MAX_VALUE.
+   * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
+   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.size() == 1) {
       reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    } else {
+      reader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
     }
   }
 

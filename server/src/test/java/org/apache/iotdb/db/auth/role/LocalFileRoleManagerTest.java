@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -58,12 +60,12 @@ public class LocalFileRoleManagerTest {
   }
 
   @Test
-  public void test() throws AuthException {
+  public void test() throws AuthException, IllegalPathException {
     Role[] roles = new Role[5];
     for (int i = 0; i < roles.length; i++) {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
-        PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
+        PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
         roles[i].getPrivilegeList().add(pathPrivilege);
       }
@@ -103,7 +105,7 @@ public class LocalFileRoleManagerTest {
 
     // grant privilege
     role = manager.getRole(roles[0].getName());
-    String path = "root.a.b.c";
+    PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
     assertFalse(role.hasPrivilege(path, privilegeId));
     assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));

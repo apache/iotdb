@@ -676,6 +676,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+    conf.setMinCrossCompactionUnseqFileLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_cross_compaction_unseq_file_level",
+                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -1082,6 +1087,16 @@ public class IoTDBDescriptor {
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+
+    // the buffer for sort operator to calculate
+    conf.setSortBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
+                .trim()));
+
+    // tmp filePath for sort operator
+    conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
 
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
   }

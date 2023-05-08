@@ -147,7 +147,4 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     return null;
   }
-
-  @Override
-  public void invalidAllCache() {}
 }

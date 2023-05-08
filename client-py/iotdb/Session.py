@@ -56,6 +56,7 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
+from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 from .utils.IoTDBConstants import TSDataType
 
@@ -141,10 +142,11 @@ class Session(object):
                     self.__default_connection = self.init_connection(
                         self.__default_endpoint
                     )
-                except Exception as e:
+                except Exception:
                     if not self.reconnect():
-                        logger.error("Cluster has no nodes to connect")
-                        raise e
+                        raise IoTDBConnectionException(
+                            "Cluster has no nodes to connect"
+                        ) from None
                 break
         self.__client = self.__default_connection.client
         self.__session_id = self.__default_connection.session_id
@@ -165,7 +167,7 @@ class Session(object):
             try:
                 transport.open()
             except TTransport.TTransportException as e:
-                raise e
+                raise IoTDBConnectionException(e) from None
 
         if self.__enable_rpc_compression:
             client = Client(TCompactProtocol.TCompactProtocol(transport))
@@ -199,15 +201,16 @@ class Session(object):
 
         except Exception as e:
             transport.close()
-            logger.exception("session closed because: ", exc_info=e)
-            raise e
+            raise IoTDBConnectionException(e) from None
 
         if self.__zone_id is not None:
             request = TSSetTimeZoneReq(session_id, self.__zone_id)
             try:
                 client.setTimeZone(request)
             except TTransport.TException as e:
-                raise RuntimeError("Could not set time zone because: ", e)
+                raise IoTDBConnectionException(
+                    "Could not set time zone because: ", e
+                ) from None
         else:
             self.__zone_id = self.get_time_zone()
         return SessionConnection(client, transport, session_id, statement_id)
@@ -245,10 +248,9 @@ class Session(object):
                         self.__client.setStorageGroup(self.__session_id, group_name)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("create databases fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_storage_group(self, storage_group):
         """
@@ -276,10 +278,9 @@ class Session(object):
                         )
                     )
                 except TTransport.TException as e1:
-                    logger.exception("delete database fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_time_series(
         self,
@@ -327,10 +328,9 @@ class Session(object):
                         self.__client.createTimeseries(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("creating time series fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_aligned_time_series(
         self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
@@ -367,9 +367,9 @@ class Session(object):
                         self.__client.createAlignedTimeseries(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("creating time series fails because: ", e1)
-                    raise e1
-            raise e
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_multi_time_series(
         self,
@@ -418,10 +418,9 @@ class Session(object):
                         self.__client.createMultiTimeseries(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("creating multi time series fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_time_series(self, paths_list):
         """
@@ -432,15 +431,16 @@ class Session(object):
             return Session.verify_success(
                 self.__client.deleteTimeseries(self.__session_id, paths_list)
             )
-        except TTransport.TException:
+        except TTransport.TException as e:
             if self.reconnect():
                 try:
                     return Session.verify_success(
                         self.__client.deleteTimeseries(self.__session_id, paths_list)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("deleting time series fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def check_time_series_exists(self, path):
         """
@@ -470,10 +470,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
-                    logger.exception("data deletion fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_data_in_range(self, paths_list, start_time, end_time):
         """
@@ -491,10 +490,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.deleteData(request))
                 except TTransport.TException as e1:
-                    logger.exception("data deletion fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """special case for inserting one row of String (TEXT) value"""
@@ -521,10 +519,9 @@ class Session(object):
                         self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_str_record(
         self, device_id, timestamp, measurements, string_values
@@ -553,10 +550,9 @@ class Session(object):
                         self.__client.insertStringRecord(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_record(self, device_id, timestamp, measurements, data_types, values):
         """
@@ -588,10 +584,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_records(
         self, device_ids: list, times, measurements_lst, types_lst, values_lst
@@ -637,10 +632,12 @@ class Session(object):
                             request.sessionId = self.__session_id
                             Session.verify_success(self.__client.insertRecords(request))
                         except TTransport.TException as e1:
-                            logger.exception("insert fails because: ", e1)
-                            raise e1
+                            raise IoTDBConnectionException(e1) from None
                     else:
-                        raise e
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
+
             return 0
         else:
             request = self.gen_insert_records_req(
@@ -656,10 +653,11 @@ class Session(object):
                             self.__client.insertRecords(request)
                         )
                     except TTransport.TException as e1:
-                        logger.exception("insert fails because: ", e1)
-                        raise e1
+                        raise IoTDBConnectionException(e1) from None
                 else:
-                    raise e
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_aligned_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -693,10 +691,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.insertRecord(request))
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -742,10 +739,12 @@ class Session(object):
                             request.sessionId = self.__session_id
                             Session.verify_success(self.__client.insertRecords(request))
                         except TTransport.TException as e1:
-                            logger.exception("insert fails because: ", e1)
-                            raise e1
+                            raise IoTDBConnectionException(e1) from None
                     else:
-                        raise e
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
+
             return 0
         else:
             request = self.gen_insert_records_req(
@@ -761,10 +760,11 @@ class Session(object):
                             self.__client.insertRecords(request)
                         )
                     except TTransport.TException as e1:
-                        logger.exception("insert fails because: ", e1)
-                        raise e1
+                        raise IoTDBConnectionException(e1) from None
                 else:
-                    raise e
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def test_insert_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -791,10 +791,9 @@ class Session(object):
                         self.__client.testInsertRecord(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("test insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def test_insert_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -824,10 +823,9 @@ class Session(object):
                         self.__client.testInsertRecords(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("test insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_record_req(
         self, device_id, timestamp, measurements, data_types, values, is_aligned=False
@@ -923,10 +921,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_tablets(self, tablet_lst):
         """
@@ -966,10 +963,12 @@ class Session(object):
                             request.sessionId = self.__session_id
                             Session.verify_success(self.__client.insertTablets(request))
                         except TTransport.TException as e1:
-                            logger.exception("insert fails because: ", e1)
-                            raise e1
+                            raise IoTDBConnectionException(e1) from None
                     else:
-                        raise e
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
+
             return 0
         else:
             request = self.gen_insert_tablets_req(tablet_lst)
@@ -983,10 +982,11 @@ class Session(object):
                             self.__client.insertTablets(request)
                         )
                     except TTransport.TException as e1:
-                        logger.exception("insert fails because: ", e1)
-                        raise e1
+                        raise IoTDBConnectionException(e1) from None
                 else:
-                    raise e
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_aligned_tablet(self, tablet):
         """
@@ -1015,10 +1015,9 @@ class Session(object):
                     request.sessionId = self.__session_id
                     return Session.verify_success(self.__client.insertTablet(request))
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_tablets(self, tablet_lst):
         """
@@ -1058,10 +1057,12 @@ class Session(object):
                             request.sessionId = self.__session_id
                             Session.verify_success(self.__client.insertTablets(request))
                         except TTransport.TException as e1:
-                            logger.exception("insert fails because: ", e1)
-                            raise e1
+                            raise IoTDBConnectionException(e1) from None
                     else:
-                        raise e
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
+
             return 0
         else:
             request = self.gen_insert_tablets_req(tablet_lst, True)
@@ -1075,10 +1076,11 @@ class Session(object):
                             self.__client.insertTablets(request)
                         )
                     except TTransport.TException as e1:
-                        logger.exception("insert fails because: ", e1)
-                        raise e1
+                        raise IoTDBConnectionException(e1) from None
                 else:
-                    raise e
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -1146,10 +1148,9 @@ class Session(object):
                         self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -1219,10 +1220,9 @@ class Session(object):
                         self.__client.insertRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_records_of_one_device_request(
         self,
@@ -1271,10 +1271,9 @@ class Session(object):
                         self.__client.testInsertTablet(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("test insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def test_insert_tablets(self, tablet_list):
         """
@@ -1293,10 +1292,9 @@ class Session(object):
                         self.__client.testInsertTablets(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("test insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
         data_type_values = [data_type.value for data_type in tablet.get_data_types()]
@@ -1358,10 +1356,10 @@ class Session(object):
                     request.statementId = self.__statement_id
                     resp = self.__client.executeQueryStatement(request)
                 except TTransport.TException as e1:
-                    logger.exception("execution of query statement fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
         Session.verify_success(resp.status)
         return SessionDataSet(
             sql,
@@ -1391,12 +1389,10 @@ class Session(object):
                     request.statementId = self.__statement_id
                     resp = self.__client.executeUpdateStatement(request)
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "execution of non-query statement fails because: ", e1
-                    )
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
         return Session.verify_success(resp.status)
 
     def execute_statement(self, sql: str, timeout=0):
@@ -1412,10 +1408,10 @@ class Session(object):
                     request.statementId = self.__statement_id
                     resp = self.__client.executeStatement(request)
                 except TTransport.TException as e1:
-                    logger.exception("execution of statement fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
         Session.verify_success(resp.status)
         if resp.columns:
             return SessionDataSet(
@@ -1486,7 +1482,9 @@ class Session(object):
         try:
             resp = self.__client.getTimeZone(self.__session_id)
         except TTransport.TException as e:
-            raise RuntimeError("Could not get time zone because: ", e)
+            raise IoTDBConnectionException(
+                "Could not get time zone because: ", e
+            ) from None
         return resp.timeZone
 
     def set_time_zone(self, zone_id):
@@ -1499,7 +1497,9 @@ class Session(object):
                 )
             )
         except TTransport.TException as e:
-            raise RuntimeError("Could not set time zone because: ", e)
+            raise IoTDBConnectionException(
+                "Could not set time zone because: ", e
+            ) from None
         self.__zone_id = zone_id
 
     @staticmethod
@@ -1524,7 +1524,6 @@ class Session(object):
         ):
             return 0
 
-        logger.error("error status is %s", status)
         raise RuntimeError(str(status.code) + ": " + status.message)
 
     @staticmethod
@@ -1592,10 +1591,9 @@ class Session(object):
                     request.statementId = self.__statement_id
                     resp = self.__client.executeRawDataQuery(request)
                 except TTransport.TException as e1:
-                    logger.exception("execution of query statement fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
         Session.verify_success(resp.status)
         return SessionDataSet(
             "",
@@ -1634,10 +1632,9 @@ class Session(object):
                     request.statementId = self.__statement_id
                     resp = self.__client.executeLastDataQuery(request)
                 except TTransport.TException as e1:
-                    logger.exception("execution of query statement fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
         Session.verify_success(resp.status)
         return SessionDataSet(
             "",
@@ -1693,10 +1690,9 @@ class Session(object):
                         self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_string_records_of_one_device(
         self,
@@ -1729,10 +1725,9 @@ class Session(object):
                         self.__client.insertStringRecordsOfOneDevice(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("insert fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def reconnect(self):
         if self.__hosts is None:
@@ -1765,12 +1760,22 @@ class Session(object):
                         self.__endpoint_to_connection = {
                             str(self.__default_endpoint): self.__default_connection
                         }
-                except TTransport.TException:
-                    continue
+                except IoTDBConnectionException:
+                    pass
                 break
             if connected:
                 break
         return connected
+
+    def connection_error_msg(self):
+        if self.__hosts is None:
+            msg = "Could not connect to [('%s', %s)]" % (self.__host, self.__port)
+        else:
+            node_list = []
+            for i in range(len(self.__hosts)):
+                node_list.append("('%s', %s)" % (self.__hosts[i], self.__ports[i]))
+            msg = "Could not connect to any of [%s]" % ", ".join(node_list)
+        return msg
 
     def get_connection(self, device_id):
         if (
@@ -1851,10 +1856,9 @@ class Session(object):
                         self.__client.createSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("create template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def drop_schema_template(self, template_name: str):
         """
@@ -1872,10 +1876,9 @@ class Session(object):
                         self.__client.dropSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("drop template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def add_measurements_in_template(
         self,
@@ -1915,10 +1918,9 @@ class Session(object):
                         self.__client.appendSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("append template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_node_in_template(self, template_name: str, path: str):
         """
@@ -1937,10 +1939,9 @@ class Session(object):
                         self.__client.pruneSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("prune template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def set_schema_template(self, template_name, prefix_path):
         """
@@ -1959,10 +1960,9 @@ class Session(object):
                         self.__client.setSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("set template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def unset_schema_template(self, template_name, prefix_path):
         """
@@ -1984,10 +1984,9 @@ class Session(object):
                         self.__client.unsetSchemaTemplate(request)
                     )
                 except TTransport.TException as e1:
-                    logger.exception("unset template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def count_measurements_in_template(self, template_name: str):
         """
@@ -2010,12 +2009,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.count
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "count measurements in template fails because: ", e1
-                    )
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_measurement_in_template(self, template_name: str, path: str):
         """
@@ -2041,13 +2037,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "judge the path is measurement or not in template fails because: ",
-                        e1,
-                    )
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_path_exist_in_template(self, template_name: str, path: str):
         """
@@ -2070,12 +2062,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.result
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "judge the path is in template or not fails because: ", e1
-                    )
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_measurements_in_template(self, template_name: str, pattern: str = ""):
         """
@@ -2101,12 +2090,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
-                    logger.exception(
-                        "show measurements in template fails because: ", e1
-                    )
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_all_templates(self):
         """
@@ -2129,10 +2115,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
-                    logger.exception("show all template fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_set_on(self, template_name):
         """
@@ -2154,10 +2139,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
-                    logger.exception("show paths template set on fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_using_on(self, template_name):
         """
@@ -2181,10 +2165,9 @@ class Session(object):
                     Session.verify_success(response.status)
                     return response.measurements
                 except TTransport.TException as e1:
-                    logger.exception("show paths template using on fails because: ", e1)
-                    raise e1
+                    raise IoTDBConnectionException(e1) from None
             else:
-                raise e
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
 
 class SessionConnection(object):
@@ -2204,10 +2187,10 @@ class SessionConnection(object):
         try:
             self.client.closeSession(req)
         except TTransport.TException as e:
-            logger.exception(
+            raise IoTDBConnectionException(
                 "Error occurs when closing session at server. Maybe server is down. Error message: ",
-                exc_info=e,
-            )
+                e,
+            ) from None
         finally:
             if self.transport is not None:
                 self.transport.close()

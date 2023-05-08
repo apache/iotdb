@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 public class TimeSeriesSchemaCache {
 
@@ -198,6 +199,62 @@ public class TimeSeriesSchemaCache {
 
     DataNodeLastCacheManager.updateLastCache(
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  /** get SchemaCacheEntry and update last cache by device */
+  public void updateLastCache(
+      String database,
+      PartialPath devicePath,
+      String[] measurements,
+      MeasurementSchema[] measurementSchemas,
+      boolean isAligned,
+      Function<Integer, TimeValuePair> timeValuePairProvider,
+      Function<Integer, Boolean> shouldUpdateProvider,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    SchemaCacheEntry entry;
+    List<Integer> missingMeasurements = new ArrayList<>();
+    dualKeyCache.compute(
+        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return devicePath;
+          }
+
+          @Override
+          public String[] getSecondKeyList() {
+            return measurements;
+          }
+
+          @Override
+          public void computeValue(int index, SchemaCacheEntry value) {
+            if (!shouldUpdateProvider.apply(index)) {
+              return;
+            }
+            if (value == null) {
+              missingMeasurements.add(index);
+            } else {
+              DataNodeLastCacheManager.updateLastCache(
+                  value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
+            }
+          }
+        });
+
+    for (int index : missingMeasurements) {
+      entry = dualKeyCache.get(devicePath, measurements[index]);
+      if (entry == null) {
+        synchronized (dualKeyCache) {
+          entry = dualKeyCache.get(devicePath, measurements[index]);
+          if (null == entry) {
+            entry = new SchemaCacheEntry(database, measurementSchemas[index], null, isAligned);
+            dualKeyCache.put(devicePath, measurements[index], entry);
+          }
+        }
+      }
+
+      DataNodeLastCacheManager.updateLastCache(
+          entry, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
+    }
   }
 
   /**

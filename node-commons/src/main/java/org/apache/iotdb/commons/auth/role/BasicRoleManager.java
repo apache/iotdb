@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.auth.role;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -106,7 +107,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public boolean grantPrivilegeToRole(String rolename, String path, int privilegeId)
+  public boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(rolename);
@@ -134,7 +135,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public boolean revokePrivilegeFromRole(String rolename, String path, int privilegeId)
+  public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(rolename);

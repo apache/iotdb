@@ -39,12 +39,13 @@ public class QueryDataSetInputLayer {
   private ElasticSerializableRowRecordList rowRecordList;
   private SafetyLine safetyLine;
 
-  public QueryDataSetInputLayer(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
+  public QueryDataSetInputLayer(
+      String queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
       throws QueryProcessException {
     construct(queryId, memoryBudgetInMB, queryDataSet);
   }
 
-  private void construct(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
+  private void construct(String queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
       throws QueryProcessException {
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
