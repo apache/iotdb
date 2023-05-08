@@ -45,8 +45,6 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
 
-  private final int outputColumnCount;
-
   private final TsBlockBuilder tsBlockBuilder;
 
   private boolean finished;
@@ -57,7 +55,6 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
     checkArgument(
         !children.isEmpty(), "child size of VerticallyConcatOperator should be larger than 0");
     this.inputIndex = new int[this.inputOperatorsCount];
-    this.outputColumnCount = dataTypes.size();
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
