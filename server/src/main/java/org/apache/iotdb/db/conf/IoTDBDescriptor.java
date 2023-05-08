@@ -1106,14 +1106,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferEntrySize =
-        Integer.parseInt(
-            properties.getProperty(
-                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
-    if (walBufferEntrySize > 0) {
-      conf.setWalBufferEntrySize(walBufferEntrySize);
-    }
-
     int walBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -1126,12 +1118,22 @@ public class IoTDBDescriptor {
   }
 
   private void loadWALHotModifiedProps(Properties properties) {
-    long fsyncWalDelayInMs =
+    long walAsyncModeFsyncDelayInMs =
         Long.parseLong(
             properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+                "wal_async_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalAsyncModeFsyncDelayInMs())));
+    if (walAsyncModeFsyncDelayInMs > 0) {
+      conf.setWalAsyncModeFsyncDelayInMs(walAsyncModeFsyncDelayInMs);
+    }
+
+    long walSyncModeFsyncDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "wal_sync_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalSyncModeFsyncDelayInMs())));
+    if (walSyncModeFsyncDelayInMs > 0) {
+      conf.setWalSyncModeFsyncDelayInMs(walSyncModeFsyncDelayInMs);
     }
 
     long walFileSizeThreshold =

@@ -27,6 +27,10 @@ public class DataRegionId extends ConsensusGroupId {
     this.id = id;
   }
 
+  public DataRegionId(String id) {
+    this.id = Integer.parseInt(id);
+  }
+
   @Override
   public TConsensusGroupType getType() {
     return TConsensusGroupType.DataRegion;
