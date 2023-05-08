@@ -22,8 +22,12 @@ package org.apache.iotdb.db.pipe.core.collector.realtime;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +49,17 @@ public class PipeRealtimeHybridDataRegionCollector extends PipeRealtimeDataRegio
     this.pendingQueue =
         new ArrayBlockingQueue<>(
             PipeConfig.getInstance().getRealtimeCollectorPendingQueueCapacity());
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+      throws Exception {
+    throw new NotImplementedException("Not implement for customize.");
+  }
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    throw new NotImplementedException("Not implement for validate.");
   }
 
   @Override
@@ -167,5 +182,11 @@ public class PipeRealtimeHybridDataRegionCollector extends PipeRealtimeDataRegio
     }
     // if the state is USING_TABLET, discard the event and poll the next one.
     return null;
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    pendingQueue.clear();
   }
 }

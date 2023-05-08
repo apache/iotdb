@@ -22,10 +22,6 @@ package org.apache.iotdb.db.pipe.core.collector.realtime;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
@@ -38,25 +34,12 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   }
 
   @Override
-  public final void validate(PipeParameterValidator validator) throws PipeException {
-    // TODO: complete this method
-  }
-
-  @Override
-  public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
-    // TODO: complete this method
-  }
-
-  @Override
   public void start() {
-    // TODO: if the collector is not started, start it. if the collector is started, do nothing.
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
   }
 
   @Override
   public void close() {
-    // TODO: if the collector is not closed, close it. if the collector is closed, do nothing.
     PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
   }
 

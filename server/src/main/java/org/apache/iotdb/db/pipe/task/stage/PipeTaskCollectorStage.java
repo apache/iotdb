@@ -19,44 +19,53 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeAssignerSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.apache.commons.lang.NotImplementedException;
 
 public class PipeTaskCollectorStage implements PipeTaskStage {
 
-  private final PipeSubtaskExecutor executor;
-  private final PipeSubtask subtask;
+  private final PipeParameters collectorParameters;
+  private final String dataRegionId;
+  private PipeCollector pipeCollector;
 
-  PipeTaskCollectorStage(PipeAssignerSubtaskExecutor executor, PipeAssignerSubtask subtask) {
-    this.executor = executor;
-    this.subtask = subtask;
+  PipeTaskCollectorStage(PipeParameters collectorParameters, String dataRegionId) {
+    this.collectorParameters = collectorParameters;
+    this.dataRegionId = dataRegionId;
   }
 
   @Override
   public void create() throws PipeException {
-    executor.register(subtask);
+    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters, dataRegionId);
   }
 
   @Override
   public void start() throws PipeException {
-    executor.start(subtask.getTaskID());
+    try {
+      pipeCollector.start();
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   @Override
-  public void stop() throws PipeException {
-    executor.stop(subtask.getTaskID());
-  }
+  public void stop() throws PipeException {}
 
   @Override
   public void drop() throws PipeException {
-    executor.deregister(subtask.getTaskID());
+    try {
+      pipeCollector.close();
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   @Override
   public PipeSubtask getSubtask() {
-    return subtask;
+    throw new NotImplementedException("Pipe Collector Stage has no Sub Task.");
   }
 }

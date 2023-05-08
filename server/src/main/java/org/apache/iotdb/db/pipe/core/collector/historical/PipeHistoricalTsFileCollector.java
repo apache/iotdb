@@ -34,16 +34,13 @@ import org.apache.commons.lang.NotImplementedException;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class PipeHistoricalTsFileCollector implements PipeCollector {
-  private final AtomicBoolean hasBeenStarted;
   private final String dataRegionId;
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   public PipeHistoricalTsFileCollector(String dataRegionId) {
-    this.hasBeenStarted = new AtomicBoolean(false);
     this.dataRegionId = dataRegionId;
   }
 
@@ -60,11 +57,6 @@ public class PipeHistoricalTsFileCollector implements PipeCollector {
 
   @Override
   public void start() {
-    if (hasBeenStarted.get()) {
-      return;
-    }
-    hasBeenStarted.set(true);
-
     DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     dataRegion.writeLock("Pipe: collect historical TsFile");
@@ -98,6 +90,13 @@ public class PipeHistoricalTsFileCollector implements PipeCollector {
     }
 
     return pendingQueue.poll();
+  }
+
+  public boolean hasConsumedAll() {
+    if (pendingQueue == null) {
+      return false;
+    }
+    return pendingQueue.isEmpty();
   }
 
   @Override
