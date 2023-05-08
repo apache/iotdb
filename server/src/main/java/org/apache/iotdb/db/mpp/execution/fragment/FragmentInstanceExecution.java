@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution.fragment;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.exception.CpuNotEnoughException;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
@@ -31,6 +33,7 @@ import io.airlift.stats.CounterStat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -137,6 +140,20 @@ public class FragmentInstanceExecution {
             }
             // help for gc
             sink = null;
+
+            // delete tmp file if exists
+            if (context.mayHaveTmpFile()) {
+              String tmpFilePath =
+                  IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+                      + File.separator
+                      + context.getId().getFullId()
+                      + File.separator;
+              File tmpFile = new File(tmpFilePath);
+              if (tmpFile.exists()) {
+                FileUtils.deleteDirectory(tmpFile);
+              }
+            }
+
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {

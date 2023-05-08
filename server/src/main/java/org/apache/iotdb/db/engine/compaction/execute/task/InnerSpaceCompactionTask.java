@@ -103,9 +103,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void doCompaction() {
+  protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
-      return;
+      return true;
     }
     long startTime = System.currentTimeMillis();
     // get resource of target file
@@ -117,6 +117,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
         selectedFileSize / 1024 / 1024);
+    boolean isSuccess = true;
 
     try {
       targetTsFileResource =
@@ -264,6 +265,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
+      isSuccess = false;
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
@@ -303,6 +305,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } finally {
       releaseFileLocksAndResetMergingStatus();
+      return isSuccess;
     }
   }
 

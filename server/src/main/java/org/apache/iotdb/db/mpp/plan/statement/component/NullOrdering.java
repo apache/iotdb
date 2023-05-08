@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public enum SortKey {
-  TIME,
-  TIMESERIES,
-  DEVICE,
-  QUERYID,
-  DATANODEID,
-  ELAPSEDTIME,
-  STATEMENT
+public enum NullOrdering {
+  FIRST,
+  LAST;
+
+  public boolean isFirst() {
+    return this == FIRST;
+  }
+
+  public NullOrdering reverse() {
+    return this == NullOrdering.FIRST ? NullOrdering.LAST : NullOrdering.FIRST;
+  }
 }

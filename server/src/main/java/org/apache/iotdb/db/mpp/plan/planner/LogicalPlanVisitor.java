@@ -144,6 +144,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         : null,
                     analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
+        // sortOperator push down
+        if (queryStatement.needPushDownSort()) {
+          subPlanBuilder =
+              subPlanBuilder.planOrderBy(
+                  analysis.getDeviceToOrderByExpressions().get(deviceName),
+                  analysis.getDeviceToSortItems().get(deviceName));
+        }
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
       }
       // convert to ALIGN BY DEVICE view
@@ -152,7 +159,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               deviceToSubPlanMap,
               analysis.getDeviceViewOutputExpressions(),
               analysis.getDeviceViewInputIndexesMap(),
-              queryStatement.getSortItemList());
+              analysis.getSelectExpressions(),
+              queryStatement);
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -169,12 +177,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (queryStatement.isAggregationQuery()) {
       planBuilder =
-          planBuilder.planHaving(
+          planBuilder.planHavingAndTransform(
               analysis.getHavingExpression(),
               analysis.getSelectExpressions(),
+              analysis.getOrderByExpressions(),
               queryStatement.isGroupByTime(),
               queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
+    }
+
+    if (!queryStatement.needPushDownSort()) {
+      planBuilder =
+          planBuilder.planOrderBy(
+              queryStatement, analysis.getOrderByExpressions(), analysis.getSelectExpressions());
     }
 
     // other upstream node
