@@ -345,11 +345,8 @@ public class CompactionTaskManager implements IService {
         .put(task, summary);
   }
 
-  public Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> getCompactionTaskStatistic() {
-    Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic =
-        new EnumMap<>(CompactionTaskType.class);
-
-    // update statistic of waiting tasks
+  private void getWaitingTaskStatus(
+      Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic) {
     List<AbstractCompactionTask> waitingTaskList =
         this.candidateCompactionTaskQueue.getAllElementAsList();
     for (AbstractCompactionTask task : waitingTaskList) {
@@ -360,16 +357,18 @@ public class CompactionTaskManager implements IService {
                     ? CompactionTaskType.INNER_SEQ
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.Waiting, (k, v) -> v == null ? 1 : v + 1);
+            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
       } else {
         statistic
             .computeIfAbsent(
                 CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.Waiting, (k, v) -> v == null ? 1 : v + 1);
+            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
       }
     }
+  }
 
-    // update statistic of running tasks
+  private void getRunningTaskStatus(
+      Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic) {
     List<AbstractCompactionTask> runningTaskList = this.getRunningCompactionTaskList();
     for (AbstractCompactionTask task : runningTaskList) {
       if (task instanceof InnerSpaceCompactionTask) {
@@ -379,14 +378,25 @@ public class CompactionTaskManager implements IService {
                     ? CompactionTaskType.INNER_SEQ
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.Running, (k, v) -> v == null ? 1 : v + 1);
+            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
       } else {
         statistic
             .computeIfAbsent(
                 CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.Running, (k, v) -> v == null ? 1 : v + 1);
+            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
       }
     }
+  }
+
+  public Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> getCompactionTaskStatistic() {
+    Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic =
+        new EnumMap<>(CompactionTaskType.class);
+
+    // update statistic of waiting tasks
+    getWaitingTaskStatus(statistic);
+
+    // update statistic of running tasks
+    getRunningTaskStatus(statistic);
 
     return statistic;
   }

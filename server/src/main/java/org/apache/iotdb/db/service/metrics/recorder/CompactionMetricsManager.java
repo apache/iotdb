@@ -215,26 +215,26 @@ public class CompactionMetricsManager {
     this.waitingSeqInnerCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
     this.waitingUnseqInnerCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
     this.waitingCrossCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Waiting, 0));
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
     this.runningSeqInnerCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Running, 0));
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
     this.runningUnseqInnerCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Running, 0));
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
     this.runningCrossCompactionTaskNum.set(
         compactionTaskStatisticMap
             .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
-            .getOrDefault(CompactionTaskStatus.Running, 0));
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
   }
 }

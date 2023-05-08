@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.constant;
 
 public enum CompactionTaskStatus {
-  Waiting,
-  Running,
-  Finished,
-  Aborted
+  WAITING,
+  RUNNING,
+  FINISHED,
+  ABORTED
 }
