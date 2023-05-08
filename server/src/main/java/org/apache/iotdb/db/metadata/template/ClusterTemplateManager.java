@@ -602,6 +602,42 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  public void invalid(String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      for (PartialPath fullPath : pathSetTemplateMap.keySet()) {
+        if (fullPath.getFullPath().startsWith(database)) {
+          int templateId = pathSetTemplateMap.remove(fullPath);
+          templateSetOnPathsMap.get(templateId).remove(fullPath);
+          if (templateSetOnPathsMap.get(templateId).size() == 0
+              && (!templatePreSetOnPathsMap.containsKey(templateId)
+                  || templatePreSetOnPathsMap.get(templateId).size() == 0)) {
+            templateSetOnPathsMap.remove(templateId);
+            templatePreSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
+        }
+      }
+      for (PartialPath fullPath : pathPreSetTemplateMap.keySet()) {
+        if (fullPath.getFullPath().startsWith(database)) {
+          int templateId = pathPreSetTemplateMap.remove(fullPath);
+          templatePreSetOnPathsMap.get(templateId).remove(fullPath);
+          if ((!templateSetOnPathsMap.containsKey(templateId)
+                  || templateSetOnPathsMap.get(templateId).size() == 0)
+              && templatePreSetOnPathsMap.get(templateId).size() == 0) {
+            templateSetOnPathsMap.remove(templateId);
+            templatePreSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
+        }
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   @TestOnly
   public void putTemplate(Template template) {
     templateIdMap.put(template.getId(), template);

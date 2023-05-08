@@ -416,6 +416,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       DataNodeSchemaCache.getInstance().invalidateAll();
+      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
