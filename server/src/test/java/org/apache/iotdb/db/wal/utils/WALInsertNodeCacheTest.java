@@ -110,6 +110,9 @@ public class WALInsertNodeCacheTest {
     WALEntryPosition position3 = flushListener3.getWalPipeHandler().getWalEntryPosition();
     // wait until wal flushed
     walNode.rollWALFile();
+    while (!walNode.isAllWALEntriesConsumed() || !position3.canRead()) {
+      Thread.sleep(50);
+    }
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
     assertEquals(node1, cache.get(position1));
