@@ -91,7 +91,7 @@ public class NetMetrics implements IMetricSet {
     }
     metricService.createAutoGauge(
         CONNECTION_NUM,
-        MetricLevel.IMPORTANT,
+        MetricLevel.NORMAL,
         netMetricManager,
         INetMetricManager::getConnectionNum,
         PROCESS_NAME,

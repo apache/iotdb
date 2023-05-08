@@ -99,6 +99,7 @@ public class IoTDBOrderByIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
@@ -201,7 +202,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void orderByTest2() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum";
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum,time";
     int[] ans = {13, 11, 10, 3, 1, 5, 4, 7, 9, 8, 2, 12, 0, 6, 14};
     testNormalOrderBy(sql, ans);
   }
@@ -229,7 +230,8 @@ public class IoTDBOrderByIT {
 
   @Test
   public void orderByTest6() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc";
+    String sql =
+        "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc, time asc";
     int[] ans = {6, 14, 0, 12, 2, 8, 9, 7, 4, 5, 1, 3, 10, 11, 13};
     testNormalOrderBy(sql, ans);
   }

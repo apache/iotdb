@@ -19,26 +19,25 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import java.io.Serializable;
 import java.util.Comparator;
 
-public class MergeSortKeyComparator implements Comparator<MergeSortKey>, Serializable {
+public class SortKeyComparator implements Comparator<SortKey>, Serializable {
 
   private final boolean nullFirst;
   private final int index;
-  private final Comparator<MergeSortKey> originalComparator;
+  private final Comparator<SortKey> originalComparator;
 
-  public MergeSortKeyComparator(
-      int index, boolean nullFirst, Comparator<MergeSortKey> originalComparator) {
+  public SortKeyComparator(int index, boolean nullFirst, Comparator<SortKey> originalComparator) {
     this.nullFirst = nullFirst;
     this.index = index;
     this.originalComparator = originalComparator;
   }
 
   @Override
-  public int compare(MergeSortKey o1, MergeSortKey o2) {
+  public int compare(SortKey o1, SortKey o2) {
     boolean o1IsNull = o1.tsBlock.getColumn(index).isNull(o1.rowIndex);
     boolean o2IsNull = o2.tsBlock.getColumn(index).isNull(o2.rowIndex);
 

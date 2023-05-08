@@ -52,8 +52,8 @@ When you call the createTimeseries method, you should assign the path string as 
 // timeseries root.sg.a
 String path = "root.sg.a";
 
-// timeseries root.sg.`a``"b`
-String path = "root.sg.`a``\"b`";
+// timeseries root.sg.`a.``"b`
+String path = "root.sg.`a.``\"b`";
 
 // timeseries root.sg.`111`
 String path = "root.sg.`111`";

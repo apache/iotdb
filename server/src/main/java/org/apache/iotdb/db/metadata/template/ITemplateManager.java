@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -48,7 +49,7 @@ public interface ITemplateManager {
    * @param name
    * @return Template
    */
-  Template getTemplate(String name);
+  Template getTemplate(String name) throws IoTDBException;
 
   Template getTemplate(int id);
 

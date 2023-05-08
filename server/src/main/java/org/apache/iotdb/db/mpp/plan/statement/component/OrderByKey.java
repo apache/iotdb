@@ -17,6 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.historical;
+package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public class PipeHistoricalCollector {}
+public class OrderByKey {
+  public static final String TIME = "TIME";
+  public static final String TIMESERIES = "TIMESERIES";
+  public static final String DEVICE = "DEVICE";
+  public static final String QUERYID = "QUERYID";
+  public static final String DATANODEID = "DATANODEID";
+  public static final String ELAPSEDTIME = "ELAPSEDTIME";
+  public static final String STATEMENT = "STATEMENT";
+}

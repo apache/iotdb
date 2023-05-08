@@ -87,12 +87,12 @@ import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
@@ -1180,7 +1180,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setOrderByComponent(
           parseOrderByClause(
               ctx.orderByClause(),
-              ImmutableSet.of(SortKey.TIME, SortKey.DEVICE, SortKey.TIMESERIES)));
+              ImmutableSet.of(OrderByKey.TIME, OrderByKey.DEVICE, OrderByKey.TIMESERIES)));
     }
 
     // parse FILL
@@ -2990,11 +2990,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseOrderByClause(
               ctx.orderByClause(),
               ImmutableSet.of(
-                  SortKey.TIME,
-                  SortKey.QUERYID,
-                  SortKey.DATANODEID,
-                  SortKey.ELAPSEDTIME,
-                  SortKey.STATEMENT)));
+                  OrderByKey.TIME,
+                  OrderByKey.QUERYID,
+                  OrderByKey.DATANODEID,
+                  OrderByKey.ELAPSEDTIME,
+                  OrderByKey.STATEMENT)));
     }
 
     // parse LIMIT & OFFSET

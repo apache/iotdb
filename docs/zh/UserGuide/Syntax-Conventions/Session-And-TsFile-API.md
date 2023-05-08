@@ -52,8 +52,8 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SN
 // 时间序列 root.sg.a
 String path = "root.sg.a";
 
-// 时间序列 root.sg.`a``"b`
-String path = "root.sg.`a``\"b`";
+// 时间序列 root.sg.`a.``"b`
+String path = "root.sg.`a.``\"b`";
 
 // 时间序列 root.sg.`111`
 String path = "root.sg.`111`";

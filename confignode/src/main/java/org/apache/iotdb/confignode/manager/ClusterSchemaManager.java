@@ -125,6 +125,13 @@ public class ClusterSchemaManager {
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
 
+    if (getPartitionManager().isDatabasePreDeleted(databaseSchemaPlan.getSchema().getName())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.METADATA_ERROR,
+          String.format(
+              "Some other task is deleting database %s", databaseSchemaPlan.getSchema().getName()));
+    }
+
     try {
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
@@ -741,11 +748,14 @@ public class ClusterSchemaManager {
       }
     }
 
-    Template template =
-        clusterSchemaInfo
-            .getTemplate(new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()))
-            .getTemplateList()
-            .get(0);
+    TemplateInfoResp resp =
+        clusterSchemaInfo.getTemplate(
+            new GetSchemaTemplatePlan(templateExtendInfo.getTemplateName()));
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.getStatus();
+    }
+
+    Template template = resp.getTemplateList().get(0);
     boolean needExtend = false;
     for (String measurement : templateExtendInfo.getMeasurements()) {
       if (!template.hasSchema(measurement)) {

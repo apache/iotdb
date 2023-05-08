@@ -86,10 +86,10 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -416,7 +416,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (orderByParameter != null && !orderByParameter.getSortItemList().isEmpty()) {
       List<SortItem> sortItemList = orderByParameter.getSortItemList();
       checkState(
-          sortItemList.size() == 1 && sortItemList.get(0).getSortKey().equals(SortKey.TIMESERIES),
+          sortItemList.size() == 1
+              && sortItemList.get(0).getSortKey().equals(OrderByKey.TIMESERIES),
           "Last queries only support sorting by timeseries now.");
       boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
       sourceExpressions =

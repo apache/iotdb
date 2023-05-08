@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.wal.io.WALMetaData;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import org.slf4j.Logger;
@@ -182,7 +183,13 @@ public class WALBuffer extends AbstractWALBuffer {
         WALEntry walEntry = null;
         try {
           // for better fsync performance, wait a while to enlarge write batch
-          walEntry = walEntries.poll(config.getFsyncWalDelayInMs(), TimeUnit.MILLISECONDS);
+          if (config.getWalMode().equals(WALMode.ASYNC)) {
+            walEntry =
+                walEntries.poll(config.getWalAsyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+          } else {
+            walEntry =
+                walEntries.poll(config.getWalSyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+          }
         } catch (InterruptedException e) {
           logger.warn(
               "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
