@@ -156,8 +156,10 @@ class IoTDBRpcDataSet(object):
             return True
         return False
 
-    def _to_bitstring(self, b):
-        return "{:0{}b}".format(int(binascii.hexlify(b), 16), 8 * len(b))
+    def _to_bitbuffer(self, b):
+        return bytes(
+            "{:0{}b}".format(int(binascii.hexlify(b), 16), 8 * len(b)), "utf-8"
+        )
 
     def resultset_to_pandas(self):
         result = {}
@@ -249,8 +251,8 @@ class IoTDBRpcDataSet(object):
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
-                    bitmap_str = self._to_bitstring(bitmap_buffer)
-                    bit_mask = (np.fromstring(bitmap_str, "u1") - ord("0")).astype(bool)
+                    buffer = self._to_bitbuffer(bitmap_buffer)
+                    bit_mask = (np.frombuffer(buffer, "u1") - ord("0")).astype(bool)
                     if len(bit_mask) != total_length:
                         bit_mask = bit_mask[:total_length]
                     tmp_array[bit_mask] = data_array

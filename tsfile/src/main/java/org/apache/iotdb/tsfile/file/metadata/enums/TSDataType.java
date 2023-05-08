@@ -143,4 +143,21 @@ public enum TSDataType {
         throw new UnSupportedDataTypeException(this.toString());
     }
   }
+
+  /** @return whether a comparable datatype */
+  public boolean isComparable() {
+    switch (this) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+      case TEXT:
+      case BOOLEAN:
+        return true;
+      case VECTOR:
+        return false;
+      default:
+        throw new UnSupportedDataTypeException(this.toString());
+    }
+  }
 }

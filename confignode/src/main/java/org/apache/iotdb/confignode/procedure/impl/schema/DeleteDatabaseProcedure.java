@@ -124,8 +124,6 @@ public class DeleteDatabaseProcedure
                     .removeRegionGroupCache(regionReplicaSet.getRegionId());
                 env.getConfigManager()
                     .getLoadManager()
-                    .getRouteBalancer()
-                    .getRegionRouteMap()
                     .removeRegionRouteCache(regionReplicaSet.getRegionId());
 
                 if (regionReplicaSet

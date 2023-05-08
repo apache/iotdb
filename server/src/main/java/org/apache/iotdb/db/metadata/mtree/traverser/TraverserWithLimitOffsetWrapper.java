@@ -109,6 +109,11 @@ public class TraverserWithLimitOffsetWrapper<R, N extends IMNode<N>> extends Tra
   }
 
   @Override
+  protected boolean mayTargetNodeType(N node) {
+    return false;
+  }
+
+  @Override
   public void close() {
     traverser.close();
   }

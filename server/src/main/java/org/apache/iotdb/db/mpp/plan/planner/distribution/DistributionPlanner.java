@@ -40,7 +40,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import org.apache.commons.lang3.Validate;
@@ -164,8 +163,8 @@ public class DistributionPlanner {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
     return nodeGroupContext.isAlignByDevice()
         && orderByComponent != null
-        && !(orderByComponent.getSortItemList().isEmpty()
-            || orderByComponent.getSortItemList().get(0).getSortKey().equals(SortKey.DEVICE));
+        && (!orderByComponent.getSortItemList().isEmpty()
+            && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {

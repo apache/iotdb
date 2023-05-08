@@ -118,15 +118,23 @@ struct TSendFragmentInstanceResp {
   2: optional string message
 }
 
-struct TSendPlanNodeReq {
+struct TSendSinglePlanNodeReq {
   1: required TPlanNode planNode
   2: required common.TConsensusGroupId consensusGroupId
 }
 
-struct TSendPlanNodeResp {
+struct TSendSinglePlanNodeResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
+}
+
+struct TSendBatchPlanNodeReq {
+  1: required list<TSendSinglePlanNodeReq> requests;
+}
+
+struct TSendBatchPlanNodeResp {
+  1: required list<TSendSinglePlanNodeResp> responses;
 }
 
 struct TFetchFragmentInstanceInfoReq {
@@ -365,14 +373,8 @@ struct TCheckTimeSeriesExistenceResp{
   2: optional bool exists
 }
 
-struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeMeta
-}
-
-struct TOperatePipeOnDataNodeReq {
-    1: required string pipeName
-    // ordinal of {@linkplain SyncOperation}
-    2: required i8 operation
+struct TPushPipeMetaReq {
+  1: required list<binary> pipeMetas
 }
 
 // ====================================================
@@ -470,9 +472,9 @@ service IDataNodeRPCService {
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**
-  * dispatch PlanNode to remote node for write request in order to save resource
+  * dispatch PlanNodes in batches to remote node for write request in order to save resource
   */
-  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
+  TSendBatchPlanNodeResp sendBatchPlanNode(TSendBatchPlanNodeReq req);
 
   TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
@@ -753,14 +755,9 @@ service IDataNodeRPCService {
   TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 
  /**
-  * Create PIPE on DataNode
+  * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
-
- /**
-  * Start, stop or drop PIPE on DataNode
-  */
-  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
+  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
 
  /**
   * Execute CQ on DataNode

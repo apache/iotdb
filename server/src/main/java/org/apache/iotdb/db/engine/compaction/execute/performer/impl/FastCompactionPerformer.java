@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.IUnseqCompactionPerformer;
@@ -81,8 +80,6 @@ public class FastCompactionPerformer
 
   private boolean isCrossCompaction;
 
-  private long tempFileSize = 0L;
-
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -105,8 +102,7 @@ public class FastCompactionPerformer
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), targetFiles.size());
+    this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
@@ -139,11 +135,7 @@ public class FastCompactionPerformer
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         // Add temp file metrics
-        long currentTempFileSize = compactionWriter.getWriterSize();
-        TsFileMetricManager.getInstance()
-            .addCompactionTempFileSize(
-                !isCrossCompaction, !seqFiles.isEmpty(), currentTempFileSize - tempFileSize);
-        tempFileSize = currentTempFileSize;
+        subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
@@ -156,10 +148,6 @@ public class FastCompactionPerformer
       sortedSourceFiles = null;
       readerCacheMap = null;
       modificationCache = null;
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), -targetFiles.size());
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(!isCrossCompaction, !seqFiles.isEmpty(), -tempFileSize);
     }
   }
 
@@ -168,7 +156,8 @@ public class FastCompactionPerformer
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>, including
+    // empty value chunk metadata
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new LinkedHashMap<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();

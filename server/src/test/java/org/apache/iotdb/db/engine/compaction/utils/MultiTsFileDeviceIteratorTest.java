@@ -401,7 +401,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new ReadChunkCompactionPerformer(),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -545,7 +545,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new ReadChunkCompactionPerformer(),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -688,7 +688,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new ReadPointCompactionPerformer(),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -831,7 +831,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new ReadPointCompactionPerformer(),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -984,7 +984,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -1129,7 +1129,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(),
             0L);
-    task.start();
+    Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());

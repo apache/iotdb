@@ -250,9 +250,15 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         } else {
           pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
-        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-        valuePageHeaders.get(i).add(pageHeader);
-        compressedValuePageDatas.get(i).add(compressedPageData);
+        if (pageHeader.getCompressedSize() == 0) {
+          // empty value page
+          valuePageHeaders.get(i).add(null);
+          compressedValuePageDatas.get(i).add(null);
+        } else {
+          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+          valuePageHeaders.get(i).add(pageHeader);
+          compressedValuePageDatas.get(i).add(compressedPageData);
+        }
       }
     }
 
@@ -294,8 +300,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
             .readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
     List<Chunk> valueChunks = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (valueChunkMetadata == null) {
-        // value chunk has been deleted completely
+      if (valueChunkMetadata == null || valueChunkMetadata.getStatistics().getCount() == 0) {
+        // value chunk has been deleted completely or is empty value chunk
         valueChunks.add(null);
         continue;
       }

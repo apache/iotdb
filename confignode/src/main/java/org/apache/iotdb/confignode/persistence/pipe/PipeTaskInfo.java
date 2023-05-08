@@ -144,6 +144,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public Iterable<PipeMeta> getPipeMetaList() {
+    return pipeMetaKeeper.getPipeMetaList();
+  }
+
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override

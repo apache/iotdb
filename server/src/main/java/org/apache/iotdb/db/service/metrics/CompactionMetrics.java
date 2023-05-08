@@ -120,20 +120,14 @@ public class CompactionMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "cross");
     metricService.getOrCreateTimer(
-        Metric.COST_TASK.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        "inner_seq_compaction");
+        Metric.COST_TASK.toString(), MetricLevel.CORE, Tag.NAME.toString(), "inner_seq_compaction");
     metricService.getOrCreateTimer(
         Metric.COST_TASK.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         Tag.NAME.toString(),
         "inner_unseq_compaction");
     metricService.getOrCreateTimer(
-        Metric.COST_TASK.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        "cross_compaction");
+        Metric.COST_TASK.toString(), MetricLevel.CORE, Tag.NAME.toString(), "cross_compaction");
   }
 
   private void unbindTaskInfo(AbstractMetricService metricService) {

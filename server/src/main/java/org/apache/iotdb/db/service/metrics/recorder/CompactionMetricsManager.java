@@ -159,7 +159,7 @@ public class CompactionMetricsManager {
               timeCost,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               "cross_compaction");
     } else if (isSeq) {
@@ -170,7 +170,7 @@ public class CompactionMetricsManager {
               timeCost,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               "inner_seq_compaction");
     } else {
@@ -181,7 +181,7 @@ public class CompactionMetricsManager {
               timeCost,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               "inner_unseq_compaction");
     }

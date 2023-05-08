@@ -42,6 +42,11 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
   }
 
   @Override
+  protected boolean mayTargetNodeType(N node) {
+    return node.isMeasurement();
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(N node) {
     return node.isMeasurement();
   }
