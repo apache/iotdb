@@ -1062,6 +1062,16 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
+    // the buffer for sort operator to calculate
+    conf.setSortBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
+                .trim()));
+
+    // tmp filePath for sort operator
+    conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
+
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
   }
 

@@ -87,9 +87,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -549,10 +549,10 @@ public class LogicalPlanBuilder {
       sortItemList = new ArrayList<>();
     }
     if (!queryStatement.isOrderByDevice()) {
-      sortItemList.add(new SortItem(SortKey.DEVICE, Ordering.ASC));
+      sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
     if (!queryStatement.isOrderByTime()) {
-      sortItemList.add(new SortItem(SortKey.TIME, Ordering.ASC));
+      sortItemList.add(new SortItem(OrderByKey.TIME, Ordering.ASC));
     }
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
