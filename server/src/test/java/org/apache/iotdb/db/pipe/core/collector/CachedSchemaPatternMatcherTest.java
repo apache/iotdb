@@ -22,6 +22,9 @@ package org.apache.iotdb.db.pipe.core.collector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -120,6 +123,14 @@ public class CachedSchemaPatternMatcherTest {
     public PipeRealtimeFakeDataRegionCollector(String pattern, String dataRegionId) {
       super(pattern, dataRegionId);
     }
+
+    @Override
+    public void validate(PipeParameterValidator validator) throws Exception {}
+
+    @Override
+    public void customize(
+        PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+        throws Exception {}
 
     @Override
     public Event supply() {
