@@ -26,10 +26,15 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RegionRouteCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouteCache.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -49,7 +54,10 @@ public class RegionRouteCache {
   private final AtomicInteger leaderId;
   private final AtomicReference<TRegionReplicaSet> regionPriority;
 
+  private final TConsensusGroupId consensusGroupId;
+
   public RegionRouteCache(TConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
     switch (consensusGroupId.getType()) {
       case SchemaRegion:
         this.consensusProtocolClass = SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
@@ -77,6 +85,10 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.getLeft() > this.leaderSample.get().getLeft()) {
           this.leaderSample.set(leaderSample);
+          LOGGER.info(
+              "[NoElect] Cache leader sample: {} for region group: {}",
+              leaderSample,
+              consensusGroupId);
         }
         break;
       case ConsensusFactory.IOT_CONSENSUS:
@@ -98,6 +110,10 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
           leaderId.set(leaderSample.get().getRight());
+          LOGGER.info(
+              "[NoElect] Periodic update leaderId: {} for region group: {}",
+              leaderId.get(),
+              consensusGroupId);
           return true;
         }
         return false;
@@ -126,6 +142,7 @@ public class RegionRouteCache {
    */
   public void forceUpdateRegionPriority(TRegionReplicaSet regionPriority) {
     this.regionPriority.set(regionPriority);
+    LOGGER.info("[NoElect] Force update region priority: {}", regionPriority);
   }
 
   public int getLeaderId() {
