@@ -25,22 +25,19 @@ import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.lang.NotImplementedException;
-
 public class PipeTaskCollectorStage implements PipeTaskStage {
 
   private final PipeParameters collectorParameters;
-  private final String dataRegionId;
+
   private PipeCollector pipeCollector;
 
-  PipeTaskCollectorStage(PipeParameters collectorParameters, String dataRegionId) {
+  PipeTaskCollectorStage(PipeParameters collectorParameters) {
     this.collectorParameters = collectorParameters;
-    this.dataRegionId = dataRegionId;
   }
 
   @Override
   public void create() throws PipeException {
-    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters, dataRegionId);
+    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
   }
 
   @Override
@@ -53,7 +50,9 @@ public class PipeTaskCollectorStage implements PipeTaskStage {
   }
 
   @Override
-  public void stop() throws PipeException {}
+  public void stop() throws PipeException {
+    // collector continuously collects data, so do nothing in stop
+  }
 
   @Override
   public void drop() throws PipeException {
@@ -66,6 +65,6 @@ public class PipeTaskCollectorStage implements PipeTaskStage {
 
   @Override
   public PipeSubtask getSubtask() {
-    throw new NotImplementedException("Pipe Collector Stage has no Sub Task.");
+    throw new UnsupportedOperationException("Collector stage does not have subtask.");
   }
 }

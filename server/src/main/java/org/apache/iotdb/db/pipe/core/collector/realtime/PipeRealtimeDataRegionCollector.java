@@ -19,18 +19,30 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
-  protected final String pattern;
-  protected final String dataRegionId;
+  protected String pattern;
+  protected String dataRegionId;
 
-  public PipeRealtimeDataRegionCollector(String pattern, String dataRegionId) {
-    this.pattern = pattern;
-    this.dataRegionId = dataRegionId;
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    validator.validateRequiredAttribute(PipeCollectorConstant.PATTERN_PATTERN_KEY);
+    validator.validateRequiredAttribute(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    pattern = parameters.getString(PipeCollectorConstant.PATTERN_PATTERN_KEY);
+    dataRegionId = parameters.getString(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
   }
 
   @Override

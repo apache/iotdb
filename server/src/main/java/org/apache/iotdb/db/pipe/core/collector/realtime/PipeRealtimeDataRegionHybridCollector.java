@@ -22,44 +22,28 @@ package org.apache.iotdb.db.pipe.core.collector.realtime;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
 // TODO: make this collector as a builtin pipe plugin. register it in BuiltinPipePlugin.
-public class PipeRealtimeHybridDataRegionCollector extends PipeRealtimeDataRegionCollector {
+public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegionCollector {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeHybridDataRegionCollector.class);
+      LoggerFactory.getLogger(PipeRealtimeDataRegionHybridCollector.class);
 
   // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final ArrayBlockingQueue<PipeRealtimeCollectEvent> pendingQueue;
 
-  public PipeRealtimeHybridDataRegionCollector(String pattern, String dataRegionId) {
-    super(pattern, dataRegionId);
+  public PipeRealtimeDataRegionHybridCollector() {
     this.pendingQueue =
         new ArrayBlockingQueue<>(
             PipeConfig.getInstance().getRealtimeCollectorPendingQueueCapacity());
-  }
-
-  @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
-      throws Exception {
-    throw new NotImplementedException("Not implement for customize.");
-  }
-
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    throw new NotImplementedException("Not implement for validate.");
   }
 
   @Override

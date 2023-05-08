@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
-import org.apache.iotdb.db.pipe.config.PipeConstant;
-import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalTsFileCollector;
+import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeHybridDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -31,28 +30,32 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeIoTDBCollector implements PipeCollector {
+public class IoTDBDataRegionCollector implements PipeCollector {
+
   private final AtomicBoolean hasBeenStarted;
-  private final String dataRegionId;
-  private PipeRealtimeDataRegionCollector realtimeCollector;
-  private PipeHistoricalTsFileCollector historicalCollector;
 
-  public PipeIoTDBCollector(String dataRegionId) {
-    this.hasBeenStarted = new AtomicBoolean(false);
-    this.dataRegionId = dataRegionId;
-  }
+  private final PipeRealtimeDataRegionCollector realtimeCollector;
+  // TODO: support pattern in historical collector
+  private final PipeHistoricalDataRegionTsFileCollector historicalCollector;
 
-  @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
-      throws Exception {
-    String pattern = parameters.getString(PipeConstant.PATTERN_ARGUMENT_NAME);
-    this.realtimeCollector = new PipeRealtimeHybridDataRegionCollector(pattern, dataRegionId);
-    this.historicalCollector = new PipeHistoricalTsFileCollector(dataRegionId);
+  public IoTDBDataRegionCollector() {
+    hasBeenStarted = new AtomicBoolean(false);
+    realtimeCollector = new PipeRealtimeDataRegionHybridCollector();
+    historicalCollector = new PipeHistoricalDataRegionTsFileCollector();
   }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeConstant.PATTERN_ARGUMENT_NAME);
+    // TODO: require more attributes
+    realtimeCollector.validate(validator);
+    historicalCollector.validate(validator);
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    realtimeCollector.customize(parameters, configuration);
+    historicalCollector.customize(parameters, configuration);
   }
 
   @Override
@@ -60,8 +63,8 @@ public class PipeIoTDBCollector implements PipeCollector {
     if (hasBeenStarted.get()) {
       return;
     }
-
     hasBeenStarted.set(true);
+
     realtimeCollector.start();
     historicalCollector.start();
   }

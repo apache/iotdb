@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
-import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeHybridDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.EventType;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -39,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -79,14 +82,51 @@ public class PipeRealtimeCollectTest {
   public void testRealtimeCollectProcess() throws ExecutionException, InterruptedException {
     // set up realtime collector
 
-    try (PipeRealtimeHybridDataRegionCollector collector1 =
-            new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion1);
-        PipeRealtimeHybridDataRegionCollector collector2 =
-            new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion1);
-        PipeRealtimeHybridDataRegionCollector collector3 =
-            new PipeRealtimeHybridDataRegionCollector(pattern1, dataRegion2);
-        PipeRealtimeHybridDataRegionCollector collector4 =
-            new PipeRealtimeHybridDataRegionCollector(pattern2, dataRegion2)) {
+    try (PipeRealtimeDataRegionHybridCollector collector1 =
+            new PipeRealtimeDataRegionHybridCollector();
+        PipeRealtimeDataRegionHybridCollector collector2 =
+            new PipeRealtimeDataRegionHybridCollector();
+        PipeRealtimeDataRegionHybridCollector collector3 =
+            new PipeRealtimeDataRegionHybridCollector();
+        PipeRealtimeDataRegionHybridCollector collector4 =
+            new PipeRealtimeDataRegionHybridCollector()) {
+
+      collector1.customize(
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion1);
+                }
+              }),
+          null);
+      collector2.customize(
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion1);
+                }
+              }),
+          null);
+      collector3.customize(
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion2);
+                }
+              }),
+          null);
+      collector4.customize(
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion2);
+                }
+              }),
+          null);
 
       PipeRealtimeDataRegionCollector[] collectors =
           new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};
