@@ -203,7 +203,7 @@
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
-        <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
+        <scalatest_2.12.version>3.2.14</scalatest_2.12.version>
         <io.airlift.units.version>1.6</io.airlift.units.version>
         <io.airlift.slice.version>0.41</io.airlift.slice.version>
         <dep.airlift.version>200</dep.airlift.version>
@@ -491,8 +491,8 @@
             </dependency>
             <dependency>
                 <groupId>org.scalatest</groupId>
-                <artifactId>scalatest_2.11</artifactId>
-                <version>${scalatest_2.11.version}</version>
+                <artifactId>scalatest_2.12</artifactId>
+                <version>${scalatest_2.12.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
