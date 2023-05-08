@@ -28,7 +28,6 @@ import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
-import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -77,7 +76,6 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
     }
     stateMachine.takeSnapshot(latestSnapshotDir);
     List<Path> snapshotFiles = stateMachine.getSnapshotFiles(latestSnapshotDir);
-    snapshotFiles.addAll(IOUtils.collectPaths(latestSnapshotDir));
     directorySnapshot = new DirectorySnapshot(latestSnapshotDir, snapshotFiles, currNodes);
     directorySnapshot.setLastLogIndex(snapshotIndex);
     directorySnapshot.setLastLogTerm(snapshotTerm);

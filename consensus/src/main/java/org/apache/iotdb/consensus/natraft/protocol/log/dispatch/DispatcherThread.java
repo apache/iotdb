@@ -139,7 +139,9 @@ class DispatcherThread extends DynamicThread {
       long startTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       AppendEntryResult appendEntryResult = SyncClientAdaptor.appendEntries(client, request);
       Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
-      handler.onComplete(appendEntryResult);
+      if (appendEntryResult != null) {
+        handler.onComplete(appendEntryResult);
+      }
     } catch (Exception e) {
       handler.onError(e);
     }
@@ -163,7 +165,9 @@ class DispatcherThread extends DynamicThread {
       AppendEntryResult appendEntryResult =
           SyncClientAdaptor.appendCompressedEntries(client, request);
       Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
-      handler.onComplete(appendEntryResult);
+      if (appendEntryResult != null) {
+        handler.onComplete(appendEntryResult);
+      }
     } catch (Exception e) {
       handler.onError(e);
     }

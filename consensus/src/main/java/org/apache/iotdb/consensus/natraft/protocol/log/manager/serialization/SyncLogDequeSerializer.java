@@ -399,20 +399,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logger.error("Unexpected exception when flushing log in {}", name);
         throw new RuntimeException(e);
       }
-    } else {
-      switchBuffer();
-      flushingLogFuture = flushingLogExecutorService.submit(() -> flushLogBufferTask(lastLogIndex));
     }
 
-    if (!isAsyncFlush) {
-      try {
-        flushingLogFuture.get();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      } catch (ExecutionException e) {
-        logger.error("Unexpected exception when flushing log in {}", name);
-        throw new RuntimeException(e);
-      }
+    switchBuffer();
+    if (isAsyncFlush) {
+      flushingLogFuture = flushingLogExecutorService.submit(() -> flushLogBufferTask(lastLogIndex));
+    } else {
+      flushLogBufferTask(lastLogIndex);
     }
   }
 
@@ -449,14 +442,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       checkCloseCurrentFile(currentLastIndex);
     } catch (IOException e) {
+      logger.error("IOError in logs serialization: ", e);
+    } catch (Throwable e) {
       logger.error("Error in logs serialization: ", e);
-      return;
     }
 
     flushingLogDataBuffer.clear();
     flushingLogIndexBuffer.clear();
 
-    switchBuffer();
     logger.debug("End flushing log buffer.");
   }
 
@@ -796,36 +789,30 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   /** for unclosed file, the file name is ${startIndex}-${Long.MAX_VALUE}-{version} */
   private void createNewLogFile(String dirName, long startLogIndex) throws IOException {
-    lock.lock();
-    try {
-      long nextVersion = versionController.nextVersion();
-      long endLogIndex = Long.MAX_VALUE;
+    long nextVersion = versionController.nextVersion();
+    long endLogIndex = Long.MAX_VALUE;
 
-      String fileNamePrefix =
-          dirName
-              + File.separator
-              + startLogIndex
-              + FILE_NAME_SEPARATOR
-              + endLogIndex
-              + FILE_NAME_SEPARATOR
-              + nextVersion
-              + FILE_NAME_SEPARATOR;
-      File logDataFile = SystemFileFactory.INSTANCE.getFile(fileNamePrefix + LOG_DATA_FILE_SUFFIX);
-      File logIndexFile =
-          SystemFileFactory.INSTANCE.getFile(fileNamePrefix + LOG_INDEX_FILE_SUFFIX);
+    String fileNamePrefix =
+        dirName
+            + File.separator
+            + startLogIndex
+            + FILE_NAME_SEPARATOR
+            + endLogIndex
+            + FILE_NAME_SEPARATOR
+            + nextVersion
+            + FILE_NAME_SEPARATOR;
+    File logDataFile = SystemFileFactory.INSTANCE.getFile(fileNamePrefix + LOG_DATA_FILE_SUFFIX);
+    File logIndexFile = SystemFileFactory.INSTANCE.getFile(fileNamePrefix + LOG_INDEX_FILE_SUFFIX);
 
-      if (!logDataFile.createNewFile()) {
-        logger.warn("Cannot create new log data file {}", logDataFile);
-      }
-
-      if (!logIndexFile.createNewFile()) {
-        logger.warn("Cannot create new log index file {}", logDataFile);
-      }
-      logDataFileList.add(logDataFile);
-      logIndexFileList.add(new IndexFileDescriptor(logIndexFile, startLogIndex, endLogIndex));
-    } finally {
-      lock.unlock();
+    if (!logDataFile.createNewFile()) {
+      logger.warn("Cannot create new log data file {}", logDataFile);
     }
+
+    if (!logIndexFile.createNewFile()) {
+      logger.warn("Cannot create new log index file {}", logDataFile);
+    }
+    logDataFileList.add(logDataFile);
+    logIndexFileList.add(new IndexFileDescriptor(logIndexFile, startLogIndex, endLogIndex));
   }
 
   private File getCurrentLogDataFile() {
