@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DownStreamChannelLocation {
 
@@ -107,5 +108,27 @@ public class DownStreamChannelLocation {
             ReadWriteIOUtils.readString(byteBuffer));
     String remotePlanNodeId = ReadWriteIOUtils.readString(byteBuffer);
     return new DownStreamChannelLocation(endPoint, fragmentInstanceId, remotePlanNodeId);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DownStreamChannelLocation that = (DownStreamChannelLocation) o;
+    return that.getRemoteFragmentInstanceId().equals(remoteFragmentInstanceId)
+        && that.getRemoteEndpoint().equals(remoteEndpoint)
+        && that.getRemotePlanNodeId().equals(this.getRemotePlanNodeId());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(remoteEndpoint, remoteFragmentInstanceId, remotePlanNodeId);
   }
 }

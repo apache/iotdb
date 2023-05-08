@@ -24,12 +24,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -78,27 +76,18 @@ public class ShuffleSinkNode extends MultiChildrenSinkNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHUFFLE_SINK.serialize(byteBuffer);
-    ReadWriteIOUtils.write(downStreamChannelLocationList.size(), byteBuffer);
-    for (DownStreamChannelLocation downStreamChannelLocation : downStreamChannelLocationList) {
-      downStreamChannelLocation.serialize(byteBuffer);
-    }
+    serializeDownStreamChannelLocationList(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SHUFFLE_SINK.serialize(stream);
-    ReadWriteIOUtils.write(downStreamChannelLocationList.size(), stream);
-    for (DownStreamChannelLocation downStreamChannelLocation : downStreamChannelLocationList) {
-      downStreamChannelLocation.serialize(stream);
-    }
+    serializeDownStreamChannelLocationList(stream);
   }
 
   public static ShuffleSinkNode deserialize(ByteBuffer byteBuffer) {
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<DownStreamChannelLocation> downStreamChannelLocationList = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      downStreamChannelLocationList.add(DownStreamChannelLocation.deserialize(byteBuffer));
-    }
+    List<DownStreamChannelLocation> downStreamChannelLocationList =
+        deserializeDownStreamChannelLocationList(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new ShuffleSinkNode(planNodeId, downStreamChannelLocationList);
   }

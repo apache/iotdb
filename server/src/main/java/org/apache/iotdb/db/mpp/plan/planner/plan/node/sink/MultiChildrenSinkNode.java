@@ -22,10 +22,17 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.sink;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class MultiChildrenSinkNode extends SinkNode {
 
@@ -117,5 +124,83 @@ public abstract class MultiChildrenSinkNode extends SinkNode {
 
   public int getCurrentLastIndex() {
     return children.size() - 1;
+  }
+
+  /**
+   * It's possible that the DownStreamChannelLocationList consists of several identical
+   * DownStreamChannelLocations. Serializing every DownStreamChannelLocation is not necessary since
+   * we could only serialize the unique DownStreamChannelLocation and use an index to get that
+   * DownStreamChannelLocation.
+   */
+  protected void serializeDownStreamChannelLocationList(ByteBuffer byteBuffer) {
+    List<Integer> indexOfDownStreamChannelLocation = new ArrayList<>();
+    Map<DownStreamChannelLocation, Integer> uniqueDownStreamChannelLocationIndexMap =
+        new HashMap<>();
+    downStreamChannelLocationList.forEach(
+        downStreamChannelLocation -> {
+          // Do not use putIfAbsent here to avoid unnecessary hash calculation
+          Integer index = uniqueDownStreamChannelLocationIndexMap.get(downStreamChannelLocation);
+          if (index != null) {
+            indexOfDownStreamChannelLocation.add(index);
+          } else {
+            indexOfDownStreamChannelLocation.add(uniqueDownStreamChannelLocationIndexMap.size());
+            uniqueDownStreamChannelLocationIndexMap.put(
+                downStreamChannelLocation, uniqueDownStreamChannelLocationIndexMap.size());
+          }
+        });
+    ReadWriteIOUtils.write(uniqueDownStreamChannelLocationIndexMap.size(), byteBuffer);
+    for (DownStreamChannelLocation downStreamChannelLocation :
+        uniqueDownStreamChannelLocationIndexMap.keySet()) {
+      downStreamChannelLocation.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(indexOfDownStreamChannelLocation.size(), byteBuffer);
+    for (int i : indexOfDownStreamChannelLocation) {
+      ReadWriteIOUtils.write(i, byteBuffer);
+    }
+  }
+
+  protected void serializeDownStreamChannelLocationList(DataOutputStream stream)
+      throws IOException {
+    List<Integer> indexOfDownStreamChannelLocation = new ArrayList<>();
+    Map<DownStreamChannelLocation, Integer> uniqueDownStreamChannelLocationIndexMap =
+        new HashMap<>();
+    downStreamChannelLocationList.forEach(
+        downStreamChannelLocation -> {
+          // Do not use putIfAbsent here to avoid unnecessary hash calculation
+          Integer index = uniqueDownStreamChannelLocationIndexMap.get(downStreamChannelLocation);
+          if (index != null) {
+            indexOfDownStreamChannelLocation.add(index);
+          } else {
+            indexOfDownStreamChannelLocation.add(uniqueDownStreamChannelLocationIndexMap.size());
+            uniqueDownStreamChannelLocationIndexMap.put(
+                downStreamChannelLocation, uniqueDownStreamChannelLocationIndexMap.size());
+          }
+        });
+    ReadWriteIOUtils.write(uniqueDownStreamChannelLocationIndexMap.size(), stream);
+    for (DownStreamChannelLocation downStreamChannelLocation :
+        uniqueDownStreamChannelLocationIndexMap.keySet()) {
+      downStreamChannelLocation.serialize(stream);
+    }
+    ReadWriteIOUtils.write(indexOfDownStreamChannelLocation.size(), stream);
+    for (int i : indexOfDownStreamChannelLocation) {
+      ReadWriteIOUtils.write(i, stream);
+    }
+  }
+
+  protected static List<DownStreamChannelLocation> deserializeDownStreamChannelLocationList(
+      ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<DownStreamChannelLocation> uniqueDownStreamChannelLocationList = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      uniqueDownStreamChannelLocationList.add(DownStreamChannelLocation.deserialize(byteBuffer));
+    }
+    int downStreamChannelLocationIndexListSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Integer> downStreamChannelLocationIndexList = new ArrayList<>();
+    for (int i = 0; i < downStreamChannelLocationIndexListSize; i++) {
+      downStreamChannelLocationIndexList.add(ReadWriteIOUtils.readInt(byteBuffer));
+    }
+    return downStreamChannelLocationIndexList.stream()
+        .map(uniqueDownStreamChannelLocationList::get)
+        .collect(Collectors.toList());
   }
 }

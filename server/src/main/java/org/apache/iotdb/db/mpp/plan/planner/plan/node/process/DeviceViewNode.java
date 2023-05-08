@@ -127,10 +127,6 @@ public class DeviceViewNode extends MultiChildProcessNode {
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
-    ReadWriteIOUtils.write(devices.size(), byteBuffer);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, byteBuffer);
-    }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), byteBuffer);
     for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
@@ -148,10 +144,6 @@ public class DeviceViewNode extends MultiChildProcessNode {
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, stream);
-    }
-    ReadWriteIOUtils.write(devices.size(), stream);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, stream);
     }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
     for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
@@ -171,12 +163,6 @@ public class DeviceViewNode extends MultiChildProcessNode {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
-    int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>();
-    while (devicesSize > 0) {
-      devices.add(ReadWriteIOUtils.readString(byteBuffer));
-      devicesSize--;
-    }
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
     while (mapSize > 0) {
@@ -192,7 +178,11 @@ public class DeviceViewNode extends MultiChildProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DeviceViewNode(
-        planNodeId, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+        planNodeId,
+        mergeOrderParameter,
+        outputColumnNames,
+        new ArrayList<>(deviceToMeasurementIndexesMap.keySet()),
+        deviceToMeasurementIndexesMap);
   }
 
   @Override
