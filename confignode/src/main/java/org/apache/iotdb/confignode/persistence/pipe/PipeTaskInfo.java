@@ -175,9 +175,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .forEach(
                         pipeMeta -> {
                           if (!pipeMeta
-                              .getRuntimeMeta()
-                              .getConsensusGroupIdToTaskMetaMap()
-                              .containsKey(regionId)) {
+                                  .getRuntimeMeta()
+                                  .getConsensusGroupIdToTaskMetaMap()
+                                  .containsKey(regionId)
+                              && newLeader != -1) {
                             pipeMeta
                                 .getRuntimeMeta()
                                 .getConsensusGroupIdToTaskMetaMap()
