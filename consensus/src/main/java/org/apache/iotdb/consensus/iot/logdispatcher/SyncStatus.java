@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
 import java.util.Iterator;
@@ -102,7 +101,6 @@ public class SyncStatus {
     }
   }
 
-  @TestOnly
   public List<Batch> getPendingBatches() {
     return pendingBatches;
   }

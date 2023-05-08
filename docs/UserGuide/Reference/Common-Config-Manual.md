@@ -1073,14 +1073,23 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0                                                                                                                                      |
 |  Effective  | After restart system                                                                                                                   |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|    Name     | fsync\_wal\_delay\_in\_ms                                     |
-|:-----------:|:--------------------------------------------------------------|
-| Description | Duration a wal flush operation will wait before calling fsync |
-|    Type     | int32                                                         |
-|   Default   | 3                                                             |
-|  Effective  | hot-load                                                      |
+|    Name     | wal\_async\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:--------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the async mode |
+|    Type     | int32                                                                           |
+|   Default   | 1000                                                                            |
+|  Effective  | hot-load                                                                        |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|    Name     | wal\_sync\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the sync mode |
+|    Type     | int32                                                                          |
+|   Default   | 3                                                                              |
+|  Effective  | hot-load                                                                       |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1088,7 +1097,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-----------------------------|
 | Description | Buffer size of each wal node |
 |    Type     | int32                        |
-|   Default   | 16777216                     |
+|   Default   | 33554432                     |
 |  Effective  | After restart system         |
 
 * wal\_buffer\_queue\_capacity
@@ -1097,7 +1106,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------------|
 | Description | Blocking queue capacity of each wal buffer |
 |    Type     | int32                                      |
-|   Default   | 50                                         |
+|   Default   | 500                                        |
 |  Effective  | After restart system                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1106,7 +1115,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------|
 | Description | Size threshold of each wal file      |
 |    Type     | int32                                |
-|   Default   | 10485760                             |
+|   Default   | 31457280                             |
 |  Effective  | hot-load                             |
 
 * wal\_min\_effective\_info\_ratio
