@@ -24,9 +24,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * State transition diagram of a pipe task:
@@ -298,4 +304,149 @@ public class PipeTaskAgent {
 
   public void stopPipeTaskByConsensusGroup(
       String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
+
+  public void parsePipeMetaList(List<PipeMeta> pipeMetas) {
+    for (PipeMeta pipeMeta : pipeMetas) {
+      final PipeMeta existedPipeMeta =
+          pipeMetaKeeper.getPipeMeta(pipeMeta.getStaticMeta().getPipeName());
+      if (existedPipeMeta != null) {
+        if (existedPipeMeta.getStaticMeta().getCreationTime()
+            == pipeMeta.getStaticMeta().getCreationTime()) {
+          switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+            case STOPPED:
+              if (!existedPipeMeta.getStaticMeta().equals(pipeMeta.getStaticMeta())) {
+                dropPipe(existedPipeMeta.getStaticMeta().getPipeName());
+                break;
+              }
+              updatePipeMeta(pipeMeta, false);
+              if (pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
+                startPipe(
+                    pipeMeta.getStaticMeta().getPipeName(),
+                    pipeMeta.getStaticMeta().getCreationTime());
+              }
+              continue;
+            case RUNNING:
+              if (!existedPipeMeta.getStaticMeta().equals(pipeMeta.getStaticMeta())) {
+                dropPipe(existedPipeMeta.getStaticMeta().getPipeName());
+                break;
+              }
+              if (pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.STOPPED) {
+                stopPipe(
+                    pipeMeta.getStaticMeta().getPipeName(),
+                    pipeMeta.getStaticMeta().getCreationTime());
+                updatePipeMeta(pipeMeta, false);
+              } else {
+                updatePipeMeta(pipeMeta, true);
+              }
+              continue;
+            case DROPPED:
+              break;
+            default:
+              throw new IllegalStateException(
+                  "Unexpected status: "
+                      + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+          }
+        }
+      }
+      createPipe(pipeMeta);
+    }
+    for (PipeMeta existPipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      AtomicBoolean hasPipeMeta = new AtomicBoolean(false);
+      pipeMetas.forEach(
+          pipeMeta -> {
+            if (pipeMeta
+                .getStaticMeta()
+                .getPipeName()
+                .equals(existPipeMeta.getStaticMeta().getPipeName())) {
+              hasPipeMeta.set(true);
+            }
+          });
+      if (!hasPipeMeta.get()) {
+        dropPipe(existPipeMeta.getStaticMeta().getPipeName());
+      }
+    }
+  }
+
+  public void updatePipeMeta(PipeMeta pipeMeta, boolean needStartDiff) {
+    final PipeMeta existedPipeMeta =
+        pipeMetaKeeper.getPipeMeta(pipeMeta.getStaticMeta().getPipeName());
+    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
+        pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().entrySet()) {
+      if (!existedPipeMeta
+          .getRuntimeMeta()
+          .getConsensusGroupIdToTaskMetaMap()
+          .containsKey(entry.getKey())) {
+        existedPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupIdToTaskMetaMap()
+            .put(entry.getKey(), entry.getValue());
+        createPipeTaskByConsensusGroup(
+            existedPipeMeta.getStaticMeta().getPipeName(),
+            existedPipeMeta.getStaticMeta().getCreationTime(),
+            entry.getKey(),
+            entry.getValue());
+        if (needStartDiff) {
+          startPipeTaskByConsensusGroup(
+              existedPipeMeta.getStaticMeta().getPipeName(),
+              existedPipeMeta.getStaticMeta().getCreationTime(),
+              entry.getKey());
+        }
+      } else {
+        if (existedPipeMeta
+                .getRuntimeMeta()
+                .getConsensusGroupIdToTaskMetaMap()
+                .get(entry.getKey())
+                .getRegionLeader()
+            != entry.getValue().getRegionLeader()) {
+          existedPipeMeta
+              .getRuntimeMeta()
+              .getConsensusGroupIdToTaskMetaMap()
+              .get(entry.getKey())
+              .setRegionLeader(entry.getValue().getRegionLeader());
+          dropPipeTaskByConsensusGroup(
+              existedPipeMeta.getStaticMeta().getPipeName(), entry.getKey());
+          createPipeTaskByConsensusGroup(
+              existedPipeMeta.getStaticMeta().getPipeName(),
+              existedPipeMeta.getStaticMeta().getCreationTime(),
+              entry.getKey(),
+              entry.getValue());
+          if (needStartDiff) {
+            startPipeTaskByConsensusGroup(
+                existedPipeMeta.getStaticMeta().getPipeName(),
+                existedPipeMeta.getStaticMeta().getCreationTime(),
+                entry.getKey());
+          }
+        }
+        if (existedPipeMeta
+                .getRuntimeMeta()
+                .getConsensusGroupIdToTaskMetaMap()
+                .get(entry.getKey())
+                .getIndex()
+            < entry.getValue().getIndex()) {
+          existedPipeMeta
+              .getRuntimeMeta()
+              .getConsensusGroupIdToTaskMetaMap()
+              .get(entry.getKey())
+              .setIndex(entry.getValue().getIndex());
+        }
+        existedPipeMeta
+            .getRuntimeMeta()
+            .getConsensusGroupIdToTaskMetaMap()
+            .get(entry.getKey())
+            .mergeExceptionMessages(
+                (Collection<? extends PipeRuntimeException>)
+                    entry.getValue().getExceptionMessages());
+      }
+    }
+    for (TConsensusGroupId regionId :
+        existedPipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().keySet()) {
+      if (!pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().containsKey(regionId)) {
+        dropPipeTaskByConsensusGroup(
+            existedPipeMeta.getStaticMeta().getPipeName(),
+            existedPipeMeta.getStaticMeta().getCreationTime(),
+            regionId);
+        existedPipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().remove(regionId);
+      }
+    }
+  }
 }

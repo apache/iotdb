@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -59,6 +60,11 @@ public class PipeTaskMeta {
 
   public Iterable<PipeRuntimeException> getExceptionMessages() {
     return exceptionMessages;
+  }
+
+  public void mergeExceptionMessages(
+      Collection<? extends PipeRuntimeException> newExceptionMessages) {
+    exceptionMessages.addAll(newExceptionMessages);
   }
 
   public void trackException(boolean critical, String message) {

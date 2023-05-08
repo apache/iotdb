@@ -31,10 +31,12 @@ import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskStat
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -199,5 +201,17 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException("Failed to push pipe meta list to data nodes");
     }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    stream.writeBoolean(isRollbackFromOperateOnDataNodesSuccessful);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }
