@@ -407,7 +407,7 @@ public class QueryStatement extends Statement {
     List<SortItem> sortItems = getSortItemList();
     List<SortItem> newSortItems = new ArrayList<>();
     int expressionIndex = 0;
-    for (int i = 0; i < sortItems.size() && expressionIndex < sortItemExpressions.length; i++) {
+    for (int i = 0; i < sortItems.size(); i++) {
       SortItem sortItem = sortItems.get(i);
       SortItem newSortItem =
           new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());

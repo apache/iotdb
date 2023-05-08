@@ -39,9 +39,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
 
 import java.time.ZonedDateTime;
@@ -150,8 +150,8 @@ public class TestPlanBuilder {
             new PlanNodeId(id),
             new OrderByParameter(
                 Arrays.asList(
-                    new SortItem(SortKey.DEVICE, Ordering.ASC),
-                    new SortItem(SortKey.TIME, Ordering.ASC))),
+                    new SortItem(OrderByKey.DEVICE, Ordering.ASC),
+                    new SortItem(OrderByKey.TIME, Ordering.ASC))),
             Arrays.asList(DEVICE, measurement),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(device, getRoot());

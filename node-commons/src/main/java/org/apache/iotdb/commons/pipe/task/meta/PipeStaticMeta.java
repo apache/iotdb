@@ -32,7 +32,7 @@ import java.util.Map;
 public class PipeStaticMeta {
 
   private String pipeName;
-  private long createTime;
+  private long creationTime;
 
   private PipeParameters collectorParameters;
   private PipeParameters processorParameters;
@@ -42,12 +42,12 @@ public class PipeStaticMeta {
 
   public PipeStaticMeta(
       String pipeName,
-      long createTime,
+      long creationTime,
       Map<String, String> collectorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes) {
     this.pipeName = pipeName.toUpperCase();
-    this.createTime = createTime;
+    this.creationTime = creationTime;
     collectorParameters = new PipeParameters(collectorAttributes);
     processorParameters = new PipeParameters(processorAttributes);
     connectorParameters = new PipeParameters(connectorAttributes);
@@ -57,8 +57,8 @@ public class PipeStaticMeta {
     return pipeName;
   }
 
-  public long getCreateTime() {
-    return createTime;
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public PipeParameters getCollectorParameters() {
@@ -82,7 +82,7 @@ public class PipeStaticMeta {
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
 
     outputStream.writeInt(collectorParameters.getAttribute().size());
     for (Map.Entry<String, String> entry : collectorParameters.getAttribute().entrySet()) {
@@ -110,7 +110,7 @@ public class PipeStaticMeta {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeStaticMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
+    pipeStaticMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     pipeStaticMeta.collectorParameters = new PipeParameters(new HashMap<>());
     pipeStaticMeta.processorParameters = new PipeParameters(new HashMap<>());
@@ -151,7 +151,7 @@ public class PipeStaticMeta {
     }
     PipeStaticMeta that = (PipeStaticMeta) obj;
     return pipeName.equals(that.pipeName)
-        && createTime == that.createTime
+        && creationTime == that.creationTime
         && collectorParameters.equals(that.collectorParameters)
         && processorParameters.equals(that.processorParameters)
         && connectorParameters.equals(that.connectorParameters);
@@ -168,8 +168,8 @@ public class PipeStaticMeta {
         + "pipeName='"
         + pipeName
         + '\''
-        + ", createTime="
-        + createTime
+        + ", creationTime="
+        + creationTime
         + ", collectorParameters="
         + collectorParameters.getAttribute()
         + ", processorParameters="
