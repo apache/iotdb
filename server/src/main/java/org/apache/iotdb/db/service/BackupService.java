@@ -39,10 +39,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class BackupService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(BackupService.class);
+  private static int BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE = 5;
   private ExecutorService backupThreadPool;
 
   /** Records the files that can't be hard-linked and should be copied. */
@@ -53,7 +57,10 @@ public class BackupService implements IService {
 
   private HashMap<String, TsFileResource> databaseTsFileResourceMap = new HashMap<>();
 
+  private ScheduledExecutorService backupTmpFileCheckPool;
+
   private AtomicInteger backupByCopyCount = new AtomicInteger();
+  private AtomicBoolean isBackupRunning = new AtomicBoolean();
 
   public static BackupService getINSTANCE() {
     return BackupService.InstanceHolder.INSTANCE;
@@ -75,6 +82,14 @@ public class BackupService implements IService {
       backupThreadPool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
               backupThreadNum, ThreadName.BACKUP_SERVICE.getName());
+      backupTmpFileCheckPool =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
+      backupTmpFileCheckPool.scheduleWithFixedDelay(
+          this::cleanUpBackupTmpDir,
+          0,
+          BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE,
+          TimeUnit.MINUTES);
     }
     if (BackupUtils.checkConfDir()) {
       logger.info("BackupService found the config directory: " + BackupUtils.getConfDir());
@@ -95,6 +110,10 @@ public class BackupService implements IService {
 
   public AtomicInteger getBackupByCopyCount() {
     return backupByCopyCount;
+  }
+
+  public AtomicBoolean getIsBackupRunning() {
+    return isBackupRunning;
   }
 
   private void submitBackupByCopyTask(BackupByCopyTask task) {
@@ -128,7 +147,7 @@ public class BackupService implements IService {
           "Output path for incremental backup should be a non-empty folder.");
     }
   }
-  
+
   private int backupSystemFiles(String outputPath) {
     String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     List<File> systemFiles = BackupUtils.getAllFilesInOneDir(systemDirPath);
@@ -146,7 +165,7 @@ public class BackupService implements IService {
     }
     return systemFiles.size();
   }
-  
+
   private int backupConfigFiles(String outputPath) {
     String configDirPath = BackupUtils.getConfDir();
     List<File> configFiles = new ArrayList<>();
@@ -155,7 +174,7 @@ public class BackupService implements IService {
       for (File file : configFiles) {
         String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
         backupByCopyTaskList.add(
-                new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+            new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
       }
     } else {
       logger.warn("Can't find config directory during backup, skipping.");
@@ -164,7 +183,7 @@ public class BackupService implements IService {
   }
 
   /**
-   * Backup given TsFiles, and will backup system files and config files.
+   * Back up given TsFiles, and will back up system files and config files.
    *
    * @param resources
    * @param outputPath
@@ -230,6 +249,7 @@ public class BackupService implements IService {
 
     if (backupByCopyTaskList.size() == 0) {
       logger.info("Backup completed.");
+      isBackupRunning.set(false);
       return;
     }
     backupByCopyCount.set(backupByCopyTaskList.size());
@@ -248,26 +268,29 @@ public class BackupService implements IService {
     prepareDatabaseTsFileResourceMap(resources);
     for (String tsFileName : backupTsFileMap.keySet()) {
       File tsFile = backupTsFileMap.get(tsFileName);
-      BackupUtils.deleteFileOrDirRecursively(new File(tsFile.getPath() + ModificationFile.FILE_SUFFIX));
+      BackupUtils.deleteFileOrDirRecursively(
+          new File(tsFile.getPath() + ModificationFile.FILE_SUFFIX));
       if (!databaseTsFileResourceMap.containsKey(tsFileName)) {
         BackupUtils.deleteFileOrDirRecursively(tsFile);
-        BackupUtils.deleteFileOrDirRecursively(new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
+        BackupUtils.deleteFileOrDirRecursively(
+            new File(tsFile.getPath() + TsFileResource.RESOURCE_SUFFIX));
       } else {
         TsFileResource resource = databaseTsFileResourceMap.get(tsFileName);
         if (resource.getModFile().exists()) {
           try {
-            String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
+            String tsfileTargetPath =
+                BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
             if (!BackupUtils.createTargetDirAndTryCreateLink(
-                    new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
-                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX))) {
+                new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
+                new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX))) {
               String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
               BackupUtils.createTargetDirAndTryCreateLink(
-                      new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
-                      new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+                  new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
+                  new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
               backupByCopyTaskList.add(
-                      new BackupByCopyTask(
-                              tsfileTmpPath + ModificationFile.FILE_SUFFIX,
-                              tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+                  new BackupByCopyTask(
+                      tsfileTmpPath + ModificationFile.FILE_SUFFIX,
+                      tsfileTargetPath + ModificationFile.FILE_SUFFIX));
             }
           } catch (IOException e) {
             e.printStackTrace();
@@ -275,41 +298,40 @@ public class BackupService implements IService {
         }
         databaseTsFileResourceMap.remove(tsFileName).readUnlock();
       }
-      backupTsFileMap.remove(tsFileName);
     }
     for (TsFileResource resource : databaseTsFileResourceMap.values()) {
       try {
         String tsfileTargetPath = BackupUtils.getTsFileTargetPath(resource.getTsFile(), outputPath);
         if (BackupUtils.createTargetDirAndTryCreateLink(
-                new File(tsfileTargetPath), resource.getTsFile())) {
+            new File(tsfileTargetPath), resource.getTsFile())) {
           BackupUtils.createTargetDirAndTryCreateLink(
-                  new File(tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX),
-                  new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
+              new File(tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX),
+              new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
           if (resource.getModFile().exists()) {
             BackupUtils.createTargetDirAndTryCreateLink(
-                    new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
-                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+                new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
+                new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
           }
         } else {
           String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
           BackupUtils.createTargetDirAndTryCreateLink(
-                  new File(tsfileTmpPath), resource.getTsFile());
+              new File(tsfileTmpPath), resource.getTsFile());
           backupByCopyTaskList.add(new BackupByCopyTask(tsfileTmpPath, tsfileTargetPath));
           BackupUtils.createTargetDirAndTryCreateLink(
-                  new File(tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX),
-                  new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
+              new File(tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX),
+              new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
           backupByCopyTaskList.add(
-                  new BackupByCopyTask(
-                          tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX,
-                          tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
+              new BackupByCopyTask(
+                  tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX,
+                  tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
           if (resource.getModFile().exists()) {
             BackupUtils.createTargetDirAndTryCreateLink(
-                    new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
-                    new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+                new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
+                new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
             backupByCopyTaskList.add(
-                    new BackupByCopyTask(
-                            tsfileTmpPath + ModificationFile.FILE_SUFFIX,
-                            tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+                new BackupByCopyTask(
+                    tsfileTmpPath + ModificationFile.FILE_SUFFIX,
+                    tsfileTargetPath + ModificationFile.FILE_SUFFIX));
           }
         }
       } catch (IOException e) {
@@ -318,23 +340,29 @@ public class BackupService implements IService {
         resource.readUnlock();
       }
     }
-    
-    // TODO: delete system/conf dir
-    //BackupUtils.deleteFileOrDirRecursively();
-  
+
+    try {
+      BackupUtils.deleteOldSystemFiles(outputPath);
+      BackupUtils.deleteOldConfigFiles(outputPath);
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+      return;
+    }
+
     int systemFileCount = backupSystemFiles(outputPath);
     int configFileCount = backupConfigFiles(outputPath);
-  
+
     logger.info(
-            String.format(
-                    "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
-                    resources.size(), systemFileCount, configFileCount));
+        String.format(
+            "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
+            resources.size(), systemFileCount, configFileCount));
     logger.debug(
-            String.format(
-                    "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
-  
+        String.format(
+            "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
+
     if (backupByCopyTaskList.size() == 0) {
       logger.info("Backup completed.");
+      isBackupRunning.set(false);
       return;
     }
     backupByCopyCount.set(backupByCopyTaskList.size());
@@ -359,10 +387,14 @@ public class BackupService implements IService {
     }
   }
 
-  public void cleanUpAfterBackup() {
-    logger.info("Backup completed, cleaning up temporary files now.");
+  public void cleanUpBackupTmpDir() {
+    if(isBackupRunning.get()) {
+      logger.debug("Backup is running, will not remove temporary files.");
+      return;
+    }
+    logger.debug("Removing back up temporary files now.");
     if (BackupUtils.deleteBackupTmpDir()) {
-      logger.info("Backup temporary files successfully deleted.");
+      logger.debug("Back up temporary files are all clear.");
     } else {
       logger.warn("Failed to delete some backup temporary files.");
     }

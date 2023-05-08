@@ -52,7 +52,9 @@ public class BackupByCopyTask extends WrappedRunnable {
           String.format("Copy failed during backup: from %s to %s", sourcePath, targetPath));
     }
     if (BackupService.getINSTANCE().getBackupByCopyCount().addAndGet(-1) == 0) {
-      BackupService.getINSTANCE().cleanUpAfterBackup();
+      logger.info("Backup completed.");
+      BackupService.getINSTANCE().cleanUpBackupTmpDir();
+      BackupService.getINSTANCE().getIsBackupRunning().set(false);
     }
   }
 }

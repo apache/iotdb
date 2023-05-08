@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import java.io.File;
@@ -74,10 +73,9 @@ public class BackupUtils {
     return true;
   }
 
-  public static String getTsFileTargetPath(File tsFile, String outputBaseDir)
-      throws IOException {
+  public static String getTsFileTargetPath(File tsFile, String outputBaseDir) throws IOException {
     String tsFileDataDir =
-            tsFile
+        tsFile
             .getParentFile()
             .getParentFile()
             .getParentFile()
@@ -109,6 +107,17 @@ public class BackupUtils {
         "TsFile " + tsFile.getAbsolutePath() + " does not match any data directory.");
   }
 
+  public static void deleteOldSystemFiles(String outputBaseDir) throws IOException {
+    if (!deleteFileOrDirRecursively(
+        new File(
+            FilePathUtils.regularizePath(outputBaseDir)
+                + "data"
+                + File.separator
+                + IoTDBConstant.SYSTEM_FOLDER_NAME))) {
+      throw new IOException("Failed to delete old files during incremental backup.");
+    }
+  }
+
   public static String getSystemFileTargetPath(File source, String outputBaseDir) {
     String systemPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     File systemDir = new File(systemPath);
@@ -127,6 +136,13 @@ public class BackupUtils {
     }
   }
 
+  public static void deleteOldConfigFiles(String outputBaseDir) throws IOException {
+    if (!deleteFileOrDirRecursively(
+        new File(FilePathUtils.regularizePath(outputBaseDir) + "conf"))) {
+      throw new IOException("Failed to delete old files during incremental backup.");
+    }
+  }
+
   public static String getConfigFileTargetPath(File source, String outputBaseDir) {
     return FilePathUtils.regularizePath(outputBaseDir) + "conf" + File.separator + source.getName();
   }
@@ -134,7 +150,7 @@ public class BackupUtils {
   public static String getTsFileTmpLinkPath(File tsFile) {
     String absolutePath = tsFile.getAbsolutePath();
     String dataDir =
-            tsFile
+        tsFile
             .getParentFile()
             .getParentFile()
             .getParentFile()
