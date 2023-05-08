@@ -606,7 +606,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     readWriteLock.writeLock().lock();
     try {
       for (PartialPath fullPath : pathSetTemplateMap.keySet()) {
-        if (fullPath.getFullPath().startsWith(database)) {
+        if (fullPath.startsWith(database)) {
           int templateId = pathSetTemplateMap.remove(fullPath);
           templateSetOnPathsMap.get(templateId).remove(fullPath);
           if (templateSetOnPathsMap.get(templateId).size() == 0
@@ -620,7 +620,7 @@ public class ClusterTemplateManager implements ITemplateManager {
         }
       }
       for (PartialPath fullPath : pathPreSetTemplateMap.keySet()) {
-        if (fullPath.getFullPath().startsWith(database)) {
+        if (fullPath.startsWith(database)) {
           int templateId = pathPreSetTemplateMap.remove(fullPath);
           templatePreSetOnPathsMap.get(templateId).remove(fullPath);
           if ((!templateSetOnPathsMap.containsKey(templateId)
