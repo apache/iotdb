@@ -24,9 +24,9 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -46,16 +46,21 @@ public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    newSetUp();
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    newTearDown();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clear();
   }
 
   @Test
