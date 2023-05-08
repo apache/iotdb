@@ -19,44 +19,52 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeAssignerSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskCollectorStage implements PipeTaskStage {
 
-  private final PipeSubtaskExecutor executor;
-  private final PipeSubtask subtask;
+  private final PipeParameters collectorParameters;
 
-  PipeTaskCollectorStage(PipeAssignerSubtaskExecutor executor, PipeAssignerSubtask subtask) {
-    this.executor = executor;
-    this.subtask = subtask;
+  private PipeCollector pipeCollector;
+
+  PipeTaskCollectorStage(PipeParameters collectorParameters) {
+    this.collectorParameters = collectorParameters;
   }
 
   @Override
   public void create() throws PipeException {
-    executor.register(subtask);
+    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
   }
 
   @Override
   public void start() throws PipeException {
-    executor.start(subtask.getTaskID());
+    try {
+      pipeCollector.start();
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   @Override
   public void stop() throws PipeException {
-    executor.stop(subtask.getTaskID());
+    // collector continuously collects data, so do nothing in stop
   }
 
   @Override
   public void drop() throws PipeException {
-    executor.deregister(subtask.getTaskID());
+    try {
+      pipeCollector.close();
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   @Override
   public PipeSubtask getSubtask() {
-    return subtask;
+    throw new UnsupportedOperationException("Collector stage does not have subtask.");
   }
 }
