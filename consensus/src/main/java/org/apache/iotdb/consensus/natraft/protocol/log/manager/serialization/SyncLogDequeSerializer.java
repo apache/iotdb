@@ -309,7 +309,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logger.debug("Raft log buffer overflow!");
         logDataBuffer.reset();
         logIndexBuffer.reset();
-        flushLogBuffer();
+        flushLogBuffer(true);
         logDataBuffer.put(logData);
         lastLogIndex = log.getCurrLogIndex();
       }
@@ -386,7 +386,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @Override
-  public void flushLogBuffer() {
+  public void flushLogBuffer(boolean isAsyncFlush) {
     if (isClosed || logDataBuffer.position() == 0) {
       return;
     }
@@ -402,6 +402,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } else {
       switchBuffer();
       flushingLogFuture = flushingLogExecutorService.submit(() -> flushLogBufferTask(lastLogIndex));
+    }
+
+    if (!isAsyncFlush) {
+      try {
+        flushingLogFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        logger.error("Unexpected exception when flushing log in {}", name);
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -436,7 +447,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
       persistedLogIndex = currentLastIndex;
 
-      checkCloseCurrentFile();
+      checkCloseCurrentFile(currentLastIndex);
     } catch (IOException e) {
       logger.error("Error in logs serialization: ", e);
       return;
@@ -449,12 +460,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     logger.debug("End flushing log buffer.");
   }
 
-  private void forceFlushLogBufferWithoutCloseFile() {
+  /** flush the log buffer and force the persistence */
+  @Override
+  public void forceFlushLogBuffer() {
     if (isClosed) {
       return;
     }
     lock.lock();
-    flushLogBuffer();
+    flushLogBuffer(false);
     serializeMeta(meta);
     try {
       if (currentLogDataOutputStream != null) {
@@ -467,18 +480,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // ignore
     } catch (IOException e) {
       logger.error("Error when force flushing logs serialization: ", e);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /** flush the log buffer and check if the file needs to be closed */
-  @Override
-  public void forceFlushLogBuffer() {
-    lock.lock();
-    try {
-      forceFlushLogBufferWithoutCloseFile();
-      checkCloseCurrentFile(meta.getCommitLogIndex());
     } finally {
       lock.unlock();
     }
@@ -995,7 +996,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     lock.lock();
     try {
       // 1. flush logs in buffer
-      flushLogBuffer();
+      flushLogBuffer(true);
 
       // 2. check the log index offset list size
       if (logIndexOffsetList.size() > maxRaftLogIndexSizeInMemory) {
@@ -1362,7 +1363,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private List<Entry> getLogsFromOneLogDataFile(File file, Pair<Long, Long> startAndEndOffset) {
     List<Entry> result = new ArrayList<>();
     if (file.getName().equals(getCurrentLogDataFile().getName())) {
-      forceFlushLogBufferWithoutCloseFile();
+      forceFlushLogBuffer();
     }
     try (FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {

@@ -34,7 +34,7 @@ public interface StableEntryManager {
   void append(List<Entry> entries, long commitIndex, long maxHaveAppliedCommitIndex)
       throws IOException;
 
-  void flushLogBuffer();
+  void flushLogBuffer(boolean isAsyncFlush);
 
   void forceFlushLogBuffer();
 
