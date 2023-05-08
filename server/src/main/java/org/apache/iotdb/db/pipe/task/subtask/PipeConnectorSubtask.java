@@ -43,9 +43,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   // output
   private final PipeConnector pipeConnector;
 
-  /**
-   * @param taskID connectorAttributeSortedString
-   */
+  /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
     super(taskID);
     // TODO: make the size of the queue size reasonable and configurable
