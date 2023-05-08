@@ -253,8 +253,9 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
+
+    private final int maxQueueLength;
     private final long maxWaitingTimeForWaitBatchInMs;
-    private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
     private final long walThrottleThreshold;
@@ -267,8 +268,8 @@ public class IoTConsensusConfig {
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
         int maxPendingBatchesNum,
+        int maxQueueLength,
         long maxWaitingTimeForWaitBatchInMs,
-        int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
         long walThrottleThreshold,
@@ -279,8 +280,8 @@ public class IoTConsensusConfig {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
+      this.maxQueueLength = maxQueueLength;
       this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
-      this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
       this.walThrottleThreshold = walThrottleThreshold;
@@ -302,12 +303,12 @@ public class IoTConsensusConfig {
       return maxPendingBatchesNum;
     }
 
-    public long getMaxWaitingTimeForWaitBatchInMs() {
-      return maxWaitingTimeForWaitBatchInMs;
+    public int getMaxQueueLength() {
+      return maxQueueLength;
     }
 
-    public int getMaxWaitingTimeForAccumulatingBatchInMs() {
-      return maxWaitingTimeForAccumulatingBatchInMs;
+    public long getMaxWaitingTimeForWaitBatchInMs() {
+      return maxWaitingTimeForWaitBatchInMs;
     }
 
     public long getBasicRetryWaitTimeMs() {
@@ -344,13 +345,11 @@ public class IoTConsensusConfig {
 
     public static class Builder {
 
-      private int maxLogEntriesNumPerBatch = 30;
+      private int maxLogEntriesNumPerBatch = 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
-      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
-      // in DataRegionStateMachine
-      private int maxPendingBatchesNum = 5;
+      private int maxPendingBatchesNum = 12;
+      private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
-      private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
@@ -374,15 +373,14 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setMaxWaitingTimeForWaitBatchInMs(
-          long maxWaitingTimeForWaitBatchInMs) {
-        this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
+      public Builder setMaxQueueLength(int maxQueueLength) {
+        this.maxQueueLength = maxQueueLength;
         return this;
       }
 
-      public Replication.Builder setMaxWaitingTimeForAccumulatingBatchInMs(
-          int maxWaitingTimeForAccumulatingBatchInMs) {
-        this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
+      public Replication.Builder setMaxWaitingTimeForWaitBatchInMs(
+          long maxWaitingTimeForWaitBatchInMs) {
+        this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
         return this;
       }
 
@@ -426,8 +424,8 @@ public class IoTConsensusConfig {
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
             maxPendingBatchesNum,
+            maxQueueLength,
             maxWaitingTimeForWaitBatchInMs,
-            maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
             walThrottleThreshold,
