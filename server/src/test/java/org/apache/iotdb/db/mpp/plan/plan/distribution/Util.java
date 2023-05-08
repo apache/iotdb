@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -69,7 +70,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public class Util {
   public static final Analysis ANALYSIS = constructAnalysis();
@@ -294,7 +294,7 @@ public class Util {
   private static ISchemaFetcher getFakeSchemaFetcher() {
     return new ISchemaFetcher() {
       @Override
-      public ISchemaTree fetchSchema(PathPatternTree patternTree) {
+      public ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -304,22 +304,13 @@ public class Util {
       }
 
       @Override
-      public ISchemaTree fetchSchemaWithAutoCreate(
-          PartialPath devicePath,
-          String[] measurements,
-          Function<Integer, TSDataType> getDataType,
-          boolean aligned) {
-        return ANALYSIS.getSchemaTree();
-      }
+      public void fetchAndComputeSchemaWithAutoCreate(
+          ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
 
       @Override
-      public ISchemaTree fetchSchemaListWithAutoCreate(
-          List<PartialPath> devicePath,
-          List<String[]> measurements,
-          List<TSDataType[]> tsDataTypes,
-          List<Boolean> aligned) {
-        return ANALYSIS.getSchemaTree();
-      }
+      public void fetchAndComputeSchemaWithAutoCreate(
+          List<? extends ISchemaComputationWithAutoCreation>
+              schemaComputationWithAutoCreationList) {}
 
       @Override
       public ISchemaTree fetchSchemaListWithAutoCreate(
@@ -333,7 +324,13 @@ public class Util {
       }
 
       @Override
-      public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+      public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
+        return null;
+      }
+
+      @Override
+      public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+          PartialPath timeSeriesPath, String alias) {
         return null;
       }
 
@@ -346,9 +343,6 @@ public class Util {
       public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
         return null;
       }
-
-      @Override
-      public void invalidAllCache() {}
     };
   }
 

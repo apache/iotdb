@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
@@ -74,36 +76,40 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 public class IoTConsensusServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
-
+  private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
-
   private final Peer thisNode;
   private final IStateMachine stateMachine;
+  private final ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
   private final List<Peer> configuration;
-  private final AtomicLong index;
+  private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private final IoTConsensusConfig config;
   private final ConsensusReqReader reader;
   private volatile boolean active;
-  private String latestSnapshotId;
+  private String newSnapshotDirName;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
@@ -121,6 +127,7 @@ public class IoTConsensusServerImpl {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
+    this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
     this.configuration = configuration;
     if (configuration.isEmpty()) {
@@ -131,12 +138,12 @@ public class IoTConsensusServerImpl {
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
-    long currentSearchIndex = reader.getCurrentSearchIndex();
-    if (1 == configuration.size()) {
-      // only one configuration means single replica.
-      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
-    }
-    this.index = new AtomicLong(currentSearchIndex);
+    this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
+    checkAndUpdateSafeDeletedSearchIndex();
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.metrics = new IoTConsensusServerMetrics(this);
   }
@@ -158,13 +165,14 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * records the index of the log and writes locally, and then asynchronous replication is performed
+   * records the index of the log and writes locally, and then asynchronous replication is
+   * performed.
    */
   public TSStatus write(IConsensusRequest request) {
-    long consensusWriteStartTime = System.currentTimeMillis();
+    long consensusWriteStartTime = System.nanoTime();
     stateMachineLock.lock();
     try {
-      long getStateMachineLockTime = System.currentTimeMillis();
+      long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -180,7 +188,7 @@ public class IoTConsensusServerImpl {
       if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
-            getIndex(),
+            getSearchIndex(),
             getCurrentSafelyDeletedSearchIndex());
         try {
           boolean timeout =
@@ -196,9 +204,7 @@ public class IoTConsensusServerImpl {
           Thread.currentThread().interrupt();
         }
       }
-      long writeToStateMachineStartTime = System.currentTimeMillis();
-      IndexedConsensusRequest indexedConsensusRequest =
-          buildIndexedConsensusRequestForLocalRequest(request);
+      long writeToStateMachineStartTime = System.nanoTime();
       // statistic the time of checking write block
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -211,6 +217,8 @@ public class IoTConsensusServerImpl {
               Tag.REGION.toString(),
               this.consensusGroupId)
           .update(writeToStateMachineStartTime - getStateMachineLockTime);
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
@@ -218,9 +226,12 @@ public class IoTConsensusServerImpl {
             getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
-      // TODO wal and memtable
-      TSStatus result = stateMachine.write(indexedConsensusRequest);
-      long writeToStateMachineEndTime = System.currentTimeMillis();
+      IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
+      long startWriteTime = System.nanoTime();
+      TSStatus result = stateMachine.write(planNode);
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
+
+      long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -240,9 +251,9 @@ public class IoTConsensusServerImpl {
         // is not expected and will slow down the preparation speed for batch.
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
-        synchronized (index) {
+        synchronized (searchIndex) {
           logDispatcher.offer(indexedConsensusRequest);
-          index.incrementAndGet();
+          searchIndex.incrementAndGet();
         }
         // statistic the time of offering request into queue
         MetricService.getInstance()
@@ -255,7 +266,7 @@ public class IoTConsensusServerImpl {
                 "offerRequestToQueue",
                 Tag.REGION.toString(),
                 this.consensusGroupId)
-            .update(System.currentTimeMillis() - writeToStateMachineEndTime);
+            .update(System.nanoTime() - writeToStateMachineEndTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -274,7 +285,7 @@ public class IoTConsensusServerImpl {
               "consensusWrite",
               Tag.REGION.toString(),
               this.consensusGroupId)
-          .update(System.currentTimeMillis() - consensusWriteStartTime);
+          .update(System.nanoTime() - consensusWriteStartTime);
       return result;
     } finally {
       stateMachineLock.unlock();
@@ -287,14 +298,11 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      // TODO: We should use logic clock such as searchIndex rather than wall clock to mark the
-      // snapshot, otherwise there will be bugs in situations where the clock might fall back, such
-      // as CI
-      latestSnapshotId =
+      long newSnapshotIndex = getLatestSnapshotIndex() + 1;
+      newSnapshotDirName =
           String.format(
-              "%s_%s_%d",
-              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), System.currentTimeMillis());
-      File snapshotDir = new File(storageDir, latestSnapshotId);
+              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
+      File snapshotDir = new File(storageDir, newSnapshotDirName);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
       }
@@ -312,13 +320,13 @@ public class IoTConsensusServerImpl {
   }
 
   public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = new File(storageDir, latestSnapshotId);
+    File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     logger.info("transit snapshots: {}", snapshotPaths);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
-        SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
+        SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
@@ -370,6 +378,22 @@ public class IoTConsensusServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
+  private long getLatestSnapshotIndex() {
+    long snapShotIndex = 0;
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
+    if (versionFiles == null || versionFiles.length == 0) {
+      return snapShotIndex;
+    }
+    for (File file : versionFiles) {
+      snapShotIndex =
+          Math.max(
+              snapShotIndex,
+              Long.parseLong(SNAPSHOT_INDEX_PATTEN.matcher(file.getName()).replaceAll("")));
+    }
+    return snapShotIndex;
+  }
+
   private void clearOldSnapshot() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
@@ -379,12 +403,13 @@ public class IoTConsensusServerImpl {
           thisNode.getGroupId());
       return;
     }
-    Arrays.sort(versionFiles, Comparator.comparing(File::getName));
-    for (int i = 0; i < versionFiles.length - 1; i++) {
-      try {
-        FileUtils.deleteDirectory(versionFiles[i]);
-      } catch (IOException e) {
-        logger.error("Delete old snapshot dir {} failed", versionFiles[i].getAbsolutePath(), e);
+    for (File file : versionFiles) {
+      if (!file.getName().equals(newSnapshotDirName)) {
+        try {
+          FileUtils.deleteDirectory(file);
+        } catch (IOException e) {
+          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
+        }
       }
     }
   }
@@ -416,7 +441,7 @@ public class IoTConsensusServerImpl {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
-                  thisNode.getGroupId().convertToTConsensusGroupId(), latestSnapshotId));
+                  thisNode.getGroupId().convertToTConsensusGroupId(), newSnapshotDirName));
       if (!isSuccess(res.status)) {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
@@ -456,7 +481,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, index.get());
+        buildSyncLogChannel(targetPeer, searchIndex.get());
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -480,7 +505,8 @@ public class IoTConsensusServerImpl {
           // after current operation
           // TODO: (xingtanzjr) design more reliable way for IoTConsensus
           logger.error(
-              "cannot notify {} to build sync log channel. Please check the status of this node manually",
+              "cannot notify {} to build sync log channel. "
+                  + "Please check the status of this node manually",
               peer,
               e);
         }
@@ -592,6 +618,7 @@ public class IoTConsensusServerImpl {
       logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
       // step 2, update configuration
       configuration.remove(targetPeer);
+      checkAndUpdateSafeDeletedSearchIndex();
       // step 3, persist configuration
       persistConfigurationUpdate();
       logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
@@ -668,7 +695,7 @@ public class IoTConsensusServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(index.get() + 1, Collections.singletonList(request));
+    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
@@ -682,7 +709,7 @@ public class IoTConsensusServerImpl {
    * single copies, the current index is selected
    */
   public long getCurrentSafelyDeletedSearchIndex() {
-    return logDispatcher.getMinSyncIndex().orElseGet(index::get);
+    return logDispatcher.getMinSyncIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -697,12 +724,25 @@ public class IoTConsensusServerImpl {
     return configuration;
   }
 
-  public long getIndex() {
-    return index.get();
+  public long getSearchIndex() {
+    return searchIndex.get();
+  }
+
+  public long getSyncLag() {
+    long safeIndex = getCurrentSafelyDeletedSearchIndex();
+    return getSearchIndex() - safeIndex;
   }
 
   public IoTConsensusConfig getConfig() {
     return config;
+  }
+
+  public long getLogEntriesFromWAL() {
+    return logDispatcher.getLogEntriesFromWAL();
+  }
+
+  public long getLogEntriesFromQueue() {
+    return logDispatcher.getLogEntriesFromQueue();
   }
 
   public boolean needBlockWrite() {
@@ -723,7 +763,7 @@ public class IoTConsensusServerImpl {
   }
 
   public AtomicLong getIndexObject() {
-    return index;
+    return searchIndex;
   }
 
   public boolean isReadOnly() {
@@ -744,7 +784,7 @@ public class IoTConsensusServerImpl {
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       TCleanupTransferredSnapshotReq req =
           new TCleanupTransferredSnapshotReq(
-              targetPeer.getGroupId().convertToTConsensusGroupId(), latestSnapshotId);
+              targetPeer.getGroupId().convertToTConsensusGroupId(), newSnapshotDirName);
       TCleanupTransferredSnapshotRes res = client.cleanupTransferredSnapshot(req);
       if (!isSuccess(res.getStatus())) {
         throw new ConsensusGroupModifyPeerException(
@@ -765,6 +805,136 @@ public class IoTConsensusServerImpl {
         FileUtils.deleteDirectory(snapshotDir);
       } catch (IOException e) {
         throw new ConsensusGroupModifyPeerException(e);
+      }
+    }
+  }
+
+  /**
+   * We should set safelyDeletedSearchIndex to searchIndex before addPeer to avoid potential data
+   * lost.
+   */
+  public void checkAndLockSafeDeletedSearchIndex() {
+    if (configuration.size() == 1) {
+      reader.setSafelyDeletedSearchIndex(searchIndex.get());
+    }
+  }
+
+  /**
+   * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
+   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   */
+  public void checkAndUpdateSafeDeletedSearchIndex() {
+    if (configuration.size() == 1) {
+      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    } else {
+      reader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
+    }
+  }
+
+  public TSStatus syncLog(String sourcePeerId, IConsensusRequest request) {
+    return cacheQueueMap
+        .computeIfAbsent(sourcePeerId, SyncLogCacheQueue::new)
+        .cacheAndInsertLatestNode((DeserializedBatchIndexedConsensusRequest) request);
+  }
+
+  /**
+   * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write order
+   * in follower the same as the leader. And besides order insurance, we can make the
+   * deserialization of PlanNode to be concurrent
+   */
+  private class SyncLogCacheQueue {
+    private final String sourcePeerId;
+    private final Lock queueLock = new ReentrantLock();
+    private final Condition queueSortCondition = queueLock.newCondition();
+    private final PriorityQueue<DeserializedBatchIndexedConsensusRequest> requestCache;
+    private long nextSyncIndex = -1;
+
+    public SyncLogCacheQueue(String sourcePeerId) {
+      this.sourcePeerId = sourcePeerId;
+      this.requestCache = new PriorityQueue<>();
+    }
+
+    /**
+     * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write
+     * order in follower the same as the leader. And besides order insurance, we can make the
+     * deserialization of PlanNode to be concurrent
+     */
+    private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
+      queueLock.lock();
+      try {
+        requestCache.add(request);
+        // If the peek is not hold by current thread, it should notify the corresponding thread to
+        // process the peek when the queue is full
+        if (requestCache.size() == config.getReplication().getMaxPendingBatchesNum()
+            && requestCache.peek() != null
+            && requestCache.peek().getStartSyncIndex() != request.getStartSyncIndex()) {
+          queueSortCondition.signalAll();
+        }
+        while (true) {
+          // If current InsertNode is the next target InsertNode, write it
+          if (request.getStartSyncIndex() == nextSyncIndex) {
+            requestCache.remove(request);
+            nextSyncIndex = request.getEndSyncIndex() + 1;
+            break;
+          }
+          // If all write thread doesn't hit nextSyncIndex and the heap is full, write
+          // the peek request. This is used to keep the whole write correct when nextSyncIndex
+          // is not set. We won't persist the value of nextSyncIndex to reduce the complexity.
+          // There are some cases that nextSyncIndex is not set:
+          //   1. When the system was just started
+          //   2. When some exception occurs during SyncLog
+          if (requestCache.size() == config.getReplication().getMaxPendingBatchesNum()
+              && requestCache.peek() != null
+              && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
+            requestCache.remove();
+            nextSyncIndex = request.getEndSyncIndex() + 1;
+            break;
+          }
+          try {
+            boolean timeout =
+                !queueSortCondition.await(
+                    config.getReplication().getMaxWaitingTimeForWaitBatchInMs(),
+                    TimeUnit.MILLISECONDS);
+            if (timeout) {
+              // although the timeout is triggered, current thread cannot write its request
+              // if current thread does not hold the peek request. And there should be some
+              // other thread who hold the peek request. In this scenario, current thread
+              // should go into await again and wait until its request becoming peek request
+              if (requestCache.peek() != null
+                  && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
+                // current thread hold the peek request thus it can write the peek immediately.
+                logger.info(
+                    "waiting target request timeout. current index: {}, target index: {}",
+                    request.getStartSyncIndex(),
+                    nextSyncIndex);
+                requestCache.remove(request);
+                nextSyncIndex = Math.max(nextSyncIndex, request.getEndSyncIndex() + 1);
+                break;
+              }
+            }
+          } catch (InterruptedException e) {
+            logger.warn(
+                "current waiting is interrupted. SyncIndex: {}. Exception: {}",
+                request.getStartSyncIndex(),
+                e);
+            Thread.currentThread().interrupt();
+          }
+        }
+        logger.debug(
+            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+            sourcePeerId,
+            consensusGroupId,
+            requestCache.size(),
+            request.getStartSyncIndex(),
+            request.getEndSyncIndex());
+        List<TSStatus> subStatus = new LinkedList<>();
+        for (IConsensusRequest insertNode : request.getInsertNodes()) {
+          subStatus.add(stateMachine.write(insertNode));
+        }
+        queueSortCondition.signalAll();
+        return new TSStatus().setSubStatus(subStatus);
+      } finally {
+        queueLock.unlock();
       }
     }
   }

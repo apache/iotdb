@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.SqlConstant;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -56,6 +56,10 @@ public class SchemaUtils {
     intSet.add(TSEncoding.GORILLA);
     intSet.add(TSEncoding.ZIGZAG);
     intSet.add(TSEncoding.FREQ);
+    intSet.add(TSEncoding.CHIMP);
+    intSet.add(TSEncoding.SPRINTZ);
+    intSet.add(TSEncoding.RLBE);
+
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -66,6 +70,10 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
     floatSet.add(TSEncoding.FREQ);
+    floatSet.add(TSEncoding.CHIMP);
+    floatSet.add(TSEncoding.SPRINTZ);
+    floatSet.add(TSEncoding.RLBE);
+
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -122,6 +130,7 @@ public class SchemaUtils {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.TIME_DURATION:
         return TSDataType.INT64;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -130,6 +139,7 @@ public class SchemaUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.MODE:
       default:
         return null;
     }
@@ -140,7 +150,7 @@ public class SchemaUtils {
    * data
    */
   public static boolean isConsistentWithScanOrder(
-      AggregationType aggregationFunction, Ordering scanOrder) {
+      TAggregationType aggregationFunction, Ordering scanOrder) {
     boolean ascending = scanOrder == Ordering.ASC;
     switch (aggregationFunction) {
       case MIN_TIME:
@@ -155,6 +165,7 @@ public class SchemaUtils {
       case EXTREME:
       case COUNT:
       case AVG:
+      case TIME_DURATION:
         return true;
       default:
         throw new IllegalArgumentException(
@@ -170,14 +181,16 @@ public class SchemaUtils {
     }
   }
 
-  public static List<AggregationType> splitPartialAggregation(AggregationType aggregationType) {
+  public static List<TAggregationType> splitPartialAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case FIRST_VALUE:
-        return Collections.singletonList(AggregationType.MIN_TIME);
+        return Collections.singletonList(TAggregationType.MIN_TIME);
       case LAST_VALUE:
-        return Collections.singletonList(AggregationType.MAX_TIME);
+        return Collections.singletonList(TAggregationType.MAX_TIME);
       case AVG:
-        return Arrays.asList(AggregationType.COUNT, AggregationType.SUM);
+        return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
+      case TIME_DURATION:
+        return Arrays.asList(TAggregationType.MAX_TIME, TAggregationType.MIN_TIME);
       case SUM:
       case MIN_VALUE:
       case MAX_VALUE:
@@ -185,6 +198,8 @@ public class SchemaUtils {
       case COUNT:
       case MIN_TIME:
       case MAX_TIME:
+      case COUNT_IF:
+      case MODE:
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(

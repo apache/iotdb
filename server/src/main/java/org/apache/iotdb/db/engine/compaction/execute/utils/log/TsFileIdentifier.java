@@ -34,7 +34,7 @@ public class TsFileIdentifier {
   private final String dataRegionId;
   private final String timePartitionId;
   private final boolean sequence;
-  private final String filename;
+  private String filename;
   public static final String INFO_SEPARATOR = " ";
   // Notice: Do not change the offset of info
   public static final int FILE_NAME_OFFSET_IN_PATH = 1;
@@ -198,6 +198,10 @@ public class TsFileIdentifier {
       }
     }
     return null;
+  }
+
+  public void setFilename(String filename) {
+    this.filename = filename;
   }
 
   public String getFilename() {

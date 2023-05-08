@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -208,7 +209,8 @@ public abstract class AbstractCli {
             .argName(TIMEOUT_NAME)
             .hasArg()
             .desc(
-                "The timeout in second. Using the configuration of server if it's not set (optional)")
+                "The timeout in second. "
+                    + "Using the configuration of server if it's not set (optional)")
             .build();
     options.addOption(queryTimeout);
     return options;
@@ -244,6 +246,22 @@ public abstract class AbstractCli {
     } else {
       fetchSize = Integer.parseInt(fetchSizeString.trim());
     }
+  }
+
+  private static int setFetchSize(String specialCmd, String cmd) {
+    String[] values = specialCmd.split("=");
+    if (values.length != 2) {
+      println(String.format("Fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
+      return CODE_ERROR;
+    }
+    try {
+      setFetchSize(cmd.split("=")[1]);
+    } catch (Exception e) {
+      println(String.format("Fetch size format error, %s", e.getMessage()));
+      return CODE_ERROR;
+    }
+    println("Fetch size has set to " + values[1].trim());
+    return CODE_OK;
   }
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
@@ -323,14 +341,17 @@ public abstract class AbstractCli {
     }
   }
 
-  static void displayLogo(String version, String buildInfo) {
+  static void displayLogo(String logo, String version, String buildInfo) {
     println(
-        " _____       _________  ______   ______    \n"
-            + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-            + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-            + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-            + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-            + "|_____|'.__.' |_____|  |______.'|_______/  version "
+        (logo != null
+                ? logo
+                : (" _____       _________  ______   ______    \n"
+                    + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+                    + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+                    + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+                    + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+                    + "|_____|'.__.' |_____|  |______.'|_______/  "))
+            + "version "
             + version
             + " (Build: "
             + (buildInfo != null ? buildInfo : "UNKNOWN")
@@ -438,8 +459,8 @@ public abstract class AbstractCli {
   }
 
   /**
-   * if cli has not specified a zondId, it will be set to cli's system timezone by default otherwise
-   * for insert and query accuracy cli should set timezone the same for all sessions
+   * if cli has not specified a zoneId, it will be set to cli's system timezone by default otherwise
+   * for insert and query accuracy cli should set timezone the same for all sessions.
    *
    * @param specialCmd
    * @param cmd
@@ -459,22 +480,6 @@ public abstract class AbstractCli {
       return CODE_ERROR;
     }
     println("Time zone has set to " + values[1].trim());
-    return CODE_OK;
-  }
-
-  private static int setFetchSize(String specialCmd, String cmd) {
-    String[] values = specialCmd.split("=");
-    if (values.length != 2) {
-      println(String.format("Fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
-      return CODE_ERROR;
-    }
-    try {
-      setFetchSize(cmd.split("=")[1]);
-    } catch (Exception e) {
-      println(String.format("Fetch size format error, %s", e.getMessage()));
-      return CODE_ERROR;
-    }
-    println("Fetch size has set to " + values[1].trim());
     return CODE_OK;
   }
 
@@ -594,7 +599,7 @@ public abstract class AbstractCli {
   }
 
   /**
-   * cache all results
+   * cache all results.
    *
    * @param resultSet jdbc resultSet
    * @param maxSizeList the longest result of every column
@@ -620,10 +625,14 @@ public abstract class AbstractCli {
     }
 
     List<List<String>> lists = new ArrayList<>(columnCount);
+    int endTimeIndex = -1;
     if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
         String columnLabel = resultSetMetaData.getColumnLabel(i);
+        if (columnLabel.equalsIgnoreCase("__endTime")) {
+          endTimeIndex = i;
+        }
         list.add(columnLabel);
         lists.add(list);
         int count = computeHANCount(columnLabel);
@@ -638,6 +647,10 @@ public abstract class AbstractCli {
             tmp =
                 RpcUtils.formatDatetime(
                     timeFormat, timestampPrecision, resultSet.getLong(TIMESTAMP_STR), zoneId);
+          } else if (endTimeIndex == i) {
+            tmp =
+                RpcUtils.formatDatetime(
+                    timeFormat, timestampPrecision, resultSet.getLong(i), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }
@@ -695,12 +708,12 @@ public abstract class AbstractCli {
     lists.add(0, new ArrayList<>());
     lists.add(1, new ArrayList<>());
 
-    String ACTIVITY_STR = "Activity";
-    String ELAPSED_TIME_STR = "Elapsed Time";
-    lists.get(0).add(ACTIVITY_STR);
-    lists.get(1).add(ELAPSED_TIME_STR);
-    maxSizeList.add(0, ACTIVITY_STR.length());
-    maxSizeList.add(1, ELAPSED_TIME_STR.length());
+    String activityStr = "Activity";
+    String elapsedTimeStr = "Elapsed Time";
+    lists.get(0).add(activityStr);
+    lists.get(1).add(elapsedTimeStr);
+    maxSizeList.add(0, activityStr.length());
+    maxSizeList.add(1, elapsedTimeStr.length());
 
     List<String> activityList = ((IoTDBJDBCResultSet) resultSet).getActivityList();
     List<Long> elapsedTimeList = ((IoTDBJDBCResultSet) resultSet).getElapsedTimeList();

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -108,7 +108,7 @@ public class CreateRegionGroupsProcedure
                             if (failedRegionReplicas.getDataNodeLocationsSize()
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
                               // A RegionGroup can provide service as long as there are more than
-                              // half of the RegionReplicas were created successfully
+                              // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
 
                               // Build recreate tasks
@@ -123,7 +123,7 @@ public class CreateRegionGroupsProcedure
                                             regionReplicaSet.getRegionId().getType())) {
                                           try {
                                             createTask.setTTL(env.getTTL(storageGroup));
-                                          } catch (StorageGroupNotExistsException e) {
+                                          } catch (DatabaseNotExistsException e) {
                                             LOGGER.error("Can't get TTL", e);
                                           }
                                         }
@@ -201,7 +201,6 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
-        env.broadcastRegionGroup();
         return Flow.NO_MORE_STATE;
     }
 

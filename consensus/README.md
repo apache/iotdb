@@ -72,7 +72,7 @@ IConsensus consensusImpl =
         ConsensusFactory.RatisConsensus,
         new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
         new File(conf.getConsensusDir()),
-        gid -> new ConfigNodeRegionStateMachine())
+        gid -> new ConfigRegionStateMachine())
     .orElseThrow(() ->
         new IllegalArgumentException(
         String.format(

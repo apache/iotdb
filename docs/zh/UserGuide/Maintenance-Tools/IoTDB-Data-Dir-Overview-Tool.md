@@ -19,11 +19,11 @@
 
 -->
 
-# IoTDB数据文件夹概览工具
+## IoTDB数据文件夹概览工具
 
 IoTDB数据文件夹概览工具用于打印出数据文件夹的结构概览信息，工具位置为 tools/tsfile/print-iotdb-data-dir。
 
-## 用法
+### 用法
 
 -   Windows:
 
@@ -39,7 +39,7 @@ IoTDB数据文件夹概览工具用于打印出数据文件夹的结构概览信
 
 注意：如果没有设置输出结果的存储路径, 将使用相对路径"IoTDB_data_dir_overview.txt"作为默认值。
 
-## 示例
+### 示例
 
 以Windows系统为例：
 

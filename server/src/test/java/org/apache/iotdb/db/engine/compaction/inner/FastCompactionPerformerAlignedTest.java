@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
@@ -35,7 +35,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -75,7 +74,6 @@ public class FastCompactionPerformerAlignedTest {
     if (!dataDirectory.exists()) {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
-    LocalConfigNode.getInstance().init();
     CompactionTaskManager.getInstance().start();
   }
 
@@ -83,7 +81,6 @@ public class FastCompactionPerformerAlignedTest {
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     FileUtils.forceDelete(dataDirectory);
-    LocalConfigNode.getInstance().clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     CompactionTaskManager.getInstance().stop();
@@ -145,7 +142,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
@@ -219,7 +216,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -286,7 +283,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -356,7 +353,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -424,7 +421,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -494,7 +491,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -565,7 +562,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
@@ -647,7 +644,7 @@ public class FastCompactionPerformerAlignedTest {
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =

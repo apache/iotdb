@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -70,7 +70,7 @@ public class IndexController {
     restore();
   }
 
-  public long updateAndGet(long index) {
+  public long updateAndGet(long index, boolean forcePersist) {
     try {
       lock.writeLock().lock();
       long newCurrentIndex = Math.max(currentIndex, index);
@@ -81,7 +81,7 @@ public class IndexController {
           prefix,
           storageDir);
       currentIndex = newCurrentIndex;
-      checkPersist();
+      checkPersist(forcePersist);
       return currentIndex;
     } finally {
       lock.writeLock().unlock();
@@ -102,14 +102,17 @@ public class IndexController {
     return lastFlushedIndex;
   }
 
-  private void checkPersist() {
-    if (currentIndex - lastFlushedIndex >= checkpointGap) {
+  private void checkPersist(boolean forcePersist) {
+    if (forcePersist || currentIndex - lastFlushedIndex >= checkpointGap) {
       persist();
     }
   }
 
   private void persist() {
-    long flushIndex = currentIndex - currentIndex % checkpointGap;
+    long flushIndex = currentIndex;
+    if (flushIndex == lastFlushedIndex) {
+      return;
+    }
     File oldFile = new File(storageDir, prefix + lastFlushedIndex);
     File newFile = new File(storageDir, prefix + flushIndex);
     try {
@@ -126,7 +129,8 @@ public class IndexController {
         // because it won't infect the correctness
         logger.info(
             "failed to flush sync index because previous version file {} does not exists. "
-                + "It may be caused by the target Peer is removed from current group. target file is {}",
+                + "It may be caused by the target Peer is removed from current group. "
+                + "target file is {}",
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
       }

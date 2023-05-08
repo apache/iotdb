@@ -52,12 +52,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
 
@@ -139,7 +134,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
     return this;
   }
 
@@ -149,7 +144,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
     return this;
   }
 
@@ -228,12 +223,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
+  public CommonConfig setQueryThreadCount(int queryThreadCount) {
     return this;
   }
 
   @Override
-  public CommonConfig setQueryThreadCount(int queryThreadCount) {
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     return this;
   }
 
@@ -244,6 +239,31 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
     return this;
   }
 }

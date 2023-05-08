@@ -86,20 +86,19 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
     metricService.createAutoGauge(
-        "jvm_gc_max_data_size_bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
+        "jvm_gc_max_data_size_bytes", MetricLevel.CORE, maxDataSize, AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
     metricService.createAutoGauge(
-        "jvm_gc_live_data_size_bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
+        "jvm_gc_live_data_size_bytes", MetricLevel.CORE, liveDataSize, AtomicLong::get);
 
     Counter allocatedBytes =
-        metricService.getOrCreateCounter("jvm_gc_memory_allocated_bytes", MetricLevel.IMPORTANT);
+        metricService.getOrCreateCounter("jvm_gc_memory_allocated_bytes", MetricLevel.CORE);
 
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
-            : metricService.getOrCreateCounter(
-                "jvm_gc_memory_promoted_bytes", MetricLevel.IMPORTANT);
+            : metricService.getOrCreateCounter("jvm_gc_memory_promoted_bytes", MetricLevel.CORE);
 
     // start watching for GC notifications
     final AtomicLong heapPoolSizeAfterGc = new AtomicLong();
@@ -126,7 +125,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             }
             Timer timer =
                 metricService.getOrCreateTimer(
-                    timerName, MetricLevel.IMPORTANT, "action", gcAction, "cause", gcCause);
+                    timerName, MetricLevel.CORE, "action", gcAction, "cause", gcCause);
             timer.update(duration, TimeUnit.MILLISECONDS);
 
             // Update promotion and allocation counters

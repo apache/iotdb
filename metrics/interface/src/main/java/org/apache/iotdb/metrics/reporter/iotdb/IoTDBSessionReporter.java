@@ -68,10 +68,18 @@ public class IoTDBSessionReporter extends IoTDBReporter {
     try (SessionDataSetWrapper result =
         this.sessionPool.executeQueryStatement("SHOW DATABASES " + IoTDBMetricsUtils.DATABASE)) {
       if (!result.hasNext()) {
-        this.sessionPool.createDatabase(IoTDBMetricsUtils.DATABASE);
+        try (SessionDataSetWrapper result2 =
+            this.sessionPool.executeQueryStatement(
+                "CREATE "
+                    + IoTDBMetricsUtils.DATABASE
+                    + " WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=1, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1")) {
+          if (!result2.hasNext()) {
+            LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
+          }
+        }
       }
     } catch (IoTDBConnectionException e) {
-      LOGGER.warn("IoTDBSessionReporter checkOrCreateStorageGroup failed because ", e);
+      LOGGER.warn("IoTDBSessionReporter checkOrCreateDatabase failed because ", e);
     } catch (StatementExecutionException e) {
       // do nothing
     }

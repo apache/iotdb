@@ -23,4 +23,18 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 
 import java.util.Iterator;
 
-public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {}
+public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {
+  /**
+   * Determines if the iteration is successful when it completes.
+   *
+   * @return False if an exception occurs during the iteration. Otherwise, return true.
+   */
+  boolean isSuccess();
+
+  /**
+   * Get throwable if there is exception occurs during the iteration.
+   *
+   * @return Throwable, null if no exception.
+   */
+  Throwable getFailure();
+}

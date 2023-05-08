@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
@@ -50,7 +51,7 @@ public class ConfigNodeConfig {
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties
-  private int configNodeRegionId = 0;
+  private int configRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
@@ -74,31 +75,33 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
-  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = schemaReplicationFactor;
-
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
-  private int schemaRegionGroupPerDatabase = 1;
+  /**
+   * When set schema_region_group_extension_policy=CUSTOM, this parameter is the default number of
+   * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
+   * parameter is the default minimal number of SchemaRegionGroups for each Database.
+   */
+  private int defaultSchemaRegionGroupNumPerDatabase = 1;
+
+  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = schemaReplicationFactor;
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of DataRegionGroups for each Database when using CUSTOM extension policy */
-  private int dataRegionGroupPerDatabase = 1;
+  /**
+   * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
+   * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
+   * parameter is the default minimal number of DataRegionGroups for each Database.
+   */
+  private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
-  private double dataRegionPerProcessor = 1.0;
-
-  /** The least number of SchemaRegionGroup for each Database. */
-  private int leastSchemaRegionGroupNum = 1;
-
-  /** The least number of DataRegionGroup for each Database. */
-  private int leastDataRegionGroupNum = 5;
+  private double dataRegionPerDataNode = 5.0;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -125,6 +128,20 @@ public class ConfigNodeConfig {
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
 
+  /**
+   * The maximum number of clients that can be idle for a node in a clientManager. When the number
+   * of idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
+   * The maximum number of clients that can be allocated for a node in a clientManager. When the
+   * number of the client to a single node exceeds this number, the thread for applying for a client
+   * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
+   * no clients after the block time.
+   */
+  private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
   /** System directory, including version file for each database and metadata */
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
@@ -150,6 +167,13 @@ public class ConfigNodeConfig {
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
+  /** External lib directory for pipe, stores user-uploaded JAR files */
+  private String pipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
+
+  /** External temporary lib directory for storing downloaded pipe JAR files */
+  private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
@@ -185,10 +209,10 @@ public class ConfigNodeConfig {
   private String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader */
-  private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
-  private long configNodeRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
-  private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+  private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
@@ -267,6 +291,11 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
+  /** The getOrCreatePartitionTable interface will log new created Partition if set true */
+  private boolean isEnablePrintingNewlyCreatedPartition = false;
+
+  private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -283,6 +312,8 @@ public class ConfigNodeConfig {
     udfTemporaryLibDir = addHomeDir(udfTemporaryLibDir);
     triggerDir = addHomeDir(triggerDir);
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
+    pipeDir = addHomeDir(pipeDir);
+    pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
   }
 
   private String addHomeDir(String dir) {
@@ -295,6 +326,19 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public static String getEnvironmentVariables() {
+    return "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_HOME
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, "null")
+        + ";"
+        + "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_CONF
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, "null")
+        + ";";
   }
 
   public String getClusterName() {
@@ -345,12 +389,12 @@ public class ConfigNodeConfig {
     this.targetConfigNode = targetConfigNode;
   }
 
-  public int getConfigNodeRegionId() {
-    return configNodeRegionId;
+  public int getConfigRegionId() {
+    return configRegionId;
   }
 
-  public void setConfigNodeRegionId(int configNodeRegionId) {
-    this.configNodeRegionId = configNodeRegionId;
+  public void setConfigRegionId(int configRegionId) {
+    this.configRegionId = configRegionId;
   }
 
   public int getSeriesSlotNum() {
@@ -409,6 +453,24 @@ public class ConfigNodeConfig {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
+    return this;
+  }
+
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
+    return this;
+  }
+
   public String getConsensusDir() {
     return consensusDir;
   }
@@ -442,12 +504,13 @@ public class ConfigNodeConfig {
     this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
   }
 
-  public int getSchemaRegionGroupPerDatabase() {
-    return schemaRegionGroupPerDatabase;
+  public int getDefaultSchemaRegionGroupNumPerDatabase() {
+    return defaultSchemaRegionGroupNumPerDatabase;
   }
 
-  public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    this.schemaRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+  public void setDefaultSchemaRegionGroupNumPerDatabase(
+      int defaultSchemaRegionGroupNumPerDatabase) {
+    this.defaultSchemaRegionGroupNumPerDatabase = defaultSchemaRegionGroupNumPerDatabase;
   }
 
   public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
@@ -459,12 +522,12 @@ public class ConfigNodeConfig {
     this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
   }
 
-  public int getDataRegionGroupPerDatabase() {
-    return dataRegionGroupPerDatabase;
+  public int getDefaultDataRegionGroupNumPerDatabase() {
+    return defaultDataRegionGroupNumPerDatabase;
   }
 
-  public void setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    this.dataRegionGroupPerDatabase = dataRegionGroupPerDatabase;
+  public void setDefaultDataRegionGroupNumPerDatabase(int defaultDataRegionGroupNumPerDatabase) {
+    this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
   }
 
   public double getSchemaRegionPerDataNode() {
@@ -483,28 +546,12 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public double getDataRegionPerProcessor() {
-    return dataRegionPerProcessor;
+  public double getDataRegionPerDataNode() {
+    return dataRegionPerDataNode;
   }
 
-  public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
-    this.dataRegionPerProcessor = dataRegionPerProcessor;
-  }
-
-  public int getLeastSchemaRegionGroupNum() {
-    return leastSchemaRegionGroupNum;
-  }
-
-  public void setLeastSchemaRegionGroupNum(int leastSchemaRegionGroupNum) {
-    this.leastSchemaRegionGroupNum = leastSchemaRegionGroupNum;
-  }
-
-  public int getLeastDataRegionGroupNum() {
-    return leastDataRegionGroupNum;
-  }
-
-  public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    this.leastDataRegionGroupNum = leastDataRegionGroupNum;
+  public void setDataRegionPerDataNode(double dataRegionPerDataNode) {
+    this.dataRegionPerDataNode = dataRegionPerDataNode;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {
@@ -580,6 +627,23 @@ public class ConfigNodeConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getPipeDir() {
+    return pipeDir;
+  }
+
+  public void setPipeDir(String pipeDir) {
+    this.pipeDir = pipeDir;
+    updatePipeTemporaryLibDir();
+  }
+
+  public String getPipeTemporaryLibDir() {
+    return pipeTemporaryLibDir;
+  }
+
+  public void updatePipeTemporaryLibDir() {
+    this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public int getSchemaReplicationFactor() {
@@ -1055,5 +1119,21 @@ public class ConfigNodeConfig {
 
   public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
     this.dataRegionRatisLogMax = dataRegionRatisLogMax;
+  }
+
+  public boolean isEnablePrintingNewlyCreatedPartition() {
+    return isEnablePrintingNewlyCreatedPartition;
+  }
+
+  public void setEnablePrintingNewlyCreatedPartition(boolean enablePrintingNewlyCreatedPartition) {
+    isEnablePrintingNewlyCreatedPartition = enablePrintingNewlyCreatedPartition;
+  }
+
+  public long getForceWalPeriodForConfigNodeSimpleInMs() {
+    return forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
+    this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
   }
 }

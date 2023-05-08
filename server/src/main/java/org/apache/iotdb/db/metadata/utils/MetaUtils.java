@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -118,11 +118,20 @@ public class MetaUtils {
 
   public static List<PartialPath> groupAlignedSeriesWithOrder(
       List<PartialPath> fullPaths, OrderByParameter orderByParameter) {
-    List<PartialPath> res = groupAlignedSeries(fullPaths, new HashMap<>());
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    List<PartialPath> res = groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
     res.sort(
         orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
             ? Comparator.naturalOrder()
             : Comparator.reverseOrder());
+    // sort the measurements of AlignedPath
+    Comparator<String> comparator =
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? Comparator.naturalOrder()
+            : Comparator.reverseOrder();
+    for (AlignedPath alignedPath : deviceToAlignedPathMap.values()) {
+      alignedPath.sortMeasurement(comparator);
+    }
     return res;
   }
 

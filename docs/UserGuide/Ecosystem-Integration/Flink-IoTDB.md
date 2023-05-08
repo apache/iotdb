@@ -38,6 +38,7 @@ This example shows a case that sends data to a IoTDB server from a Flink job:
 It is noteworthy that to use IoTDBSink, schema auto-creation in IoTDB should be enabled. 
 
 ```java
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -74,7 +75,7 @@ public class FlinkIoTDBSink {
         new IoTDBSink(options, serializationSchema)
             // enable batching
             .withBatchSize(10)
-            // how many connectons to the server will be created for each parallelism
+            // how many connections to the server will be created for each parallelism
             .withSessionPoolSize(3);
 
     env.addSource(new SensorSource())

@@ -75,19 +75,19 @@ END
 
 #### `<start_time_offset>` == `<every_interval>`
 
-![1](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
+![1](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
 
 #### `<start_time_offset>` > `<every_interval>`
 
-![2](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
+![2](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
 
 #### `<start_time_offset>` < `<every_interval>`
 
-![3](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
+![3](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
 
 #### `<every_interval>`  is not zero
 
-![4](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
+![4](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
 
 
 - `TIMEOUT POLICY` specify how we deal with the cq task whose previous time interval execution is not finished while the next execution time has reached. The default value is `BLOCKED`.

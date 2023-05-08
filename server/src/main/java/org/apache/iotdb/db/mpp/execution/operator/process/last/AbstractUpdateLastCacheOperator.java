@@ -73,7 +73,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   protected String getDatabaseName() {
     if (databaseName == null) {
       databaseName =
-          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((DataDriverContext) operatorContext.getDriverContext())
               .getDataRegion()
               .getDatabaseName();
     }
@@ -81,12 +81,12 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return child.hasNextWithTimer();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return child.isFinished();
   }
 

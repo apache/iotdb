@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.factory.SourceOperatorFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -35,38 +38,98 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.Objects.requireNonNull;
+
 public class SeriesScanOperator extends AbstractDataSourceOperator {
+
+  public static class SeriesScanOperatorFactory implements SourceOperatorFactory {
+    private final int operatorId;
+    private final PlanNodeId sourceId;
+    private final PartialPath seriesPath;
+    private final Set<String> allSensors;
+    private final Filter timeFilter;
+    private final Filter valueFilter;
+    private final boolean ascending;
+    private boolean closed;
+
+    public SeriesScanOperatorFactory(
+        int operatorId,
+        PlanNodeId sourceId,
+        PartialPath seriesPath,
+        Set<String> allSensors,
+        Filter timeFilter,
+        Filter valueFilter,
+        boolean ascending) {
+      this.operatorId = operatorId;
+      this.sourceId = requireNonNull(sourceId, "sourceId is null");
+      this.seriesPath = requireNonNull(seriesPath, "seriesPath is null");
+      this.allSensors = requireNonNull(allSensors, "allSensors is null");
+      this.timeFilter = timeFilter;
+      this.valueFilter = valueFilter;
+      this.ascending = ascending;
+    }
+
+    public int getOperatorId() {
+      return operatorId;
+    }
+
+    @Override
+    public PlanNodeId getSourceId() {
+      return sourceId;
+    }
+
+    public PlanNodeId getPlanNodeId() {
+      return sourceId;
+    }
+
+    public String getOperatorType() {
+      return SeriesScanOperator.class.getSimpleName();
+    }
+
+    @Override
+    public SourceOperator createOperator(DriverContext driverContext) {
+      checkState(!closed, "Factory is already closed");
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
+      scanOptionsBuilder.withQueryFilter(valueFilter);
+      return new SeriesScanOperator(
+          operatorContext,
+          sourceId,
+          seriesPath,
+          ascending ? Ordering.ASC : Ordering.DESC,
+          scanOptionsBuilder.build());
+    }
+
+    @Override
+    public void noMoreOperators() {
+      closed = true;
+    }
+  }
 
   private final TsBlockBuilder builder;
   private boolean finished = false;
 
   public SeriesScanOperator(
+      OperatorContext context,
       PlanNodeId sourceId,
       PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      OperatorContext context,
-      Filter timeFilter,
-      Filter valueFilter,
-      boolean ascending) {
+      Ordering scanOrder,
+      SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
-        new SeriesScanUtil(
-            seriesPath,
-            allSensors,
-            dataType,
-            context.getInstanceContext(),
-            timeFilter,
-            valueFilter,
-            ascending);
+        new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     this.maxReturnSize =
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -76,7 +139,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
       return true;
     }
@@ -121,7 +184,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished;
   }
 

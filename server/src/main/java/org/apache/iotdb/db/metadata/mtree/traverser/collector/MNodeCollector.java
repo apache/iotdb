@@ -20,13 +20,9 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
 
 /**
  * This class defines any node in MTree as potential target node. On finding a path matching the
@@ -34,54 +30,18 @@ import java.util.Set;
  * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
-public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
+// TODO: set R to IMNodeInfo
+public abstract class MNodeCollector<R, N extends IMNode<N>> extends MNodeTraverser<R, N> {
 
-  // level query option
-  protected int targetLevel = -1;
-
-  private Set<IMNode> processedNodes = new HashSet<>();
-
-  protected MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected MNodeCollector(
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
-  @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+  protected final R transferToResult(N node) {
+    return collectMNode(node);
   }
 
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (targetLevel >= 0) {
-      // move the cursor the given level when matched
-      if (level < targetLevel) {
-        return false;
-      }
-      Deque<IMNode> stack = new ArrayDeque<>();
-      while (level > targetLevel) {
-        node = traverseContext.pop();
-        stack.push(node);
-        level--;
-      }
-      // record processed node so they will not be processed twice
-      if (!processedNodes.contains(node)) {
-        processedNodes.add(node);
-        transferToResult(node);
-      }
-      while (!stack.isEmpty()) {
-        traverseContext.push(stack.pop());
-      }
-      return true;
-    } else {
-      transferToResult(node);
-    }
-    return false;
-  }
-
-  protected abstract void transferToResult(IMNode node);
-
-  public void setTargetLevel(int targetLevel) {
-    this.targetLevel = targetLevel;
-  }
+  protected abstract R collectMNode(N node);
 }

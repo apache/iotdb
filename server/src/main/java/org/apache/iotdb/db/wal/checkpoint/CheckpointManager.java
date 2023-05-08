@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
@@ -45,6 +46,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class CheckpointManager implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** WALNode identifier of this checkpoint manager */
   protected final String identifier;
@@ -105,15 +107,18 @@ public class CheckpointManager implements AutoCloseable {
    * each checkpoint file
    */
   private void makeGlobalInfoCP() {
+    long start = System.nanoTime();
     Checkpoint checkpoint =
         new Checkpoint(
             CheckpointType.GLOBAL_MEMORY_TABLE_INFO, new ArrayList<>(memTableId2Info.values()));
     logByCachedByteBuffer(checkpoint);
+    WRITING_METRICS.recordMakeCheckpointCost(checkpoint.getType(), System.nanoTime() - start);
   }
 
   /** make checkpoint for create memTable info */
   public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
     infoLock.lock();
+    long start = System.nanoTime();
     try {
       maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
       memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
@@ -122,6 +127,8 @@ public class CheckpointManager implements AutoCloseable {
               CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
       logByCachedByteBuffer(checkpoint);
     } finally {
+      WRITING_METRICS.recordMakeCheckpointCost(
+          CheckpointType.CREATE_MEMORY_TABLE, System.nanoTime() - start);
       infoLock.unlock();
     }
   }
@@ -129,6 +136,7 @@ public class CheckpointManager implements AutoCloseable {
   /** make checkpoint for flush memTable info */
   public void makeFlushMemTableCP(long memTableId) {
     infoLock.lock();
+    long start = System.nanoTime();
     try {
       MemTableInfo memTableInfo = memTableId2Info.remove(memTableId);
       if (memTableInfo == null) {
@@ -139,6 +147,8 @@ public class CheckpointManager implements AutoCloseable {
               CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
       logByCachedByteBuffer(checkpoint);
     } finally {
+      WRITING_METRICS.recordMakeCheckpointCost(
+          CheckpointType.FLUSH_MEMORY_TABLE, System.nanoTime() - start);
       infoLock.unlock();
     }
   }

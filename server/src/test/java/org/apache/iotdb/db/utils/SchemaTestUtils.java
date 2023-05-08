@@ -21,20 +21,22 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-
-import java.util.List;
-
-import static org.junit.Assert.assertFalse;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class SchemaTestUtils {
 
   public static MeasurementPath getMeasurementPath(String pathPatternString)
       throws MetadataException {
-    PartialPath pathPattern = new PartialPath(pathPatternString);
-    List<MeasurementPath> measurementPaths =
-        LocalSchemaProcessor.getInstance().getMeasurementPathsWithAlias(pathPattern);
-    assertFalse(measurementPaths.isEmpty());
-    return measurementPaths.get(0);
+    PartialPath path = new PartialPath(pathPatternString);
+    return new MeasurementPath(
+        path,
+        new MeasurementSchema(
+            path.getMeasurement(),
+            TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED));
   }
 }

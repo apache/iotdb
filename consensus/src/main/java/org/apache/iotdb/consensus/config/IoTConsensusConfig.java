@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class IoTConsensusConfig {
@@ -50,8 +53,8 @@ public class IoTConsensusConfig {
 
     public IoTConsensusConfig build() {
       return new IoTConsensusConfig(
-          rpc != null ? rpc : new RPC.Builder().build(),
-          replication != null ? replication : new Replication.Builder().build());
+          Optional.ofNullable(rpc).orElseGet(() -> new RPC.Builder().build()),
+          Optional.ofNullable(replication).orElseGet(() -> new Replication.Builder().build()));
     }
 
     public Builder setRpc(RPC rpc) {
@@ -74,8 +77,11 @@ public class IoTConsensusConfig {
     private final boolean isRpcThriftCompressionEnabled;
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
+
+    private final boolean printLogWhenThriftClientEncounterException;
     private final int thriftMaxFrameSize;
-    private final int maxConnectionForInternalService;
+    private final int coreClientNumForEachNode;
+    private final int maxClientNumForEachNode;
 
     private RPC(
         int rpcSelectorThreadNum,
@@ -85,8 +91,10 @@ public class IoTConsensusConfig {
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
         int connectionTimeoutInMs,
+        boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
-        int maxConnectionForInternalService) {
+        int coreClientNumForEachNode,
+        int maxClientNumForEachNode) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -94,8 +102,10 @@ public class IoTConsensusConfig {
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-      this.maxConnectionForInternalService = maxConnectionForInternalService;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -126,12 +136,20 @@ public class IoTConsensusConfig {
       return connectionTimeoutInMs;
     }
 
+    public boolean isPrintLogWhenThriftClientEncounterException() {
+      return printLogWhenThriftClientEncounterException;
+    }
+
     public int getThriftMaxFrameSize() {
       return thriftMaxFrameSize;
     }
 
-    public int getMaxConnectionForInternalService() {
-      return maxConnectionForInternalService;
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
+    public int getMaxClientNumForEachNode() {
+      return maxClientNumForEachNode;
     }
 
     public static RPC.Builder newBuilder() {
@@ -147,9 +165,13 @@ public class IoTConsensusConfig {
       private boolean isRpcThriftCompressionEnabled = false;
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+
+      private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
 
-      private int maxConnectionForInternalService = 100;
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+      private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -187,13 +209,25 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setPrintLogWhenThriftClientEncounterException(
+          boolean printLogWhenThriftClientEncounterException) {
+        this.printLogWhenThriftClientEncounterException =
+            printLogWhenThriftClientEncounterException;
+        return this;
+      }
+
       public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
         this.thriftMaxFrameSize = thriftMaxFrameSize;
         return this;
       }
 
-      public RPC.Builder setMaxConnectionForInternalService(int maxConnectionForInternalService) {
-        this.maxConnectionForInternalService = maxConnectionForInternalService;
+      public RPC.Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
+        return this;
+      }
+
+      public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+        this.maxClientNumForEachNode = maxClientNumForEachNode;
         return this;
       }
 
@@ -206,8 +240,10 @@ public class IoTConsensusConfig {
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
             connectionTimeoutInMs,
+            printLogWhenThriftClientEncounterException,
             thriftMaxFrameSize,
-            maxConnectionForInternalService);
+            coreClientNumForEachNode,
+            maxClientNumForEachNode);
       }
     }
   }
@@ -217,7 +253,9 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
-    private final int maxWaitingTimeForAccumulatingBatchInMs;
+
+    private final int maxQueueLength;
+    private final long maxWaitingTimeForWaitBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
     private final long walThrottleThreshold;
@@ -230,7 +268,8 @@ public class IoTConsensusConfig {
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
         int maxPendingBatchesNum,
-        int maxWaitingTimeForAccumulatingBatchInMs,
+        int maxQueueLength,
+        long maxWaitingTimeForWaitBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
         long walThrottleThreshold,
@@ -241,7 +280,8 @@ public class IoTConsensusConfig {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
-      this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
+      this.maxQueueLength = maxQueueLength;
+      this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
       this.walThrottleThreshold = walThrottleThreshold;
@@ -263,8 +303,12 @@ public class IoTConsensusConfig {
       return maxPendingBatchesNum;
     }
 
-    public int getMaxWaitingTimeForAccumulatingBatchInMs() {
-      return maxWaitingTimeForAccumulatingBatchInMs;
+    public int getMaxQueueLength() {
+      return maxQueueLength;
+    }
+
+    public long getMaxWaitingTimeForWaitBatchInMs() {
+      return maxWaitingTimeForWaitBatchInMs;
     }
 
     public long getBasicRetryWaitTimeMs() {
@@ -301,12 +345,11 @@ public class IoTConsensusConfig {
 
     public static class Builder {
 
-      private int maxLogEntriesNumPerBatch = 30;
+      private int maxLogEntriesNumPerBatch = 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
-      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
-      // in DataRegionStateMachine
-      private int maxPendingBatchesNum = 5;
-      private int maxWaitingTimeForAccumulatingBatchInMs = 500;
+      private int maxPendingBatchesNum = 12;
+      private int maxQueueLength = 4096;
+      private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
@@ -330,9 +373,14 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setMaxWaitingTimeForAccumulatingBatchInMs(
-          int maxWaitingTimeForAccumulatingBatchInMs) {
-        this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
+      public Builder setMaxQueueLength(int maxQueueLength) {
+        this.maxQueueLength = maxQueueLength;
+        return this;
+      }
+
+      public Replication.Builder setMaxWaitingTimeForWaitBatchInMs(
+          long maxWaitingTimeForWaitBatchInMs) {
+        this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
         return this;
       }
 
@@ -376,7 +424,8 @@ public class IoTConsensusConfig {
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
             maxPendingBatchesNum,
-            maxWaitingTimeForAccumulatingBatchInMs,
+            maxQueueLength,
+            maxWaitingTimeForWaitBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
             walThrottleThreshold,

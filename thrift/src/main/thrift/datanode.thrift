@@ -63,6 +63,8 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkChannel
+  4: required i32 index
 }
 
 struct TGetDataBlockResponse {
@@ -73,6 +75,14 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkChannel
+  4: required i32 index
+}
+
+struct TCloseSinkChannelEvent {
+  1: required TFragmentInstanceId sourceFragmentInstanceId
+  // index of upstream SinkChannel
+  2: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -108,15 +118,23 @@ struct TSendFragmentInstanceResp {
   2: optional string message
 }
 
-struct TSendPlanNodeReq {
+struct TSendSinglePlanNodeReq {
   1: required TPlanNode planNode
   2: required common.TConsensusGroupId consensusGroupId
 }
 
-struct TSendPlanNodeResp {
+struct TSendSinglePlanNodeResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
+}
+
+struct TSendBatchPlanNodeReq {
+  1: required list<TSendSinglePlanNodeReq> requests;
+}
+
+struct TSendBatchPlanNodeResp {
+  1: required list<TSendSinglePlanNodeResp> responses;
 }
 
 struct TFetchFragmentInstanceInfoReq {
@@ -134,6 +152,7 @@ struct TFragmentInstanceInfoResp {
 struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
+  3: required bool hasThrowable
 }
 
 struct TCancelPlanFragmentReq {
@@ -206,6 +225,16 @@ struct TFireTriggerResp {
   2: required i32 fireResult
 }
 
+struct TCreatePipePluginInstanceReq {
+  1: required binary pipePluginMeta
+  2: required binary jarFile
+}
+
+struct TDropPipePluginInstanceReq {
+  1: required string pipePluginName
+  2: required bool needToDeleteJar
+}
+
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
@@ -215,6 +244,9 @@ struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
+  4: optional list<i32> schemaRegionIds
+  5: optional list<i32> dataRegionIds
+  6: optional map<string, common.TSpaceQuota> spaceQuotaUsage
 }
 
 struct THeartbeatResp {
@@ -223,18 +255,21 @@ struct THeartbeatResp {
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
+  6: optional map<i32, i64> deviceNum
+  7: optional map<i32, i64> timeSeriesNum
+  8: optional map<i32, i64> regionDisk
 }
 
 struct TLoadSample {
   // Percentage of occupied cpu in DataNode
-  1: required i16 cpuUsageRate
+  1: required double cpuUsageRate
   // Percentage of occupied memory space in DataNode
   2: required double memoryUsageRate
   // Percentage of occupied disk space in DataNode
   3: required double diskUsageRate
   // The size of free disk space
   // Unit: Byte
-  4: required i64 freeDiskSpace
+  4: required double freeDiskSpace
 }
 
 struct TRegionRouteReq {
@@ -328,15 +363,18 @@ struct TCountPathsUsingTemplateResp{
   2: optional i64 count
 }
 
-struct TCreatePipeOnDataNodeReq{
-  1: required binary pipeInfo
+struct TCheckTimeSeriesExistenceReq{
+  1: required binary patternTree
+  2: required list<common.TConsensusGroupId> schemaRegionIdList
 }
 
-struct TOperatePipeOnDataNodeReq {
-    1: required string pipeName
-    // ordinal of {@linkplain SyncOperation}
-    2: required i8 operation
-    3: optional i64 createTime
+struct TCheckTimeSeriesExistenceResp{
+  1: required common.TSStatus status
+  2: optional bool exists
+}
+
+struct TPushPipeMetaReq {
+  1: required list<binary> pipeMetas
 }
 
 // ====================================================
@@ -359,23 +397,33 @@ struct TDeleteModelMetricsReq {
   1: required string modelId
 }
 
+struct TFetchMoreDataReq{
+    1: required i64 queryId
+    2: optional i64 timeout
+    3: optional i32 fetchSize
+}
+
+struct TFetchMoreDataResp{
+    1: required common.TSStatus status
+    2: optional list<binary> tsDataset
+    3: optional bool hasMoreData
+}
+
 struct TFetchTimeseriesReq {
-  1: required i64 sessionId
-  2: required i64 statementId
-  3: required list<string> queryExpressions
-  4: optional string queryFilter
-  5: optional i32 fetchSize
-  6: optional i64 timeout
+  1: required list<string> queryExpressions
+  2: optional string queryFilter
+  3: optional i32 fetchSize
+  4: optional i64 timeout
 }
 
 struct TFetchTimeseriesResp {
   1: required common.TSStatus status
-  2: required i64 queryId
-  3: required list<string> columnNameList
-  4: required list<string> columnTypeList
-  5: required map<string, i32> columnNameIndexMap
-  6: required list<binary> tsDataset
-  7: required bool hasMoreData
+  2: optional i64 queryId
+  3: optional list<string> columnNameList
+  4: optional list<string> columnTypeList
+  5: optional map<string, i32> columnNameIndexMap
+  6: optional list<binary> tsDataset
+  7: optional bool hasMoreData
 }
 
 struct TFetchWindowBatchReq {
@@ -424,9 +472,9 @@ service IDataNodeRPCService {
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**
-  * dispatch PlanNode to remote node for write request in order to save resource
+  * dispatch PlanNodes in batches to remote node for write request in order to save resource
   */
-  TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
+  TSendBatchPlanNodeResp sendBatchPlanNode(TSendBatchPlanNodeReq req);
 
   TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
@@ -605,11 +653,27 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /**
+   * Config node will create a pipe plugin on a list of data nodes.
+   *
+   * @param function name, function class name, and executable uris
+   **/
+  common.TSStatus createPipePlugin(TCreatePipePluginInstanceReq req)
+
+  /**
+   * Config node will drop a pipe plugin on a list of data nodes.
+   *
+   * @param function name
+   **/
+  common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
 
   common.TSStatus flush(common.TFlushReq req)
+
+  common.TSStatus settle(common.TSettleReq req)
 
   common.TSStatus clearCache()
 
@@ -688,37 +752,56 @@ service IDataNodeRPCService {
 
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
- /**
-  * Create PIPE on DataNode
-  */
-  common.TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req)
+  TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 
  /**
-  * Start, stop or drop PIPE on DataNode
+  * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req)
-
- /**
-  * Start, stop or drop PIPE on DataNode for rollback
-  */
-  common.TSStatus operatePipeOnDataNodeForRollback(TOperatePipeOnDataNodeReq req)
+  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
 
  /**
   * Execute CQ on DataNode
   */
   common.TSStatus executeCQ(TExecuteCQ req)
 
- /**
+  /**
   * Delete model training metrics on DataNode
   */
   common.TSStatus deleteModelMetrics(TDeleteModelMetricsReq req)
 
-  // ----------------------------------- For ML Node -----------------------------------------------
+  /**
+   * Set space quota
+   **/
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 
+  /**
+   * Set throttle quota
+   **/
+  common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+}
+
+service MPPDataExchangeService {
+  TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
+
+  void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
+
+  void onCloseSinkChannelEvent(TCloseSinkChannelEvent e);
+
+  void onNewDataBlockEvent(TNewDataBlockEvent e);
+
+  void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+}
+
+service IMLNodeInternalRPCService{
  /**
   * Fecth the data of the specified time series
   */
   TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
+
+  /**
+  * Fetch rest data for a specified fetchTimeseries
+  */
+  TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req)
 
  /**
   * Fecth window batches of the specified time series
@@ -729,14 +812,4 @@ service IDataNodeRPCService {
   * Record model training metrics on DataNode
   */
   common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
-}
-
-service MPPDataExchangeService {
-  TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
-
-  void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);
-
-  void onNewDataBlockEvent(TNewDataBlockEvent e);
-
-  void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
 }

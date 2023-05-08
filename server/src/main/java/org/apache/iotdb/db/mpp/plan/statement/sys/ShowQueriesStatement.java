@@ -21,9 +21,9 @@ package org.apache.iotdb.db.mpp.plan.statement.sys;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
@@ -37,12 +37,17 @@ public class ShowQueriesStatement extends ShowStatement {
 
   private OrderByComponent orderByComponent;
 
-  private int rowLimit;
-  private int rowOffset;
+  private long rowLimit;
+  private long rowOffset;
 
   private ZoneId zoneId;
 
   public ShowQueriesStatement() {}
+
+  @Override
+  public boolean isQuery() {
+    return true;
+  }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
@@ -68,24 +73,24 @@ public class ShowQueriesStatement extends ShowStatement {
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       // default order
-      return Collections.singletonList(new SortItem(SortKey.TIME, Ordering.ASC));
+      return Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC));
     }
     return orderByComponent.getSortItemList();
   }
 
-  public void setRowLimit(int rowLimit) {
+  public void setRowLimit(long rowLimit) {
     this.rowLimit = rowLimit;
   }
 
-  public int getRowLimit() {
+  public long getRowLimit() {
     return rowLimit;
   }
 
-  public void setRowOffset(int rowOffset) {
+  public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
   }
 
-  public int getRowOffset() {
+  public long getRowOffset() {
     return rowOffset;
   }
 

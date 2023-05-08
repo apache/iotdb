@@ -19,33 +19,24 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint();
-      if (!column[2].isNull(i)) {
-        updateMaxTime(column[1].getLong(i));
-        return i;
+      if (!column[1].isNull(i)) {
+        updateMaxTime(column[0].getLong(i));
+        return;
       }
     }
-
-    return curPositionCount;
   }
 
   @Override

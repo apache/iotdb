@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -69,10 +70,16 @@ public class Coordinator {
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      INTERNAL_SERVICE_CLIENT_MANAGER =
+      SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
                   new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+
+  private static final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
+          new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
 
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
@@ -112,7 +119,8 @@ public class Coordinator {
         scheduledExecutor,
         partitionFetcher,
         schemaFetcher,
-        INTERNAL_SERVICE_CLIENT_MANAGER);
+        SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+        ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
   }
 
   public ExecutionResult execute(
@@ -200,12 +208,12 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
-  public void cleanupQueryExecution(Long queryId) {
+  public void cleanupQueryExecution(Long queryId, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
+        queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
@@ -220,9 +228,13 @@ public class Coordinator {
     }
   }
 
+  public void cleanupQueryExecution(Long queryId) {
+    cleanupQueryExecution(queryId, null);
+  }
+
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       getInternalServiceClientManager() {
-    return INTERNAL_SERVICE_CLIENT_MANAGER;
+    return SYNC_INTERNAL_SERVICE_CLIENT_MANAGER;
   }
 
   public static Coordinator getInstance() {

@@ -49,6 +49,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   private final Map<String, Boolean> targetDeviceToAlignedMap;
   private final Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
 
+  private final int deviceColumnIndex;
   private String currentDevice;
 
   private final TsBlockBuilder resultTsBlockBuilder;
@@ -56,6 +57,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   public DeviceViewIntoOperator(
       OperatorContext operatorContext,
       Operator child,
+      List<TSDataType> inputColumnTypes,
       Map<String, Map<PartialPath, Map<String, InputLocation>>>
           deviceToTargetPathSourceInputLocationMap,
       Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap,
@@ -63,14 +65,14 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize) {
+      long statementSizePerLine) {
     super(
         operatorContext,
         child,
-        null,
+        inputColumnTypes,
         sourceColumnToInputLocationMap,
         intoOperationExecutor,
-        maxStatementSize);
+        statementSizePerLine);
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
@@ -81,6 +83,9 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+
+    this.deviceColumnIndex =
+        sourceColumnToInputLocationMap.get(ColumnHeaderConstant.DEVICE).getValueColumnIndex();
   }
 
   @Override
@@ -89,7 +94,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       return true;
     }
 
-    String device = String.valueOf(inputTsBlock.getValueColumns()[0].getBinary(0));
+    String device = String.valueOf(inputTsBlock.getValueColumns()[deviceColumnIndex].getBinary(0));
     if (!Objects.equals(device, currentDevice)) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           constructInsertMultiTabletsStatement(false);
@@ -144,7 +149,11 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
         deviceToTargetPathDataTypeMap.get(currentDevice);
     return constructInsertTabletStatementGenerators(
-        targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
+        targetPathToSourceInputLocationMap,
+        targetPathToDataTypeMap,
+        targetDeviceToAlignedMap,
+        typeConvertors,
+        maxRowNumberInStatement);
   }
 
   private void updateResultTsBlock() {

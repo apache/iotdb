@@ -49,6 +49,8 @@ import static org.junit.Assert.assertTrue;
 
 public class MetricServiceTest {
 
+  private static final double DELTA = 0.000001;
+
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static AbstractMetricService metricService = new DoNothingMetricService();
@@ -99,7 +101,7 @@ public class MetricServiceTest {
             "counter4", MetricLevel.IMPORTANT, "tag", "value", "tag2", "value");
     assertNotEquals(counter1, counter2);
     counter2 = metricService.getOrCreateCounter("counter5", MetricLevel.NORMAL, "tag", "value");
-    assertEquals(DoNothingMetricManager.doNothingCounter, counter2);
+    assertEquals(DoNothingMetricManager.DO_NOTHING_COUNTER, counter2);
     assertEquals(4, metricService.getMetricsByType(MetricType.COUNTER).size());
     metricService.count(10, "counter6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getMetricsByType(MetricType.COUNTER).size());
@@ -125,7 +127,7 @@ public class MetricServiceTest {
             "gauge4", MetricLevel.IMPORTANT, "tag", "value", "tag2", "value");
     assertNotEquals(gauge1, gauge2);
     gauge2 = metricService.getOrCreateGauge("gauge5", MetricLevel.NORMAL, "tag", "value");
-    assertEquals(DoNothingMetricManager.doNothingGauge, gauge2);
+    assertEquals(DoNothingMetricManager.DO_NOTHING_GAUGE, gauge2);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     metricService.gauge(10, "gauge6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getMetricsByType(MetricType.GAUGE).size());
@@ -140,16 +142,13 @@ public class MetricServiceTest {
     AutoGauge autoGauge =
         metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
-    assertEquals(0L, autoGauge.value());
+    assertEquals(0d, autoGauge.value(), DELTA);
     list.add(1);
-    assertEquals(1L, autoGauge.value());
+    assertEquals(1d, autoGauge.value(), DELTA);
     list.clear();
-    assertEquals(0L, autoGauge.value());
+    assertEquals(0d, autoGauge.value(), DELTA);
     list.add(1);
-    assertEquals(1L, autoGauge.value());
-    list = null;
-    System.gc();
-    assertEquals(0L, autoGauge.value());
+    assertEquals(1d, autoGauge.value(), DELTA);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
     metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
@@ -175,7 +174,7 @@ public class MetricServiceTest {
     assertNotEquals(rate1, rate2);
     rate2 = metricService.getOrCreateRate("rate5", MetricLevel.NORMAL, "tag", "value");
     assertEquals(4, metricService.getMetricsByType(MetricType.RATE).size());
-    assertEquals(DoNothingMetricManager.doNothingRate, rate2);
+    assertEquals(DoNothingMetricManager.DO_NOTHING_RATE, rate2);
     metricService.rate(10, "rate6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getMetricsByType(MetricType.RATE).size());
     metricService.remove(MetricType.RATE, "rate6");
@@ -211,7 +210,7 @@ public class MetricServiceTest {
     assertNotEquals(histogram1, histogram2);
     histogram2 =
         metricService.getOrCreateHistogram("histogram5", MetricLevel.NORMAL, "tag", "value");
-    assertEquals(DoNothingMetricManager.doNothingHistogram, histogram2);
+    assertEquals(DoNothingMetricManager.DO_NOTHING_HISTOGRAM, histogram2);
     assertEquals(4, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
     metricService.histogram(10, "histogram6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getMetricsByType(MetricType.HISTOGRAM).size());
@@ -278,10 +277,10 @@ public class MetricServiceTest {
     Timer timer =
         metricService.getOrCreateTimer("same_name", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(timer);
-    assertNotEquals(DoNothingMetricManager.doNothingTimer, timer);
+    assertNotEquals(DoNothingMetricManager.DO_NOTHING_TIMER, timer);
     Counter counter = metricService.getOrCreateCounter("same_name", MetricLevel.IMPORTANT);
     assertNotNull(counter);
-    assertEquals(DoNothingMetricManager.doNothingCounter, counter);
+    assertEquals(DoNothingMetricManager.DO_NOTHING_COUNTER, counter);
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {

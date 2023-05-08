@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request;
 
 import java.util.HashMap;
@@ -33,17 +34,18 @@ public enum ConfigPhysicalPlanType {
   RemoveDataNode((short) 102),
   UpdateDataNodeConfiguration((short) 103),
 
-  /** StorageGroup */
-  SetStorageGroup((short) 200),
+  /** Database */
+  CreateDatabase((short) 200),
   SetTTL((short) 201),
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
   SetTimePartitionInterval((short) 204),
   AdjustMaxRegionGroupNum((short) 205),
-  DeleteStorageGroup((short) 206),
-  PreDeleteStorageGroup((short) 207),
-  GetStorageGroup((short) 208),
-  CountStorageGroup((short) 209),
+  DeleteDatabase((short) 206),
+  PreDeleteDatabase((short) 207),
+  GetDatabase((short) 208),
+  CountDatabase((short) 209),
+  AlterDatabase((short) 210),
 
   /** Region */
   CreateRegionGroups((short) 300),
@@ -55,6 +57,9 @@ public enum ConfigPhysicalPlanType {
   GetRegionId((short) 306),
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
+  PollSpecificRegionMaintainTask((short) 309),
+
+  CountTimeSlotList((short) 310),
 
   /** Partition */
   GetSchemaPartition((short) 400),
@@ -110,16 +115,27 @@ public enum ConfigPhysicalPlanType {
   RollbackUnsetTemplate((short) 809),
   UnsetTemplate((short) 810),
   DropSchemaTemplate((short) 811),
+  PreSetSchemaTemplate((short) 812),
+  CommitSetSchemaTemplate((short) 813),
+  ExtendSchemaTemplate((short) 814),
 
-  /** Sync */
-  CreatePipeSink((short) 900),
-  DropPipeSink((short) 901),
-  GetPipeSink((short) 902),
-  PreCreatePipe((short) 903),
-  SetPipeStatus((short) 904),
-  DropPipe((short) 905),
-  ShowPipe((short) 906),
-  RecordPipeMessage((short) 907),
+  /** Deprecated types for sync, restored them for upgrade */
+  @Deprecated
+  CreatePipeSinkV1((short) 900),
+  @Deprecated
+  DropPipeSinkV1((short) 901),
+  @Deprecated
+  GetPipeSinkV1((short) 902),
+  @Deprecated
+  PreCreatePipeV1((short) 903),
+  @Deprecated
+  SetPipeStatusV1((short) 904),
+  @Deprecated
+  DropPipeV1((short) 905),
+  @Deprecated
+  ShowPipeV1((short) 906),
+  @Deprecated
+  RecordPipeMessageV1((short) 907),
 
   /** Trigger */
   AddTriggerInTable((short) 1000),
@@ -137,7 +153,32 @@ public enum ConfigPhysicalPlanType {
   ACTIVE_CQ((short) 1101),
   ADD_CQ((short) 1102),
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
-  SHOW_CQ((short) 1104);
+  SHOW_CQ((short) 1104),
+
+  /** Ml model */
+  CreateModel((short) 1200),
+  UpdateModelInfo((short) 1201),
+  UpdateModelState((short) 1202),
+  DropModel((short) 1203),
+  ShowModel((short) 1204),
+  ShowTrail((short) 1205),
+
+  /** Pipe Plugin */
+  CreatePipePlugin((short) 1300),
+  DropPipePlugin((short) 1301),
+  GetPipePluginTable((short) 1302),
+  GetPipePluginJar((short) 1303),
+
+  /** Quota */
+  setSpaceQuota((short) 1400),
+  setThrottleQuota((short) 1401),
+
+  /** Pipe Task */
+  CreatePipeV2((short) 1500),
+  /** START PIPE & STOP PIPE */
+  SetPipeStatusV2((short) 1501),
+  DropPipeV2((short) 1502),
+  ;
 
   private final short planType;
 

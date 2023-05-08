@@ -85,12 +85,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    setProperty("max_deduplicated_path_num", String.valueOf(maxQueryDeduplicatedPathNum));
-    return this;
-  }
-
-  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -147,7 +141,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     setProperty("config_node_ratis_rpc_leader_election_timeout_max_ms", String.valueOf(maxMs));
     return this;
   }
@@ -178,8 +172,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    setProperty("schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    setProperty(
+        "default_schema_region_group_num_per_database",
+        String.valueOf(schemaRegionGroupPerDatabase));
     return this;
   }
 
@@ -190,8 +186,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    setProperty("data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    setProperty(
+        "default_data_region_group_num_per_database", String.valueOf(dataRegionGroupPerDatabase));
     return this;
   }
 
@@ -306,17 +303,17 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    setProperty("least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     if (queryThreadCount <= 0) {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
     return this;
   }
 
@@ -329,6 +326,36 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    setProperty("write_memory_proportion", writeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    setProperty("quota_enable", String.valueOf(quotaEnable));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    setProperty("sort_buffer_size_in_bytes", String.valueOf(sortBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    setProperty("max_tsblock_size_in_bytes", String.valueOf(maxTsBlockSizeInByte));
     return this;
   }
 }

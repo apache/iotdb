@@ -25,10 +25,11 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
@@ -67,11 +68,11 @@ public class RegionBalancer {
    * @param consensusGroupType TConsensusGroupType of the new RegionGroups
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
-   * @throws StorageGroupNotExistsException When some StorageGroups don't exist
+   * @throws DatabaseNotExistsException When some StorageGroups don't exist
    */
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // The new RegionGroups will occupy online DataNodes firstly
     List<TDataNodeConfiguration> onlineDataNodes =
@@ -106,12 +107,12 @@ public class RegionBalancer {
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
         Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
-        Map<Integer, Long> freeDiskSpaceMap = new ConcurrentHashMap<>();
+        Map<Integer, Double> freeDiskSpaceMap = new ConcurrentHashMap<>();
         targetDataNodes.forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
               availableDataNodeMap.put(dataNodeId, dataNodeConfiguration);
-              freeDiskSpaceMap.put(dataNodeId, getNodeManager().getFreeDiskSpace(dataNodeId));
+              freeDiskSpaceMap.put(dataNodeId, getLoadManager().getFreeDiskSpace(dataNodeId));
             });
 
         // Generate allocation plan
@@ -143,6 +144,10 @@ public class RegionBalancer {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   public enum RegionGroupAllocatePolicy {

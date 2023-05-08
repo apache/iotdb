@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +40,22 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeIServiceClient.class);
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
 
   public AsyncConfigNodeIServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager)
       throws IOException {
     super(
-        protocolFactory,
+        property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
+        TNonblockingSocketWrapper.wrap(
+            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
@@ -84,6 +85,11 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
     clientManager.clear(endpoint);
   }
 
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
   /**
    * return self, the method doesn't need to be called by the user and will be triggered after the
    * RPC is finished.
@@ -102,7 +108,9 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+      if (printLogWhenEncounterException) {
+        logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+      }
       return false;
     }
   }
@@ -133,8 +141,7 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
         throws Exception {
       return new DefaultPooledObject<>(
           new AsyncConfigNodeIServiceClient(
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+              thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));

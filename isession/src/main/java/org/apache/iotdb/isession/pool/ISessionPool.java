@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.isession.pool;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
@@ -393,6 +394,9 @@ public interface ISessionPool {
   void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
+      throws StatementExecutionException, IoTDBConnectionException;
+
   SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
@@ -407,7 +411,6 @@ public interface ISessionPool {
   void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException;
@@ -416,6 +419,31 @@ public interface ISessionPool {
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeLastDataQuery(List<String> paths)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep)
       throws StatementExecutionException, IoTDBConnectionException;
 
   int getMaxSize();

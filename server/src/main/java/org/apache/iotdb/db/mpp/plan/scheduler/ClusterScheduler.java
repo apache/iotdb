@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -74,7 +75,9 @@ public class ClusterScheduler implements IScheduler {
       ExecutorService executor,
       ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
+      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+          asyncInternalServiceClientManager) {
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
@@ -84,17 +87,18 @@ public class ClusterScheduler implements IScheduler {
             queryContext,
             executor,
             writeOperationExecutor,
-            internalServiceClientManager);
+            syncInternalServiceClientManager,
+            asyncInternalServiceClientManager);
     if (queryType == QueryType.READ) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
-              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
+              stateMachine, scheduledExecutor, instances, syncInternalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
               scheduledExecutor,
               queryContext,
               instances,
-              internalServiceClientManager,
+              syncInternalServiceClientManager,
               stateTracker);
     }
   }
@@ -102,7 +106,7 @@ public class ClusterScheduler implements IScheduler {
   private boolean needRetry(TSStatus failureStatus) {
     return failureStatus != null
         && queryType == QueryType.READ
-        && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode();
+        && failureStatus.getCode() == TSStatusCode.DISPATCH_ERROR.getStatusCode();
   }
 
   @Override
@@ -150,7 +154,7 @@ public class ClusterScheduler implements IScheduler {
   }
 
   @Override
-  public void stop() {
+  public void stop(Throwable t) {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
     dispatcher.abort();
@@ -159,7 +163,7 @@ public class ClusterScheduler implements IScheduler {
     }
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
     if (queryTerminator != null) {
-      queryTerminator.terminate();
+      queryTerminator.terminate(t);
     }
   }
 

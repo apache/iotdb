@@ -581,13 +581,13 @@ public class AnalyzeTest {
   public void testDataPartitionAnalyze() {
     Analysis analysis = analyzeSQL("insert into root.sg.d1(timestamp,s) values(1,10),(86401,11)");
     Assert.assertEquals(
+        1,
         analysis
             .getDataPartitionInfo()
             .getDataPartitionMap()
             .get("root.sg")
-            .get(new TSeriesPartitionSlot(8923))
-            .size(),
-        1);
+            .get(new TSeriesPartitionSlot(1107))
+            .size());
   }
 
   @Test
@@ -758,6 +758,215 @@ public class AnalyzeTest {
     }
   }
 
+  @Test
+  public void testOrderByAnalyze() {
+    String sql = "select s1 from root.sg.d1 order by root.sg.d1.s1 + root.sg.d1.s2";
+    String sql2 = "select avg(s1) from root.sg.d1 order by avg(root.sg.d1.s1) + avg(root.sg.d1.s2)";
+    try {
+      Analysis actualAnalysis = analyzeSQL(sql);
+      Analysis expectedAnalysis = new Analysis();
+      expectedAnalysis.setOrderByExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))));
+      expectedAnalysis.setSourceTransformExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
+      expectedAnalysis.setSourceExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
+      assert actualAnalysis != null;
+      orderByAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+
+      actualAnalysis = analyzeSQL(sql2);
+      expectedAnalysis = new Analysis();
+      expectedAnalysis.setOrderByExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))))));
+      expectedAnalysis.setAggregationExpressions(
+          Sets.newHashSet(
+              new FunctionExpression(
+                  "avg",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
+              new FunctionExpression(
+                  "avg",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))));
+      expectedAnalysis.setSourceTransformExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
+      expectedAnalysis.setSourceExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
+      assert actualAnalysis != null;
+      orderByAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(sql + ", " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAlignByDeviceOrderByAnalyze() {
+    String sql = "select s1 from root.sg.d1 order by s1 + s2 align by device";
+    String sql2 = "select avg(s1) from root.sg.d1 order by avg(s1) + avg(s2) align by device";
+    try {
+      Analysis actualAnalysis = analyzeSQL(sql);
+      Analysis expectedAnalysis = new Analysis();
+      expectedAnalysis.setOrderByExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("s1")),
+                  new TimeSeriesOperand(new PartialPath("s2")))));
+      expectedAnalysis.setDeviceToOrderByExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))));
+      expectedAnalysis.setDeviceToSourceTransformExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new AdditionExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+      expectedAnalysis.setDeviceToAggregationExpressions(ImmutableMap.of());
+      expectedAnalysis.setDeviceViewOutputExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("Device")),
+              new TimeSeriesOperand(new PartialPath("s1")),
+              new AdditionExpression(
+                  new TimeSeriesOperand(new PartialPath("s1")),
+                  new TimeSeriesOperand(new PartialPath("s2")))));
+      assert actualAnalysis != null;
+      orderByAlignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+
+      actualAnalysis = analyzeSQL(sql2);
+      expectedAnalysis = new Analysis();
+      expectedAnalysis.setOrderByExpressions(
+          Sets.newHashSet(
+              new AdditionExpression(
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(new TimeSeriesOperand(new PartialPath("s1")))),
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(new TimeSeriesOperand(new PartialPath("s2")))))));
+      expectedAnalysis.setDeviceToOrderByExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new AdditionExpression(
+                      new FunctionExpression(
+                          "avg",
+                          new LinkedHashMap<>(),
+                          Collections.singletonList(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
+                      new FunctionExpression(
+                          "avg",
+                          new LinkedHashMap<>(),
+                          Collections.singletonList(
+                              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))))));
+      expectedAnalysis.setDeviceToAggregationExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
+                  new FunctionExpression(
+                      "avg",
+                      new LinkedHashMap<>(),
+                      Collections.singletonList(
+                          new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))))));
+      expectedAnalysis.setDeviceToSourceTransformExpressions(
+          ImmutableMap.of(
+              "root.sg.d1",
+              Sets.newHashSet(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))));
+      expectedAnalysis.setDeviceViewOutputExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("Device")),
+              new FunctionExpression(
+                  "avg",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(new TimeSeriesOperand(new PartialPath("s1")))),
+              new FunctionExpression(
+                  "avg",
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(new TimeSeriesOperand(new PartialPath("s2"))))));
+      assert actualAnalysis != null;
+      orderByAlignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(sql + ", " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAlias1() {
+    Analysis analysis = analyzeSQL("select s1 as a, s2 as b from root.sg.d2.a, root.sg.d2.b");
+    assert analysis != null;
+    Assert.assertEquals(
+        analysis.getRespDatasetHeader(),
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader("root.sg.d2.a.s1", TSDataType.INT32, "a"),
+                new ColumnHeader("root.sg.d2.a.s2", TSDataType.DOUBLE, "b")),
+            false));
+  }
+
+  @Test
+  public void testAlias2() {
+    assertTestFail(
+        "select s1 as a from root.sg.*", "alias 'a' can only be matched with one time series");
+    assertTestFail(
+        "select s1 as a from root.sg.d1, root.sg.d2",
+        "alias 'a' can only be matched with one time series");
+  }
+
+  private void assertTestFail(String sql, String errMsg) {
+    try {
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      analyzer.analyze(statement);
+      fail("No exception!");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
   private Analysis analyzeSQL(String sql) {
     try {
       Statement statement =
@@ -816,5 +1025,32 @@ public class AnalyzeTest {
     assertEquals(expectedAnalysis.getHavingExpression(), actualAnalysis.getHavingExpression());
     assertEquals(expectedAnalysis.getRespDatasetHeader(), actualAnalysis.getRespDatasetHeader());
     assertEquals(expectedAnalysis.getGlobalTimeFilter(), actualAnalysis.getGlobalTimeFilter());
+  }
+
+  private void orderByAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {
+    assertEquals(expectedAnalysis.getOrderByExpressions(), actualAnalysis.getOrderByExpressions());
+    assertEquals(
+        expectedAnalysis.getAggregationExpressions(), actualAnalysis.getAggregationExpressions());
+    assertEquals(
+        expectedAnalysis.getSourceTransformExpressions(),
+        actualAnalysis.getSourceTransformExpressions());
+    assertEquals(expectedAnalysis.getSourceExpressions(), actualAnalysis.getSourceExpressions());
+  }
+
+  private void orderByAlignByDeviceAnalysisEqualTest(
+      Analysis actualAnalysis, Analysis expectedAnalysis) {
+    assertEquals(
+        expectedAnalysis.getDeviceViewOutputExpressions(),
+        actualAnalysis.getDeviceViewOutputExpressions());
+    assertEquals(
+        expectedAnalysis.getDeviceToOrderByExpressions(),
+        actualAnalysis.getDeviceToOrderByExpressions());
+    assertEquals(expectedAnalysis.getOrderByExpressions(), actualAnalysis.getOrderByExpressions());
+    assertEquals(
+        expectedAnalysis.getDeviceToAggregationExpressions(),
+        actualAnalysis.getDeviceToAggregationExpressions());
+    assertEquals(
+        expectedAnalysis.getDeviceToSourceTransformExpressions(),
+        actualAnalysis.getDeviceToSourceTransformExpressions());
   }
 }

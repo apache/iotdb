@@ -414,3 +414,107 @@ Output series:
 |2021-07-01T12:01:10.000+08:00|                                                                                       1706|
 +-----------------------------+-------------------------------------------------------------------------------------------+
 ```
+
+## SeasonalRepair
+
+### Usage
+This function is used to repair the value of the seasonal time series via decomposition. Currently, two methods are supported: **Classical** - detect irregular fluctuations through residual component decomposed by classical decomposition, and repair them through moving average;  **Improved** - detect irregular fluctuations through residual component decomposed by improved decomposition, and repair them through moving median.
+
+**Name:** SEASONALREPAIR
+
+**Input Series:** Only support a single input series. The data type is INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameters:**
+
++ `method`: The decomposition method used to repair, which is 'Classical' or 'Improved'. By default, classical decomposition is used.
++ `period`: It is the period of  the time series.
++ `k`: It is the range threshold of residual term, which limits the degree to which the residual term is off-center. By default, it is 9.
++ `max_iter`: It is the maximum number of iterations for the algorithm. By default, it is 10.
+
+**Output Series:** Output a single series. The type is the same as the input. This series is the input after repairing.
+
+**Note:** `NaN` will be filled with linear interpolation before repairing.
+
+### Examples
+
+#### Repair with Classical
+
+When `method` is 'Classical' or default value, classical decomposition method is used. 
+
+Input series:
+
+```
++-----------------------------+---------------+
+|                         Time|root.test.d2.s1|
++-----------------------------+---------------+
+|2020-01-01T00:00:02.000+08:00|          100.0|
+|2020-01-01T00:00:04.000+08:00|          120.0|
+|2020-01-01T00:00:06.000+08:00|           80.0|
+|2020-01-01T00:00:08.000+08:00|          100.5|
+|2020-01-01T00:00:10.000+08:00|          119.5|
+|2020-01-01T00:00:12.000+08:00|          101.0|
+|2020-01-01T00:00:14.000+08:00|           99.5|
+|2020-01-01T00:00:16.000+08:00|          119.0|
+|2020-01-01T00:00:18.000+08:00|           80.5|
+|2020-01-01T00:00:20.000+08:00|           99.0|
+|2020-01-01T00:00:22.000+08:00|          121.0|
+|2020-01-01T00:00:24.000+08:00|           79.5|
++-----------------------------+---------------+
+```
+
+SQL for query:
+
+```sql
+select seasonalrepair(s1,'period'=3,'k'=2) from root.test.d2
+```
+
+Output series:
+
+```
++-----------------------------+--------------------------------------------------+
+|                         Time|seasonalrepair(root.test.d2.s1, 'period'=4, 'k'=2)|
++-----------------------------+--------------------------------------------------+
+|2020-01-01T00:00:02.000+08:00|                                             100.0|
+|2020-01-01T00:00:04.000+08:00|                                             120.0|
+|2020-01-01T00:00:06.000+08:00|                                              80.0|
+|2020-01-01T00:00:08.000+08:00|                                             100.5|
+|2020-01-01T00:00:10.000+08:00|                                             119.5|
+|2020-01-01T00:00:12.000+08:00|                                              87.0|
+|2020-01-01T00:00:14.000+08:00|                                              99.5|
+|2020-01-01T00:00:16.000+08:00|                                             119.0|
+|2020-01-01T00:00:18.000+08:00|                                              80.5|
+|2020-01-01T00:00:20.000+08:00|                                              99.0|
+|2020-01-01T00:00:22.000+08:00|                                             121.0|
+|2020-01-01T00:00:24.000+08:00|                                              79.5|
++-----------------------------+--------------------------------------------------+
+```
+
+#### Repair with Improved
+When `method` is 'Improved', improved decomposition method is used.
+
+Input series is the same as above, the SQL for query is shown below:
+
+```sql
+select seasonalrepair(s1,'method'='improved','period'=3) from root.test.d2
+```
+
+Output series:
+
+```
++-----------------------------+-------------------------------------------------------------+
+|                         Time|valuerepair(root.test.d2.s1, 'method'='improved', 'period'=3)|
++-----------------------------+-------------------------------------------------------------+
+|2020-01-01T00:00:02.000+08:00|                                                        100.0|
+|2020-01-01T00:00:04.000+08:00|                                                        120.0|
+|2020-01-01T00:00:06.000+08:00|                                                         80.0|
+|2020-01-01T00:00:08.000+08:00|                                                        100.5|
+|2020-01-01T00:00:10.000+08:00|                                                        119.5|
+|2020-01-01T00:00:12.000+08:00|                                                         81.5|
+|2020-01-01T00:00:14.000+08:00|                                                         99.5|
+|2020-01-01T00:00:16.000+08:00|                                                        119.0|
+|2020-01-01T00:00:18.000+08:00|                                                         80.5|
+|2020-01-01T00:00:20.000+08:00|                                                         99.0|
+|2020-01-01T00:00:22.000+08:00|                                                        121.0|
+|2020-01-01T00:00:24.000+08:00|                                                         79.5|
++-----------------------------+-------------------------------------------------------------+
+```

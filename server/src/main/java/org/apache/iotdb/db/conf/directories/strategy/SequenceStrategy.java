@@ -53,10 +53,10 @@ public class SequenceStrategy extends DirectoryStrategy {
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
     int index = (start + 1) % folders.size();
     while (!JVMCommonUtils.hasSpace(folders.get(index))) {
-      index = (index + 1) % folders.size();
       if (index == start) {
         throw new DiskSpaceInsufficientException(folders);
       }
+      index = (index + 1) % folders.size();
     }
     return index;
   }

@@ -47,7 +47,7 @@ In root directory:
 
 ## Syntax Convention
 
-- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Syntax-Conventions/Literal-Values.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
   - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
@@ -61,7 +61,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
 * Initialize a Session
 
-```java
+``` java
 // use default configuration 
 session = new Session.Builder.build();
 
@@ -91,17 +91,17 @@ session =
         .build();
 ```
 
-Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`, `V_1_0`.
 
 * Open a Session
 
-```java
+``` java
 void open()
 ```
 
 * Open a session, with a parameter to specify whether to enable RPC compression
   
-```java
+``` java
 void open(boolean enableRPCCompression)
 ```
 
@@ -109,7 +109,7 @@ Notice: this RPC compression status of client must comply with that of IoTDB ser
 
 * Close a Session
 
-```java
+``` java
 void close()
 ```
 
@@ -119,13 +119,13 @@ void close()
 
 * CREATE DATABASE
 
-```java
+``` java
 void setStorageGroup(String storageGroupId)    
 ```
 
 * Delete one or several databases
 
-```java
+``` java
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
@@ -134,7 +134,7 @@ void deleteStorageGroups(List<String> storageGroups)
 
 * Create one or multiple timeseries
 
-```java
+``` java
 void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor, Map<String, String> props,
       Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
@@ -156,14 +156,14 @@ Attention: Alias of measurements are **not supported** currently.
 
 * Delete one or several timeseries
 
-```java
+``` java
 void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
 * Check whether the specific timeseries exists.
 
-```java
+``` java
 boolean checkTimeseriesExists(String path)
 ```
 
@@ -172,7 +172,7 @@ boolean checkTimeseriesExists(String path)
 
 Create a schema template for massive identical devices will help to improve memory performance. You can use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
 
-```java
+``` java
 public void createSchemaTemplate(Template template);
 
 Class Template {
@@ -207,7 +207,7 @@ We strongly suggest you implement templates only with flat-measurement (like obj
 
 A snippet of using above Method and Class：
 
-```java
+``` java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
@@ -221,69 +221,6 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-After measurement template created, you can edit the template with belowed APIs.
-
-**Attention: **
-
-**1. templates had been set could not be pruned**
-
-**2. templates will be activated until data points insert into correspoding measurements**
-
-**3. templates will not be shown by showtimeseries before activating**
-
-```java
-// Add aligned measurements to a template
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// Add one aligned measurement to a template
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// Add unaligned measurements to a template
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// Add one unaligned measurement to a template
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// Delete a node in template
-public void deleteNodeInTemplate(String templateName, String path);
-```
-
-You can query measurement inside templates with these APIS:
-
-```java
-// Return the amount of measurements inside a template
-public int countMeasurementsInTemplate(String templateName);
-
-// Return true if path points to a measurement, otherwise returne false
-public boolean isMeasurementInTemplate(String templateName, String path);
-
-// Return true if path exists in template, otherwise return false
-public boolean isPathExistInTemplate(String templateName, String path);
-
-// Return all measurements paths inside template
-public List<String> showMeasurementsInTemplate(String templateName);
-
-// Return all measurements paths under the designated patter inside template
-public List<String> showMeasurementsInTemplate(String templateName, String pattern);
-```
-
 To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
 
 **Please notice that, we strongly recommend not setting templates on the nodes above the database to accommodate future updates and collaboration between modules.**
@@ -294,13 +231,19 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 Before setting template, you should firstly create the template using
 
-```java
+``` java
 void createSchemaTemplate(Template template)
+```
+
+After setting template to a certain path, you can use the template to create timeseries on given device paths through the following interface, or you can write data directly to trigger timeseries auto creation using schema template under target devices. 
+
+``` java
+void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
 ```
 
 After setting template to a certain path, you can query for info about template using belowed interface in session:
 
-```java
+``` java
 /** @return All template names. */
 public List<String> showAllTemplates();
 
@@ -313,7 +256,7 @@ public List<String> showPathsTemplateUsingOn(String templateName)
 
 If you are ready to get rid of schema template, you can drop it with belowed interface. Make sure the template to drop has been unset from MTree.
 
-```java
+``` java
 void unsetSchemaTemplate(String prefixPath, String templateName);
 public void dropSchemaTemplate(String templateName);
 ```
@@ -333,7 +276,7 @@ It is recommended to use insertTablet to help improve write efficiency.
   * **Better Write Performance**
   * **Support null values**: fill the null value with any value, and then mark the null value via BitMap
 
-```java
+``` java
 void insertTablet(Tablet tablet)
 
 public class Tablet {
@@ -358,7 +301,7 @@ public class Tablet {
 
 * Insert multiple Tablets
 
-```java
+``` java
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
@@ -375,14 +318,14 @@ void insertTablets(Map<String, Tablet> tablet)
   | DOUBLE     | Double         |
   | TEXT       | String, Binary |
 
-```java
+``` java
 void insertRecord(String deviceId, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
 * Insert multiple Records
 
-```java
+``` java
 void insertRecords(List<String> deviceIds, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
@@ -390,7 +333,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
 * Insert multiple Records that belong to the same device. 
   With type info the server has no need to do type inference, which leads a better performance
 
-```java
+``` java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
@@ -402,20 +345,20 @@ When the data is of String type, we can use the following interface to perform t
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp
 
-```java
+``` java
 void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
 * Insert multiple Records
 
-```java
+``` java
 void insertRecords(List<String> deviceIds, List<Long> times, 
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
 * Insert multiple Records that belong to the same device.
 
-```java
+``` java
 void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
         List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
@@ -435,36 +378,64 @@ The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and othe
 
 * Delete data before or equal to a timestamp of one or several timeseries
 
-```java
+``` java
 void deleteData(String path, long time)
 void deleteData(List<String> paths, long time)
 ```
 
 #### Query
 
-* Raw data query. Time interval include startTime and exclude endTime
+* Time-series raw data query with time range:
+  - The specified query time range is a left-closed right-open interval, including the start time but excluding the end time.
 
-```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+``` java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
-* Query the last data, whose timestamp is greater than or equal LastTime
+* Last query: 
+  - Query the last data, whose timestamp is greater than or equal LastTime.
 
-```java
-SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+``` java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime);
+```
+
+* Aggregation query:
+  - Support specified query time range: The specified query time range is a left-closed right-open interval, including the start time but not the end time.
+  - Support GROUP BY TIME.
+
+``` java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
 ```
 
 ### IoTDB-SQL Interface
 
 * Execute query statement
 
-```java
+``` java
 SessionDataSet executeQueryStatement(String sql)
 ```
 
 * Execute non query statement
 
-```java
+``` java
 void executeNonQueryStatement(String sql)
 ```
 
@@ -474,7 +445,7 @@ These methods **don't** insert data into database and server just return after a
 
 * Test the network and client cost of insertRecord
 
-```java
+``` java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
 
 void testInsertRecord(String deviceId, long time, List<String> measurements,
@@ -483,7 +454,7 @@ void testInsertRecord(String deviceId, long time, List<String> measurements,
 
 * Test the network and client cost of insertRecords
 
-```java
+``` java
 void testInsertRecords(List<String> deviceIds, List<Long> times,
         List<List<String>> measurementsList, List<List<String>> valuesList)
         
@@ -494,13 +465,13 @@ void testInsertRecords(List<String> deviceIds, List<Long> times,
 
 * Test the network and client cost of insertTablet
 
-```java
+``` java
 void testInsertTablet(Tablet tablet)
 ```
 
 * Test the network and client cost of insertTablets
 
-```java
+``` java
 void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
@@ -538,101 +509,3 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-
-## Cluster information related APIs (only works in the cluster mode)
-
-Cluster information related APIs allow users get the cluster info like where a database will be 
-partitioned to, the status of each node in the cluster.
-
-To use the APIs, add dependency in your pom file:
-
-```xml
-<dependencies>
-    <dependency>
-      <groupId>org.apache.iotdb</groupId>
-      <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>1.0.0</version>
-    </dependency>
-</dependencies>
-```
-
-How to open a connection:
-
-```java
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-
-public class CluserInfoClient {
-  TTransport transport;
-  ClusterInfoService.Client client;
-  public void connect() {
-    transport =
-            RpcTransportFactory.INSTANCE.getTransport(
-                    new TSocket(
-                            // the RPC address
-                            IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                            // the RPC port
-                            ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
-    try {
-      transport.open();
-    } catch (TTransportException e) {
-      Assert.fail(e.getMessage());
-    }
-    //get the client
-    client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
-  }
-  public void close() {
-    transport.close();
-  }
-}
-```
-
-APIs in `ClusterInfoService.Client`:
-
-
-* Get the physical hash ring of the cluster:
-
-```java
-list<Node> getRing();
-```
-
-* Get data partition information of input path and time range:
-
-```java 
-/**
- * @param path input path (should contains a database name as its prefix)
- * @return the data partition info. If the time range only covers one data partition, the the size
- * of the list is one.
- */
-list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
-```
-
-* Get metadata partition information of input path:
-```java  
-/**
- * @param path input path (should contains a database name as its prefix)
- * @return metadata partition information
- */
-list<Node> getMetaPartition(1:string path);
-```
-
-* Get the status (alive or not) of all nodes:
-```java
-/**
- * @return key: node, value: live or not
- */
-map<Node, bool> getAllNodeStatus();
-```
-
-* get the raft group info (voteFor, term, etc..) of the connected node
-  (Notice that this API is rarely used by users):
-```java  
-/**
- * @return A multi-line string with each line representing the total time consumption, invocation
- *     number, and average time consumption.
- */
-string getInstrumentingInfo();
-```

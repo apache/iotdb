@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
@@ -31,7 +32,7 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUser(String username, String password);
 
-  TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
+  TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission);
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 

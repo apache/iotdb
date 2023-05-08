@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.config;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.metrics.utils.SystemType;
 
@@ -57,14 +58,16 @@ public class MetricConfig {
   /** The type of internal reporter. */
   private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
 
-  /** The address of iotdb instance that is monitored. */
-  private String rpcAddress = "0.0.0.0";
-  /** The port of iotdb instance that is monitored. */
-  private Integer rpcPort = 6667;
   /** The pid of iotdb instance. */
   private String pid = "";
-  /** The running system of iotdb instance */
+  /** The running system of iotdb instance. */
   private final SystemType systemType = SystemType.getSystemType();
+  /** The type of monitored node. */
+  private NodeType nodeType = NodeType.CONFIGNODE;
+  /** The name of iotdb cluster. */
+  private String clusterName = "defaultCluster";
+  /** The id of iotdb node. */
+  private int nodeId = 0;
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -132,14 +135,6 @@ public class MetricConfig {
     return iotdbReporterConfig;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
-  }
-
-  public Integer getRpcPort() {
-    return rpcPort;
-  }
-
   public String getPid() {
     return pid;
   }
@@ -148,10 +143,26 @@ public class MetricConfig {
     return systemType;
   }
 
+  public NodeType getNodeType() {
+    return nodeType;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
   /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(String rpcAddress, int rpcPort) {
-    this.rpcAddress = rpcAddress;
-    this.rpcPort = rpcPort;
+  public void updateRpcInstance(String clusterName, NodeType nodeType) {
+    this.clusterName = clusterName;
+    this.nodeType = nodeType;
+  }
+
+  public void setNodeId(int nodeId) {
+    this.nodeId = nodeId;
   }
 
   /** Copy properties from another metric config. */

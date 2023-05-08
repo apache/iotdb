@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -36,12 +37,11 @@ import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
@@ -49,8 +49,11 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.idtable.IDTableWithDeviceIDListImpl;
@@ -84,7 +87,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   // when a path ends with ".**", it represents batch processing
   private final String TAIL = ".**";
 
-  private final IStorageGroupMNode storageGroupMNode;
+  private final IDatabaseMNode storageGroupMNode;
   private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
   private final String schemaRegionDirPath;
@@ -100,7 +103,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   public TagSchemaRegion(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
+      IDatabaseMNode storageGroupMNode,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
     storageGroupFullPath = storageGroup.getFullPath();
@@ -154,12 +157,22 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public SchemaRegionId getSchemaRegionId() {
     return schemaRegionId;
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -394,11 +407,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     return measurementPaths;
   }
 
-  @Override
-  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
-    throw new UnsupportedOperationException("getMatchedDevices");
-  }
-
   public List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException {
     PartialPath devicePath = pathPattern.getDevicePath();
@@ -437,34 +445,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       PartialPath devicePath, boolean isPrefixMatch) throws MetadataException {
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(devicePath);
     return getMeasurementPaths(deviceIDs);
-  }
-
-  @Override
-  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
-    String path = plan.getPath().getFullPath();
-    // point query
-    if (!path.endsWith(TAIL)) {
-      path = PathTagConverterUtils.pathToTagsSortPath(storageGroupFullPath, path);
-      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(path);
-      if (deviceEntry != null) {
-        Map<String, SchemaEntry> measurementMap = deviceEntry.getMeasurementMap();
-        for (String m : measurementMap.keySet()) {
-          SchemaEntry schemaEntry = measurementMap.get(m);
-          showTimeSeriesResults.add(
-              ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
-                  storageGroupFullPath, path, m, schemaEntry));
-        }
-      }
-      return showTimeSeriesResults;
-    }
-    // batch query
-    List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(plan.getPath());
-    for (IDeviceID deviceID : deviceIDs) {
-      getTimeSeriesResultOfDeviceFromIDTable(showTimeSeriesResults, deviceID);
-    }
-    return showTimeSeriesResults;
   }
 
   private void getTimeSeriesResultOfDeviceFromIDTable(
@@ -586,9 +566,31 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countDeviceNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException("countDeviceNumBySchemaRegion");
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    throw new UnsupportedOperationException("countTimeSeriesNumBySchemaRegion");
   }
 
   @Override

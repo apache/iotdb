@@ -45,7 +45,7 @@ In order to support users' storage requirements such as disk space expansion bet
 1. {TsFileName}.tsfile.resource
     + descriptor and statistic file of a TsFile
   
-### 与合并相关的数据文件
+### Compaction Related Files
 > under directory basedir/data/sequence or unsequence/{DatabaseName}/
 
 1. file suffixe with `.cross ` or `.inner`
@@ -118,7 +118,7 @@ An example of the configuration items are as follows:
 dn_system_dir = $IOTDB_HOME/data/datanode/system
 dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
 dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-dn_wal_dir= $IOTDB_HOME/data/datanode/wal
+dn_wal_dirs= $IOTDB_HOME/data/datanode/wal
 ```
 After setting the configuration, the system will:
 

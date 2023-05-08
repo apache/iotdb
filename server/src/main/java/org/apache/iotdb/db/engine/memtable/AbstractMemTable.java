@@ -200,7 +200,7 @@ public abstract class AbstractMemTable implements IMemTable {
         .count(
             pointsInserted,
             Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             METRIC_POINT_IN);
   }
@@ -239,7 +239,7 @@ public abstract class AbstractMemTable implements IMemTable {
         .count(
             pointsInserted,
             Metric.QUANTITY.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             METRIC_POINT_IN);
   }
@@ -258,7 +258,7 @@ public abstract class AbstractMemTable implements IMemTable {
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               METRIC_POINT_IN);
     } catch (RuntimeException e) {
@@ -280,7 +280,7 @@ public abstract class AbstractMemTable implements IMemTable {
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               METRIC_POINT_IN);
     } catch (RuntimeException e) {

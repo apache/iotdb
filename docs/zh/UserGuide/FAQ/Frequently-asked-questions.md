@@ -116,7 +116,7 @@ IoTDB> count timeseries root
 
 **可以使用 Hadoop 和 Spark 读取 IoTDB 中的 TsFile 吗？**
 
-是的。IoTDB 与开源生态紧密结合。IoTDB 支持 [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark) 和 [Grafana](https://github.com/apache/iotdb/tree/master/grafana) 可视化工具。
+是的。IoTDB 与开源生态紧密结合。IoTDB 支持 [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark-tsfile) 和 [Grafana](https://github.com/apache/iotdb/tree/master/grafana) 可视化工具。
 
 **IoTDB 如何处理重复的数据点**
 

@@ -26,11 +26,9 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -92,8 +90,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       // Set StorageGroups
       for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
+        status = client.setDatabase(new TDatabaseSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
@@ -143,8 +140,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         // Set StorageGroups
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
+        status = client.setDatabase(new TDatabaseSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         // Create a DataRegionGroup for each StorageGroup
@@ -198,30 +194,11 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       Assert.assertTrue(isDistributionBalanced);
 
       // Shutdown a DataNode
-      boolean isDataNodeShutdown = false;
       EnvFactory.getEnv().shutdownDataNode(0);
-      for (int retry = 0; retry < retryNum; retry++) {
-        AtomicInteger runningCnt = new AtomicInteger(0);
-        AtomicInteger unknownCnt = new AtomicInteger(0);
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Running.getStatus().equals(dataNodeInfo.getStatus())) {
-                    runningCnt.getAndIncrement();
-                  } else if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    unknownCnt.getAndIncrement();
-                  }
-                });
-        if (runningCnt.get() == testDataNodeNum - 1 && unknownCnt.get() == 1) {
-          isDataNodeShutdown = true;
-          break;
-        }
-
-        TimeUnit.SECONDS.sleep(1);
-      }
-      Assert.assertTrue(isDataNodeShutdown);
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Collections.singletonList(NodeStatus.Unknown));
 
       // Check leader distribution
       isDistributionBalanced = false;

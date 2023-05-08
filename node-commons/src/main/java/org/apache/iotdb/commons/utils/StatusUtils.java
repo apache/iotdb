@@ -84,8 +84,8 @@ public class StatusUtils {
       case COMPACTION_ERROR:
         status.setMessage("Meet error while merging.");
         break;
-      case SYNC_CONNECTION_ERROR:
-        status.setMessage("Meet error while sync connecting.");
+      case DISPATCH_ERROR:
+        status.setMessage("Meet error while dispatching.");
         break;
       case DATAREGION_PROCESS_ERROR:
         status.setMessage("Database processor related error.");

@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -64,9 +67,10 @@ import java.util.NoSuchElementException;
  */
 public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     implements Iterator<R>, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractTreeVisitor.class);
 
   // command parameters
-  protected final N root;
+  protected N root;
 
   // finite automation constructed from given path pattern or pattern tree
   protected final IPatternFA patternFA;
@@ -118,11 +122,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-
-    initStack();
   }
 
-  private void initStack() {
+  /** This method must be invoked before iteration */
+  protected final void initStack() {
     IFAState initialState = patternFA.getInitialState();
     IFATransition transition =
         patternFA.getPreciseMatchTransition(initialState).get(root.getName());
@@ -134,14 +137,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
-  }
-
-  public boolean isSuccess() {
-    return throwable != null;
-  }
-
-  public Throwable getThrowable() {
-    return throwable;
   }
 
   public void reset() {
@@ -170,6 +165,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       try {
         getNext();
       } catch (Throwable e) {
+        logger.warn(e.getMessage(), e);
         setFailure(e);
       }
     }
@@ -205,6 +201,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
       N nextTempNode = iterator.next();
 
+      shouldVisitSubtree = false;
       if (currentStateMatchInfo.hasFinalState()) {
         if (acceptFullMatchedNode(nextTempNode)) {
           nextMatchedNode = nextTempNode;
@@ -274,7 +271,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
-  protected final String[] generateFullPathNodes() {
+  /**
+   * Get full path of parent of current node. This method should be used in {@linkplain
+   * AbstractTreeVisitor#acceptInternalMatchedNode}, {@linkplain
+   * AbstractTreeVisitor#acceptFullMatchedNode},{@linkplain
+   * AbstractTreeVisitor#shouldVisitSubtreeOfInternalMatchedNode} or {@linkplain
+   * AbstractTreeVisitor#shouldVisitSubtreeOfFullMatchedNode}.
+   *
+   * @return full path from traverse start node to the parent of current node
+   */
+  protected PartialPath getParentPartialPath() {
     List<String> nodeNames = new ArrayList<>();
     Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
     for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
@@ -284,8 +290,39 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         nodeNames.add(iterator.next().node.getName());
       }
     }
-    nodeNames.add(nextMatchedNode.getName());
+    return new PartialPath(nodeNames.toArray(new String[0]));
+  }
+
+  /**
+   * Get partial path from root to node.
+   *
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return partial path from traverse start node to the specified node
+   */
+  protected final PartialPath getPartialPathFromRootToNode(N node) {
+    return new PartialPath(getFullPathFromRootToNode(node));
+  }
+
+  /**
+   * Get full path from root to node.
+   *
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return full path from traverse start node to the specified node
+   */
+  protected final String[] getFullPathFromRootToNode(N node) {
+    List<String> nodeNames = new ArrayList<>();
+    for (AncestorStackEntry entry : ancestorStack) {
+      nodeNames.add(entry.node.getName());
+      if (entry.node == node) {
+        return nodeNames.toArray(new String[0]);
+      }
+    }
+    nodeNames.add(node.getName());
     return nodeNames.toArray(new String[0]);
+  }
+
+  protected final N getAncestorNodeByLevel(int level) {
+    return ancestorStack.get(level).node;
   }
 
   protected final N getParentOfNextMatchedNode() {
@@ -296,8 +333,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
+  /**
+   * Get level from root to NextMatchedNode. Level of root is 0. For example, root.sg.d1.s1,
+   * NextMatchedNode is s1, then return 3.
+   *
+   * @return level from root to NextMatchedNode
+   */
+  protected final int getLevelOfNextMatchedNode() {
+    if (shouldVisitSubtree) {
+      return ancestorStack.size() - 1;
+    } else {
+      return ancestorStack.size();
+    }
+  }
+
+  protected final int getSizeOfAncestor() {
+    return ancestorStack.size();
+  }
+
   protected void setFailure(Throwable e) {
     this.throwable = e;
+  }
+
+  public Throwable getFailure() {
+    return throwable;
+  }
+
+  public boolean isSuccess() {
+    return throwable == null;
   }
 
   // Get a child with the given childName.
@@ -379,8 +442,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         try {
           getNext();
         } catch (Throwable e) {
-          setFailure(e);
-          return false;
+          throw new RuntimeException(e.getMessage(), e);
         }
       }
       return nextMatchedChild != null;
@@ -479,7 +541,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(childrenIterator);
+      if (childrenIterator != null) {
+        releaseNodeIterator(childrenIterator);
+      }
     }
   }
 
@@ -514,10 +578,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       while (iterator.hasNext()) {
         child = iterator.next();
 
+        // find first matched state
         if (!preciseMatchTransitionMap.isEmpty()) {
           matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
         }
-
         transitionIterator = patternFA.getFuzzyMatchTransitionIterator(sourceState);
         if (matchedState == null) {
           while (transitionIterator.hasNext()) {
@@ -532,16 +596,36 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
           }
         }
 
-        if (patternFA.mayTransitionOverlap()) {
-          if (transitionIterator.hasNext()) {
+        // check whether accept the first matched state
+        if (mayTargetNodeType(child) && !matchedState.isFinal()) {
+          // not accept the first matched state since this node may be a target result, check the
+          // other states
+          if (patternFA.mayTransitionOverlap() && transitionIterator.hasNext()) {
+            stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
+            firstAncestorOfTraceback = ancestorStack.size();
+
+            while (transitionIterator.hasNext()) {
+              matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
+              if (matchedState != null) {
+                stateMatchInfo.addMatchedState(matchedState);
+                if (matchedState.isFinal()) {
+                  break;
+                }
+              }
+            }
+          } else {
+            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
+          }
+        } else {
+          // accept the first matched state, directly save it
+          if (patternFA.mayTransitionOverlap() && transitionIterator.hasNext()) {
             stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
             firstAncestorOfTraceback = ancestorStack.size();
           } else {
             stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
           }
-        } else {
-          stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
         }
+
         saveResult(child, stateMatchInfo);
         return;
       }
@@ -550,7 +634,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 
@@ -585,21 +671,43 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         child = iterator.next();
 
         stateMatchInfo = new StateMultiMatchInfo(patternFA);
-        for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
-          sourceState = sourceStateMatchInfo.getMatchedState(i);
-          transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo);
-          if (stateMatchInfo.getMatchedStateSize() > 0) {
-            stateMatchInfo.setSourceStateOrdinal(i);
-            stateMatchInfo.setSourceTransitionIterator(transitionIterator);
-            break;
+        if (mayTargetNodeType(child)) {
+          for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
+            sourceState = sourceStateMatchInfo.getMatchedState(i);
+            transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo, true);
+            if (stateMatchInfo.getMatchedStateSize() > 0) {
+              stateMatchInfo.setSourceStateOrdinal(i);
+              stateMatchInfo.setSourceTransitionIterator(transitionIterator);
+              if (stateMatchInfo.hasFinalState()) {
+                break;
+              }
+            }
           }
-        }
 
-        if (stateMatchInfo.getMatchedStateSize() == 0) {
-          traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1);
+          if (stateMatchInfo.getMatchedStateSize() == 0 || !stateMatchInfo.hasFinalState()) {
+            traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1, true);
+            if (stateMatchInfo.getMatchedStateSize() == 0) {
+              releaseNode(child);
+              continue;
+            }
+          }
+        } else {
+          for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
+            sourceState = sourceStateMatchInfo.getMatchedState(i);
+            transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo, false);
+            if (stateMatchInfo.getMatchedStateSize() > 0) {
+              stateMatchInfo.setSourceStateOrdinal(i);
+              stateMatchInfo.setSourceTransitionIterator(transitionIterator);
+              break;
+            }
+          }
+
           if (stateMatchInfo.getMatchedStateSize() == 0) {
-            releaseNode(child);
-            continue;
+            traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1, false);
+            if (stateMatchInfo.getMatchedStateSize() == 0) {
+              releaseNode(child);
+              continue;
+            }
           }
         }
 
@@ -617,7 +725,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
      * @return iterator of rest transitions
      */
     private Iterator<IFATransition> tryGetNextMatchedState(
-        N child, IFAState sourceState, IStateMatchInfo currentStateMatchInfo) {
+        N child,
+        IFAState sourceState,
+        IStateMatchInfo currentStateMatchInfo,
+        boolean needFinalState) {
       Map<String, IFATransition> preciseMatchTransitionMap =
           patternFA.getPreciseMatchTransition(sourceState);
 
@@ -626,7 +737,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
         if (matchedState != null) {
           currentStateMatchInfo.addMatchedState(matchedState);
-          return patternFA.getFuzzyMatchTransitionIterator(sourceState);
+          if (!needFinalState || matchedState.isFinal()) {
+            return patternFA.getFuzzyMatchTransitionIterator(sourceState);
+          }
         }
       }
 
@@ -636,20 +749,26 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
         if (matchedState != null) {
           currentStateMatchInfo.addMatchedState(matchedState);
-          return transitionIterator;
+          if (!needFinalState || matchedState.isFinal()) {
+            return transitionIterator;
+          }
         }
       }
       return transitionIterator;
     }
 
-    private void traceback(N node, IStateMatchInfo stateMatchInfo, int checkedSourceStateOrdinal) {
+    private void traceback(
+        N node,
+        IStateMatchInfo stateMatchInfo,
+        int checkedSourceStateOrdinal,
+        boolean needFinalState) {
       IStateMatchInfo parentStateMatchInfo;
 
       N currentNode;
       IStateMatchInfo currentStateMatchInfo;
 
       int sourceStateOrdinal;
-      IFAState sourceState;
+      IFAState sourceState = null;
       Iterator<IFATransition> transitionIterator = null;
 
       int matchedStateSize;
@@ -704,7 +823,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
               sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
               matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
               transitionIterator =
-                  tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
+                  tryGetNextMatchedState(
+                      currentNode, sourceState, currentStateMatchInfo, needFinalState);
               // change of matchedStateSize means currentNode there is transition from sourceState
               // matching currentNode
               if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
@@ -725,7 +845,20 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
           currentStateMatchInfo.addMatchedState(matchedState);
 
           if (currentNode == node) {
-            return;
+            if (needFinalState && !currentStateMatchInfo.hasFinalState()) {
+              while (transitionIterator.hasNext()) {
+                matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
+                if (matchedState != null) {
+                  currentStateMatchInfo.addMatchedState(matchedState);
+                  if (matchedState.isFinal()) {
+                    return;
+                  }
+                }
+              }
+              currentNodeIndex--;
+            } else {
+              return;
+            }
           } else {
             currentNodeIndex++;
           }
@@ -736,7 +869,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 
@@ -766,4 +901,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       return null;
     }
   }
+
+  /**
+   * May node can be accepted if it reaches final state. Its implementation should not depend on the
+   * context.
+   *
+   * @param node node to be checked
+   * @return false is if node must not be accepted. Otherwise, return true.
+   */
+  protected abstract boolean mayTargetNodeType(N node);
 }

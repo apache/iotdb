@@ -21,40 +21,54 @@ package org.apache.iotdb.itbase.env;
 public interface ClusterConfig {
 
   /**
-   * Get the iotdb-datanode.properties of DataNodes.
+   * Get the iotdb-datanode.properties setter of DataNodes.
    *
    * @return the {@link DataNodeConfig} instance.
    */
   DataNodeConfig getDataNodeConfig();
 
   /**
-   * Get the iotdb-common.properties of DataNodes. Updating the instance will affect ConfigNodes
-   * only.
+   * Get the iotdb-common.properties setter of DataNodes. Updating the instance will affect
+   * ConfigNodes only.
    *
    * @return the {@link CommonConfig} instance.
    */
   CommonConfig getDataNodeCommonConfig();
 
   /**
-   * Get the iotdb-confignode.properties of ConfigNodes.
+   * Get the iotdb-confignode.properties setter of ConfigNodes.
    *
    * @return the {@link ConfigNodeConfig} instance.
    */
   ConfigNodeConfig getConfigNodeConfig();
 
   /**
-   * Get the iotdb-common.properties of ConfigNodes. Updating the instance will affect ConfigNodes
-   * only.
+   * Get the iotdb-common.properties setter of ConfigNodes. Updating the instance will affect
+   * ConfigNodes only.
    *
    * @return the {@link CommonConfig} instance.
    */
   CommonConfig getConfigNodeCommonConfig();
 
   /**
-   * Get the iotdb-common.properties for both the ConfigNodes and DataNodes. Updating the instance
-   * will affect ConfigNodes as well as DataNodes.
+   * Get the iotdb-common.properties setter for both the ConfigNodes and DataNodes. Updating the
+   * instance will affect ConfigNodes as well as DataNodes.
    *
    * @return the {@link CommonConfig} instance.
    */
   CommonConfig getCommonConfig();
+
+  /**
+   * Get the JVM Configuration setter of ConfigNodes.
+   *
+   * @return the {@link JVMConfig} instance.
+   */
+  JVMConfig getConfigNodeJVMConfig();
+
+  /**
+   * Get the JVM Configuration setter of DataNodes.
+   *
+   * @return the {@link JVMConfig} instance.
+   */
+  JVMConfig getDataNodeJVMConfig();
 }

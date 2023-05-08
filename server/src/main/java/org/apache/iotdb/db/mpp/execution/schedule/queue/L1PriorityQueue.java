@@ -65,19 +65,19 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   protected E pollFirst() {
     E element = sortedElements.first();
     sortedElements.remove(element);
-    keyedElements.remove(element.getId());
+    keyedElements.remove(element.getDriverTaskId());
     return element;
   }
 
   @Override
   protected void pushToQueue(E element) {
-    keyedElements.put(element.getId(), element);
+    keyedElements.put(element.getDriverTaskId(), element);
     sortedElements.add(element);
   }
 
   @Override
   protected E remove(E element) {
-    E e = keyedElements.remove(element.getId());
+    E e = keyedElements.remove(element.getDriverTaskId());
     if (e != null) {
       sortedElements.remove(e);
     }
@@ -86,12 +86,12 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
 
   @Override
   protected boolean contains(E element) {
-    return keyedElements.containsKey(element.getId());
+    return keyedElements.containsKey(element.getDriverTaskId());
   }
 
   @Override
   protected E get(E element) {
-    return keyedElements.get(element.getId());
+    return keyedElements.get(element.getDriverTaskId());
   }
 
   @Override

@@ -20,27 +20,39 @@
   "types": [
       {
         "dataType": "boolean",
-        "column": "BooleanColumn"
+        "column": "BooleanColumn",
+        "javaBoxName": "Boolean",
+        "tsDataType": "TSDataType.BOOLEAN"
       }
     ,{
         "dataType": "int",
-        "column": "IntColumn"
+        "column": "IntColumn",
+        "javaBoxName": "Integer",
+        "tsDataType": "TSDataType.INT32"
       }
     ,{
         "dataType": "long",
-        "column": "LongColumn"
+        "column": "LongColumn",
+        "javaBoxName": "Long",
+        "tsDataType": "TSDataType.INT64"
      }
     ,{
          "dataType": "float",
-         "column": "FloatColumn"
+         "column": "FloatColumn",
+         "javaBoxName": "Float",
+         "tsDataType": "TSDataType.FLOAT"
      }
    ,{
         "dataType": "double",
-        "column": "DoubleColumn"
+        "column": "DoubleColumn",
+        "javaBoxName": "Double",
+        "tsDataType": "TSDataType.DOUBLE"
     }
     ,{
          "dataType": "Binary",
-         "column": "BinaryColumn"
+         "column": "BinaryColumn",
+         "javaBoxName": "Binary",
+         "tsDataType": "TSDataType.TEXT"
      }
   ]
 }

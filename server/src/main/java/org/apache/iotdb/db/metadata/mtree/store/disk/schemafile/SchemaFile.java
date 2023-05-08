@@ -21,15 +21,15 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
@@ -77,11 +77,13 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
+  // todo refactor constructor for schema file in Jan.
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
-
     this.storageGroupName = sgName;
     this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
     this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
@@ -129,12 +131,18 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
+  // load or init
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
+    File pmtFile =
+        SystemFileFactory.INSTANCE.getFile(
+            getDirPath(sgName, schemaRegionId)
+                + File.separator
+                + MetadataConstant.SCHEMA_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
-        true,
+        !pmtFile.exists(),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
@@ -160,8 +168,8 @@ public class SchemaFile implements ISchemaFile {
   // region Interface Implementation
 
   @Override
-  public IMNode init() throws MetadataException {
-    IMNode resNode;
+  public ICachedMNode init() throws MetadataException {
+    ICachedMNode resNode;
     String[] sgPathNodes =
         storageGroupName == null
             ? new String[] {"noName"}
@@ -169,30 +177,37 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              new StorageGroupEntityMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              nodeFactory.createDatabaseDeviceMNode(
+                  null, sgPathNodes[sgPathNodes.length - 1], dataTTL),
+              0L);
+      resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
+      resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
-              new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              nodeFactory
+                  .createDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL)
+                  .getAsMNode(),
+              0L);
     }
     resNode.setFullPath(storageGroupName);
-    resNode.setSchemaTemplateId(sgNodeTemplateIdWithState);
-    resNode.setUseTemplate(sgNodeTemplateIdWithState > -1);
     return resNode;
   }
 
   @Override
-  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+  public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
-    this.isEntity = sgNode.isEntity();
-    this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
-    updateHeader();
+    this.isEntity = sgNode.isDevice();
+    if (sgNode.isDevice()) {
+      this.sgNodeTemplateIdWithState = sgNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
+    }
+    updateHeaderBuffer();
     return true;
   }
 
   @Override
-  public void delete(IMNode node) throws IOException, MetadataException {
-    if (node.isStorageGroup()) {
+  public void delete(ICachedMNode node) throws IOException, MetadataException {
+    if (node.isDatabase()) {
       // should clear this file
       clear();
     } else {
@@ -201,11 +216,11 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void writeMNode(IMNode node) throws MetadataException, IOException {
+  public void writeMNode(ICachedMNode node) throws MetadataException, IOException {
     long curSegAddr = getNodeAddress(node);
 
-    if (node.isStorageGroup()) {
-      isEntity = node.isEntity();
+    if (node.isDatabase()) {
+      isEntity = node.isDevice();
       setNodeAddress(node, lastSGAddr);
     } else {
       if (curSegAddr < 0L) {
@@ -220,16 +235,18 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    updateHeaderBuffer();
   }
 
   @Override
-  public IMNode getChildNode(IMNode parent, String childName)
+  public ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException {
     return pageManager.getChildNode(parent, childName);
   }
 
   @Override
-  public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
+  public Iterator<ICachedMNode> getChildren(ICachedMNode parent)
+      throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
@@ -240,16 +257,18 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
     pageManager.close();
+    forceChannel();
     channel.close();
   }
 
   @Override
   public void sync() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
+    forceChannel();
   }
 
   @Override
@@ -327,7 +346,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
       ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, -1, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
@@ -342,11 +361,11 @@ public class SchemaFile implements ISchemaFile {
         throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
       }
 
-      pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
     }
   }
 
-  private void updateHeader() throws IOException {
+  private void updateHeaderBuffer() throws IOException {
     headerContent.clear();
 
     ReadWriteIOUtils.write(pageManager.getLastPageIndex(), headerContent);
@@ -356,8 +375,11 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
-    headerContent.clear();
+    headerContent.flip();
     channel.write(headerContent, 0);
+  }
+
+  private void forceChannel() throws IOException {
     channel.force(true);
   }
 
@@ -395,11 +417,11 @@ public class SchemaFile implements ISchemaFile {
         + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
-  public static long getNodeAddress(IMNode node) {
+  public static long getNodeAddress(ICachedMNode node) {
     return ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress();
   }
 
-  public static IMNode setNodeAddress(IMNode node, long addr) {
+  public static ICachedMNode setNodeAddress(ICachedMNode node, long addr) {
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(addr);
     return node;
   }
@@ -455,7 +477,7 @@ public class SchemaFile implements ISchemaFile {
             getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
     Files.deleteIfExists(schemaLogFile.toPath());
-    Files.createLink(schemaFile.toPath(), snapshot.toPath());
+    Files.copy(snapshot.toPath(), schemaFile.toPath());
     return new SchemaFile(
         sgName,
         schemaRegionId,

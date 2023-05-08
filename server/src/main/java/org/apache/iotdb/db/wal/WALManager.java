@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
 import org.apache.iotdb.db.wal.allocation.NodeAllocationStrategy;
@@ -101,6 +102,7 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager)
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
+    WritingMetricsManager.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
   }
 
   /** WAL node will be deleted only when using iot consensus protocol */
@@ -112,6 +114,7 @@ public class WALManager implements IService {
     }
 
     ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
+    WritingMetricsManager.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
   }
 
   @Override
@@ -193,6 +196,10 @@ public class WALManager implements IService {
     return totalDiskUsage.get();
   }
 
+  public long getWALNodesNum() {
+    return walNodesManager.getNodesNum();
+  }
+
   public void addTotalDiskUsage(long size) {
     totalDiskUsage.accumulateAndGet(size, Long::sum);
   }
@@ -205,12 +212,12 @@ public class WALManager implements IService {
     return totalFileNum.get();
   }
 
-  public void addTotalFileNum(long size) {
-    totalFileNum.accumulateAndGet(size, Long::sum);
+  public void addTotalFileNum(long num) {
+    totalFileNum.accumulateAndGet(num, Long::sum);
   }
 
-  public void subtractTotalFileNum(long size) {
-    totalFileNum.accumulateAndGet(size, (x, y) -> x - y);
+  public void subtractTotalFileNum(long num) {
+    totalFileNum.accumulateAndGet(num, (x, y) -> x - y);
   }
 
   @Override

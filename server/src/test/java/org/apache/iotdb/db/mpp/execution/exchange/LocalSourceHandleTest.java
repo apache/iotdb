@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -50,11 +51,7 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     Assert.assertFalse(localSourceHandle.isBlocked().isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());
@@ -98,11 +95,7 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     ListenableFuture<?> future = localSourceHandle.isBlocked();
     Assert.assertFalse(future.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());

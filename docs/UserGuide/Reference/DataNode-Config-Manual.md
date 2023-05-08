@@ -255,6 +255,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1024 |
 |Effective|After restarting system|
 
+* dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|     Name     | dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------------:|:--------------------------------------------------------------|
+| Description  | Number of core clients routed to each node in a ClientManager |
+|     Type     | int                                                           |
+|   Default    | 200                                                           |
+|  Effective   | After restarting system                                       |
+
+* dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|      Name      | dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:--------------:|:-------------------------------------------------------------|
+|  Description   | Number of max clients routed to each node in a ClientManager |
+|      Type      | int                                                          |
+|    Default     | 300                                                          |
+|   Effective    | After restarting system                                      |
+
 ### Dictionary Configuration
 
 * dn\_system\_dir
@@ -273,16 +291,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 | Description | The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it. |
 |    Type     | String[]                                                                                                                                                                                                                                                                    |
 |   Default   | data/datanode/data (Windows: data\\datanode\\data)                                                                                                                                                                                                                          |
-|  Effective  | hot-load                                                                                                                                                                                                                                                                     |
+|  Effective  | After restarting system                                                                                                                                                                                                                                                     |
 
 * dn\_multi\_dir\_strategy
 
-|Name| dn\_multi\_dir\_strategy |
-|:---:|:---|
-|Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
-|Type|String|
-|Default| MaxDiskUsableSpaceFirstStrategy |
-|Effective|hot-load|
+|    Name     | dn\_multi\_dir\_strategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
+|    Type     | String                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|   Default   | MaxDiskUsableSpaceFirstStrategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|  Effective  | hot-load                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 * dn\_consensus\_dir
 
@@ -293,9 +311,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |   Default   | data/datanode/consensus                                                        |
 |  Effective  | After restarting system                                                        |
 
-* dn\_wal\_dir
+* dn\_wal\_dirs
 
-|    Name     | dn\_wal\_dir                                                             |
+|    Name     | dn\_wal\_dirs                                                            |
 |:-----------:|:-------------------------------------------------------------------------|
 | Description | Write Ahead Log storage path. It is recommended to use an absolute path. |
 |    Type     | String                                                                   |

@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
+import java.util.Optional;
+
 public class ConsensusConfig {
 
   private final TEndPoint thisNodeEndPoint;
@@ -79,10 +81,9 @@ public class ConsensusConfig {
           thisNode,
           thisNodeId,
           storageDir,
-          ratisConfig != null ? ratisConfig : RatisConfig.newBuilder().build(),
-          ioTConsensusConfig != null
-              ? ioTConsensusConfig
-              : IoTConsensusConfig.newBuilder().build());
+          Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
+          Optional.ofNullable(ioTConsensusConfig)
+              .orElseGet(() -> IoTConsensusConfig.newBuilder().build()));
     }
 
     public Builder setThisNode(TEndPoint thisNode) {

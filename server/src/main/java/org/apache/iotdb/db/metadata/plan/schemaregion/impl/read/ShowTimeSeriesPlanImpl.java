@@ -42,8 +42,8 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       boolean isContains,
       String key,
       String value,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean isPrefixMatch) {
     super(path, limit, offset, isPrefixMatch);
     this.relatedTemplate = relatedTemplate;

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
+import org.apache.iotdb.db.mpp.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AbstractProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -39,7 +39,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 @Deprecated
-public class TimeJoinOperator extends AbstractProcessOperator {
+public class TimeJoinOperator extends AbstractOperator {
 
   private final List<Operator> children;
 
@@ -119,7 +119,7 @@ public class TimeJoinOperator extends AbstractProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -147,7 +147,8 @@ public class TimeJoinOperator extends AbstractProcessOperator {
             // In such case, TimeJoinOperator can't go on calculating, so we just return null.
             // We can also use the while loop here to continuously call the hasNext() and next()
             // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while loop
+            // the data that is not empty, but this will cause the execution time of the while
+            // loop
             // to be uncontrollable and may exceed all allocated time slice
             return null;
           }
@@ -194,12 +195,11 @@ public class TimeJoinOperator extends AbstractProcessOperator {
     System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
 
     resultTsBlock = tsBlockBuilder.build();
-
     return checkTsBlockSizeAndGetResult();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -229,7 +229,7 @@ public class TimeJoinOperator extends AbstractProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }

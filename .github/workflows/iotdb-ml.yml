@@ -1,0 +1,60 @@
+# This workflow is just for checking whether modifications works for the MLNode
+
+name: MLNode
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+      - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server distribution zip
+        run: mvn -B clean install -pl distribution -am -DskipTests
+      - name: Build IoTDB server docker image
+        run: |
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
+          docker images
+      - name: Install IoTDB mlnode requirements
+        run: pip3 install -r mlnode/requirements_dev.txt
+      - name: Build MLNode
+        run: mvn clean package -DskipUTs -pl mlnode -am && pip3 install poetry && cd mlnode && poetry build && pip install dist/apache_iotdb_mlnode-1.0.0-py3-none-any.whl --force-reinstall
+      - name: Integration test
+        shell: bash
+        run: |
+          pytest mlnode

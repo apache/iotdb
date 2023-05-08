@@ -21,9 +21,9 @@
 
 
 
-# 编写触发器
+## 编写触发器
 
-## 触发器依赖
+### 触发器依赖
 
 触发器的逻辑需要您编写 Java 类进行实现。
 在编写触发器逻辑时，需要使用到下面展示的依赖。如果您使用 [Maven](http://search.maven.org/)，则可以直接从 [Maven 库](http://search.maven.org/)中搜索到它们。请注意选择和目标服务器版本相同的依赖版本。
@@ -37,7 +37,7 @@
 </dependency>
 ```
 
-## 接口说明
+### 接口说明
 
 编写一个触发器需要实现 `org.apache.iotdb.trigger.api.Trigger` 类。
 
@@ -106,7 +106,7 @@ public interface Trigger {
 
 下面是所有可供用户进行实现的接口的说明。
 
-### 生命周期相关接口
+#### 生命周期相关接口
 
 | 接口定义                                                     | 描述                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -115,9 +115,9 @@ public interface Trigger {
 | *default void onDrop() throws Exception {}*                  | 当您使用`DROP TRIGGER`语句删除触发器后，该接口会被调用。在每一个触发器实例的生命周期内，该接口会且仅会被调用一次。该接口主要有如下作用：可以进行资源释放的操作。可以用于持久化触发器计算的结果。 |
 | *default void restore() throws Exception {}*                 | 当重启 DataNode 时，集群会恢复 DataNode 上已经注册的触发器实例，在此过程中会为该 DataNode 上的有状态触发器调用一次该接口。有状态触发器实例所在的 DataNode 宕机后，集群会在另一个可用 DataNode 上恢复该触发器的实例，在此过程中会调用一次该接口。该接口可以用于自定义恢复逻辑。 |
 
-### 数据变动侦听相关接口
+#### 数据变动侦听相关接口
 
-#### 侦听接口
+##### 侦听接口
 
 ```java
  /**
@@ -162,7 +162,7 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 - root.sg.a 的数据会被组装成一个新的 tablet2，在相应的触发时机进行 Trigger2.fire(tablet2)
 - root.sg.b 的数据会被组装成一个新的 tablet3，在相应的触发时机进行 Trigger3.fire(tablet3)
 
-#### 侦听策略接口
+##### 侦听策略接口
 
 在触发器触发失败时，我们会根据侦听策略接口设置的策略进行相应的操作，您可以通过下述接口设置 `org.apache.iotdb.trigger.api.enums.FailureStrategy`，目前有乐观和悲观两种策略：
 
@@ -183,12 +183,12 @@ insert into root.sg(time, a, b) values (1, 1, 1);
 
 您可以参考下图辅助理解，其中 Trigger1 配置采用乐观策略，Trigger2 配置采用悲观策略。Trigger1 和 Trigger2 的触发时机是 BEFORE INSERT，Trigger3 和 Trigger4 的触发时机是 AFTER INSERT。 正常执行流程如下：
 
-<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/Trigger_Process_Flow.jpg?raw=true">
+<img src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Triggers/Trigger_Process_Flow.jpg?raw=true">
 
-<img src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Process-Data/Triggers/Trigger_Process_Strategy.jpg?raw=true">
+<img src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Triggers/Trigger_Process_Strategy.jpg?raw=true">
 
 
-## 示例
+### 示例
 
 如果您使用 [Maven](http://search.maven.org/)，可以参考我们编写的示例项目 trigger-example。您可以在 [这里](https://github.com/apache/iotdb/tree/master/example/trigger) 找到它。后续我们会加入更多的示例项目供您参考。
 

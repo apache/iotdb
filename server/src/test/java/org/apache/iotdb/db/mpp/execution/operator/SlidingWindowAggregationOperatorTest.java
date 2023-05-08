@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -31,15 +32,17 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -76,26 +79,26 @@ public class SlidingWindowAggregationOperatorTest {
   private ExecutorService instanceNotificationExecutor =
       IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
-  private final List<AggregationType> leafAggregationTypes =
+  private final List<TAggregationType> leafAggregationTypes =
       Arrays.asList(
-          AggregationType.COUNT,
-          AggregationType.SUM,
-          AggregationType.LAST_VALUE,
-          AggregationType.FIRST_VALUE,
-          AggregationType.MAX_VALUE,
-          AggregationType.MIN_VALUE);
+          TAggregationType.COUNT,
+          TAggregationType.SUM,
+          TAggregationType.LAST_VALUE,
+          TAggregationType.FIRST_VALUE,
+          TAggregationType.MAX_VALUE,
+          TAggregationType.MIN_VALUE);
 
-  private final List<AggregationType> rootAggregationTypes =
+  private final List<TAggregationType> rootAggregationTypes =
       Arrays.asList(
-          AggregationType.COUNT,
-          AggregationType.AVG,
-          AggregationType.SUM,
-          AggregationType.LAST_VALUE,
-          AggregationType.MIN_TIME,
-          AggregationType.MAX_TIME,
-          AggregationType.FIRST_VALUE,
-          AggregationType.MAX_VALUE,
-          AggregationType.MIN_VALUE);
+          TAggregationType.COUNT,
+          TAggregationType.AVG,
+          TAggregationType.SUM,
+          TAggregationType.LAST_VALUE,
+          TAggregationType.MIN_TIME,
+          TAggregationType.MAX_TIME,
+          TAggregationType.FIRST_VALUE,
+          TAggregationType.MAX_VALUE,
+          TAggregationType.MIN_VALUE);
 
   private final List<List<List<InputLocation>>> inputLocations =
       Arrays.asList(
@@ -130,7 +133,7 @@ public class SlidingWindowAggregationOperatorTest {
   }
 
   @Test
-  public void slidingWindowAggregationTest() throws IllegalPathException {
+  public void slidingWindowAggregationTest() throws Exception {
     String[] retArray =
         new String[] {
           "0,100,20049.5,2004950.0,20099,0,99,20000,20099,20000",
@@ -172,6 +175,7 @@ public class SlidingWindowAggregationOperatorTest {
         count--;
       }
     }
+
     Assert.assertEquals(0, count);
   }
 
@@ -207,12 +211,13 @@ public class SlidingWindowAggregationOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId sourceId = queryId.genPlanNodeId();
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         0, sourceId, SeriesAggregationScanOperator.class.getSimpleName());
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         1, queryId.genPlanNodeId(), SlidingWindowAggregationOperator.class.getSimpleName());
-    fragmentInstanceContext
+    driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext -> {
@@ -223,20 +228,26 @@ public class SlidingWindowAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(leafAggregationTypes, TSDataType.INT32, ascending)
+    AccumulatorFactory.createAccumulators(
+            leafAggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            ascending)
         .forEach(
             accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             sourceId,
             d0s0,
-            Collections.singleton("sensor0"),
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            ascending ? Ordering.ASC : Ordering.DESC,
+            scanOptionsBuilder.build(),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
-            null,
-            ascending,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(
@@ -248,6 +259,8 @@ public class SlidingWindowAggregationOperatorTest {
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               rootAggregationTypes.get(i),
               TSDataType.INT32,
+              Collections.emptyList(),
+              Collections.emptyMap(),
               ascending,
               inputLocations.get(i).stream()
                   .map(tmpInputLocations -> tmpInputLocations.toArray(new InputLocation[0]))
@@ -256,7 +269,7 @@ public class SlidingWindowAggregationOperatorTest {
     }
 
     return new SlidingWindowAggregationOperator(
-        fragmentInstanceContext.getOperatorContexts().get(1),
+        driverContext.getOperatorContexts().get(1),
         finalAggregators,
         initTimeRangeIterator(groupByTimeParameter, ascending, false),
         seriesAggregationScanOperator,

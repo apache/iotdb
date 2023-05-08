@@ -32,8 +32,6 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
-import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -380,33 +378,6 @@ public class SyncService implements IService {
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || pipeName.equals(pipe.getPipeName())) {
         list.add(pipe.getTShowPipeInfo());
-      }
-    }
-    list.addAll(showPipeForReceiver(pipeName));
-    return list;
-  }
-
-  /**
-   * // show pipe in receiver
-   *
-   * @param pipeName null means show all pipe
-   */
-  public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
-    boolean showAll = StringUtils.isEmpty(pipeName);
-    List<TShowPipeInfo> list = new ArrayList<>();
-    for (SyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
-      if (showAll || pipeName.equals(identityInfo.getPipeName())) {
-        TShowPipeInfo tPipeInfo =
-            new TShowPipeInfo(
-                identityInfo.getCreateTime(),
-                identityInfo.getPipeName(),
-                SyncConstant.ROLE_RECEIVER,
-                identityInfo.getRemoteAddress(),
-                PipeStatus.RUNNING.name(),
-                String.format("Database='%s'", identityInfo.getDatabase()),
-                // TODO: implement receiver message
-                PipeMessage.PipeMessageType.NORMAL.name());
-        list.add(tPipeInfo);
       }
     }
     return list;

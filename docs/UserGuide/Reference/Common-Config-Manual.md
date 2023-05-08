@@ -102,6 +102,24 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 |  Effective  | Only allowed to be modified in first start up                     |
 
+* schema\_region\_group\_extension\_policy
+
+|    Name     | schema\_region\_group\_extension\_policy  |
+|:-----------:|:------------------------------------------|
+| Description | The extension policy of SchemaRegionGroup |
+|    Type     | string                                    |
+|   Default   | AUTO                                      |
+|  Effective  | After restarting system                   |
+
+* default\_schema\_region\_group\_num\_per\_database
+
+|    Name     | default\_schema\_region\_group\_num\_per\_database                                                                                                                                                                                      |
+|:-----------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The number of SchemaRegionGroups that each Database has when using the CUSTOM-SchemaRegionGroup extension policy. The least number of SchemaRegionGroups that each Database has when using the AUTO-SchemaRegionGroup extension policy. |
+|    Type     | int                                                                                                                                                                                                                                     |
+|   Default   | 1                                                                                                                                                                                                                                       |
+|  Effective  | After restarting system                                                                                                                                                                                                                 |
+
 * schema\_region\_per\_data\_node
 
 |    Name     | schema\_region\_per\_data\_node                                            |
@@ -120,14 +138,14 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | AUTO                                    |
 |  Effective  | After restarting system                 |
 
-* data\_region\_group\_per\_database
+* default\_data\_region\_group\_num\_per\_database
 
-|    Name     | data\_region\_group\_per\_database                                                                           |
-|:-----------:|:-------------------------------------------------------------------------------------------------------------|
-| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy |
-|    Type     | int                                                                                                          |
-|   Default   | 1                                                                                                            |
-|  Effective  | After restarting system                                                                                      |
+|    Name     | default\_data\_region\_group\_num\_per\_database                                                                                                                                                                                |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Description | The number of DataRegionGroups that each Database has when using the CUSTOM-DataRegionGroup extension policy. The least number of DataRegionGroups that each Database has when using the AUTO-DataRegionGroup extension policy. |
+|    Type     | int                                                                                                                                                                                                                             |
+|   Default   | 1                                                                                                                                                                                                                               |
+|  Effective  | After restarting system                                                                                                                                                                                                         |
 
 * data\_region\_per\_processor
 
@@ -137,15 +155,6 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | double                                                                    |
 |   Default   | 1.0                                                                       |
 |  Effective  | After restarting system                                                   |
-
-* least\_data\_region\_group\_num
-
-|    Name     | least\_data\_region\_group\_num                       |
-|:-----------:|:------------------------------------------------------|
-| Description | The least number of DataRegionGroup for each Database |
-|    Type     | int                                                   |
-|   Default   | 5                                                     |
-|  Effective  | After restarting system                               |
 
 * enable\_data\_partition\_inherit\_policy
 
@@ -188,7 +197,7 @@ Different configuration parameters take effect in the following three ways:
 * time\_partition\_interval
 
 |    Name     | time\_partition\_interval                                     |
-| :---------: | :------------------------------------------------------------ |
+|:-----------:|:--------------------------------------------------------------|
 | Description | Time partition interval of data when ConfigNode allocate data |
 |    Type     | Long                                                          |
 |    Unit     | ms                                                            |
@@ -198,7 +207,7 @@ Different configuration parameters take effect in the following three ways:
 * heartbeat\_interval\_in\_ms
 
 |    Name     | heartbeat\_interval\_in\_ms             |
-| :---------: | :-------------------------------------- |
+|:-----------:|:----------------------------------------|
 | Description | Heartbeat interval in the cluster nodes |
 |    Type     | Long                                    |
 |    Unit     | ms                                      |
@@ -208,7 +217,7 @@ Different configuration parameters take effect in the following three ways:
 * disk\_space\_warning\_threshold
 
 |    Name     | disk\_space\_warning\_threshold |
-| :---------: | :------------------------------ |
+|:-----------:|:--------------------------------|
 | Description | Disk remaining threshold        |
 |    Type     | double(percentage)              |
 |   Default   | 0.05                            |
@@ -265,7 +274,7 @@ Different configuration parameters take effect in the following three ways:
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a database can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a database can be inserted concurrently <br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -478,7 +487,7 @@ Different configuration parameters take effect in the following three ways:
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
 |:-----------:|:---------------------------------------------|
-| Description | The read consistency level, </br>1. strong(Default, read from the leader replica) </br>2. weak(Read from a random replica) |
+| Description | The read consistency level, <br>1. strong(Default, read from the leader replica) <br>2. weak(Read from a random replica) |
 |    Type     | string                                          |
 |   Default   | strong                                           |
 |  Effective  | After restarting system                      |
@@ -772,6 +781,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000                                                                    |
 |Effective| After restarting system                                                 |
 
+* 0.13\_data\_insert\_adapt
+
+|Name| 0.13\_data\_insert\_adapt                                             |
+|:---:|:----------------------------------------------------------------------|
+|Description| if using v0.13 client to insert data, set this configuration to true. |
+|Type| Boolean                                                               |
+|Default| false                                                                 |
+|Effective| After restarting system                                               |
+
 * upgrade\_thread\_count
 
 |   Name    | upgrade\_thread\_count                                                                            |
@@ -779,7 +797,16 @@ Different configuration parameters take effect in the following three ways:
 |Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
 |   Type    | Int32                                                                                             |
 |  Default  | 1                                                                                                 |
-| Effective | After restarting system                                                                           |                                                                        |
+| Effective | After restarting system                                                                           |
+
+* device\_path\_cache\_size
+
+|   Name    | device\_path\_cache\_size                                                                                                 |
+|:---------:|:--------------------------------------------------------------------------------------------------------------------------|
+|Description| The max size of the device path cache. This cache is for avoiding initialize duplicated device id object in write process |
+|   Type    | Int32                                                                                                                     |
+|  Default  | 500000                                                                                                                    |
+| Effective | After restarting system                                                                                                   |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -990,14 +1017,14 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 60000                                    |
 |  Effective  | After restart system                     |
 
-* compaction\_io\_rate\_per\_sec
+* compaction\_write\_throughput\_mb\_per\_sec
 
-|Name| compaction\_io\_rate\_per\_sec                 |
-|:---:|:-----------------------------------------------|
-|Description| The io rate of all compaction tasks per second |
-|Type| int32                                          |
-|Default| 50                                             |
-|Effective| After restart system                           |
+|Name| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| int32 |
+|Default| 16 |
+|Effective|After restart system|
 
 * sub\_compaction\_thread\_count
 
@@ -1017,6 +1044,14 @@ Different configuration parameters take effect in the following three ways:
 |Default| true                                                            |
 |Effective| After restart system                                            |
 
+* candidate\_compaction\_task\_queue\_size
+
+|Name| candidate\_compaction\_task\_queue\_size    |
+|:---:|:--------------------------------------------|
+|Description| The size of candidate compaction task queue |
+|Type| Int32                                       |
+|Default| 50                                          |
+|Effective| After restart system                        |
 
 ### Write Ahead Log Configuration
 
@@ -1038,14 +1073,23 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0                                                                                                                                      |
 |  Effective  | After restart system                                                                                                                   |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|    Name     | fsync\_wal\_delay\_in\_ms                                     |
-|:-----------:|:--------------------------------------------------------------|
-| Description | Duration a wal flush operation will wait before calling fsync |
-|    Type     | int32                                                         |
-|   Default   | 3                                                             |
-|  Effective  | hot-load                                                      |
+|    Name     | wal\_async\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:--------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the async mode |
+|    Type     | int32                                                                           |
+|   Default   | 1000                                                                            |
+|  Effective  | hot-load                                                                        |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|    Name     | wal\_sync\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the sync mode |
+|    Type     | int32                                                                          |
+|   Default   | 3                                                                              |
+|  Effective  | hot-load                                                                       |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1053,7 +1097,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-----------------------------|
 | Description | Buffer size of each wal node |
 |    Type     | int32                        |
-|   Default   | 16777216                     |
+|   Default   | 33554432                     |
 |  Effective  | After restart system         |
 
 * wal\_buffer\_queue\_capacity
@@ -1062,7 +1106,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------------|
 | Description | Blocking queue capacity of each wal buffer |
 |    Type     | int32                                      |
-|   Default   | 50                                         |
+|   Default   | 500                                        |
 |  Effective  | After restart system                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1071,7 +1115,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------|
 | Description | Size threshold of each wal file      |
 |    Type     | int32                                |
-|   Default   | 10485760                             |
+|   Default   | 31457280                             |
 |  Effective  | hot-load                             |
 
 * wal\_min\_effective\_info\_ratio
@@ -1195,12 +1239,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                                     |
+|:-----------:|:---------------------------------------------------------------|
+| Description | Data compression method                                        |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|   Default   | SNAPPY                                                         |
+|  Effective  | hot-load                                                       |
 
 * bloomFilterErrorRate
 
@@ -1374,6 +1418,16 @@ Different configuration parameters take effect in the following three ways:
 
 
 ### SELECT-INTO
+
+* into\_operation\_buffer\_size\_in\_byte
+
+|    Name     | into\_operation\_buffer\_size\_in\_byte                                                                                            |
+| :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Description | When the select-into statement is executed, the maximum memory occupied by the data to be written (unit: Byte) |
+|    Type     | int64                                                        |
+|   Default   | 100MB                                                        |
+|  Effective  | hot-load                                                      |
+
 
 * select\_into\_insert\_tablet\_plan\_row\_limit
 

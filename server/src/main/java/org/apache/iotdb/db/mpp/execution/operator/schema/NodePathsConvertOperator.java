@@ -69,7 +69,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock block = child.nextWithTimer();
     if (block == null || block.isEmpty()) {
       return null;
@@ -94,7 +94,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return child.hasNextWithTimer();
   }
 
@@ -104,7 +104,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return child.isFinished();
   }
 

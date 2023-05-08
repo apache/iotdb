@@ -21,19 +21,21 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
@@ -49,16 +50,12 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DATABASE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.schema.SchemaOperatorTestUtil.EXCEPTION_MESSAGE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -67,7 +64,7 @@ public class SchemaQueryScanOperatorTest {
   private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
 
   @Test
-  public void testDeviceSchemaScanOperator() {
+  public void testDeviceSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -78,49 +75,34 @@ public class SchemaQueryScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
+          driverContext.addOperatorContext(
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
       IDeviceSchemaInfo deviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
       Mockito.when(deviceSchemaInfo.getFullPath())
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
       Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
-      Iterator<IDeviceSchemaInfo> iterator = Collections.singletonList(deviceSchemaInfo).iterator();
-      Mockito.when(
-              schemaRegion.getDeviceReader(
-                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, false)))
-          .thenReturn(
-              new ISchemaReader<IDeviceSchemaInfo>() {
-                @Override
-                public void close() throws Exception {}
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
+      ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
+          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          deviceSchemaSource,
+          Collections.singletonList(deviceSchemaInfo).iterator(),
+          schemaRegion,
+          true);
+      //
+      List<ColumnHeader> columns = deviceSchemaSource.getInfoQueryColumnHeaders();
 
-                @Override
-                public boolean hasNext() {
-                  return iterator.hasNext();
-                }
-
-                @Override
-                public IDeviceSchemaInfo next() {
-                  return iterator.next();
-                }
-              });
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_DATABASE, COLUMN_IS_ALIGNED);
-      DevicesSchemaScanOperator devicesSchemaScanOperator =
-          new DevicesSchemaScanOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              10,
-              0,
-              partialPath,
-              false,
-              true);
+      SchemaQueryScanOperator<IDeviceSchemaInfo> devicesSchemaScanOperator =
+          new SchemaQueryScanOperator<>(
+              planNodeId, driverContext.getOperatorContexts().get(0), deviceSchemaSource);
+      //
       while (devicesSchemaScanOperator.hasNext()) {
         TsBlock tsBlock = devicesSchemaScanOperator.next();
         assertEquals(3, tsBlock.getValueColumnCount());
@@ -148,6 +130,23 @@ public class SchemaQueryScanOperatorTest {
           }
         }
       }
+      // Assert failure if exception occurs
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          deviceSchemaSource,
+          Collections.singletonList(deviceSchemaInfo).iterator(),
+          schemaRegion,
+          false);
+      try {
+        SchemaQueryScanOperator<IDeviceSchemaInfo> devicesSchemaScanOperatorFailure =
+            new SchemaQueryScanOperator<>(
+                planNodeId, driverContext.getOperatorContexts().get(0), deviceSchemaSource);
+        while (devicesSchemaScanOperatorFailure.hasNext()) {
+          devicesSchemaScanOperatorFailure.next();
+        }
+        Assert.fail();
+      } catch (RuntimeException e) {
+        Assert.assertTrue(e.getMessage().contains(EXCEPTION_MESSAGE));
+      }
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -157,7 +156,7 @@ public class SchemaQueryScanOperatorTest {
   }
 
   @Test
-  public void testTimeSeriesSchemaScanOperator() {
+  public void testTimeSeriesSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -168,9 +167,10 @@ public class SchemaQueryScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
+          driverContext.addOperatorContext(
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
 
@@ -184,47 +184,25 @@ public class SchemaQueryScanOperatorTest {
             .thenReturn(
                 new MeasurementSchema(
                     "s" + i, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
-        Mockito.when(timeSeriesSchemaInfo.getTagAndAttribute()).thenReturn(new Pair<>(null, null));
+        Mockito.when(timeSeriesSchemaInfo.getTags()).thenReturn(null);
+        Mockito.when(timeSeriesSchemaInfo.getAttributes()).thenReturn(null);
         showTimeSeriesResults.add(timeSeriesSchemaInfo);
       }
-      Iterator<ITimeSeriesSchemaInfo> iterator = showTimeSeriesResults.iterator();
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
-      Mockito.when(
-              schemaRegion.getTimeSeriesReader(
-                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(partialPath, 10, 0)))
-          .thenReturn(
-              new ISchemaReader<ITimeSeriesSchemaInfo>() {
-                @Override
-                public void close() throws Exception {}
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
 
-                @Override
-                public boolean hasNext() {
-                  return iterator.hasNext();
-                }
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
+      ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
+          SchemaSourceFactory.getTimeSeriesSchemaSource(
+              partialPath, false, 10, 0, null, null, false, Collections.emptyMap());
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 
-                @Override
-                public ITimeSeriesSchemaInfo next() {
-                  return iterator.next();
-                }
-              });
-
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
-          new TimeSeriesSchemaScanOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              10,
-              0,
-              partialPath,
-              null,
-              null,
-              false,
-              false,
-              Collections.emptyMap());
+      SchemaQueryScanOperator<ITimeSeriesSchemaInfo> timeSeriesMetaScanOperator =
+          new SchemaQueryScanOperator<>(
+              planNodeId, driverContext.getOperatorContexts().get(0), timeSeriesSchemaSource);
       while (timeSeriesMetaScanOperator.hasNext()) {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
         assertEquals(
@@ -264,6 +242,20 @@ public class SchemaQueryScanOperatorTest {
             }
           }
         }
+      }
+      // Assert failure if exception occurs
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, false);
+      try {
+        SchemaQueryScanOperator<ITimeSeriesSchemaInfo> timeSeriesMetaScanOperatorFailure =
+            new SchemaQueryScanOperator<>(
+                planNodeId, driverContext.getOperatorContexts().get(0), timeSeriesSchemaSource);
+        while (timeSeriesMetaScanOperatorFailure.hasNext()) {
+          timeSeriesMetaScanOperatorFailure.next();
+        }
+        Assert.fail();
+      } catch (RuntimeException e) {
+        Assert.assertTrue(e.getMessage().contains(EXCEPTION_MESSAGE));
       }
     } catch (MetadataException e) {
       e.printStackTrace();

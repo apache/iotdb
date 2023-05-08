@@ -19,15 +19,23 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
 
@@ -101,5 +109,60 @@ public class SelectIntoUtils {
       }
     }
     return true;
+  }
+
+  public static List<Pair<String, PartialPath>> bindTypeForSourceTargetPathPairList(
+      List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      Map<String, TSDataType> sourceToDataTypeMap,
+      ISchemaTree targetSchemaTree,
+      Map<String, Boolean> targetDeviceToAlignedMap) {
+    List<Pair<String, PartialPath>> sourceTypeBoundTargetPathPairList = new ArrayList<>();
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+      String sourceColumn = sourceTargetPathPair.left;
+      TSDataType sourceColumnType = sourceToDataTypeMap.get(sourceColumn);
+
+      MeasurementPath targetPathWithSchema;
+      PartialPath targetPath = sourceTargetPathPair.right;
+      List<MeasurementPath> actualTargetPaths =
+          targetSchemaTree.searchMeasurementPaths(targetPath).left;
+      if (actualTargetPaths.isEmpty()) {
+        targetPathWithSchema = new MeasurementPath(targetPath, sourceColumnType);
+      } else {
+        checkState(actualTargetPaths.size() == 1);
+        MeasurementPath actualTargetPath = actualTargetPaths.get(0);
+        if (!TypeInferenceUtils.canAutoCast(sourceColumnType, actualTargetPath.getSeriesType())) {
+          throw new SemanticException(
+              String.format(
+                  "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
+                  targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
+        }
+        boolean actualTargetPathAlignment = actualTargetPath.isUnderAlignedEntity();
+        String targetDevice = targetPath.getDevice();
+        if (targetDeviceToAlignedMap.get(targetDevice) != actualTargetPathAlignment) {
+          throw new SemanticException(
+              String.format(
+                  "The specified alignment property of the target device (%s) conflicts with the actual (isAligned = %s).",
+                  targetDevice, actualTargetPathAlignment));
+        }
+        targetPathWithSchema = actualTargetPath;
+      }
+      sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));
+    }
+    return sourceTypeBoundTargetPathPairList;
+  }
+
+  public static Map<PartialPath, Map<String, TSDataType>>
+      convertSourceTargetPathPairListToTargetPathDataTypeMap(
+          List<Pair<String, PartialPath>> sourceTargetPathPairList) {
+    // targetDevice -> { targetMeasurement -> dataType }
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
+
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+      PartialPath targetPath = sourceTargetPathPair.right;
+      targetPathToDataTypeMap
+          .computeIfAbsent(targetPath.getDevicePath(), key -> new HashMap<>())
+          .put(targetPath.getMeasurement(), targetPath.getSeriesType());
+    }
+    return targetPathToDataTypeMap;
   }
 }

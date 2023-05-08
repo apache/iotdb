@@ -36,6 +36,11 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
   }
 
   @Override
+  protected boolean mayTargetNodeType(SchemaNode node) {
+    return node.isEntity();
+  }
+
+  @Override
   protected boolean acceptInternalMatchedNode(SchemaNode node) {
     return false;
   }
@@ -47,7 +52,7 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
 
   @Override
   protected DeviceSchemaInfo generateResult(SchemaNode nextMatchedNode) {
-    PartialPath path = new PartialPath(generateFullPathNodes());
+    PartialPath path = getPartialPathFromRootToNode(nextMatchedNode);
     List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     Iterator<SchemaNode> iterator = getChildrenIterator(nextMatchedNode);
     SchemaNode node;

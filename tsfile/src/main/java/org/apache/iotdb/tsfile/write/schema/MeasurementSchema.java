@@ -428,4 +428,12 @@ public class MeasurementSchema
   public boolean containsSubMeasurement(String measurementId) {
     return this.measurementId.equals(measurementId);
   }
+
+  public void setEncoding(byte encoding) {
+    this.encoding = encoding;
+  }
+
+  public void setCompressor(byte compressor) {
+    this.compressor = compressor;
+  }
 }

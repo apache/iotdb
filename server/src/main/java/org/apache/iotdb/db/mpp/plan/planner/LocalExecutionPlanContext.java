@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
+import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,31 +36,38 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
+// Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
-  private final FragmentInstanceContext instanceContext;
-  private final List<PartialPath> paths;
-  // deviceId -> sensorId Set
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+  // Save operators in this pipeline, a new one will be created when creating another pipeline
+  private final DriverContext driverContext;
+  private final AtomicInteger nextOperatorId;
+  private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
-  // Used to lock corresponding query resources
-  private final List<DataSourceOperator> sourceOperators;
+  private int degreeOfParallelism =
+      IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+  // this is shared with all subContexts
+  private AtomicInteger nextPipelineId;
+  private List<PipelineDriverFactory> pipelineDriverFactories;
+  private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
+  private int exchangeSumNum = 0;
 
   private final long dataRegionTTL;
-  private ISinkHandle sinkHandle;
-
-  private int nextOperatorId = 0;
-
-  private final TypeProvider typeProvider;
 
   private List<TSDataType> cachedDataTypes;
 
@@ -66,58 +79,141 @@ public class LocalExecutionPlanContext {
   // whether we need to update last cache
   private boolean needUpdateLastCache;
 
-  private final RuleBasedTimeSliceAllocator timeSliceAllocator;
-
   // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider, FragmentInstanceContext instanceContext, long dataRegionTTL) {
+      TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
     this.typeProvider = typeProvider;
-    this.instanceContext = instanceContext;
-    this.paths = new ArrayList<>();
-    this.allSensorsMap = new HashMap<>();
-    this.sourceOperators = new ArrayList<>();
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
-    this.dataRegionTTL = dataRegionTTL;
+    this.allSensorsMap = new ConcurrentHashMap<>();
+    this.dataRegionTTL = instanceContext.getDataRegion().getDataTTL();
+    this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
+    this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
+    this.pipelineDriverFactories = new ArrayList<>();
+  }
+
+  // For creating subContext, differ from parent context mainly in driver context
+  public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
+    this.nextOperatorId = parentContext.nextOperatorId;
+    this.typeProvider = parentContext.typeProvider;
+    this.allSensorsMap = parentContext.allSensorsMap;
+    this.dataRegionTTL = parentContext.dataRegionTTL;
+    this.nextPipelineId = parentContext.nextPipelineId;
+    this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.degreeOfParallelism = parentContext.degreeOfParallelism;
+    this.exchangeSumNum = parentContext.exchangeSumNum;
+    this.exchangeOperatorList = parentContext.exchangeOperatorList;
+    this.cachedDataTypes = parentContext.cachedDataTypes;
+    this.driverContext =
+        parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
 
   // for schema region
-  public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
-    this.instanceContext = instanceContext;
-    this.paths = new ArrayList<>();
-    this.allSensorsMap = new HashMap<>();
-    this.sourceOperators = new ArrayList<>();
+  public LocalExecutionPlanContext(
+      FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
+    this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
+    this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
 
-    // only used in `order by heat`
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
+    this.driverContext =
+        new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
+    this.pipelineDriverFactories = new ArrayList<>();
+  }
+
+  public void addPipelineDriverFactory(
+      Operator operation, DriverContext driverContext, long estimatedMemorySize) {
+    driverContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext ->
+                operatorContext.setMaxRunTime(
+                    driverContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
+    pipelineDriverFactories.add(
+        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
+  }
+
+  public LocalExecutionPlanContext createSubContext() {
+    return new LocalExecutionPlanContext(this);
+  }
+
+  public FragmentInstanceId getFragmentInstanceId() {
+    return driverContext.getFragmentInstanceContext().getId();
+  }
+
+  public List<PipelineDriverFactory> getPipelineDriverFactories() {
+    return pipelineDriverFactories;
+  }
+
+  public PipelineDriverFactory getCurrentPipelineDriverFactory() {
+    return pipelineDriverFactories.get(pipelineDriverFactories.size() - 1);
+  }
+
+  public int getPipelineNumber() {
+    return pipelineDriverFactories.size();
+  }
+
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public int getDegreeOfParallelism() {
+    return degreeOfParallelism;
+  }
+
+  public void setDegreeOfParallelism(int degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
+  }
+
+  private int getNextPipelineId() {
+    return nextPipelineId.getAndIncrement();
+  }
+
+  public boolean isInputDriver() {
+    return driverContext.isInputDriver();
   }
 
   public int getNextOperatorId() {
-    return nextOperatorId++;
+    return nextOperatorId.getAndIncrement();
   }
 
-  public List<PartialPath> getPaths() {
-    return paths;
+  public int getExchangeSumNum() {
+    return exchangeSumNum;
+  }
+
+  public void setExchangeSumNum(int exchangeSumNum) {
+    this.exchangeSumNum = exchangeSumNum;
+  }
+
+  public long getMaxBytesOneHandleCanReserve() {
+    long maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
+  }
+
+  public void addExchangeSumNum(int addValue) {
+    this.exchangeSumNum += addValue;
+  }
+
+  public void addExchangeOperator(ExchangeOperator exchangeOperator) {
+    this.exchangeOperatorList.add(exchangeOperator);
+  }
+
+  public void setMaxBytesOneHandleCanReserve() {
+    long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
+    LOGGER.debug(
+        "MaxBytesOneHandleCanReserve for ExchangeOperator is {}, exchangeSumNum is {}.",
+        maxBytesOneHandleCanReserve,
+        exchangeSumNum);
+    exchangeOperatorList.forEach(
+        exchangeOperator ->
+            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {
     Set<String> allSensors = allSensorsMap.computeIfAbsent(deviceId, k -> new HashSet<>());
     allSensors.add(sensorId);
     return allSensors;
-  }
-
-  public List<DataSourceOperator> getSourceOperators() {
-    return sourceOperators;
-  }
-
-  public void addPath(PartialPath path) {
-    paths.add(path);
-  }
-
-  public void addSourceOperator(DataSourceOperator sourceOperator) {
-    sourceOperators.add(sourceOperator);
   }
 
   public void setLastQueryTimeFilter(Filter lastQueryTimeFilter) {
@@ -139,15 +235,10 @@ public class LocalExecutionPlanContext {
     return cachedLastValueAndPathList;
   }
 
-  public ISinkHandle getSinkHandle() {
-    return sinkHandle;
-  }
-
-  public void setSinkHandle(ISinkHandle sinkHandle) {
-    requireNonNull(sinkHandle, "sinkHandle is null");
-    checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
-
-    this.sinkHandle = sinkHandle;
+  public void setISink(ISink sink) {
+    requireNonNull(sink, "sink is null");
+    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    driverContext.setSink(sink);
   }
 
   public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {
@@ -163,11 +254,11 @@ public class LocalExecutionPlanContext {
   }
 
   public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
-    return timeSliceAllocator;
+    return driverContext.getTimeSliceAllocator();
   }
 
   public FragmentInstanceContext getInstanceContext() {
-    return instanceContext;
+    return driverContext.getFragmentInstanceContext();
   }
 
   public Filter getLastQueryTimeFilter() {
@@ -180,9 +271,5 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
-  }
-
-  public ExecutorService getIntoOperationExecutor() {
-    return instanceContext.getIntoOperationExecutor();
   }
 }

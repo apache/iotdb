@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
+
+import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.server.storage.RaftStorageDirectory;
 import org.apache.ratis.server.storage.RaftStorageMetadataFile;
 import org.apache.ratis.statemachine.SnapshotInfo;
+import org.apache.ratis.statemachine.SnapshotRetentionPolicy;
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -37,6 +42,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.Predicate;
 
 public class SnapshotTest {
 
@@ -94,35 +100,56 @@ public class SnapshotTest {
 
   @Test
   public void testSnapshot() throws Exception {
-    ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), null);
+    final ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(0, 0);
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
+    final ApplicationStateMachineProxy proxy =
+        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), raftGroupId);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
 
+    final Predicate<String> snapshotExists = s -> new File(s).exists();
+
+    proxy.notifyTermIndexUpdated(215, 72);
+    final String snapshotFilename0 =
+        TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "215_72");
+    final long index0 = proxy.takeSnapshot();
+    Assert.assertEquals(72, index0);
+    Assert.assertTrue(snapshotExists.test(snapshotFilename0));
+
     // take a snapshot at 421-616
     proxy.notifyTermIndexUpdated(421, 616);
-    String snapshotFilename = TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "421_616");
-    long index = proxy.takeSnapshot();
-    Assert.assertEquals(index, 616);
-    Assert.assertTrue(new File(snapshotFilename).exists());
+    final String snapshotFilename =
+        TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "421_616");
+    final long index = proxy.takeSnapshot();
+    Assert.assertEquals(616, index);
+    Assert.assertTrue(snapshotExists.test(snapshotFilename));
 
     // take a snapshot at 616-4217
     proxy.notifyTermIndexUpdated(616, 4217);
-    String snapshotFilenameLatest =
+    final String snapshotFilenameLatest =
         TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "616_4217");
-    long indexLatest = proxy.takeSnapshot();
-    Assert.assertEquals(indexLatest, 4217);
-    Assert.assertTrue(new File(snapshotFilenameLatest).exists());
+    final long indexLatest = proxy.takeSnapshot();
+    Assert.assertEquals(4217, indexLatest);
+    Assert.assertTrue(snapshotExists.test(snapshotFilenameLatest));
 
     // query the latest snapshot
     SnapshotInfo info = proxy.getLatestSnapshot();
-    Assert.assertEquals(info.getTerm(), 616);
-    Assert.assertEquals(info.getIndex(), 4217);
+    Assert.assertEquals(616, info.getTerm());
+    Assert.assertEquals(4217, info.getIndex());
 
     // clean up
-    proxy.getStateMachineStorage().cleanupOldSnapshots(null);
-    Assert.assertFalse(new File(snapshotFilename).exists());
-    Assert.assertTrue(new File(snapshotFilenameLatest).exists());
+    proxy
+        .getStateMachineStorage()
+        .cleanupOldSnapshots(
+            new SnapshotRetentionPolicy() {
+              @Override
+              public int getNumSnapshotsRetained() {
+                return 2;
+              }
+            });
+    Assert.assertFalse(snapshotExists.test(snapshotFilename0));
+    Assert.assertTrue(snapshotExists.test(snapshotFilename));
+    Assert.assertTrue(snapshotExists.test(snapshotFilenameLatest));
   }
 
   static class CrossDiskLinkStatemachine extends TestUtils.IntegerCounter {
@@ -166,8 +193,10 @@ public class SnapshotTest {
 
   @Test
   public void testCrossDiskLinkSnapshot() throws Exception {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(0, 0);
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), null);
+        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), raftGroupId);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
     proxy.notifyTermIndexUpdated(20, 1005);

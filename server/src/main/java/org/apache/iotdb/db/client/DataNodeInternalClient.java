@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.IntoProcessException;
@@ -64,10 +64,7 @@ public class DataNodeInternalClient {
       session = new InternalClientSession("SELECT_INTO");
 
       SESSION_MANAGER.supplySession(
-          session,
-          sessionInfo.getUserName(),
-          sessionInfo.getZoneId(),
-          IoTDBConstant.ClientVersion.V_0_13);
+          session, sessionInfo.getUserName(), sessionInfo.getZoneId(), ClientVersion.V_1_0);
 
       LOGGER.info("User: {}, opens internal Session-{}.", sessionInfo.getUserName(), session);
     } catch (Exception e) {
@@ -84,7 +81,6 @@ public class DataNodeInternalClient {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-
       // call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

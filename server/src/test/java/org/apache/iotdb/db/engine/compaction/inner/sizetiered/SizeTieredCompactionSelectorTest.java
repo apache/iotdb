@@ -55,14 +55,14 @@ public class SizeTieredCompactionSelectorTest {
       Assert.assertEquals(
           1,
           new SizeTieredCompactionSelector("root.test", "0", i, true, manager)
-              .selectInnerSpaceTask(manager.getSequenceListByTimePartition(i))
+              .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(i))
               .size());
     }
 
     Assert.assertEquals(
         0,
         new SizeTieredCompactionSelector("root.test", "0", 9, true, manager)
-            .selectInnerSpaceTask(manager.getSequenceListByTimePartition(9))
+            .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(9))
             .size());
   }
 }

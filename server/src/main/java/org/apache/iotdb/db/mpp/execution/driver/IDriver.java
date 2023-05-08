@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
@@ -54,7 +55,13 @@ public interface IDriver {
    *
    * @return a {@link FragmentInstanceId} instance.
    */
-  FragmentInstanceId getInfo();
+  DriverTaskId getDriverTaskId();
+
+  default long getEstimatedMemorySize() {
+    return 0;
+  }
+
+  void setDriverTaskId(DriverTaskId driverTaskId);
 
   /** clear resource used by this fragment instance */
   void close();
@@ -66,6 +73,8 @@ public interface IDriver {
    */
   void failed(Throwable t);
 
-  /** @return get SinkHandle of current IDriver */
-  ISinkHandle getSinkHandle();
+  /** @return get Sink of current IDriver */
+  ISink getSink();
+
+  DriverContext getDriverContext();
 }

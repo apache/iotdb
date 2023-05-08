@@ -19,31 +19,31 @@
 
 -->
 
-# 数据文件存储
+## 数据文件存储
 
 本节将介绍 IoTDB 的数据存储方式，便于您对 IoTDB 的数据管理有一个直观的了解。
 
 IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件以及写前日志文件。
 
-## 数据文件
+### 数据文件
 > 在 basedir/data/目录下
 
 数据文件存储了用户写入 IoTDB 系统的所有数据。包含 TsFile 文件和其他文件，可通过 [data_dirs 配置项](../Reference/DataNode-Config-Manual.md) 进行配置。
 
 为了更好的支持用户对于磁盘空间扩展等存储需求，IoTDB 为 TsFile 的存储配置增加了多文件目录的存储方式，用户可自主配置多个存储路径作为数据的持久化位置（详情见 [data_dirs 配置项](../Reference/DataNode-Config-Manual.md)），并可以指定或自定义目录选择策略（详情见 [multi_dir_strategy 配置项](../Reference/DataNode-Config-Manual.md)）。
 
-### TsFile
+#### TsFile
 > 在 basedir/data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/目录下
 1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + 数据文件
 2. {TsFileName}.tsfile.mod
     + 更新文件，主要记录删除操作
 
-### TsFileResource
+#### TsFileResource
 1. {TsFileName}.tsfile.resource
     + TsFile 的概要与索引文件
 
-### 与合并相关的数据文件
+#### 与合并相关的数据文件
 > 在 basedir/data/sequence or unsequence/{DatabaseName}/目录下
 
 1. 后缀为`.cross ` 或者 `.inner`
@@ -55,14 +55,14 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 4. 后缀为`.meta`的文件
     + 合并过程生成的元数据临时文件
 
-## 系统文件
+### 系统文件
 
 系统 Schema 文件，存储了数据文件的元数据信息。可通过 system_dir 配置项进行配置（详情见 [system_dir 配置项](../Reference/DataNode-Config-Manual.md)）。
 
-### 元数据相关文件
+#### 元数据相关文件
 > 在 basedir/system/schema 目录下
 
-#### 元数据
+##### 元数据
 1. mlog.bin
     + 记录的是元数据操作
 2. mtree-1.snapshot
@@ -70,38 +70,38 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 3. mtree-1.snapshot.tmp
     + 临时文件，防止快照更新时，损坏旧快照文件
 
-#### 标签和属性
+##### 标签和属性
 1. tlog.txt
     + 存储每个时序的标签和属性
     + 默认情况下每个时序 700 字节
 
-### 其他系统文件
-#### Version
+#### 其他系统文件
+##### Version
 > 在 basedir/system/database/{DatabaseName}/{TimePartitionId} or upgrade 目录下
 1. Version-{version}
     + 版本号文件，使用文件名来记录当前最大的版本号
 
-#### Upgrade
+##### Upgrade
 > 在 basedir/system/upgrade 目录下
 1. upgrade.txt
     + 记录升级进度
 
-#### Authority
+##### Authority
 > 在 basedir/system/users/目录下是用户信息
 > 在 basedir/system/roles/目录下是角色信息
 
-#### CompressRatio
+##### CompressRatio
 > 在 basedir/system/compression_ration 目录下
 1. Ration-{compressionRatioSum}-{calTimes}
     + 记录每个文件的压缩率
-## 写前日志文件
+### 写前日志文件
 写前日志文件存储了系统的写前日志。可通过`wal_dir`配置项进行配置（详情见 [wal_dir 配置项](../Reference/DataNode-Config-Manual.md)）。
 > 在 basedir/wal 目录下
 1. {DatabaseName}-{TsFileName}/wal1
     + 每个 memtable 会对应一个 wal 文件
 
 
-## 数据存储目录设置举例
+### 数据存储目录设置举例
 
 接下来我们将举一个数据目录配置的例子，来具体说明如何配置数据的存储目录。
 
@@ -113,7 +113,7 @@ IoTDB 涉及到的所有数据目录路径有：data_dirs, multi_dir_strategy, s
 dn_system_dir = $IOTDB_HOME/data/datanode/system
 dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
 dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-dn_wal_dir= $IOTDB_HOME/data/datanode/wal
+dn_wal_dirs= $IOTDB_HOME/data/datanode/wal
 ```
 按照上述配置，系统会：
 

@@ -96,7 +96,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     IDataBlockReader tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
@@ -129,7 +128,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
 
@@ -138,7 +137,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsBlockReader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             tsFileManager.getTsFileList(true),
@@ -184,7 +182,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -229,7 +226,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -262,7 +259,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -319,7 +315,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -372,7 +367,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -405,7 +400,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -454,7 +448,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -488,7 +481,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(false);
@@ -504,7 +497,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -553,7 +545,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -605,7 +596,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -621,7 +612,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -704,7 +694,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -753,7 +742,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -768,7 +757,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -841,7 +829,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -890,7 +877,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -905,7 +892,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -980,7 +966,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1013,7 +998,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1028,7 +1013,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.INT64,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1069,7 +1053,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1106,7 +1089,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -1126,7 +1109,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1180,7 +1162,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1228,7 +1209,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1247,7 +1228,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1311,7 +1291,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1359,7 +1338,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1378,7 +1357,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1442,7 +1420,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1495,7 +1472,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1514,7 +1491,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1623,7 +1599,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1681,7 +1656,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1700,7 +1675,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1792,7 +1766,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1847,7 +1820,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1866,7 +1839,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
@@ -1929,7 +1901,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
@@ -1965,7 +1936,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1984,7 +1955,6 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),

@@ -30,7 +30,8 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -58,6 +59,7 @@ public class MemTableFlushTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
@@ -70,6 +72,7 @@ public class MemTableFlushTask {
           : new LinkedBlockingQueue<>();
 
   private String storageGroup;
+  private String dataRegionId;
 
   private IMemTable memTable;
 
@@ -82,10 +85,14 @@ public class MemTableFlushTask {
    * @param storageGroup current database
    */
   public MemTableFlushTask(
-      IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
+      IMemTable memTable,
+      RestorableTsFileIOWriter writer,
+      String storageGroup,
+      String dataRegionId) {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
+    this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
     LOGGER.debug(
@@ -96,14 +103,22 @@ public class MemTableFlushTask {
 
   /** the function for flushing memtable. */
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
+    long avgSeriesPointsNum =
+        memTable.getSeriesNumber() == 0
+            ? 0
+            : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
     LOGGER.info(
         "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
         storageGroup,
         memTable.memSize(),
-        memTable.getSeriesNumber() == 0
-            ? 0
-            : memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
+        avgSeriesPointsNum,
         memTable.getSeriesNumber());
+    WRITING_METRICS.recordFlushingMemTableStatus(
+        storageGroup,
+        memTable.memSize(),
+        memTable.getSeriesNumber(),
+        memTable.getTotalPointsNum(),
+        avgSeriesPointsNum);
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
@@ -142,7 +157,9 @@ public class MemTableFlushTask {
          * sort task (first task of flush pipeline)
          */
         series.sortTvListForFlush();
-        sortTime += System.currentTimeMillis() - startTime;
+        long subTaskTime = System.currentTimeMillis() - startTime;
+        sortTime += subTaskTime;
+        WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.SORT_TASK, subTaskTime);
         encodingTaskQueue.put(series);
       }
 
@@ -154,18 +171,26 @@ public class MemTableFlushTask {
         storageGroup,
         writer.getFile().getName(),
         sortTime);
+    WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_SORT, sortTime);
 
     try {
       encodingTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       ioTaskFuture.cancel(true);
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw e;
     }
 
     ioTaskFuture.get();
 
     try {
+      long writePlanIndicesStartTime = System.currentTimeMillis();
       writer.writePlanIndices();
+      WRITING_METRICS.recordFlushCost(
+          WritingMetrics.WRITE_PLAN_INDICES,
+          System.currentTimeMillis() - writePlanIndicesStartTime);
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
@@ -182,7 +207,7 @@ public class MemTableFlushTask {
             System.currentTimeMillis() - start,
             TimeUnit.MILLISECONDS,
             Metric.COST_TASK.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             "flush");
 
@@ -243,7 +268,9 @@ public class MemTableFlushTask {
                 LOGGER.error("Put task into ioTaskQueue Interrupted");
                 Thread.currentThread().interrupt();
               }
-              memSerializeTime += System.currentTimeMillis() - starTime;
+              long subTaskTime = System.currentTimeMillis() - starTime;
+              WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
+              memSerializeTime += subTaskTime;
             }
           }
           try {
@@ -253,23 +280,22 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)
-              && MetricLevel.higherOrEqual(
-                  MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel(),
-                  MetricLevel.CORE)) {
+          if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)) {
             int lastIndex = storageGroup.lastIndexOf("-");
             if (lastIndex == -1) {
               lastIndex = storageGroup.length();
             }
             MetricService.getInstance()
-                .gaugeWithInternalReport(
+                .gaugeWithInternalReportAsync(
                     memTable.getTotalPointsNum(),
                     Metric.POINTS.toString(),
                     MetricLevel.CORE,
                     Tag.DATABASE.toString(),
                     storageGroup.substring(0, lastIndex),
                     Tag.TYPE.toString(),
-                    "flush");
+                    "flush",
+                    Tag.REGION.toString(),
+                    dataRegionId);
           }
 
           LOGGER.info(
@@ -277,6 +303,7 @@ public class MemTableFlushTask {
               storageGroup,
               writer.getFile().getName(),
               memSerializeTime);
+          WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
       };
 
@@ -315,13 +342,17 @@ public class MemTableFlushTask {
                 "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
             throw new FlushRunTimeException(e);
           }
-          ioTime += System.currentTimeMillis() - starTime;
+          long subTaskTime = System.currentTimeMillis() - starTime;
+          ioTime += subTaskTime;
+          WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.IO_TASK, subTaskTime);
         }
         LOGGER.debug(
             "flushing a memtable to file {} in database {}, io cost {}ms",
             writer.getFile().getName(),
             storageGroup,
             ioTime);
+        WRITING_METRICS.recordFlushTsFileSize(storageGroup, writer.getFile().length());
+        WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, ioTime);
       };
 
   static class TaskEnd {

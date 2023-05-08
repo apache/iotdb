@@ -24,36 +24,44 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-public abstract class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperator {
+public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperator {
 
-  protected final PlanNodeId sourceId;
-  protected final OperatorContext operatorContext;
-  protected final List<TSDataType> outputDataTypes;
+  private static final List<TSDataType> OUTPUT_DATA_TYPES =
+      Collections.singletonList(TSDataType.INT64);
+
+  private final PlanNodeId sourceId;
+  private final OperatorContext operatorContext;
+
+  private final ISchemaSource<T> schemaSource;
 
   private ISchemaReader<T> schemaReader;
   private boolean isFinished;
 
   public SchemaCountOperator(
-      PlanNodeId sourceId, OperatorContext operatorContext, List<TSDataType> outputDataTypes) {
+      PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
-    this.outputDataTypes = outputDataTypes;
+    this.schemaSource = schemaSource;
   }
 
-  protected final ISchemaRegion getSchemaRegion() {
-    return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-        .getSchemaRegion();
+  private final ISchemaRegion getSchemaRegion() {
+    return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
   }
 
-  protected abstract ISchemaReader<T> createSchemaReader();
+  private ISchemaReader<T> createSchemaReader() {
+    return schemaSource.getSchemaReader(getSchemaRegion());
+  }
 
   @Override
   public OperatorContext getOperatorContext() {
@@ -61,16 +69,27 @@ public abstract class SchemaCountOperator<T extends ISchemaInfo> implements Sour
   }
 
   @Override
-  public TsBlock next() {
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    long count = 0;
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
+  public TsBlock next() throws Exception {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
-    while (schemaReader.hasNext()) {
-      schemaReader.next();
-      count++;
+    isFinished = true;
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
+    long count = 0;
+    ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+      count = schemaSource.getSchemaStatistic(schemaRegion);
+    } else {
+      if (schemaReader == null) {
+        schemaReader = createSchemaReader();
+      }
+      while (schemaReader.hasNext()) {
+        schemaReader.next();
+        count++;
+      }
+      if (!schemaReader.isSuccess()) {
+        throw new RuntimeException(schemaReader.getFailure());
+      }
     }
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
@@ -80,12 +99,12 @@ public abstract class SchemaCountOperator<T extends ISchemaInfo> implements Sour
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isFinished;
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return isFinished;
   }
 

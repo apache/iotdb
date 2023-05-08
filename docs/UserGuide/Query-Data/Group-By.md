@@ -135,7 +135,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
     </center>
 
 There are three typical examples of frequency reduction aggregation: 
@@ -583,3 +583,342 @@ As this feature is still under development, some queries have not been completed
 > 4. Temporarily not support `ALIGN BY DEVICE`.
 > 5. Temporarily not support expressions as aggregation function parameter，e.g. `count(s+1)`.
 > 6. Not support the value filter, which stands the same with the `GROUP BY LEVEL` query.
+
+## Aggregation By Variation
+IoTDB supports grouping by continuous stable values through the `GROUP BY VARIATION` statement.
+
+Group-By-Variation wil set the first point in group as the base point,  
+then if the difference between the new data and base point is small than or equal to delta, 
+the data point will be grouped together and execute aggregation query (The calculation of difference and the meaning of delte are introduced below). The groups won't overlap and there is no fixed start time and end time.
+The syntax of clause is as follows:
+```sql
+group by variation(controlExpression[,delta][,ignoreNull=true/false])
+```
+The different parameters mean:
+* controlExpression
+
+The value that is used to calculate difference. It can be any columns or the expression of them.
+* delta
+
+The threshold that is used when grouping. The difference of controlExpression between the first data point and new data point should less than or equal to delta. 
+When delta is zero, all the continuous data with equal expression value will be grouped into the same group.
+* ignoreNull
+
+Used to specify how to deal with the data when the value of controlExpression is null. When ignoreNull is false, null will be treated as a new value and when ignoreNull is true, the data point will be directly skipped.
+
+The supported return types of controlExpression and how to deal with null value when ignoreNull is false are shown in the following table:
+
+| delta    | Return Type Supported By controlExpression | The Handling of null when ignoreNull is False                                                                                                                                                                             |
+|----------|--------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| delta!=0 | INT32、INT64、FLOAT、DOUBLE                   | If the processing group doesn't contains null, null value should be treated as infinity/infinitesimal and will end current group.<br/>Continuous null values are treated as stable values and assigned to the same group. | 
+| delta=0  | TEXT、BINARY、INT32、INT64、FLOAT、DOUBLE       | Null is treated as a new value in a new group and continuous nulls belong to the same group.                                                                                                                              |            
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
+
+### Precautions for Use
+1. The result of controlExpression should be a unique value. If multiple columns appear after using wildcard stitching, an error will be reported.
+2. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
+3. Each device is grouped separately when used with `ALIGN BY DEVICE`.
+4. Delta is zero and ignoreNull is true by default.
+5. Currently `GROUP BY VARIATION` is not supported with `GROUP BY LEVEL`.
+
+Using the raw data below, several examples of `GROUP BY VARIAITON` queries will be given.
+```
++-----------------------------+-------+-------+-------+--------+-------+-------+
+|                         Time|     s1|     s2|     s3|      s4|     s5|     s6|
++-----------------------------+-------+-------+-------+--------+-------+-------+
+|1970-01-01T08:00:00.000+08:00|    4.5|    9.0|    0.0|    45.0|    9.0|   8.25|
+|1970-01-01T08:00:00.010+08:00|   null|   19.0|   10.0|   145.0|   19.0|   8.25|
+|1970-01-01T08:00:00.020+08:00|   24.5|   29.0|   null|   245.0|   29.0|   null|
+|1970-01-01T08:00:00.030+08:00|   34.5|   null|   30.0|   345.0|   null|   null|
+|1970-01-01T08:00:00.040+08:00|   44.5|   49.0|   40.0|   445.0|   49.0|   8.25|
+|1970-01-01T08:00:00.050+08:00|   null|   59.0|   50.0|   545.0|   59.0|   6.25|
+|1970-01-01T08:00:00.060+08:00|   64.5|   69.0|   60.0|   645.0|   69.0|   null|
+|1970-01-01T08:00:00.070+08:00|   74.5|   79.0|   null|    null|   79.0|   3.25|
+|1970-01-01T08:00:00.080+08:00|   84.5|   89.0|   80.0|   845.0|   89.0|   3.25|
+|1970-01-01T08:00:00.090+08:00|   94.5|   99.0|   90.0|   945.0|   99.0|   3.25|
+|1970-01-01T08:00:00.150+08:00|   66.5|   77.0|   90.0|   945.0|   99.0|   9.25|
++-----------------------------+-------+-------+-------+--------+-------+-------+
+```
+### delta = 0
+The sql is shown below:
+```sql
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6)
+```
+Get the result below which ignores the row with null value in `s6`.
+```
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|                         Time|                    __endTime|avg(root.sg.d.s1)|count(root.sg.d.s2)|sum(root.sg.d.s3)|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|1970-01-01T08:00:00.000+08:00|1970-01-01T08:00:00.040+08:00|             24.5|                  3|             50.0|
+|1970-01-01T08:00:00.050+08:00|1970-01-01T08:00:00.050+08:00|             null|                  1|             50.0|
+|1970-01-01T08:00:00.070+08:00|1970-01-01T08:00:00.090+08:00|             84.5|                  3|            170.0|
+|1970-01-01T08:00:00.150+08:00|1970-01-01T08:00:00.150+08:00|             66.5|                  1|             90.0|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+```
+when ignoreNull is false, the row with null value in `s6` will be considered.
+```sql
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, ignoreNull=false)
+```
+Get the following result.
+```
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|                         Time|                    __endTime|avg(root.sg.d.s1)|count(root.sg.d.s2)|sum(root.sg.d.s3)|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|1970-01-01T08:00:00.000+08:00|1970-01-01T08:00:00.010+08:00|              4.5|                  2|             10.0|
+|1970-01-01T08:00:00.020+08:00|1970-01-01T08:00:00.030+08:00|             29.5|                  1|             30.0|
+|1970-01-01T08:00:00.040+08:00|1970-01-01T08:00:00.040+08:00|             44.5|                  1|             40.0|
+|1970-01-01T08:00:00.050+08:00|1970-01-01T08:00:00.050+08:00|             null|                  1|             50.0|
+|1970-01-01T08:00:00.060+08:00|1970-01-01T08:00:00.060+08:00|             64.5|                  1|             60.0|
+|1970-01-01T08:00:00.070+08:00|1970-01-01T08:00:00.090+08:00|             84.5|                  3|            170.0|
+|1970-01-01T08:00:00.150+08:00|1970-01-01T08:00:00.150+08:00|             66.5|                  1|             90.0|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+```
+### delta !=0
+
+The sql is shown below:
+```sql
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, 4)
+```
+Get the result below:
+```
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|                         Time|                    __endTime|avg(root.sg.d.s1)|count(root.sg.d.s2)|sum(root.sg.d.s3)|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|1970-01-01T08:00:00.000+08:00|1970-01-01T08:00:00.050+08:00|             24.5|                  4|            100.0|
+|1970-01-01T08:00:00.070+08:00|1970-01-01T08:00:00.090+08:00|             84.5|                  3|            170.0|
+|1970-01-01T08:00:00.150+08:00|1970-01-01T08:00:00.150+08:00|             66.5|                  1|             90.0|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+```
+The sql is shown below:
+
+```sql
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6+s5, 10)
+```
+Get the result below:
+```
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|                         Time|                    __endTime|avg(root.sg.d.s1)|count(root.sg.d.s2)|sum(root.sg.d.s3)|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+|1970-01-01T08:00:00.000+08:00|1970-01-01T08:00:00.010+08:00|              4.5|                  2|             10.0|
+|1970-01-01T08:00:00.040+08:00|1970-01-01T08:00:00.050+08:00|             44.5|                  2|             90.0|
+|1970-01-01T08:00:00.070+08:00|1970-01-01T08:00:00.080+08:00|             79.5|                  2|             80.0|
+|1970-01-01T08:00:00.090+08:00|1970-01-01T08:00:00.150+08:00|             80.5|                  2|            180.0|
++-----------------------------+-----------------------------+-----------------+-------------------+-----------------+
+```
+
+## Aggregation By Condition
+When you need to filter the data according to a specific condition and group the continuous ones for an aggregation query.
+`GROUP BY CONDITION` is suitable for you.The rows which don't meet the given condition will be simply ignored because they don't belong to any group.
+Its syntax is defined below:
+```sql
+group by condition(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
+```
+* predict
+
+Any legal expression return the type of boolean for filtering in grouping.
+* [keep>/>=/=/<=/<]threshold
+
+Keep expression is used to specify the number of continuous rows that meet the `predict` condition to form a group. Only the number of rows in group satisfy the keep condition, the result of group will be output.
+Keep expression consists of a 'keep' string and a threshold of type `long` or a single 'long' type data.
+* ignoreNull=true/false
+
+Used to specify how to handle data rows that encounter null predict, skip the row when it's true and end current group when it's false.
+
+### Precautions for Use
+1. keep condition is required in the query, but you can omit the 'keep' string and given a `long` number which defaults to 'keep=long number' condition.
+2. IgnoreNull defaults to true.
+3. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
+4. Each device is grouped separately when used with `ALIGN BY DEVICE`.
+5. Currently `GROUP BY CONDITION` is not supported with `GROUP BY LEVEL`.
+
+For the following raw data, several query examples are given below:
+```
++-----------------------------+-------------------------+-------------------------------------+------------------------------------+
+|                         Time|root.sg.beijing.car01.soc|root.sg.beijing.car01.charging_status|root.sg.beijing.car01.vehicle_status|
++-----------------------------+-------------------------+-------------------------------------+------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                     14.0|                                    1|                                   1|
+|1970-01-01T08:00:00.002+08:00|                     16.0|                                    1|                                   1|
+|1970-01-01T08:00:00.003+08:00|                     16.0|                                    0|                                   1|
+|1970-01-01T08:00:00.004+08:00|                     16.0|                                    0|                                   1|
+|1970-01-01T08:00:00.005+08:00|                     18.0|                                    1|                                   1|
+|1970-01-01T08:00:00.006+08:00|                     24.0|                                    1|                                   1|
+|1970-01-01T08:00:00.007+08:00|                     36.0|                                    1|                                   1|
+|1970-01-01T08:00:00.008+08:00|                     36.0|                                 null|                                   1|
+|1970-01-01T08:00:00.009+08:00|                     45.0|                                    1|                                   1|
+|1970-01-01T08:00:00.010+08:00|                     60.0|                                    1|                                   1|
++-----------------------------+-------------------------+-------------------------------------+------------------------------------+
+```
+The sql statement to query data with at least two continuous row shown below: 
+```sql
+select max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=true)
+```
+Get the result below:
+```
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+|                         Time|max_time(root.sg.beijing.car01.charging_status)|count(root.sg.beijing.car01.vehicle_status)|last_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                              2|                                          2|                                 16.0|
+|1970-01-01T08:00:00.005+08:00|                                             10|                                          5|                                 60.0|
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+```
+When ignoreNull is false, the null value will be treated as a row that doesn't meet the condition.
+```sql
+select max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=false)
+```
+Get the result below, the original group is split.
+```
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+|                         Time|max_time(root.sg.beijing.car01.charging_status)|count(root.sg.beijing.car01.vehicle_status)|last_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                              2|                                          2|                                 16.0|
+|1970-01-01T08:00:00.005+08:00|                                              7|                                          3|                                 36.0|
+|1970-01-01T08:00:00.009+08:00|                                             10|                                          2|                                 60.0|
++-----------------------------+-----------------------------------------------+-------------------------------------------+-------------------------------------+
+```
+
+## Aggregation By Session
+`GROUP BY SESSION` can be used to group data according to the interval of the time. Data with a time interval less than or equal to the given threshold will be assigned to the same group.
+For example, in industrial scenarios, devices don't always run continuously, `GROUP BY SESSION` will group the data generated by each access session of the device. 
+Its syntax is defined as follows:
+```sql
+group by session(timeInterval)
+```
+* timeInterval
+
+A given interval threshold to create a new group of data when the difference between the time of data is greater than the threshold.
+
+The figure below is a grouping diagram under `GROUP BY SESSION`.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
+
+### Precautions for Use
+1. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
+2. Each device is grouped separately when used with `ALIGN BY DEVICE`.
+3. Currently `GROUP BY SESSION` is not supported with `GROUP BY LEVEL`.
+
+For the raw data below, a few query examples are given:
+```
++-----------------------------+-----------------+-----------+--------+------+
+|                         Time|           Device|temperature|hardware|status|
++-----------------------------+-----------------+-----------+--------+------+
+|1970-01-01T08:00:01.000+08:00|root.ln.wf02.wt01|       35.7|      11| false|
+|1970-01-01T08:00:02.000+08:00|root.ln.wf02.wt01|       35.8|      22|  true|
+|1970-01-01T08:00:03.000+08:00|root.ln.wf02.wt01|       35.4|      33| false|
+|1970-01-01T08:00:04.000+08:00|root.ln.wf02.wt01|       36.4|      44| false|
+|1970-01-01T08:00:05.000+08:00|root.ln.wf02.wt01|       36.8|      55| false|
+|1970-01-01T08:00:10.000+08:00|root.ln.wf02.wt01|       36.8|     110| false|
+|1970-01-01T08:00:20.000+08:00|root.ln.wf02.wt01|       37.8|     220|  true|
+|1970-01-01T08:00:30.000+08:00|root.ln.wf02.wt01|       37.5|     330| false|
+|1970-01-01T08:00:40.000+08:00|root.ln.wf02.wt01|       37.4|     440| false|
+|1970-01-01T08:00:50.000+08:00|root.ln.wf02.wt01|       37.9|     550| false|
+|1970-01-01T08:01:40.000+08:00|root.ln.wf02.wt01|       38.0|     110| false|
+|1970-01-01T08:02:30.000+08:00|root.ln.wf02.wt01|       38.8|     220|  true|
+|1970-01-01T08:03:20.000+08:00|root.ln.wf02.wt01|       38.6|     330| false|
+|1970-01-01T08:04:20.000+08:00|root.ln.wf02.wt01|       38.4|     440| false|
+|1970-01-01T08:05:20.000+08:00|root.ln.wf02.wt01|       38.3|     550| false|
+|1970-01-01T08:06:40.000+08:00|root.ln.wf02.wt01|       null|       0|  null|
+|1970-01-01T08:07:50.000+08:00|root.ln.wf02.wt01|       null|       0|  null|
+|1970-01-01T08:08:00.000+08:00|root.ln.wf02.wt01|       null|       0|  null|
+|1970-01-02T08:08:01.000+08:00|root.ln.wf02.wt01|       38.2|     110| false|
+|1970-01-02T08:08:02.000+08:00|root.ln.wf02.wt01|       37.5|     220|  true|
+|1970-01-02T08:08:03.000+08:00|root.ln.wf02.wt01|       37.4|     330| false|
+|1970-01-02T08:08:04.000+08:00|root.ln.wf02.wt01|       36.8|     440| false|
+|1970-01-02T08:08:05.000+08:00|root.ln.wf02.wt01|       37.4|     550| false|
++-----------------------------+-----------------+-----------+--------+------+
+```
+TimeInterval can be set by different time units, the sql is shown below:
+```sql
+select __endTime,count(*) from root.** group by session(1d)
+```
+Get the result：
+```
++-----------------------------+-----------------------------+------------------------------------+---------------------------------+-------------------------------+
+|                         Time|                    __endTime|count(root.ln.wf02.wt01.temperature)|count(root.ln.wf02.wt01.hardware)|count(root.ln.wf02.wt01.status)|
++-----------------------------+-----------------------------+------------------------------------+---------------------------------+-------------------------------+
+|1970-01-01T08:00:01.000+08:00|1970-01-01T08:08:00.000+08:00|                                  15|                               18|                             15|
+|1970-01-02T08:08:01.000+08:00|1970-01-02T08:08:05.000+08:00|                                   5|                                5|                              5|
++-----------------------------+-----------------------------+------------------------------------+---------------------------------+-------------------------------+
+```
+It can be also used with `HAVING` and `ALIGN BY DEVICE` clauses.
+```sql
+select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) having sum(hardware)>0 align by device
+```
+Get the result below:
+```
++-----------------------------+-----------------+-----------------------------+-------------+
+|                         Time|           Device|                    __endTime|sum(hardware)|
++-----------------------------+-----------------+-----------------------------+-------------+
+|1970-01-01T08:00:01.000+08:00|root.ln.wf02.wt01|1970-01-01T08:03:20.000+08:00|       2475.0|
+|1970-01-01T08:04:20.000+08:00|root.ln.wf02.wt01|1970-01-01T08:04:20.000+08:00|        440.0|
+|1970-01-01T08:05:20.000+08:00|root.ln.wf02.wt01|1970-01-01T08:05:20.000+08:00|        550.0|
+|1970-01-02T08:08:01.000+08:00|root.ln.wf02.wt01|1970-01-02T08:08:05.000+08:00|       1650.0|
++-----------------------------+-----------------+-----------------------------+-------------+
+```
+## Aggregation By Count
+`GROUP BY COUNT`can aggregate the data points according to the number of points. It can group fixed number of continuous data points together for aggregation query.
+Its syntax is defined as follows:
+```sql
+group by count(controlExpression, size[,ignoreNull=true/false])
+```
+
+* controlExpression
+
+The object to count during processing, it can be any column or an expression of columns.
+
+* size
+
+The number of data points in a group, a number of `size` continuous points will be divided to the same group. 
+
+* ignoreNull=true/false
+
+Whether to ignore the data points with null in `controlExpression`, when ignoreNull is true, data points with the `controlExpression` of null will be skipped during counting.
+
+### Precautions for Use
+1. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
+2. Each device is grouped separately when used with `ALIGN BY DEVICE`.
+3. Currently `GROUP BY SESSION` is not supported with `GROUP BY LEVEL`.
+4. When the final number of data points in a group is less than `size`, the result of the group will not be output.
+
+For the data below, some examples will be given.
+```
++-----------------------------+-----------+-----------------------+
+|                         Time|root.sg.soc|root.sg.charging_status|
++-----------------------------+-----------+-----------------------+
+|1970-01-01T08:00:00.001+08:00|       14.0|                      1|                                   
+|1970-01-01T08:00:00.002+08:00|       16.0|                      1|                                 
+|1970-01-01T08:00:00.003+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.004+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.005+08:00|       18.0|                      1|                                   
+|1970-01-01T08:00:00.006+08:00|       24.0|                      1|                                   
+|1970-01-01T08:00:00.007+08:00|       36.0|                      1|                                   
+|1970-01-01T08:00:00.008+08:00|       36.0|                   null|                                   
+|1970-01-01T08:00:00.009+08:00|       45.0|                      1|                                   
+|1970-01-01T08:00:00.010+08:00|       60.0|                      1|
++-----------------------------+-----------+-----------------------+
+```
+The sql is shown below
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5) 
+```
+Get the result below, in the second group from 1970-01-01T08:00:00.006+08:00 to 1970-01-01T08:00:00.010+08:00. There are only four points included which is less than `size`. So it won't be output.
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
++-----------------------------+-----------------------------+--------------------------------------+
+```
+When `ignoreNull=false` is used to take null value into account. There will be two groups with 5 points in the resultSet, which is shown as follows:
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5,ignoreNull=false) 
+```
+Get the results:
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
+|1970-01-01T08:00:00.006+08:00|1970-01-01T08:00:00.010+08:00|                                  24.0|
++-----------------------------+-----------------------------+--------------------------------------+
+```

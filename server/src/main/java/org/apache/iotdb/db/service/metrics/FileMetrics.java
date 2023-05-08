@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -48,6 +49,13 @@ public class FileMetrics implements IMetricSet {
   private final Runtime runtime = Runtime.getRuntime();
   private String[] getOpenFileNumberCommand;
 
+  @SuppressWarnings("squid:S1075")
+  private String fileHandlerCntPathInLinux = "/proc/%s/fd";
+
+  public FileMetrics() {
+    fileHandlerCntPathInLinux = String.format(fileHandlerCntPathInLinux, METRIC_CONFIG.getPid());
+  }
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindTsFileMetrics(metricService);
@@ -59,45 +67,59 @@ public class FileMetrics implements IMetricSet {
   private void bindTsFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileSize(true),
         Tag.NAME.toString(),
         "seq");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileSize(false),
         Tag.NAME.toString(),
         "unseq");
     metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.CORE,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileSize,
+        Tag.NAME.toString(),
+        "mods");
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileNum(true),
         Tag.NAME.toString(),
         "seq");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileNum(false),
         Tag.NAME.toString(),
         "unseq");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.CORE,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileNum,
+        Tag.NAME.toString(),
+        "mods");
   }
 
   private void bindWalFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         WAL_MANAGER,
         WALManager::getTotalDiskUsage,
         Tag.NAME.toString(),
         "wal");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         WAL_MANAGER,
         WALManager::getTotalFileNum,
         Tag.NAME.toString(),
@@ -107,42 +129,42 @@ public class FileMetrics implements IMetricSet {
   private void bindCompactionFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileSize(true),
         Tag.NAME.toString(),
         "inner-seq-temp");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileSize(false),
         Tag.NAME.toString(),
         "inner-unseq-temp");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getCrossCompactionTempFileSize,
         Tag.NAME.toString(),
         "cross-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileNum(true),
         Tag.NAME.toString(),
         "inner-seq-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileNum(false),
         Tag.NAME.toString(),
         "inner-unseq-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getCrossCompactionTempFileNum,
         Tag.NAME.toString(),
@@ -181,9 +203,13 @@ public class FileMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
     metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "mods");
+    metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "mods");
   }
 
   private void unbindWalMetrics(AbstractMetricService metricService) {
@@ -227,9 +253,17 @@ public class FileMetrics implements IMetricSet {
   }
 
   private long getOpenFileHandlersNumber() {
+    long fdCount = 0;
     try {
-      if ((METRIC_CONFIG.getSystemType() == SystemType.LINUX
-              || METRIC_CONFIG.getSystemType() == SystemType.MAC)
+      if (METRIC_CONFIG.getSystemType() == SystemType.LINUX) {
+        // count the fd in the system directory instead of
+        // calling runtime.exec() which could be much slower
+        File fdDir = new File(fileHandlerCntPathInLinux);
+        if (fdDir.exists()) {
+          File[] fds = fdDir.listFiles();
+          fdCount = fds == null ? 0 : fds.length;
+        }
+      } else if ((METRIC_CONFIG.getSystemType() == SystemType.MAC)
           && METRIC_CONFIG.getPid().length() != 0) {
         Process process = runtime.exec(getOpenFileNumberCommand);
         StringBuilder result = new StringBuilder();
@@ -240,11 +274,11 @@ public class FileMetrics implements IMetricSet {
             result.append(line);
           }
         }
-        return Long.parseLong(result.toString().trim());
+        fdCount = Long.parseLong(result.toString().trim());
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to get open file number, because ", e);
     }
-    return 0L;
+    return fdCount;
   }
 }

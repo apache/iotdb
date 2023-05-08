@@ -103,12 +103,8 @@ public class ShowVariablesTask implements IConfigTask {
         new Binary(String.valueOf(clusterParameters.getSchemaRegionPerDataNode())));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DATA_REGION_PER_PROCESSOR),
-        new Binary(String.valueOf(clusterParameters.getDataRegionPerProcessor())));
-    buildTSBlock(
-        builder,
-        new Binary(ColumnHeaderConstant.LEAST_DATA_REGION_GROUP_NUM),
-        new Binary(String.valueOf(clusterParameters.getLeastDataRegionGroupNum())));
+        new Binary(ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE),
+        new Binary(String.valueOf(clusterParameters.getDataRegionPerDataNode())));
     buildTSBlock(
         builder,
         new Binary(ColumnHeaderConstant.SERIES_SLOT_NUM),

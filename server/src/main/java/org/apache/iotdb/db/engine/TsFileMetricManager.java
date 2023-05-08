@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -31,6 +36,12 @@ public class TsFileMetricManager {
   private final AtomicLong unseqFileSize = new AtomicLong(0);
   private final AtomicInteger seqFileNum = new AtomicInteger(0);
   private final AtomicInteger unseqFileNum = new AtomicInteger(0);
+
+  private final AtomicInteger modFileNum = new AtomicInteger(0);
+
+  private final AtomicLong modFileSize = new AtomicLong(0);
+  private long lastUpdateTime = 0;
+  private static final long UPDATE_INTERVAL = 10_000L;
 
   // compaction temporal files
   private final AtomicLong innerSeqCompactionTempFileSize = new AtomicLong(0);
@@ -74,41 +85,79 @@ public class TsFileMetricManager {
     return seq ? seqFileNum.get() : unseqFileNum.get();
   }
 
-  public void addCompactionTempFileSize(boolean innerSpace, boolean seq, long delta) {
-    if (innerSpace) {
-      long unused =
-          seq
-              ? innerSeqCompactionTempFileSize.addAndGet(delta)
-              : innerUnseqCompactionTempFileSize.addAndGet(delta);
-    } else {
-      crossCompactionTempFileSize.addAndGet(delta);
-    }
+  public int getModFileNum() {
+    return modFileNum.get();
   }
 
-  public void addCompactionTempFileNum(boolean innerSpace, boolean seq, int delta) {
-    if (innerSpace) {
-      long unused =
-          seq
-              ? innerSeqCompactionTempFileNum.addAndGet(delta)
-              : innerUnseqCompactionTempFileNum.addAndGet(delta);
-    } else {
-      crossCompactionTempFileNum.addAndGet(delta);
-    }
+  public long getModFileSize() {
+    return modFileSize.get();
+  }
+
+  public void increaseModFileNum(int num) {
+    modFileNum.addAndGet(num);
+  }
+
+  public void decreaseModFileNum(int num) {
+    modFileNum.addAndGet(-num);
+  }
+
+  public void increaseModFileSize(long size) {
+    modFileSize.addAndGet(size);
+  }
+
+  public void decreaseModFileSize(long size) {
+    modFileSize.addAndGet(-size);
   }
 
   public long getInnerCompactionTempFileSize(boolean seq) {
+    updateCompactionTempSize();
     return seq ? innerSeqCompactionTempFileSize.get() : innerUnseqCompactionTempFileSize.get();
   }
 
+  private synchronized void updateCompactionTempSize() {
+    if (System.currentTimeMillis() - lastUpdateTime <= UPDATE_INTERVAL) {
+      return;
+    }
+    lastUpdateTime = System.currentTimeMillis();
+
+    innerSeqCompactionTempFileSize.set(0);
+    innerSeqCompactionTempFileNum.set(0);
+    innerUnseqCompactionTempFileSize.set(0);
+    innerUnseqCompactionTempFileNum.set(0);
+    crossCompactionTempFileSize.set(0);
+    crossCompactionTempFileNum.set(0);
+
+    List<AbstractCompactionTask> runningTasks =
+        CompactionTaskManager.getInstance().getRunningCompactionTaskList();
+    for (AbstractCompactionTask task : runningTasks) {
+      CompactionTaskSummary summary = task.getSummary();
+      if (task instanceof InnerSpaceCompactionTask) {
+        if (task.isInnerSeqTask()) {
+          innerSeqCompactionTempFileSize.addAndGet(summary.getTemporalFileSize());
+          innerSeqCompactionTempFileNum.addAndGet(1);
+        } else {
+          innerUnseqCompactionTempFileSize.addAndGet(summary.getTemporalFileSize());
+          innerUnseqCompactionTempFileNum.addAndGet(1);
+        }
+      } else {
+        crossCompactionTempFileSize.addAndGet(summary.getTemporalFileSize());
+        crossCompactionTempFileNum.addAndGet(summary.getTemporalFileNum());
+      }
+    }
+  }
+
   public long getCrossCompactionTempFileSize() {
+    updateCompactionTempSize();
     return crossCompactionTempFileSize.get();
   }
 
   public long getInnerCompactionTempFileNum(boolean seq) {
+    updateCompactionTempSize();
     return seq ? innerSeqCompactionTempFileNum.get() : innerUnseqCompactionTempFileNum.get();
   }
 
   public long getCrossCompactionTempFileNum() {
+    updateCompactionTempSize();
     return crossCompactionTempFileNum.get();
   }
 }

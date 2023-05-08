@@ -71,6 +71,14 @@ public class IoTDBConstant {
 
   public static final String CLUSTER_NAME = "cluster_name";
   public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
+  public static final String LOGO =
+      ""
+          + " _____       _________  ______   ______    \n"
+          + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+          + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+          + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+          + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+          + "|_____|'.__.' |_____|  |______.'|_______/  ";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -95,9 +103,11 @@ public class IoTDBConstant {
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
-  public static final long GB = 1024 * 1024 * 1024L;
-  public static final long MB = 1024 * 1024L;
-  public static final long KB = 1024L;
+  public static final long PB = 1L << 50;
+  public static final long TB = 1L << 40;
+  public static final long GB = 1L << 30;
+  public static final long MB = 1L << 20;
+  public static final long KB = 1L << 10;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
@@ -159,6 +169,7 @@ public class IoTDBConstant {
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
   public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
@@ -220,11 +231,10 @@ public class IoTDBConstant {
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
-  public static final String TRACING_FOLDER_NAME = "tracing";
-  public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String PIPE_FOLDER_NAME = "pipe";
   public static final String TMP_FOLDER_NAME = "tmp";
 
   public static final String MQTT_FOLDER_NAME = "mqtt";
@@ -270,10 +280,47 @@ public class IoTDBConstant {
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
+  // quota
+  public static final String SPACE_QUOTA_DISK = "disk";
+  public static final String QUOTA_UNLIMITED = "unlimited";
+  public static final String REQUEST_NUM_PER_UNIT_TIME = "request";
+  public static final String REQUEST_SIZE_PER_UNIT_TIME = "size";
+  public static final String MEMORY_SIZE_PER_READ = "mem";
+  public static final String CPU_NUMBER_PER_READ = "cpu";
+  public static final String REQUEST_TYPE = "type";
+  public static final String REQUEST_TYPE_READ = "read";
+  public static final String REQUEST_TYPE_WRITE = "write";
+  public static final String REQ_UNIT = "req";
+  public static final String REQ_SPLIT_UNIT = "req/";
+  public static final int UNLIMITED_VALUE = -1;
+  public static final int DEFAULT_VALUE = 0;
+  public static final float B_FLOAT = 1024.0F;
+
+  // SizeUnit
+  public static final String B_UNIT = "B";
+  public static final String KB_UNIT = "K";
+  public static final String MB_UNIT = "M";
+  public static final String GB_UNIT = "G";
+  public static final String TB_UNIT = "T";
+  public static final String PB_UNIT = "P";
+
+  // Time
+  public static final int SEC = 1000;
+  public static final int MIN = 60 * 1000;
+  public static final int HOUR = 60 * 60 * 1000;
+  public static final int DAY = 24 * 60 * 60 * 1000;
+
+  // TimeUnit
+  public static final String SEC_UNIT = "sec";
+  public static final String MIN_UNIT = "min";
+  public static final String HOUR_UNIT = "hour";
+  public static final String DAY_UNIT = "day";
+
   // client version number
   public enum ClientVersion {
     V_0_12,
-    V_0_13
+    V_0_13,
+    V_1_0
   }
 
   // select into

@@ -18,35 +18,42 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 
 import java.util.List;
 
 public interface ICacheManager {
 
-  void initRootStatus(IMNode root);
+  void initRootStatus(ICachedMNode root);
 
-  void updateCacheStatusAfterMemoryRead(IMNode node) throws MNodeNotCachedException;
+  void updateCacheStatusAfterMemoryRead(ICachedMNode node) throws MNodeNotCachedException;
 
-  void updateCacheStatusAfterDiskRead(IMNode node);
+  void updateCacheStatusAfterDiskRead(ICachedMNode node);
 
-  void updateCacheStatusAfterAppend(IMNode node);
+  void updateCacheStatusAfterAppend(ICachedMNode node);
 
-  void updateCacheStatusAfterUpdate(IMNode node);
+  void updateCacheStatusAfterUpdate(ICachedMNode node);
 
-  void updateCacheStatusAfterPersist(IMNode node);
+  void updateCacheStatusAfterPersist(ICachedMNode node);
 
-  List<IMNode> collectVolatileMNodes();
+  IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
-  void remove(IMNode node);
+  List<ICachedMNode> collectVolatileMNodes();
+
+  void remove(ICachedMNode node);
 
   boolean evict();
 
-  void pinMNode(IMNode node) throws MNodeNotPinnedException;
+  void pinMNode(ICachedMNode node) throws MNodeNotPinnedException;
 
-  boolean unPinMNode(IMNode node);
+  boolean unPinMNode(ICachedMNode node);
 
-  void clear(IMNode root);
+  long getBufferNodeNum();
+
+  long getCacheNodeNum();
+
+  void clear(ICachedMNode root);
 }

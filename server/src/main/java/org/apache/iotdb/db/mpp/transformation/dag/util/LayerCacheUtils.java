@@ -39,7 +39,7 @@ public class LayerCacheUtils {
       LayerPointReader source,
       ElasticSerializableTVList target,
       int pointNumber)
-      throws QueryProcessException, IOException {
+      throws Exception {
     int count = 0;
     while (count < pointNumber) {
       final YieldableState yieldableState = yieldPoint(dataType, source, target);
@@ -53,7 +53,7 @@ public class LayerCacheUtils {
 
   public static YieldableState yieldPoint(
       TSDataType dataType, LayerPointReader source, ElasticSerializableTVList target)
-      throws IOException, QueryProcessException {
+      throws Exception {
     final YieldableState yieldableState = source.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
@@ -96,7 +96,7 @@ public class LayerCacheUtils {
   /** @return number of actually collected, which may be less than or equals to rowsNumber */
   public static YieldableState yieldRows(
       IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
-      throws QueryProcessException, IOException {
+      throws Exception {
     int count = 0;
     while (count < rowsNumber) {
       final YieldableState yieldableState = yieldRow(source, target);
@@ -109,9 +109,9 @@ public class LayerCacheUtils {
   }
 
   public static YieldableState yieldRow(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target)
-      throws IOException, QueryProcessException {
+      IUDFInputDataSet source, ElasticSerializableRowRecordList target) throws Exception {
     final YieldableState yieldableState = source.canYieldNextRowInObjects();
+
     if (yieldableState == YieldableState.YIELDABLE) {
       target.put(source.nextRowInObjects());
     }

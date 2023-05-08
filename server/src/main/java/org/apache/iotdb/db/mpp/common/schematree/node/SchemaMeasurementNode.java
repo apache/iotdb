@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.node;
 
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -27,7 +28,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
-public class SchemaMeasurementNode extends SchemaNode {
+public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSchemaInfo {
 
   private String alias;
   private MeasurementSchema schema;

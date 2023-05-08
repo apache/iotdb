@@ -22,7 +22,8 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,18 +34,19 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class SessionIT {
 
   @Before
@@ -55,64 +57,6 @@ public class SessionIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  @Test
-  public void testSortTablet() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      /*
-      To test sortTablet in Class Session
-      !!!
-      Before testing, change the sortTablet from private method to public method
-      !!!
-       */
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-      // insert three rows data
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
-      long[] timestamps = tablet.timestamps;
-      Object[] values = tablet.values;
-
-      /*
-      inorder data before inserting
-      timestamp   s1
-      2           0
-      0           1
-      1           2
-       */
-      // inorder timestamps
-      timestamps[0] = 2;
-      timestamps[1] = 0;
-      timestamps[2] = 1;
-      // just one column INT64 data
-      long[] sensor = (long[]) values[0];
-      sensor[0] = 0;
-      sensor[1] = 1;
-      sensor[2] = 2;
-      tablet.rowSize = 3;
-
-      session.sortTablet(tablet);
-
-      /*
-      After sorting, if the tablet data is sorted according to the timestamps,
-      data in tablet will be
-      timestamp   s1
-      0           1
-      1           2
-      2           0
-
-      If the data equal to above tablet, test pass, otherwise test fialed
-       */
-      long[] resTimestamps = tablet.timestamps;
-      long[] resValues = (long[]) tablet.values[0];
-      long[] expectedTimestamps = new long[] {0, 1, 2};
-      long[] expectedValues = new long[] {1, 2, 0};
-      assertArrayEquals(expectedTimestamps, resTimestamps);
-      assertArrayEquals(expectedValues, resValues);
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -160,20 +104,15 @@ public class SessionIT {
         // ignore
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select s1, s2, s3, s4 from root.sg1.d1");
       int i = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();
-        int nullCount = 0;
-        for (int j = 0; j < 4; ++j) {
-          if (record.getFields().get(j) == null
-              || record.getFields().get(j).getDataType() == null) {
-            ++nullCount;
-          } else {
-            assertEquals(i, record.getFields().get(j).getLongV());
-          }
-        }
-        assertEquals(3, nullCount);
+        Assert.assertEquals(i, record.getFields().get(0).getLongV());
+        Assert.assertNull(record.getFields().get(1).getDataType());
+        Assert.assertNull(record.getFields().get(2).getDataType());
+        Assert.assertEquals(i, record.getFields().get(3).getDoubleV(), 0.00001);
         i++;
       }
 

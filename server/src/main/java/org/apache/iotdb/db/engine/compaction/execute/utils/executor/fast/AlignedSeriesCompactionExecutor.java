@@ -20,12 +20,11 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -44,8 +43,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import com.google.common.util.concurrent.RateLimiter;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -55,13 +52,11 @@ import java.util.Map;
 public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+  // linked hash map, which has the same measurement lexicographical order as measurementSchemas.
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
   private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
   private final List<IMeasurementSchema> measurementSchemas;
-
-  private final RateLimiter rateLimiter =
-      CompactionTaskManager.getInstance().getCompactionIORateLimiter();
 
   public AlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
@@ -72,8 +67,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       String deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
-      SubCompactionTaskSummary summary) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
+      FastCompactionTaskSummary summary) {
+    super(
+        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     // get source files which are sorted by the startTime of current device from old to new,
@@ -96,14 +92,14 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
       // read chunk metadatas from files and put them into chunk metadata queue
-      deserializeFileIntoQueue(overlappedFiles);
+      deserializeFileIntoChunkMetadataQueue(overlappedFiles);
 
       compactChunks();
     }
   }
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
-  void deserializeFileIntoQueue(List<FileElement> fileElements)
+  void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
@@ -204,7 +200,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     List<PageHeader> timePageHeaders = new ArrayList<>();
     List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
     List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
@@ -253,9 +250,15 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         } else {
           pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
-        ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-        valuePageHeaders.get(i).add(pageHeader);
-        compressedValuePageDatas.get(i).add(compressedPageData);
+        if (pageHeader.getCompressedSize() == 0) {
+          // empty value page
+          valuePageHeaders.get(i).add(null);
+          compressedValuePageDatas.get(i).add(null);
+        } else {
+          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+          valuePageHeaders.get(i).add(pageHeader);
+          compressedValuePageDatas.get(i).add(compressedPageData);
+        }
       }
     }
 
@@ -278,7 +281,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks, null),
+              new AlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
@@ -288,21 +291,20 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-    rateLimiter.acquire(1);
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)
             .readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
     List<Chunk> valueChunks = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (valueChunkMetadata == null) {
-        // value chunk has been deleted completely
+      if (valueChunkMetadata == null || valueChunkMetadata.getStatistics().getCount() == 0) {
+        // value chunk has been deleted completely or is empty value chunk
         valueChunks.add(null);
         continue;
       }
-      rateLimiter.acquire(1);
       valueChunks.add(
           readerCacheMap
               .get(chunkMetadataElement.fileElement.resource)

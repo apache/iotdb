@@ -59,6 +59,7 @@ This is a processor that reads the content of the incoming FlowFile as individua
 | Username      | Username to access the IoTDB.                                                                                                                                                                                                                                                                                 | null          | true      |
 | Password      | Password to access the IoTDB.                                                                                                                                                                                                                                                                                 | null          | true      |
 | Prefix        | The Prefix begin with root. that will be add to the tsName in data.  <br /> It can be updated by expression language.                                                                                                                                                                                                | null          | true      |
+| Time          | The name of time field                                                                                          | null          | true      |
 | Record Reader | Specifies the type of Record Reader controller service to use <br />for parsing the incoming data and determining the schema.                                                                                                                                                                                 | null          | true      |
 | Schema        | The schema that IoTDB needs doesn't support good by NiFi.<br/>Therefore, you can define the schema here. <br />Besides, you can set encoding type and compression type by this method.<br />If you don't set this property, the inferred schema will be used.<br /> It can be updated by expression language. | null          | false     |
 | Aligned       | Whether using aligned interface?  It can be updated by expression language.                                                                                                                                                                                                                                   | false         | false     |
@@ -69,7 +70,7 @@ This is a processor that reads the content of the incoming FlowFile as individua
 There are a couple of rules about flowfile:
 
 1. The flowfile can be read by `Record Reader`.
-2. The schema of flowfile must contain a field `Time`, and it must be the first.
+2. The schema of flowfile must contain a time field with name set in Time property.
 3. The data type of time must be `STRING` or `LONG`.
 4. Fields excepted time must start with `root.`.
 5. The supported data types are `INT`, `LONG`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
@@ -82,7 +83,6 @@ The structure of property `Schema`:
 
 ```json
 {
-	"timeType": "LONG",
 	"fields": [{
 		"tsName": "s1",
 		"dataType": "INT32",
@@ -105,8 +105,8 @@ The structure of property `Schema`:
 3. The columns `tsName` and `dataType` must be set.
 4. The property `Prefix` will be added to tsName as the field name when add data to IoTDB.
 5. The supported `dataTypes` are `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `TEXT`.
-6. The supported `encoding` are `PLAIN`, `DICTIONARY`, `RLE`, `DIFF`, `TS_2DIFF`, `BITMAP`, `GORILLA_V1`, `REGULAR`, `GORILLA`.
-7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`.
+6. The supported `encoding` are `PLAIN`, `DICTIONARY`, `RLE`, `DIFF`, `TS_2DIFF`, `BITMAP`, `GORILLA_V1`, `REGULAR`, `GORILLA`, `CHIMP`, `SPRINTZ`, `RLBE`.
+7. The supported `compressionType` are `UNCOMPRESSED`, `SNAPPY`, `GZIP`, `LZO`, `SDT`, `PAA`, `PLA`, `LZ4`, `ZSTD`, `LZMA2`.
 
 ## Relationships
 
@@ -129,7 +129,7 @@ This is a processor that reads the sql query from the incoming FlowFile and usin
 | Username      | Username to access the IoTDB.                                                                                                                                                                                                                                                                              | null      | true      |
 | Password      | Password to access the IoTDB.                                                                                                                                                                                                                                                                              | null      | true      |
 | Record Writer | Specifies the Controller Service to use for writing results to a FlowFile. The Record Writer may use Inherit Schema to emulate the inferred schema behavior, i.e. An explicit schema need not be defined in the writer, and will be supplied by the same logic used to infer the schema from the column types. | null      | true      |
-| iotdb-query        | The IoTDB query to execute. <bbr> Note: If there are incoming connections, then the query is created from incoming FlowFile's content otherwise"it is created from this property.                                                                                                                          | null      | false     |
+| iotdb-query        | The IoTDB query to execute. <br> Note: If there are incoming connections, then the query is created from incoming FlowFile's content otherwise"it is created from this property.                                                                                                                          | null      | false     |
 | iotdb-query-chunk-size  | Chunking can be used to return results in a stream of smaller batches (each has a partial results up to a chunk size) rather than as a single response. Chunking queries can return an unlimited number of rows. Note: Chunking is enable when result chunk size is greater than 0                         | 0         | false     |
 
 

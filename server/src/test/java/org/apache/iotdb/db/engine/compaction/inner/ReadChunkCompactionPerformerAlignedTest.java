@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -74,14 +73,12 @@ public class ReadChunkCompactionPerformerAlignedTest {
     if (!dataDirectory.exists()) {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
-    LocalConfigNode.getInstance().init();
   }
 
   @After
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     FileUtils.forceDelete(dataDirectory);
-    LocalConfigNode.getInstance().clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();

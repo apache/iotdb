@@ -51,13 +51,15 @@ public class OffsetOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock block = child.nextWithTimer();
     if (block == null) {
       return null;
     }
     if (remainingOffset > 0) {
-      int offset = Math.min((int) remainingOffset, block.getPositionCount());
+      // It's safe to narrow long to int here, because block.getPositionCount() will always be less
+      // than Integer.MAX_VALUE
+      int offset = (int) Math.min(remainingOffset, block.getPositionCount());
       remainingOffset -= offset;
       return block.getRegion(offset, block.getPositionCount() - offset);
     } else {
@@ -66,7 +68,7 @@ public class OffsetOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return child.hasNextWithTimer();
   }
 
@@ -76,7 +78,7 @@ public class OffsetOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return child.isFinished();
   }
 

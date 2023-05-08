@@ -61,7 +61,7 @@ public class FlinkIoTDBSink {
         new IoTDBSink(options, serializationSchema)
             // enable batching
             .withBatchSize(10)
-            // how many connectons to the server will be created for each parallelism
+            // how many connections to the server will be created for each parallelism
             .withSessionPoolSize(3);
 
     env.addSource(new SensorSource())

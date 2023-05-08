@@ -35,7 +35,8 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
 
   private final LayerPointReader constantLayerPointReaderCache;
 
-  public ConstantIntermediateLayer(ConstantOperand expression, long queryId, float memoryBudgetInMB)
+  public ConstantIntermediateLayer(
+      ConstantOperand expression, String queryId, float memoryBudgetInMB)
       throws QueryProcessException {
     super(expression, queryId, memoryBudgetInMB);
     constantLayerPointReaderCache = new ConstantInputReader(expression);

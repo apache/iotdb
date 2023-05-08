@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+
 import org.apache.ratis.grpc.GrpcConfigKeys.Server;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class RatisConfig {
@@ -33,9 +36,10 @@ public class RatisConfig {
   private final Snapshot snapshot;
   private final ThreadPool threadPool;
   private final Log log;
-  private final LeaderLogAppender leaderLogAppender;
   private final Grpc grpc;
+  private final Client client;
   private final Impl impl;
+  private final LeaderLogAppender leaderLogAppender;
 
   private RatisConfig(
       Rpc rpc,
@@ -44,16 +48,18 @@ public class RatisConfig {
       ThreadPool threadPool,
       Log log,
       Grpc grpc,
-      LeaderLogAppender leaderLogAppender,
-      Impl impl) {
+      Client client,
+      Impl impl,
+      LeaderLogAppender leaderLogAppender) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
-    this.leaderLogAppender = leaderLogAppender;
     this.grpc = grpc;
+    this.client = client;
     this.impl = impl;
+    this.leaderLogAppender = leaderLogAppender;
   }
 
   public Rpc getRpc() {
@@ -76,16 +82,20 @@ public class RatisConfig {
     return log;
   }
 
-  public LeaderLogAppender getLeaderLogAppender() {
-    return leaderLogAppender;
-  }
-
   public Grpc getGrpc() {
     return grpc;
   }
 
+  public Client getClient() {
+    return client;
+  }
+
   public Impl getImpl() {
     return impl;
+  }
+
+  public LeaderLogAppender getLeaderLogAppender() {
+    return leaderLogAppender;
   }
 
   public static Builder newBuilder() {
@@ -93,25 +103,30 @@ public class RatisConfig {
   }
 
   public static class Builder {
+
     private Rpc rpc;
     private LeaderElection leaderElection;
     private Snapshot snapshot;
     private ThreadPool threadPool;
     private Log log;
-    private LeaderLogAppender leaderLogAppender;
     private Grpc grpc;
+
+    private Client client;
     private Impl impl;
+    private LeaderLogAppender leaderLogAppender;
 
     public RatisConfig build() {
       return new RatisConfig(
-          rpc != null ? rpc : Rpc.newBuilder().build(),
-          leaderElection != null ? leaderElection : LeaderElection.newBuilder().build(),
-          snapshot != null ? snapshot : Snapshot.newBuilder().build(),
-          threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
-          log != null ? log : Log.newBuilder().build(),
-          grpc != null ? grpc : Grpc.newBuilder().build(),
-          leaderLogAppender != null ? leaderLogAppender : LeaderLogAppender.newBuilder().build(),
-          impl != null ? impl : Impl.newBuilder().build());
+          Optional.ofNullable(rpc).orElseGet(() -> Rpc.newBuilder().build()),
+          Optional.ofNullable(leaderElection).orElseGet(() -> LeaderElection.newBuilder().build()),
+          Optional.ofNullable(snapshot).orElseGet(() -> Snapshot.newBuilder().build()),
+          Optional.ofNullable(threadPool).orElseGet(() -> ThreadPool.newBuilder().build()),
+          Optional.ofNullable(log).orElseGet(() -> Log.newBuilder().build()),
+          Optional.ofNullable(grpc).orElseGet(() -> Grpc.newBuilder().build()),
+          Optional.ofNullable(client).orElseGet(() -> Client.newBuilder().build()),
+          Optional.ofNullable(impl).orElseGet(() -> Impl.newBuilder().build()),
+          Optional.ofNullable(leaderLogAppender)
+              .orElseGet(() -> LeaderLogAppender.newBuilder().build()));
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -144,7 +159,12 @@ public class RatisConfig {
       return this;
     }
 
-    public Builder setRatisConsensus(Impl impl) {
+    public Builder setClient(Client client) {
+      this.client = client;
+      return this;
+    }
+
+    public Builder setImpl(Impl impl) {
       this.impl = impl;
       return this;
     }
@@ -157,6 +177,7 @@ public class RatisConfig {
 
   /** server rpc timeout related */
   public static class Rpc {
+
     private final TimeDuration timeoutMin;
     private final TimeDuration timeoutMax;
     private final TimeDuration requestTimeout;
@@ -215,6 +236,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private TimeDuration timeoutMin = TimeDuration.valueOf(2, TimeUnit.SECONDS);
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
@@ -276,6 +298,7 @@ public class RatisConfig {
   }
 
   public static class LeaderElection {
+
     private final TimeDuration leaderStepDownWaitTimeKey;
     private final boolean preVote;
 
@@ -297,6 +320,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private TimeDuration leaderStepDownWaitTimeKey = TimeDuration.valueOf(30, TimeUnit.SECONDS);
       private boolean preVote = RaftServerConfigKeys.LeaderElection.PRE_VOTE_DEFAULT;
 
@@ -318,6 +342,7 @@ public class RatisConfig {
   }
 
   public static class Snapshot {
+
     private final boolean autoTriggerEnabled;
     private final long creationGap;
     private final long autoTriggerThreshold;
@@ -355,6 +380,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private boolean autoTriggerEnabled = true;
       private long creationGap = RaftServerConfigKeys.Snapshot.CREATION_GAP_DEFAULT;
       private long autoTriggerThreshold =
@@ -389,6 +415,7 @@ public class RatisConfig {
   }
 
   public static class ThreadPool {
+
     private final boolean proxyCached;
     private final int proxySize;
     private final boolean serverCached;
@@ -440,6 +467,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private boolean proxyCached = RaftServerConfigKeys.ThreadPool.PROXY_CACHED_DEFAULT;
       private int proxySize = RaftServerConfigKeys.ThreadPool.PROXY_SIZE_DEFAULT;
       private boolean serverCached = RaftServerConfigKeys.ThreadPool.SERVER_CACHED_DEFAULT;
@@ -586,6 +614,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private boolean useMemory = false;
       private int queueElementLimit = 4096;
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
@@ -685,6 +714,7 @@ public class RatisConfig {
   }
 
   public static class Grpc {
+
     private final SizeInBytes messageSizeMax;
     private final SizeInBytes flowControlWindow;
     private final boolean asyncRequestThreadPoolCached;
@@ -729,6 +759,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private SizeInBytes messageSizeMax = SizeInBytes.valueOf("512MB");
       private SizeInBytes flowControlWindow = SizeInBytes.valueOf("4MB");
       private boolean asyncRequestThreadPoolCached =
@@ -772,43 +803,28 @@ public class RatisConfig {
     }
   }
 
-  public static class Impl {
-    private final int retryTimesMax;
-    private final long retryWaitMillis;
+  public static class Client {
 
     private final long clientRequestTimeoutMillis;
     private final int clientMaxRetryAttempt;
     private final long clientRetryInitialSleepTimeMs;
     private final long clientRetryMaxSleepTimeMs;
+    private final int coreClientNumForEachNode;
+    private final int maxClientNumForEachNode;
 
-    private final long triggerSnapshotTime;
-    private final long triggerSnapshotFileSize;
-
-    private Impl(
-        int retryTimesMax,
-        long retryWaitMillis,
+    public Client(
         long clientRequestTimeoutMillis,
         int clientMaxRetryAttempt,
         long clientRetryInitialSleepTimeMs,
         long clientRetryMaxSleepTimeMs,
-        long triggerSnapshotTime,
-        long triggerSnapshotFileSize) {
-      this.retryTimesMax = retryTimesMax;
-      this.retryWaitMillis = retryWaitMillis;
+        int coreClientNumForEachNode,
+        int maxClientNumForEachNode) {
       this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
       this.clientMaxRetryAttempt = clientMaxRetryAttempt;
       this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
       this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
-      this.triggerSnapshotTime = triggerSnapshotTime;
-      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
-    }
-
-    public int getRetryTimesMax() {
-      return retryTimesMax;
-    }
-
-    public long getRetryWaitMillis() {
-      return retryWaitMillis;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
     public long getClientRequestTimeoutMillis() {
@@ -827,6 +843,98 @@ public class RatisConfig {
       return clientRetryMaxSleepTimeMs;
     }
 
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
+    public int getMaxClientNumForEachNode() {
+      return maxClientNumForEachNode;
+    }
+
+    public static Client.Builder newBuilder() {
+      return new Builder();
+    }
+
+    public static class Builder {
+
+      private long clientRequestTimeoutMillis = 10000;
+      private int clientMaxRetryAttempt = 10;
+      private long clientRetryInitialSleepTimeMs = 100;
+      private long clientRetryMaxSleepTimeMs = 10000;
+
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+      private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+      public Client build() {
+        return new Client(
+            clientRequestTimeoutMillis,
+            clientMaxRetryAttempt,
+            clientRetryInitialSleepTimeMs,
+            clientRetryMaxSleepTimeMs,
+            coreClientNumForEachNode,
+            maxClientNumForEachNode);
+      }
+
+      public Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
+        this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+        return this;
+      }
+
+      public Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
+        this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+        return this;
+      }
+
+      public Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
+        this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+        return this;
+      }
+
+      public Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
+        this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+        return this;
+      }
+
+      public Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
+        return this;
+      }
+
+      public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+        this.maxClientNumForEachNode = maxClientNumForEachNode;
+        return this;
+      }
+    }
+  }
+
+  public static class Impl {
+
+    private final int retryTimesMax;
+    private final long retryWaitMillis;
+
+    private final long triggerSnapshotTime;
+    private final long triggerSnapshotFileSize;
+
+    public Impl(
+        int retryTimesMax,
+        long retryWaitMillis,
+        long triggerSnapshotTime,
+        long triggerSnapshotFileSize) {
+      this.retryTimesMax = retryTimesMax;
+      this.retryWaitMillis = retryWaitMillis;
+      this.triggerSnapshotTime = triggerSnapshotTime;
+      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+    }
+
+    public int getRetryTimesMax() {
+      return retryTimesMax;
+    }
+
+    public long getRetryWaitMillis() {
+      return retryWaitMillis;
+    }
+
     public long getTriggerSnapshotTime() {
       return triggerSnapshotTime;
     }
@@ -840,13 +948,9 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private int retryTimesMax = 3;
       private long retryWaitMillis = 500;
-
-      private long clientRequestTimeoutMillis = 10000;
-      private int clientMaxRetryAttempt = 10;
-      private long clientRetryInitialSleepTimeMs = 100;
-      private long clientRetryMaxSleepTimeMs = 10000;
 
       // 120s
       private long triggerSnapshotTime = 120;
@@ -855,14 +959,7 @@ public class RatisConfig {
 
       public Impl build() {
         return new Impl(
-            retryTimesMax,
-            retryWaitMillis,
-            clientRequestTimeoutMillis,
-            clientMaxRetryAttempt,
-            clientRetryInitialSleepTimeMs,
-            clientRetryMaxSleepTimeMs,
-            triggerSnapshotTime,
-            triggerSnapshotFileSize);
+            retryTimesMax, retryWaitMillis, triggerSnapshotTime, triggerSnapshotFileSize);
       }
 
       public Impl.Builder setRetryTimesMax(int retryTimesMax) {
@@ -872,26 +969,6 @@ public class RatisConfig {
 
       public Impl.Builder setRetryWaitMillis(long retryWaitMillis) {
         this.retryWaitMillis = retryWaitMillis;
-        return this;
-      }
-
-      public Impl.Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
-        this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
-        return this;
-      }
-
-      public Impl.Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
-        this.clientMaxRetryAttempt = clientMaxRetryAttempt;
-        return this;
-      }
-
-      public Impl.Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
-        this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
-        return this;
-      }
-
-      public Impl.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
-        this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
         return this;
       }
 
@@ -908,6 +985,7 @@ public class RatisConfig {
   }
 
   public static class LeaderLogAppender {
+
     private final SizeInBytes bufferByteLimit;
     private final SizeInBytes snapshotChunkSizeMax;
     private final boolean installSnapshotEnabled;
@@ -938,6 +1016,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private SizeInBytes bufferByteLimit =
           RaftServerConfigKeys.Log.Appender.BUFFER_BYTE_LIMIT_DEFAULT;
       private SizeInBytes snapshotChunkSizeMax =

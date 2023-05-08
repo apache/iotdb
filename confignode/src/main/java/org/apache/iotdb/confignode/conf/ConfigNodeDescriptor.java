@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBa
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.NodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,7 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+            .updateRpcInstance(conf.getClusterName(), NodeType.CONFIGNODE);
       }
     } else {
       LOGGER.warn(
@@ -215,6 +216,20 @@ public class ConfigNodeDescriptor {
                     "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
                 .trim()));
 
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDefaultSchemaRegionGroupNumPerDatabase(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "default_schema_region_group_num_per_database",
+                    String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase()))
+                .trim()));
+
     conf.setSchemaRegionPerDataNode(
         Double.parseDouble(
             properties
@@ -223,41 +238,24 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
-    conf.setSchemaRegionGroupExtensionPolicy(
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "schema_region_group_extension_policy",
-                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
-
-    conf.setSchemaRegionGroupPerDatabase(
-        Integer.parseInt(
-            properties.getProperty(
-                "schema_region_group_per_database",
-                String.valueOf(conf.getSchemaRegionGroupPerDatabase()).trim())));
-
     conf.setDataRegionGroupExtensionPolicy(
         RegionGroupExtensionPolicy.parse(
             properties.getProperty(
                 "data_region_group_extension_policy",
                 conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
 
-    conf.setDataRegionGroupPerDatabase(
+    conf.setDefaultDataRegionGroupNumPerDatabase(
         Integer.parseInt(
             properties.getProperty(
-                "data_region_group_per_database",
-                String.valueOf(conf.getDataRegionGroupPerDatabase()).trim())));
+                "default_data_region_group_num_per_database",
+                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
-    conf.setDataRegionPerProcessor(
+    conf.setDataRegionPerDataNode(
         Double.parseDouble(
             properties
                 .getProperty(
-                    "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
+                    "data_region_per_data_node", String.valueOf(conf.getDataRegionPerDataNode()))
                 .trim()));
-
-    conf.setLeastDataRegionGroupNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "least_data_region_group_num", String.valueOf(conf.getLeastDataRegionGroupNum()))));
 
     try {
       conf.setRegionAllocateStrategy(
@@ -308,6 +306,22 @@ public class ConfigNodeDescriptor {
                     "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
                 .trim()));
 
+    conf.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
+                .trim()));
+
+    conf.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
+                .trim()));
+
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()).trim());
@@ -315,6 +329,8 @@ public class ConfigNodeDescriptor {
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
 
     conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
+
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
 
     conf.setTimePartitionInterval(
         Long.parseLong(
@@ -742,6 +758,22 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_ratis_log_max_size",
                     String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
+
+    conf.setEnablePrintingNewlyCreatedPartition(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_printing_newly_created_partition",
+                    String.valueOf(conf.isEnablePrintingNewlyCreatedPartition()))
+                .trim()));
+
+    conf.setForceWalPeriodForConfigNodeSimpleInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "force_wal_period_for_confignode_simple_in_ms",
+                    String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
                 .trim()));
   }
 

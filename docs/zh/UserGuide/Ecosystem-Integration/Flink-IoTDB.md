@@ -36,6 +36,7 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成。此模块包含�
 - Flink 使用 `IoTDBSink` 消费产生的数据并写入 IoTDB 。
 
   ```java
+  import org.apache.iotdb.flink.options.IoTDBSinkOptions;
   import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
   import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
   import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -54,18 +55,17 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成。此模块包含�
       // run the flink job on local mini cluster
       StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
   
-      IoTDBOptions options = new IoTDBOptions();
+      IoTDBSinkOptions options = new IoTDBSinkOptions();
       options.setHost("127.0.0.1");
       options.setPort(6667);
       options.setUser("root");
       options.setPassword("root");
-      options.setStorageGroup("root.sg");
   
       // If the server enables auto_create_schema, then we do not need to register all timeseries
       // here.
       options.setTimeseriesOptionList(
           Lists.newArrayList(
-              new IoTDBOptions.TimeseriesOption(
+              new IoTDBSinkOptions.TimeseriesOption(
                   "root.sg.d1.s1", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY)));
   
       IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
@@ -73,7 +73,7 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成。此模块包含�
           new IoTDBSink(options, serializationSchema)
               // enable batching
               .withBatchSize(10)
-              // how many connectons to the server will be created for each parallelism
+              // how many connections to the server will be created for each parallelism
               .withSessionPoolSize(3);
   
       env.addSource(new SensorSource())

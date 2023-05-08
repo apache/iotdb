@@ -25,7 +25,6 @@ import java.net.Socket;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 /** Client Session is the only identity for a connection. */
 public class ClientSession extends IClientSession {
@@ -44,7 +43,7 @@ public class ClientSession extends IClientSession {
   }
 
   @Override
-  int getClientPort() {
+  public int getClientPort() {
     return clientSocket.getPort();
   }
 
@@ -65,7 +64,7 @@ public class ClientSession extends IClientSession {
 
   @Override
   public void addStatementId(long statementId) {
-    statementIdToQueryId.computeIfAbsent(statementId, sid -> new CopyOnWriteArraySet<>());
+    statementIdToQueryId.computeIfAbsent(statementId, sid -> ConcurrentHashMap.newKeySet());
   }
 
   @Override

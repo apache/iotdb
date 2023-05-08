@@ -106,13 +106,22 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
+    TTsFilePieceReq loadTsFileReq = null;
+
     for (TDataNodeLocation dataNodeLocation :
         instance.getRegionReplicaSet().getDataNodeLocations()) {
       TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        dispatchRemote(instance, endPoint);
+        if (loadTsFileReq == null) {
+          loadTsFileReq =
+              new TTsFilePieceReq(
+                  instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
+                  uuid,
+                  instance.getRegionReplicaSet().getRegionId());
+        }
+        dispatchRemote(loadTsFileReq, endPoint);
       }
     }
   }
@@ -121,15 +130,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
-  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
+  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      TTsFilePieceReq loadTsFileReq =
-          new TTsFilePieceReq(
-              instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
-              uuid,
-              instance.getRegionReplicaSet().getRegionId());
       TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
         logger.warn(loadResp.message);
@@ -138,7 +142,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -165,7 +169,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
-    } else if (planNode instanceof LoadSingleTsFileNode) { // do not need split
+    } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       try {
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
@@ -225,7 +229,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage(
           "can't connect to node {}, please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
               + endPoint);

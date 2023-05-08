@@ -20,8 +20,7 @@ package org.apache.iotdb.db.engine.compaction.schedule;
 
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionTaskStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.jetbrains.annotations.NotNull;
@@ -55,10 +54,10 @@ public class CompactionWorker implements Runnable {
           log.warn("CompactionThread-{} terminates because interruption", threadId);
           return;
         }
+        CompactionMetricsManager.getInstance()
+            .reportPollTaskFromWaitingQueue(task.isCrossTask(), task.isInnerSeqTask());
         if (task != null) {
           // add metrics
-          CompactionMetricsRecorder.recordTaskInfo(
-              task, CompactionTaskStatus.POLL_FROM_QUEUE, compactionTaskQueue.size());
           if (task.checkValidAndSetMerging()) {
             CompactionTaskSummary summary = task.getSummary();
             CompactionTaskFuture future = new CompactionTaskFuture(summary);

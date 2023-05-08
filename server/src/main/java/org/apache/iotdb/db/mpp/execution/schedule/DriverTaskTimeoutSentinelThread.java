@@ -73,7 +73,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
         "[DriverTaskTimeout] Current time is {}, ddl of task is {}",
         System.currentTimeMillis(),
         task.getDDL());
-    task.setAbortCause(FragmentInstanceAbortedException.BY_TIMEOUT);
+    task.setAbortCause(DriverTaskAbortedException.BY_TIMEOUT);
     scheduler.toAborted(task);
   }
 }

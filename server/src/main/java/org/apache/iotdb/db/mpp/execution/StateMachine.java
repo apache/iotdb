@@ -269,12 +269,10 @@ public class StateMachine<T> {
   public void addStateChangeListener(StateChangeListener<T> stateChangeListener) {
     requireNonNull(stateChangeListener, "stateChangeListener is null");
 
-    boolean inTerminalState;
     T currentState;
     synchronized (lock) {
       currentState = state;
-      inTerminalState = isTerminalState(currentState);
-      if (!inTerminalState) {
+      if (!isTerminalState(currentState)) {
         stateChangeListeners.add(stateChangeListener);
       }
     }

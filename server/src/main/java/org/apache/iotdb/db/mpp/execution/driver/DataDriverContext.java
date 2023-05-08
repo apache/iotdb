@@ -19,46 +19,59 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** TODO Add javadoc for context */
 public class DataDriverContext extends DriverContext {
+
   private final List<PartialPath> paths;
-  private final Filter timeFilter;
-  private final IDataRegionForQuery dataRegion;
   private final List<DataSourceOperator> sourceOperators;
 
-  public DataDriverContext(
-      FragmentInstanceContext fragmentInstanceContext,
-      List<PartialPath> paths,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegion,
-      List<DataSourceOperator> sourceOperators) {
-    super(fragmentInstanceContext);
-    this.paths = paths;
-    this.timeFilter = timeFilter;
-    this.dataRegion = dataRegion;
-    this.sourceOperators = sourceOperators;
+  public DataDriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
+    super(fragmentInstanceContext, pipelineId);
+    this.paths = new ArrayList<>();
+    this.sourceOperators = new ArrayList<>();
+  }
+
+  public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
+    super(parentContext.getFragmentInstanceContext(), pipelineId);
+    this.paths = new ArrayList<>();
+    this.sourceOperators = new ArrayList<>();
+  }
+
+  public void addPath(PartialPath path) {
+    this.paths.add(path);
+  }
+
+  public void addSourceOperator(DataSourceOperator sourceOperator) {
+    this.sourceOperators.add(sourceOperator);
   }
 
   public List<PartialPath> getPaths() {
     return paths;
   }
 
-  public Filter getTimeFilter() {
-    return timeFilter;
+  public IDataRegionForQuery getDataRegion() {
+    return getFragmentInstanceContext().getDataRegion();
   }
 
-  public IDataRegionForQuery getDataRegion() {
-    return dataRegion;
+  public QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
+    return getFragmentInstanceContext().getSharedQueryDataSource();
   }
 
   public List<DataSourceOperator> getSourceOperators() {
     return sourceOperators;
+  }
+
+  @Override
+  public DriverContext createSubDriverContext(int pipelineId) {
+    return new DataDriverContext(this, pipelineId);
   }
 }

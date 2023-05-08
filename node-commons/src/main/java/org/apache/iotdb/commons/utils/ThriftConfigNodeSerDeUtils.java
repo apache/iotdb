@@ -20,8 +20,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -66,8 +66,8 @@ public class ThriftConfigNodeSerDeUtils {
     return new TBinaryProtocol(tioStreamTransport);
   }
 
-  public static void serializeTStorageGroupSchema(
-      TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
+  public static void serializeTDatabaseSchema(
+      TDatabaseSchema storageGroupSchema, ByteBuffer buffer) {
     try {
       storageGroupSchema.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -75,8 +75,8 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TStorageGroupSchema deserializeTStorageGroupSchema(ByteBuffer buffer) {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+  public static TDatabaseSchema deserializeTDatabaseSchema(ByteBuffer buffer) {
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(buffer));
     } catch (TException e) {
@@ -85,8 +85,8 @@ public class ThriftConfigNodeSerDeUtils {
     return storageGroupSchema;
   }
 
-  public static void serializeTStorageGroupSchema(
-      TStorageGroupSchema storageGroupSchema, OutputStream outputStream) {
+  public static void serializeTDatabaseSchema(
+      TDatabaseSchema storageGroupSchema, OutputStream outputStream) {
     try {
       storageGroupSchema.write(generateWriteProtocol(outputStream));
     } catch (TException e) {
@@ -94,8 +94,8 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TStorageGroupSchema deserializeTStorageGroupSchema(InputStream inputStream) {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+  public static TDatabaseSchema deserializeTDatabaseSchema(InputStream inputStream) {
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(inputStream));
     } catch (TException e) {

@@ -29,16 +29,18 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.rpc.ConfigurableTByteBuffer;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerDeUtils {
@@ -55,13 +57,13 @@ public class ThriftCommonsSerDeUtils {
 
   private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TByteBuffer(buffer);
+    TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
   private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TByteBuffer(buffer);
+    TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
@@ -81,6 +83,25 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TEndPoint failed: ", e);
     }
     return endPoint;
+  }
+
+  public static void serializeTDataNodeConfiguration(
+      TDataNodeConfiguration dataNodeConfiguration, DataOutputStream stream) {
+    try {
+      dataNodeConfiguration.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+    }
+  }
+
+  public static TDataNodeConfiguration deserializeTDataNodeConfiguration(ByteBuffer buffer) {
+    TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
+    try {
+      dataNodeConfiguration.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TDataNodeConfiguration failed: ", e);
+    }
+    return dataNodeConfiguration;
   }
 
   public static void serializeTDataNodeLocation(
@@ -258,5 +279,10 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TSchemaNode failed: ", e);
     }
     return schemaNode;
+  }
+
+  private static ConfigurableTByteBuffer generateTByteBuffer(ByteBuffer buffer)
+      throws TTransportException {
+    return new ConfigurableTByteBuffer(buffer, defaultTConfiguration);
   }
 }

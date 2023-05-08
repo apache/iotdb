@@ -83,6 +83,7 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
   private static final String TIME_ENCODER_KEY = "time_encoder";
 
+  // Immutable system parameters
   private static final Map<String, Supplier<String>> constantParamValueTable = new HashMap<>();
 
   static {
@@ -116,6 +117,7 @@ public class IoTDBStartCheck {
   private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
+  // Mutable system parameters
   private static final Map<String, Supplier<String>> variableParamValueTable = new HashMap<>();
 
   static {
@@ -304,6 +306,12 @@ public class IoTDBStartCheck {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
+      if (config.isClusterMode()
+          && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && config.getWalMode().equals(WALMode.DISABLE)) {
+        throw new ConfigurationException(
+            "Configuring the WALMode as disable is not supported under IoTConsensus");
+      }
     } else {
       // check whether upgrading from <=v0.9
       if (!properties.containsKey(IOTDB_VERSION_STRING)) {
@@ -321,7 +329,7 @@ public class IoTDBStartCheck {
         checkWALNotExists();
         upgradePropertiesFile();
       }
-      checkProperties();
+      checkImmutableSystemProperties();
     }
   }
 
@@ -406,7 +414,7 @@ public class IoTDBStartCheck {
   }
 
   /** Check all immutable properties */
-  private void checkProperties() throws ConfigurationException, IOException {
+  private void checkImmutableSystemProperties() throws ConfigurationException, IOException {
     for (Entry<String, Supplier<String>> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
@@ -441,7 +449,10 @@ public class IoTDBStartCheck {
 
   private void throwException(String parameter, Object badValue) throws ConfigurationException {
     throw new ConfigurationException(
-        parameter, String.valueOf(badValue), properties.getProperty(parameter));
+        parameter,
+        String.valueOf(badValue),
+        properties.getProperty(parameter),
+        parameter + "can't be modified after first startup");
   }
 
   // reload properties from system.properties
@@ -519,5 +530,21 @@ public class IoTDBStartCheck {
 
     logger.error("Unexpected consensus group type");
     return false;
+  }
+
+  public void serializeMutableSystemPropertiesIfNecessary() throws IOException {
+    boolean needsSerialize = false;
+    for (String param : variableParamValueTable.keySet()) {
+      if (!(properties.getProperty(param).equals(getVal(param)))) {
+        needsSerialize = true;
+      }
+    }
+
+    if (needsSerialize) {
+      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+      }
+    }
   }
 }

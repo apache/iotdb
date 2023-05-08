@@ -27,7 +27,7 @@ It is useful for connections with remote locations where a small code footprint 
 IoTDB supports the MQTT v3.1(an OASIS Standard) protocol.
 IoTDB server includes a built-in MQTT service that allows remote devices send messages into IoTDB server directly.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 
 ### Built-in MQTT Service
@@ -56,7 +56,7 @@ or
 ```
 or json array of the above two.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT Configurations
 The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties` by default.
@@ -66,7 +66,7 @@ Configurations are as follows:
 | NAME        | DESCRIPTION           | DEFAULT  |
 | ------------- |:-------------:|:------:|
 | enable_mqtt_service      | whether to enable the mqtt service | false |
-| mqtt_host      | the mqtt service binding host | 0.0.0.0 |
+| mqtt_host      | the mqtt service binding host | 127.0.0.1 |
 | mqtt_port      | the mqtt service binding port    |   1883 |
 | mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
 | mqtt_payload_formatter | the mqtt message payload formatter     |    json |
@@ -112,10 +112,10 @@ Steps:
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>${project.version}</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 ```
-* Define your implementation which implements `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
+* Define your implementation which implements `org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`
 e.g.,
 
 ```java
@@ -162,7 +162,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     }
 }
 ```
-* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter`:
+* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`:
   clean the file and put your implementation class name into the file.
   In this example, the content is: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * compile your implementation as a jar file: `mvn package -DskipTests`

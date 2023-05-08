@@ -22,11 +22,14 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
@@ -68,6 +72,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,7 +94,8 @@ public class ColumnTransformerVisitor
   @Override
   public ColumnTransformer visitUnaryExpression(
       UnaryExpression unaryExpression, ColumnTransformerVisitorContext context) {
-    if (!context.cache.containsKey(unaryExpression)) {
+    if (!context.cache.containsKey(unaryExpression)
+        && !generateIdentityColumnTransformerIfPossible(unaryExpression, context)) {
       if (context.hasSeen.containsKey(unaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
@@ -120,7 +126,8 @@ public class ColumnTransformerVisitor
   @Override
   public ColumnTransformer visitBinaryExpression(
       BinaryExpression binaryExpression, ColumnTransformerVisitorContext context) {
-    if (!context.cache.containsKey(binaryExpression)) {
+    if (!context.cache.containsKey(binaryExpression)
+        && !generateIdentityColumnTransformerIfPossible(binaryExpression, context)) {
       if (context.hasSeen.containsKey(binaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
@@ -155,7 +162,8 @@ public class ColumnTransformerVisitor
   @Override
   public ColumnTransformer visitTernaryExpression(
       TernaryExpression ternaryExpression, ColumnTransformerVisitorContext context) {
-    if (!context.cache.containsKey(ternaryExpression)) {
+    if (!context.cache.containsKey(ternaryExpression)
+        && !generateIdentityColumnTransformerIfPossible(ternaryExpression, context)) {
       if (context.hasSeen.containsKey(ternaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
@@ -194,7 +202,8 @@ public class ColumnTransformerVisitor
   public ColumnTransformer visitFunctionExpression(
       FunctionExpression functionExpression, ColumnTransformerVisitorContext context) {
     List<Expression> expressions = functionExpression.getExpressions();
-    if (!context.cache.containsKey(functionExpression)) {
+    if (!context.cache.containsKey(functionExpression)
+        && !generateIdentityColumnTransformerIfPossible(functionExpression, context)) {
       if (context.hasSeen.containsKey(functionExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
@@ -218,6 +227,9 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
+        } else if (functionExpression.isBuiltInScalarFunction()) {
+          context.cache.put(
+              functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -233,7 +245,7 @@ public class ColumnTransformerVisitor
           // Mappable UDF does not need PointCollector, so memoryBudget and queryId is not
           // needed.
           executor.beforeStart(
-              0,
+              String.valueOf(0),
               0,
               expressions.stream().map(Expression::toString).collect(Collectors.toList()),
               expressions.stream().map(context::getType).collect(Collectors.toList()),
@@ -252,6 +264,14 @@ public class ColumnTransformerVisitor
     ColumnTransformer res = context.cache.get(functionExpression);
     res.addReferenceCount();
     return res;
+  }
+
+  private ColumnTransformer getBuiltInScalarFunctionTransformer(
+      FunctionExpression expression, ColumnTransformerVisitorContext context) {
+    ColumnTransformer childColumnTransformer =
+        this.process(expression.getExpressions().get(0), context);
+    return BuiltInScalarFunctionHelperFactory.createHelper(expression.getFunctionName())
+        .getBuiltInScalarFunctionColumnTransformer(expression, childColumnTransformer);
   }
 
   @Override
@@ -323,6 +343,70 @@ public class ColumnTransformerVisitor
             });
     res.addReferenceCount();
     return res;
+  }
+
+  @Override
+  public ColumnTransformer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, ColumnTransformerVisitorContext context) {
+    if (!context.cache.containsKey(caseWhenThenExpression)
+        && !generateIdentityColumnTransformerIfPossible(caseWhenThenExpression, context)) {
+      if (context.hasSeen.containsKey(caseWhenThenExpression)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(caseWhenThenExpression);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(context.getType(caseWhenThenExpression));
+        context.cache.put(caseWhenThenExpression, identity);
+      } else {
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
+        for (WhenThenExpression whenThenExpression :
+            caseWhenThenExpression.getWhenThenExpressions()) {
+          whenList.add(this.process(whenThenExpression.getWhen(), context));
+          thenList.add(this.process(whenThenExpression.getThen(), context));
+        }
+        ColumnTransformer elseColumnTransformer =
+            this.process(caseWhenThenExpression.getElseExpression(), context);
+        context.cache.put(
+            caseWhenThenExpression,
+            new CaseWhenThenColumnTransformer(
+                TypeFactory.getType(context.getType(caseWhenThenExpression)),
+                whenList,
+                thenList,
+                elseColumnTransformer));
+      }
+    }
+
+    ColumnTransformer res = context.cache.get(caseWhenThenExpression);
+    res.addReferenceCount();
+    return res;
+  }
+
+  /**
+   * the input could be calculated expressions that we can use directly and we do not need to do
+   * further calculation if so
+   *
+   * @return true if the expression has been calculated
+   */
+  private boolean generateIdentityColumnTransformerIfPossible(
+      Expression expression, ColumnTransformerVisitorContext context) {
+    List<InputLocation> inputLocations =
+        context.inputLocations.get(expression.getExpressionString());
+    if (inputLocations != null) {
+      IdentityColumnTransformer identity =
+          new IdentityColumnTransformer(
+              TypeFactory.getType(context.getType(expression)),
+              inputLocations.get(0).getValueColumnIndex());
+      // add to leafList
+      context.leafList.add(identity);
+      context.cache.put(expression, identity);
+      return true;
+    }
+    return false;
   }
 
   private ColumnTransformer getConcreteUnaryColumnTransformer(

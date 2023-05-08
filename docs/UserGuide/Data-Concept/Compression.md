@@ -35,6 +35,10 @@ IoTDB allows you to specify the compression method of the column when creating a
 
 * GZIP
 
+* ZSTD
+
+* LZMA2
+
 The specified syntax for compression is detailed in [Create Timeseries Statement](../Reference/SQL-Reference.md).
 
 ## Compression Ratio Statistics

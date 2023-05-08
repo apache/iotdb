@@ -23,6 +23,7 @@ options { tokenVocab=SqlLexer; }
 
 identifier
      : keyWords
+     | DURATION_LITERAL
      | ID
      | QUOTED_ID
      ;
@@ -43,16 +44,19 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AUTO
     | BEFORE
     | BEGIN
     | BLOCKED
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONDITION
     | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
@@ -72,12 +76,14 @@ keyWords
     | DESC
     | DESCRIBE
     | DEVICE
+    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
     | DISCARD
     | DROP
     | ELAPSEDTIME
+    | ELSE
     | END
     | ENDTIME
     | EVERY
@@ -113,6 +119,8 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MODEL
+    | MODELS
     | NODES
     | NONE
     | NOW
@@ -130,16 +138,20 @@ keyWords
     | PIPESINK
     | PIPESINKS
     | PIPESINKTYPE
+    | PIPEPLUGIN
+    | PIPEPLUGINS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
+    | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROPERTY
     | PRUNE
     | QUERIES
     | QUERY
     | QUERYID
+    | QUOTA
     | RANGE
     | READONLY
     | REGEXP
@@ -149,18 +161,22 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
+    | ROUND
     | RUNNING
     | SCHEMA
     | SELECT
     | SERIESSLOTID
+    | SESSION
     | SET
     | SETTLE
     | SGLEVEL
     | SHOW
     | SLIMIT
     | SOFFSET
+    | SPACE
     | STORAGE
     | START
     | STARTTIME
@@ -168,10 +184,13 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTRING
     | SYSTEM
     | TAGS
     | TASK
     | TEMPLATE
+    | THEN
+    | THROTTLE
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID
@@ -179,6 +198,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
+    | TRAILS
     | TRIGGER
     | TRIGGERS
     | TTL
@@ -191,11 +211,12 @@ keyWords
     | USER
     | USING
     | VALUES
+    | VARIATION
     | VERIFY
     | VERSION
+    | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
-    | PRIVILEGE_VALUE
     ;

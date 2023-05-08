@@ -34,7 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -43,8 +43,9 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -61,14 +62,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DataNodeInternalRPCServiceImplTest {
+
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
-  static LocalConfigNode configNode;
   private static final int dataNodeId = 0;
 
   @BeforeClass
@@ -76,9 +78,9 @@ public class DataNodeInternalRPCServiceImplTest {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
-    LocalConfigNode.getInstance().init();
-    configNode = LocalConfigNode.getInstance();
-    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
+    SchemaEngine.getInstance().init();
+    SchemaEngine.getInstance()
+        .createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
     DataRegionConsensusImpl.setupAndGetInstance().start();
     SchemaRegionConsensusImpl.setupAndGetInstance().start();
     DataNodeRegionManager.getInstance().init();
@@ -108,7 +110,7 @@ public class DataNodeInternalRPCServiceImplTest {
     DataNodeRegionManager.getInstance().clear();
     DataRegionConsensusImpl.getInstance().stop();
     SchemaRegionConsensusImpl.getInstance().stop();
-    LocalConfigNode.getInstance().clear();
+    SchemaEngine.getInstance().clear();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -146,16 +148,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendSinglePlanNodeReq request = new TSendSinglePlanNodeReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendBatchPlanNodeResp response =
+        dataNodeInternalRPCServiceImpl.sendBatchPlanNode(
+            new TSendBatchPlanNodeReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   @Test
@@ -222,16 +226,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createAlignedTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendSinglePlanNodeReq request = new TSendSinglePlanNodeReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendBatchPlanNodeResp response =
+        dataNodeInternalRPCServiceImpl.sendBatchPlanNode(
+            new TSendBatchPlanNodeReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   @Test
@@ -309,16 +315,18 @@ public class DataNodeInternalRPCServiceImplTest {
     ByteBuffer byteBuffer = createMultiTimeSeriesNode.serializeToByteBuffer();
 
     // put serialized planNode to TSendPlanNodeReq
-    TSendPlanNodeReq request = new TSendPlanNodeReq();
+    TSendSinglePlanNodeReq request = new TSendSinglePlanNodeReq();
     TPlanNode tPlanNode = new TPlanNode();
     tPlanNode.setBody(byteBuffer);
     request.setPlanNode(tPlanNode);
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
+    TSendBatchPlanNodeResp response =
+        dataNodeInternalRPCServiceImpl.sendBatchPlanNode(
+            new TSendBatchPlanNodeReq(Collections.singletonList(request)));
 
-    Assert.assertTrue(response.accepted);
+    Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
   private TRegionReplicaSet genRegionReplicaSet() {

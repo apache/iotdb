@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -48,7 +49,12 @@ public class AuthorityChecker {
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
-  private AuthorityChecker() {}
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
+  private AuthorityChecker() {
+    // empty constructor
+  }
 
   /**
    * check permission(datanode to confignode).
@@ -74,13 +80,13 @@ public class AuthorityChecker {
       return true;
     }
 
-    List<String> allPath = new ArrayList<>();
+    List<PartialPath> allPath = new ArrayList<>();
     if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
-        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath());
+        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
       }
     } else {
-      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
+      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
@@ -90,8 +96,8 @@ public class AuthorityChecker {
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {
-      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
-      if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
+      PartialPath newPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path;
+      if (authorizerManager.checkUserPrivileges(username, newPath, permission)) {
         return true;
       }
     } catch (AuthException e) {
@@ -103,6 +109,7 @@ public class AuthorityChecker {
 
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+    long startTime = System.nanoTime();
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
@@ -117,6 +124,8 @@ public class AuthorityChecker {
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -159,7 +168,7 @@ public class AuthorityChecker {
         return PrivilegeType.GRANT_USER_ROLE.ordinal();
       case REVOKE_USER_ROLE:
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
-      case SET_STORAGE_GROUP:
+      case STORAGE_GROUP_SCHEMA:
       case TTL:
         return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
@@ -231,6 +240,22 @@ public class AuthorityChecker {
         return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       case SHOW_CONTINUOUS_QUERIES:
         return PrivilegeType.SHOW_CONTINUOUS_QUERIES.ordinal();
+      case CREATE_PIPEPLUGIN:
+        return PrivilegeType.CREATE_PIPEPLUGIN.ordinal();
+      case DROP_PIPEPLUGIN:
+        return PrivilegeType.DROP_PIPEPLUGIN.ordinal();
+      case SHOW_PIPEPLUGINS:
+        return PrivilegeType.SHOW_PIPEPLUGINS.ordinal();
+      case CREATE_PIPE:
+        return PrivilegeType.CREATE_PIPE.ordinal();
+      case START_PIPE:
+        return PrivilegeType.START_PIPE.ordinal();
+      case STOP_PIPE:
+        return PrivilegeType.STOP_PIPE.ordinal();
+      case DROP_PIPE:
+        return PrivilegeType.DROP_PIPE.ordinal();
+      case SHOW_PIPES:
+        return PrivilegeType.SHOW_PIPES.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

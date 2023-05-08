@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.isession.ISession;
@@ -76,7 +75,6 @@ public class IoTDBSessionSimpleIT {
 
   @Before
   public void setUp() throws Exception {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -1284,13 +1282,13 @@ public class IoTDBSessionSimpleIT {
       session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
 
       // excepted
-      String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT", "BOOLEAN"};
+      String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT"};
       String[] excepted = {
-        "0\t0\t1\t0.0\t0.0\ttrue\ttrue",
-        "2\t1\t2\t1.0\t2.0\tfalse\ttrue",
-        "4\t2\t3\t2.0\t4.0\ttrue\ttrue",
-        "6\t3\t4\t3.0\t6.0\tfalse\ttrue",
-        "8\t4\t5\t4.0\t8.0\ttrue\ttrue"
+        "0\t0\t1\t0.0\t0.0\ttrue",
+        "2\t1\t2\t1.0\t2.0\tfalse",
+        "4\t2\t3\t2.0\t4.0\ttrue",
+        "6\t3\t4\t3.0\t6.0\tfalse",
+        "8\t4\t5\t4.0\t8.0\ttrue"
       };
 
       // query

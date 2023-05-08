@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -44,7 +43,6 @@ import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -72,7 +70,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -120,35 +117,6 @@ public class WALRecoverManagerTest {
     config.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     checkpointManager = new CheckpointManager(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(SG_NAME));
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath(DEVICE1_NAME.concat(".s1")),
-            TSDataType.INT32,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath(DEVICE1_NAME.concat(".s2")),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath(DEVICE2_NAME.concat(".s1")),
-            TSDataType.FLOAT,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath(DEVICE2_NAME.concat(".s2")),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
   }
 
   @After

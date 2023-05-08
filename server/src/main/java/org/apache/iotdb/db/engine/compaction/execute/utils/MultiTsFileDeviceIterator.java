@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  private final List<TsFileResource> tsFileResources;
+
+  // sort from the newest to the oldest by version (Used by FastPerformer and ReadPointPerformer)
+  private final List<TsFileResource> tsFileResourcesSortedByDesc;
+
+  // sort from the oldest to the newest by version (Used by ReadChunkPerformer)
+  private List<TsFileResource> tsFileResourcesSortedByAsc;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
@@ -55,11 +61,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
-    this.tsFileResources = new ArrayList<>(tsFileResources);
+    this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
+    this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
-    Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
+    Collections.sort(this.tsFileResourcesSortedByAsc, TsFileResource::compareFileName);
+    // sort the files from the newest to the oldest
+    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
     try {
-      for (TsFileResource tsFileResource : this.tsFileResources) {
+      for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
@@ -77,11 +86,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /** Used for cross space compaction with read point performer. */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
-    this.tsFileResources = new ArrayList<>(seqResources);
-    tsFileResources.addAll(unseqResources);
+    this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
+    tsFileResourcesSortedByDesc.addAll(unseqResources);
     // sort the files from the newest to the oldest
-    Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
-    for (TsFileResource tsFileResource : tsFileResources) {
+    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
+    for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
       readerMap.put(tsFileResource, reader);
@@ -95,12 +104,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TsFileResource> unseqResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
-    this.tsFileResources = new ArrayList<>(seqResources);
-    tsFileResources.addAll(unseqResources);
+    this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
+    tsFileResourcesSortedByDesc.addAll(unseqResources);
     // sort tsfiles from the newest to the oldest
-    Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
+    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
     this.readerMap = readerMap;
-    for (TsFileResource tsFileResource : tsFileResources) {
+    for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
@@ -113,7 +122,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       hasNext =
           hasNext
               || iterator.hasNext()
-              || (iterator.current() != null && !iterator.current().equals(currentDevice));
+              || (iterator.current() != null
+                  && !iterator.current().left.equals(currentDevice.left));
     }
     return hasNext;
   }
@@ -126,9 +136,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Pair<String, Boolean> nextDevice() {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<String, Boolean> minDevice = null;
-    for (TsFileResource resource : deviceIteratorMap.keySet()) {
+    // get the device from source files sorted from the newest to the oldest by version
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
+      if (!deviceIteratorMap.containsKey(resource)) {
+        continue;
+      }
       TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
-      if (deviceIterator.current() == null || deviceIterator.current().equals(currentDevice)) {
+      if (deviceIterator.current() == null
+          || deviceIterator.current().left.equals(currentDevice.left)) {
+        // if current file has same device with current device, then get its next device
         if (deviceIterator.hasNext()) {
           deviceIterator.next();
         } else {
@@ -139,6 +155,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
       }
       if (minDevice == null || minDevice.left.compareTo(deviceIterator.current().left) > 0) {
+        // get the device that is minimal in lexicographical order according to the all files
         minDevice = deviceIterator.current();
       }
     }
@@ -158,7 +175,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
-    for (TsFileResource resource : tsFileResources) {
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
@@ -181,7 +198,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
       }
     }
-    schemaMap.remove("");
     return schemaMap;
   }
 
@@ -195,7 +211,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
-    for (TsFileResource resource : tsFileResources) {
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
@@ -231,8 +247,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
-        timeseriesMetadataOffsetMap = new HashMap<>();
-    for (TsFileResource resource : tsFileResources) {
+        timeseriesMetadataOffsetMap = new LinkedHashMap<>();
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
@@ -294,7 +310,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         new LinkedList<>();
-    for (TsFileResource tsFileResource : tsFileResources) {
+    for (TsFileResource tsFileResource : tsFileResourcesSortedByAsc) {
       if (!deviceIteratorMap.containsKey(tsFileResource)) {
         continue;
       }
@@ -361,6 +377,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
+  /*
+  NonAligned measurement iterator.
+   */
   public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
@@ -383,7 +402,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       this.device = device;
 
       if (needDeserializeTimeseries) {
-        for (TsFileResource resource : tsFileResources) {
+        for (TsFileResource resource : tsFileResourcesSortedByAsc) {
           TsFileSequenceReader reader = readerMap.get(resource);
           chunkMetadataIteratorMap.put(
               resource, reader.getMeasurementChunkMetadataListMapIterator(device));
@@ -407,12 +426,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private boolean collectSeries() {
       String lastSeries = null;
       List<String> tempCollectedSeries = new ArrayList<>();
-      for (TsFileResource resource : tsFileResources) {
+      for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
         if (chunkMetadataListMap.size() == 0) {
           if (chunkMetadataIteratorMap.get(resource).hasNext()) {
             chunkMetadataListMap = chunkMetadataIteratorMap.get(resource).next();
+            if (chunkMetadataListMap.containsKey("")) {
+              // encounter deleted aligned series, then remove it
+              chunkMetadataListMap.remove("");
+            }
             chunkMetadataCacheMap.put(reader, chunkMetadataListMap);
           } else {
             continue;
@@ -490,7 +513,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
       PartialPath path = new PartialPath(device, currentCompactingSeries);
 
-      for (TsFileResource resource : tsFileResources) {
+      for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 

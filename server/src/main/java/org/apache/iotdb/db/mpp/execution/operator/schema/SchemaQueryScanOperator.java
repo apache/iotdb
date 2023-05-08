@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,21 +33,24 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
+public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
 
   private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
+  protected PlanNodeId sourceId;
+
   protected OperatorContext operatorContext;
+
+  private final ISchemaSource<T> schemaSource;
 
   protected int limit;
   protected int offset;
   protected PartialPath partialPath;
   protected boolean isPrefixPath;
-
-  protected PlanNodeId sourceId;
 
   private String database;
 
@@ -68,11 +73,28 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
     this.isPrefixPath = isPrefixPath;
     this.sourceId = sourceId;
     this.outputDataTypes = outputDataTypes;
+    this.schemaSource = null;
   }
 
-  protected abstract ISchemaReader<T> createSchemaReader();
+  public SchemaQueryScanOperator(
+      PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
+    this.sourceId = sourceId;
+    this.operatorContext = operatorContext;
+    this.schemaSource = schemaSource;
+    this.outputDataTypes =
+        schemaSource.getInfoQueryColumnHeaders().stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+  }
 
-  protected abstract void setColumns(T element, TsBlockBuilder builder);
+  protected ISchemaReader<T> createSchemaReader() {
+    return schemaSource.getSchemaReader(
+        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
+  }
+
+  protected void setColumns(T element, TsBlockBuilder builder) {
+    schemaSource.transformToTsBlockColumns(element, builder, getDatabase());
+  }
 
   public PartialPath getPartialPath() {
     return partialPath;
@@ -104,7 +126,7 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -117,11 +139,14 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
         break;
       }
     }
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
     return tsBlockBuilder.build();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
     }
@@ -129,7 +154,7 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 
@@ -156,9 +181,9 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
   protected String getDatabase() {
     if (database == null) {
       database =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
-              .getStorageGroupFullPath();
+              .getDatabaseFullPath();
     }
     return database;
   }

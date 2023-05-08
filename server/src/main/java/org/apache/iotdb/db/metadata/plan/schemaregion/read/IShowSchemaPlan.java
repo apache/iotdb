@@ -39,9 +39,9 @@ public interface IShowSchemaPlan extends ISchemaRegionPlan {
 
   PartialPath getPath();
 
-  int getLimit();
+  long getLimit();
 
-  int getOffset();
+  long getOffset();
 
   boolean isPrefixMatch();
 }

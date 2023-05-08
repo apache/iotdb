@@ -31,7 +31,7 @@ import java.util.Objects;
 
 public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String database;
 
   private TConsensusGroupType partitionType;
 
@@ -39,14 +39,14 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.GetSeriesSlotList);
   }
 
-  public GetSeriesSlotListPlan(String storageGroup, TConsensusGroupType partitionType) {
+  public GetSeriesSlotListPlan(String database, TConsensusGroupType partitionType) {
     this();
-    this.storageGroup = storageGroup;
+    this.database = database;
     this.partitionType = partitionType;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
   public TConsensusGroupType getPartitionType() {
@@ -56,13 +56,13 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(storageGroup, stream);
+    ReadWriteIOUtils.write(database, stream);
     stream.writeInt(partitionType.ordinal());
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.storageGroup = ReadWriteIOUtils.readString(buffer);
+    this.database = ReadWriteIOUtils.readString(buffer);
     this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
   }
 
@@ -71,14 +71,14 @@ public class GetSeriesSlotListPlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     GetSeriesSlotListPlan that = (GetSeriesSlotListPlan) o;
-    return storageGroup.equals(that.storageGroup) && partitionType.equals(that.partitionType);
+    return database.equals(that.database) && partitionType.equals(that.partitionType);
   }
 
   @Override
   public int hashCode() {
     int hashcode = 1;
-    hashcode = hashcode * 31 + Objects.hash(storageGroup);
-    hashcode = hashcode * 31 + partitionType.ordinal();
+    hashcode = hashcode * 31 + Objects.hash(database);
+    hashcode = hashcode * 31 + Objects.hash(partitionType.ordinal());
     return hashcode;
   }
 }

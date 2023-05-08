@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -27,6 +28,7 @@ import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
@@ -93,10 +95,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final String testMethodName;
   protected final int[] portList;
   protected final int jmxPort;
+  protected final MppJVMConfig jvmConfig;
   private final String TAB = "  ";
   private Process instance;
-  private String node_address;
-  private int node_port;
+  private final String nodeAddress;
+  private int nodePort;
 
   /**
    * Mutable properties are always hardcoded default values to make the cluster be set up
@@ -118,16 +121,18 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
-    this.node_address = "127.0.0.1";
-    this.node_port = portList[0];
+    this.nodeAddress = "127.0.0.1";
+    this.nodePort = portList[0];
     jmxPort = this.portList[portList.length - 1];
     // these properties can't be mutated.
     immutableCommonProperties.setProperty("udf_lib_dir", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("trigger_lib_dir", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("pipe_lib_dir", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("mqtt_host", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("mqtt_port", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("rest_service_port", MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty("influxdb_rpc_port", MppBaseConfig.NULL_VALUE);
+    this.jvmConfig = initVMConfig();
   }
 
   @Override
@@ -141,11 +146,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         // ignored
       }
       // Here we need to copy without follow symbolic links, so we can't use FileUtils directly.
-      try (Stream<Path> s = Files.walk(Paths.get(this.templateNodePath))) {
+      try (Stream<Path> s = Files.walk(Paths.get(templateNodePath))) {
         s.forEach(
             source -> {
               Path destination =
-                  Paths.get(destPath, source.toString().substring(this.templateNodePath.length()));
+                  Paths.get(destPath, source.toString().substring(templateNodePath.length()));
               try {
                 Files.copy(
                     source,
@@ -201,8 +206,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
    *
    * @param nodeConfig the values mutated through {@link EnvFactory}
    * @param commonConfig the values mutated through {@link EnvFactory}.
+   * @param jvmConfig the JVM configurations need to be changed. If it's null, then nothing will be
+   *     happened.
    */
-  public final void changeConfig(MppBaseConfig nodeConfig, MppCommonConfig commonConfig) {
+  public final void changeConfig(
+      MppBaseConfig nodeConfig, MppCommonConfig commonConfig, @Nullable MppJVMConfig jvmConfig) {
     try {
       // 1. Read directly from assembled property files
       // In a config-node, the files should be iotdb-confignode.properties and
@@ -211,6 +219,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       MppBaseConfig outputNodeConfig = nodeConfig.emptyClone();
 
       // 2. Override by values which are hardcoded in mutable properties fields.
+      reloadMutableFields();
       outputCommonConfig.updateProperties(mutableCommonProperties);
       outputNodeConfig.updateProperties(mutableNodeProperties);
 
@@ -233,6 +242,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     } catch (IOException ex) {
       fail("Change the config of node failed. " + ex);
     }
+    this.jvmConfig.override(jvmConfig);
   }
 
   @Override
@@ -257,9 +267,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Dcom.sun.management.jmxremote.ssl=false",
               "-Dcom.sun.management.jmxremote.authenticate=false",
               "-Djava.rmi.server.hostname=" + getIp(),
-              "-Xms200m",
-              "-Xmx200m",
-              "-XX:MaxDirectMemorySize=200m",
+              "-Xms" + jvmConfig.getInitHeapSize() + "m",
+              "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
+              "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-cp",
               templateNodeLibPath));
@@ -284,13 +294,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return;
     }
     this.instance.destroy();
-  }
-
-  @Override
-  public void waitingToShutDown() {
-    if (this.instance == null) {
-      return;
-    }
     try {
       if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
         this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
@@ -302,16 +305,16 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public final String getIp() {
-    return this.node_address;
+    return this.nodeAddress;
   }
 
   @Override
   public final int getPort() {
-    return this.node_port;
+    return this.nodePort;
   }
 
   public void setPort(int port) {
-    this.node_port = port;
+    this.nodePort = port;
   }
 
   @Override
@@ -424,6 +427,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return testClassName + "_" + testMethodName;
   }
 
+  /* Abstract methods, which must be implemented in ConfigNode and DataNode. */
+  protected abstract void reloadMutableFields();
+
   protected abstract void renameFile();
 
   protected abstract String getTargetNodeConfigPath();
@@ -439,4 +445,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected abstract void addStartCmdParams(List<String> params);
 
   public abstract String getSystemPropertiesPath();
+
+  protected abstract MppJVMConfig initVMConfig();
 }

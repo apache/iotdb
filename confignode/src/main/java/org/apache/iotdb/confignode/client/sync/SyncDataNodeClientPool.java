@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -133,6 +135,8 @@ public class SyncDataNodeClientPool {
         return client.removeRegionPeer((TMaintainPeerReq) req);
       case DELETE_OLD_REGION_PEER:
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
+      case DELETE_MODEL_METRICS:
+        return client.deleteModelMetrics((TDeleteModelMetricsReq) req);
       default:
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -150,12 +154,13 @@ public class SyncDataNodeClientPool {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
+      Thread.currentThread().interrupt();
     }
   }
 
   /**
    * change a region leader from the datanode to other datanode, other datanode should be in same
-   * raft group
+   * raft group.
    *
    * @param regionId the region which will changer leader
    * @param dataNode data node server, change regions leader from it

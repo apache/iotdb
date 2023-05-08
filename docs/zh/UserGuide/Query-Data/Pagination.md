@@ -19,21 +19,21 @@
 
 -->
 
-# 查询结果分页
+## 查询结果分页
 
 当查询结果集数据量很大，放在一个页面不利于显示，可以使用  `LIMIT/SLIMIT` 子句和 `OFFSET/SOFFSET `子句进行分页控制。
 
 - `LIMIT` 和 `SLIMIT` 子句用于控制查询结果的行数和列数。
 - `OFFSET` 和 `SOFFSET` 子句用于控制结果显示的起始位置。
 
-## 按行分页
+### 按行分页
 
 用户可以通过 `LIMIT` 和 `OFFSET` 子句控制查询结果的行数，`LIMIT rowLimit` 指定查询结果的行数，`OFFSET rowOffset` 指定查询结果显示的起始行位置。
 
 注意：
 - 当 `rowOffset` 超过结果集的大小时，返回空结果集。
 - 当 `rowLimit` 超过结果集的大小时，返回所有查询结果。
-- 当 `rowLimit` 和 `rowOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+- 当 `rowLimit` 和 `rowOffset` 不是正整数，或超过 `INT64` 允许的最大值时，系统将提示错误。
 
 我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
 
@@ -153,7 +153,7 @@ Total line number = 4
 It costs 0.016s
 ```
 
-## 按列分页
+### 按列分页
 
 用户可以通过 `SLIMIT` 和 `SOFFSET` 子句控制查询结果的列数，`SLIMIT seriesLimit` 指定查询结果的列数，`SOFFSET seriesOffset` 指定查询结果显示的起始列位置。
 
@@ -161,7 +161,7 @@ It costs 0.016s
 - 仅用于控制值列，对时间列和设备列无效。
 - 当 `seriesOffset` 超过结果集的大小时，返回空结果集。
 - 当 `seriesLimit` 超过结果集的大小时，返回所有查询结果。
-- 当 `seriesLimit` 和 `seriesOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+- 当 `seriesLimit` 和 `seriesOffset` 不是正整数，或超过 `INT64` 允许的最大值时，系统将提示错误。
 
 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
 

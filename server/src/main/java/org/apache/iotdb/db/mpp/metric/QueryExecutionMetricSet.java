@@ -34,15 +34,10 @@ public class QueryExecutionMetricSet implements IMetricSet {
 
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
-  public static final String SCHEDULE = "schedule";
   public static final String WAIT_FOR_DISPATCH = "wait_for_dispatch";
   public static final String DISPATCH_READ = "dispatch_read";
 
   static {
-    metricInfoMap.put(
-        SCHEDULE,
-        new MetricInfo(
-            MetricType.TIMER, Metric.DISPATCHER.toString(), Tag.STAGE.toString(), SCHEDULE));
     metricInfoMap.put(
         WAIT_FOR_DISPATCH,
         new MetricInfo(

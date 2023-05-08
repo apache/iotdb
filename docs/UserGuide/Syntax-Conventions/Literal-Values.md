@@ -38,7 +38,7 @@ Usages of string literals:
 
 - Values of  `TEXT` type data in `INSERT` or `SELECT` statements 
 
-  ```SQL
+  ```sql
   # insert
   insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
   insert into root.ln.wf02.wt02(timestamp,hardware) values(2, '\\')
@@ -57,7 +57,7 @@ Usages of string literals:
 
 - Used in`LOAD` / `REMOVE` / `SETTLE` instructions to represent file path.
 
-  ```SQL
+  ```sql
   # load
   LOAD 'examplePath'
   
@@ -70,14 +70,14 @@ Usages of string literals:
 
 - Password fields in user management statements
 
-  ```SQL
+  ```sql
   # write_pwd is the password
   CREATE USER ln_write_user 'write_pwd'
   ```
 
 - Full Java class names in UDF and trigger management statements 
 
-  ```SQL
+  ```sql
   # Trigger example. Full java class names after 'AS' should be string literals.
   CREATE TRIGGER `alert-listener-sg1d1s1`
   AFTER INSERT
@@ -94,7 +94,7 @@ Usages of string literals:
 
 - `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be constant(including string) or identifier.
 
-  ```SQL
+  ```sql
   select s1 as 'temperature', s2 as 'speed' from root.ln.wf01.wt01;
   
   # Header of dataset

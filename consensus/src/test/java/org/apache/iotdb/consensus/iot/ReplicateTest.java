@@ -120,17 +120,17 @@ public class ReplicateTest {
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createPeer(group.getGroupId(), group.getPeers());
 
-    Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
-    Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(0).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(0, servers.get(1).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(0, servers.get(2).getImpl(gid).getSearchIndex());
 
     for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
       servers.get(2).write(gid, new TestEntry(i, peers.get(2)));
-      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getIndex());
-      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getIndex());
-      Assert.assertEquals(i + 1, servers.get(2).getImpl(gid).getIndex());
+      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getSearchIndex());
+      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getSearchIndex());
+      Assert.assertEquals(i + 1, servers.get(2).getImpl(gid).getSearchIndex());
     }
 
     for (int i = 0; i < 3; i++) {
@@ -163,9 +163,9 @@ public class ReplicateTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getIndex());
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(2).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(2).getImpl(gid).getSearchIndex());
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
@@ -197,14 +197,14 @@ public class ReplicateTest {
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
 
-    Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(0).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(0, servers.get(1).getImpl(gid).getSearchIndex());
 
     for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
-      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getIndex());
-      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getIndex());
+      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getSearchIndex());
+      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getSearchIndex());
     }
 
     Assert.assertEquals(0, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
@@ -219,9 +219,9 @@ public class ReplicateTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getIndex());
-    Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
+    Assert.assertEquals(0, servers.get(2).getImpl(gid).getSearchIndex());
 
     for (int i = 0; i < 2; i++) {
       long start = System.currentTimeMillis();

@@ -851,8 +851,9 @@ public class RewriteTsFileTool {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     while (readerIterator.hasNext()) {
       Tablet tablet = new Tablet(device, schemaList, MAX_TABLET_LENGTH);
-      Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-      AlignedChunkReader alignedChunkReader = chunkReaderAndChunkSize.left;
+      TsFileAlignedSeriesReaderIterator.NextAlignedChunkInfo readerInfo =
+          readerIterator.nextReader();
+      AlignedChunkReader alignedChunkReader = readerInfo.getReader();
       while (alignedChunkReader.hasNextSatisfiedPage()) {
         IBatchDataIterator batchDataIterator =
             alignedChunkReader.nextPageData().getBatchDataIterator();

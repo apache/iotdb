@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence.partition.maintainer;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -51,6 +52,8 @@ public abstract class RegionMaintainTask {
   public void setTargetDataNode(TDataNodeLocation targetDataNode) {
     this.targetDataNode = targetDataNode;
   }
+
+  public abstract TConsensusGroupId getRegionId();
 
   // Serialize interface for consensus log
   public abstract void serialize(DataOutputStream stream) throws IOException;

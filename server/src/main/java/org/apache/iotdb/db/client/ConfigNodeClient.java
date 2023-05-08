@@ -20,30 +20,35 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -54,16 +59,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -73,6 +80,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -99,26 +107,28 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -127,9 +137,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -150,7 +157,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final int RETRY_INTERVAL_MS = 1000;
 
-  private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
+  private final ThriftClientProperty property;
 
   private IConfigNodeRPCService.Iface client;
 
@@ -166,31 +173,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
+  ClientManager<ConfigRegionId, ConfigNodeClient> clientManager;
 
-  ConfigNodeRegionId configNodeRegionId = ConfigNodeInfo.configNodeRegionId;
-
-  TProtocolFactory protocolFactory;
-
-  public ConfigNodeClient() throws TException {
-    // Read config nodes from configuration
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
-    protocolFactory =
-        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
-            ? new TCompactProtocol.Factory()
-            : new TBinaryProtocol.Factory();
-
-    init();
-  }
+  ConfigRegionId configRegionId = ConfigNodeInfo.CONFIG_REGION_ID;
 
   public ConfigNodeClient(
-      TProtocolFactory protocolFactory,
-      long connectionTimeout,
-      ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager)
+      List<TEndPoint> configNodes,
+      ThriftClientProperty property,
+      ClientManager<ConfigRegionId, ConfigNodeClient> clientManager)
       throws TException {
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
-    this.protocolFactory = protocolFactory;
-    this.connectionTimeout = connectionTimeout;
+    this.configNodes = configNodes;
+    this.property = property;
     this.clientManager = clientManager;
 
     init();
@@ -211,7 +204,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // As there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
+              endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs());
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -220,7 +213,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throw new TException(e);
     }
 
-    client = new IConfigNodeRPCService.Client(protocolFactory.getProtocol(transport));
+    client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
   private void waitAndReconnect() throws TException {
@@ -283,11 +276,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void close() {
-    if (clientManager != null) {
-      clientManager.returnClient(configNodeRegionId, this);
-    } else {
-      invalidate();
-    }
+    clientManager.returnClient(configRegionId, this);
   }
 
   @Override
@@ -297,7 +286,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.configNodeRegionId);
+    clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+  }
+
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return property.isPrintLogWhenEncounterException();
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
@@ -410,12 +404,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeRegisterResp resp = client.updateDataNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
+        TSStatus status = client.reportDataNodeShutdown(dataNodeLocation);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
         }
       } catch (TException e) {
         configLeader = null;
@@ -510,10 +504,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.setStorageGroup(req);
+        TSStatus status = client.setDatabase(databaseSchema);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -531,10 +525,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
+  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroup(req);
+        TSStatus status = client.alterDatabase(databaseSchema);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -552,10 +546,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req) throws TException {
+  public TSStatus deleteDatabase(TDeleteDatabaseReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroups(req);
+        TSStatus status = client.deleteDatabase(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -573,11 +567,32 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+  public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deleteDatabases(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -595,12 +610,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -925,6 +939,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
+      throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
+  }
+
+  @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support stopConfigNode.");
   }
@@ -1146,12 +1166,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
-      throws TException {
+  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowStorageGroupResp showStorageGroupResp =
-            client.showStorageGroup(storageGroupPathPattern);
+        TShowDatabaseResp showStorageGroupResp = client.showDatabase(storageGroupPathPattern);
         if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
           return showStorageGroupResp;
         }
@@ -1395,6 +1413,85 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus createPipePlugin(TCreatePipePluginReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createPipePlugin(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropPipePlugin(TDropPipePluginReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropPipePlugin(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetPipePluginTableResp getPipePluginTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetPipePluginTableResp resp = client.getPipePluginTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetJarInListResp resp = client.getPipePluginJar(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1541,6 +1638,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.dropSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.alterSchemaTemplate(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -1820,6 +1938,26 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountTimeSlotListResp resp = client.countTimeSlotList(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
@@ -1912,64 +2050,207 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createModel(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropModel(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowModelResp resp = client.showModel(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowTrailResp resp = client.showTrail(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
-    // TODO
     throw new TException(new UnsupportedOperationException().getCause());
   }
 
-  public static class Factory extends ThriftClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
+  @Override
+  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setSpaceQuota(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSpaceQuotaResp showSpaceQuota(List<String> databases) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSpaceQuotaResp resp = client.showSpaceQuota(databases);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSpaceQuotaResp resp = client.getSpaceQuota();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setThrottleQuota(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TThrottleQuotaResp resp = client.showThrottleQuota(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TThrottleQuotaResp getThrottleQuota() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TThrottleQuotaResp resp = client.getThrottleQuota();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
+
     public Factory(
-        ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
+        ClientManager<ConfigRegionId, ConfigNodeClient> clientManager,
         ThriftClientProperty thriftClientProperty) {
       super(clientManager, thriftClientProperty);
     }
 
     @Override
     public void destroyObject(
-        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigRegionId configRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
+    public PooledObject<ConfigNodeClient> makeObject(ConfigRegionId configRegionId)
         throws Exception {
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
               ConfigNodeClient.class.getConstructor(
-                  TProtocolFactory.class, long.class, clientManager.getClass()),
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+                  List.class, thriftClientProperty.getClass(), clientManager.getClass()),
+              ConfigNodeInfo.getInstance().getLatestConfigNodes(),
+              thriftClientProperty,
               clientManager));
     }
 
     @Override
     public boolean validateObject(
-        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+        ConfigRegionId configRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+      return Optional.ofNullable(pooledObject.getObject().getTransport())
+          .map(TTransport::isOpen)
+          .orElse(false);
     }
   }
 }

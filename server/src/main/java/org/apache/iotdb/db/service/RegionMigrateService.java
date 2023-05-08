@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -34,6 +35,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -50,6 +53,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RegionMigrateService implements IService {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateService.class);
 
   public static final String REGION_MIGRATE_PROCESS = "[REGION_MIGRATE_PROCESS]";
@@ -153,6 +157,7 @@ public class RegionMigrateService implements IService {
   }
 
   private static class RegionMigratePool extends AbstractPoolManager {
+
     private final Logger poolLogger = LoggerFactory.getLogger(RegionMigratePool.class);
 
     private RegionMigratePool() {
@@ -178,6 +183,7 @@ public class RegionMigrateService implements IService {
   }
 
   private static class AddRegionPeerTask implements Runnable {
+
     private static final Logger taskLogger = LoggerFactory.getLogger(AddRegionPeerTask.class);
 
     // The RegionGroup that shall perform the add peer process
@@ -266,6 +272,7 @@ public class RegionMigrateService implements IService {
   }
 
   private static class RemoveRegionPeerTask implements Runnable {
+
     private static final Logger taskLogger = LoggerFactory.getLogger(RemoveRegionPeerTask.class);
 
     private final TConsensusGroupId tRegionId;
@@ -354,6 +361,7 @@ public class RegionMigrateService implements IService {
   }
 
   private static class DeleteOldRegionPeerTask implements Runnable {
+
     private static final Logger taskLogger = LoggerFactory.getLogger(DeleteOldRegionPeerTask.class);
 
     private final TConsensusGroupId tRegionId;
@@ -453,6 +461,7 @@ public class RegionMigrateService implements IService {
   }
 
   private static class Holder {
+
     private static final RegionMigrateService INSTANCE = new RegionMigrateService();
 
     private Holder() {}
@@ -497,9 +506,10 @@ public class RegionMigrateService implements IService {
   }
 
   private static void reportRegionMigrateResultToConfigNode(TRegionMigrateResultReportReq req)
-      throws TException {
+      throws TException, ClientManagerException {
     TSStatus status;
-    try (ConfigNodeClient client = new ConfigNodeClient()) {
+    try (ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       status = client.reportRegionMigrateResult(req);
       LOGGER.info(
           "{}, Report region {} migrate result {} to Config node succeed, result: {}",

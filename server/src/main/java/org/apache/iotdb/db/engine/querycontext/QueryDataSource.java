@@ -20,10 +20,6 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,33 +63,12 @@ public class QueryDataSource {
     return unseqResources;
   }
 
-  public void setUnSeqFileOrderIndex(int[] index) {
-    this.unSeqFileOrderIndex = index;
-  }
-
   public long getDataTTL() {
     return dataTTL;
   }
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  /** @return an updated filter concerning TTL */
-  public Filter updateFilterUsingTTL(Filter filter) {
-    return updateFilterUsingTTL(filter, dataTTL);
-  }
-
-  /** @return an updated filter concerning TTL */
-  public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
-    if (dataTTL != Long.MAX_VALUE) {
-      if (filter != null) {
-        filter = new AndFilter(filter, TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL));
-      } else {
-        filter = TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL);
-      }
-    }
-    return filter;
   }
 
   public TsFileResource getSeqResourceByIndex(int curIndex) {

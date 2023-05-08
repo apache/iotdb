@@ -42,6 +42,8 @@ public class QueryStateMachineTest {
   public void TestBasicTransition() {
     QueryStateMachine stateMachine = genQueryStateMachine();
     Assert.assertEquals(stateMachine.getState(), QueryState.QUEUED);
+    stateMachine.transitionToPlanned();
+    Assert.assertEquals(stateMachine.getState(), QueryState.PLANNED);
     stateMachine.transitionToDispatching();
     Assert.assertEquals(stateMachine.getState(), QueryState.DISPATCHING);
     stateMachine.transitionToRunning();

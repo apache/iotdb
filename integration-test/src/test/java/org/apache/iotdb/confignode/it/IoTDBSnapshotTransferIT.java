@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -143,9 +144,7 @@ public class IoTDBSnapshotTransferIT {
           registerResult.getRegionInfoList().stream()
               .filter(
                   info ->
-                      info.getConsensusGroupId()
-                          .getType()
-                          .equals(TConsensusGroupType.ConfigNodeRegion))
+                      info.getConsensusGroupId().getType().equals(TConsensusGroupType.ConfigRegion))
               .count();
       Assert.assertEquals(4, configNodeGroupCount);
     }

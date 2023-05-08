@@ -28,8 +28,6 @@ public interface BaseNodeWrapper {
 
   void stop();
 
-  void waitingToShutDown();
-
   String getIp();
 
   int getPort();

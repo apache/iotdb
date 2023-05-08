@@ -20,57 +20,25 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
-public abstract class EntityCollector<T> extends CollectorTraverser<T> {
-
-  private boolean usingTemplate = false;
-  private int schemaTemplateId = -1;
-
-  protected EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
-  }
+// TODO: set R is IDeviceSchemaInfo
+public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTraverser<R, N> {
 
   protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store, limit, offset);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+  protected R generateResult(N nextMatchedNode) {
+    return collectEntity(nextMatchedNode.getAsDeviceMNode());
   }
 
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
-    if (node.isEntity()) {
-      if (usingTemplate && schemaTemplateId != node.getSchemaTemplateId()) {
-        return false;
-      }
-      if (hasLimit) {
-        curOffset += 1;
-        if (curOffset < offset) {
-          return true;
-        }
-      }
-      collectEntity(node.getAsEntityMNode());
-      if (hasLimit) {
-        count += 1;
-      }
-    }
-    return false;
-  }
-
-  public void setSchemaTemplateFilter(int schemaTemplateId) {
-    this.usingTemplate = true;
-    this.schemaTemplateId = schemaTemplateId;
-  }
-
-  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
+  protected abstract R collectEntity(IDeviceMNode<N> node);
 }

@@ -59,7 +59,7 @@ public abstract class BinaryTransformer extends Transformer {
   }
 
   @Override
-  public YieldableState yieldValue() throws IOException, QueryProcessException {
+  public YieldableState yieldValue() throws Exception {
     final YieldableState leftYieldableState = leftPointReader.yield();
     final YieldableState rightYieldableState = rightPointReader.yield();
 
@@ -89,7 +89,7 @@ public abstract class BinaryTransformer extends Transformer {
     return YieldableState.YIELDABLE;
   }
 
-  private YieldableState yieldTime() throws IOException, QueryProcessException {
+  private YieldableState yieldTime() throws Exception {
     if (isCurrentConstant) {
       return YieldableState.YIELDABLE;
     }

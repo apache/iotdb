@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Arrays;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
@@ -39,8 +39,12 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected final String identifier;
   /** directory to store .wal files */
   protected final String logDirectory;
+  /** disk usage of this node‘s wal files */
+  protected long diskUsage = 0;
+  /** number of this node‘s wal files */
+  protected long fileNum = 0;
   /** current wal file version id */
-  protected final AtomicLong currentWALFileVersion = new AtomicLong();
+  protected volatile long currentWALFileVersion;
   /** current search index */
   protected volatile long currentSearchIndex;
   /** current wal file log writer */
@@ -55,21 +59,23 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
       logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
+    // update info
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirFile);
+    addDiskUsage(Arrays.stream(walFiles).mapToLong(File::length).sum());
+    addFileNum(walFiles.length);
     currentSearchIndex = startSearchIndex;
-    currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory,
                 WALFileUtils.getLogFileName(
-                    currentWALFileVersion.get(),
-                    currentSearchIndex,
-                    WALFileStatus.CONTAINS_SEARCH_INDEX)));
+                    startFileVersion, currentSearchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX)));
+    currentWALFileVersion = startFileVersion;
   }
 
   @Override
   public long getCurrentWALFileVersion() {
-    return currentWALFileVersion.get();
+    return currentWALFileVersion;
   }
 
   @Override
@@ -83,8 +89,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     File currentFile = currentWALFileWriter.getLogFile();
     String currentName = currentFile.getName();
     currentWALFileWriter.close();
-    WALManager.getInstance().addTotalDiskUsage(currentWALFileWriter.size());
-    WALManager.getInstance().addTotalFileNum(1);
+    addDiskUsage(currentWALFileWriter.size());
+    addFileNum(1);
     if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(
@@ -96,15 +102,43 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
       }
     }
     // roll file
+    long nextFileVersion = currentWALFileVersion + 1;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
             logDirectory,
             WALFileUtils.getLogFileName(
-                currentWALFileVersion.incrementAndGet(),
-                searchIndex,
-                WALFileStatus.CONTAINS_SEARCH_INDEX));
+                nextFileVersion, searchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX));
     currentWALFileWriter = new WALWriter(nextLogFile);
+    currentWALFileVersion = nextFileVersion;
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
+  }
+
+  public long getDiskUsage() {
+    return diskUsage;
+  }
+
+  public void addDiskUsage(long size) {
+    diskUsage += size;
+    WALManager.getInstance().addTotalDiskUsage(size);
+  }
+
+  public void subtractDiskUsage(long size) {
+    diskUsage -= size;
+    WALManager.getInstance().subtractTotalDiskUsage(size);
+  }
+
+  public long getFileNum() {
+    return fileNum;
+  }
+
+  public void addFileNum(long num) {
+    fileNum += num;
+    WALManager.getInstance().addTotalFileNum(num);
+  }
+
+  public void subtractFileNum(long num) {
+    fileNum -= num;
+    WALManager.getInstance().subtractTotalFileNum(num);
   }
 
   @Override

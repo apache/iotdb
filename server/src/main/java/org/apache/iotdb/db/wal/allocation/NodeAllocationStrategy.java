@@ -31,6 +31,9 @@ public interface NodeAllocationStrategy {
   /** Get all wal nodes */
   List<WALNode> getNodesSnapshot();
 
+  /** Get all wal nodes num */
+  int getNodesNum();
+
   @TestOnly
   void clear();
 }

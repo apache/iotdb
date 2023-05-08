@@ -22,13 +22,12 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -52,14 +51,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
 public class FastCompactionPerformer
     implements ICrossCompactionPerformer, ISeqCompactionPerformer, IUnseqCompactionPerformer {
@@ -75,17 +72,13 @@ public class FastCompactionPerformer
 
   public Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 
-  private CompactionTaskSummary summary;
-
-  private final SubCompactionTaskSummary subTaskSummary = new SubCompactionTaskSummary();
+  private FastCompactionTaskSummary subTaskSummary;
 
   private List<TsFileResource> targetFiles;
 
   public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
   private boolean isCrossCompaction;
-
-  private long tempFileSize = 0L;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -109,8 +102,7 @@ public class FastCompactionPerformer
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), targetFiles.size());
+    this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
@@ -143,11 +135,7 @@ public class FastCompactionPerformer
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         // Add temp file metrics
-        long currentTempFileSize = compactionWriter.getWriterSize();
-        TsFileMetricManager.getInstance()
-            .addCompactionTempFileSize(
-                !isCrossCompaction, !seqFiles.isEmpty(), currentTempFileSize - tempFileSize);
-        tempFileSize = currentTempFileSize;
+        subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
@@ -160,10 +148,6 @@ public class FastCompactionPerformer
       sortedSourceFiles = null;
       readerCacheMap = null;
       modificationCache = null;
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), -targetFiles.size());
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(!isCrossCompaction, !seqFiles.isEmpty(), -tempFileSize);
     }
   }
 
@@ -172,9 +156,10 @@ public class FastCompactionPerformer
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+    // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>, including
+    // empty value chunk metadata
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        new HashMap<>();
+        new LinkedHashMap<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
     // Get all value measurements and their schemas of the current device. Also get start offset and
@@ -186,13 +171,11 @@ public class FastCompactionPerformer
     // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :
         deviceIterator.getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice().entrySet()) {
-      if (!entry.getKey().equals(TIME_COLUMN_ID)) {
-        measurementSchemas.add(entry.getValue().left);
-      }
+      measurementSchemas.add(entry.getValue().left);
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
-    SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
+    FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();
     new FastCompactionPerformerSubTask(
             fastCrossCompactionWriter,
             timeseriesMetadataOffsetMap,
@@ -220,6 +203,7 @@ public class FastCompactionPerformer
         deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
 
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+    allMeasurements.sort((String::compareTo));
 
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
 
@@ -234,9 +218,9 @@ public class FastCompactionPerformer
 
     // construct sub tasks and start compacting measurements in parallel
     List<Future<Void>> futures = new ArrayList<>();
-    List<SubCompactionTaskSummary> taskSummaryList = new ArrayList<>();
+    List<FastCompactionTaskSummary> taskSummaryList = new ArrayList<>();
     for (int i = 0; i < subTaskNums; i++) {
-      SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
+      FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();
       futures.add(
           CompactionTaskManager.getInstance()
               .submitSubTask(
@@ -272,7 +256,12 @@ public class FastCompactionPerformer
 
   @Override
   public void setSummary(CompactionTaskSummary summary) {
-    this.summary = summary;
+    if (!(summary instanceof FastCompactionTaskSummary)) {
+      throw new RuntimeException(
+          "CompactionTaskSummary for FastCompactionPerformer "
+              + "should be FastCompactionTaskSummary");
+    }
+    this.subTaskSummary = (FastCompactionTaskSummary) summary;
   }
 
   @Override
@@ -282,14 +271,14 @@ public class FastCompactionPerformer
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.interrupted() || summary.isCancel()) {
+    if (Thread.interrupted() || subTaskSummary.isCancel()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));
     }
   }
 
-  public SubCompactionTaskSummary getSubTaskSummary() {
+  public FastCompactionTaskSummary getSubTaskSummary() {
     return subTaskSummary;
   }
 

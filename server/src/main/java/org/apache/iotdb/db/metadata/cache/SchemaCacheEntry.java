@@ -21,12 +21,13 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
-public class SchemaCacheEntry {
+public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   private final String storageGroup;
 
@@ -108,5 +109,20 @@ public class SchemaCacheEntry {
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
     return 100 + 2 * schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
+  }
+
+  @Override
+  public String getName() {
+    return measurementSchema.getMeasurementId();
+  }
+
+  @Override
+  public MeasurementSchema getSchema() {
+    return measurementSchema;
+  }
+
+  @Override
+  public String getAlias() {
+    return null;
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -29,8 +28,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -50,7 +47,6 @@ import org.junit.Before;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -75,7 +71,6 @@ public class SizeTieredCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    LocalConfigNode.getInstance().init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -88,7 +83,6 @@ public class SizeTieredCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -102,19 +96,6 @@ public class SizeTieredCompactionTest {
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
-    }
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
-    for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
-        PartialPath devicePath = new PartialPath(device);
-        LocalSchemaProcessor.getInstance()
-            .createTimeseries(
-                devicePath.concatNode(measurementSchema.getMeasurementId()),
-                measurementSchema.getType(),
-                measurementSchema.getEncodingType(),
-                measurementSchema.getCompressor(),
-                Collections.emptyMap());
-      }
     }
   }
 

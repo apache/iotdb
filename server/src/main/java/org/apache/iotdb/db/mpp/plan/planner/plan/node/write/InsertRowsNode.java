@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -44,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertRowsNode extends InsertNode implements BatchInsertNode {
 
@@ -122,17 +122,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree)
-      throws QueryProcessException, MetadataException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.validateAndSetSchema(schemaTree);
-      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
-      }
-    }
-  }
-
-  @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     return false;
   }
@@ -168,39 +157,20 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
-  public List<PartialPath> getDevicePaths() {
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      partialPaths.add(insertRowNode.devicePath);
-    }
-    return partialPaths;
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertRowNodeList.stream()
+        .map(InsertRowNode::getSchemaValidation)
+        .collect(Collectors.toList());
   }
 
   @Override
-  public List<String[]> getMeasurementsList() {
-    List<String[]> measurementsList = new ArrayList<>();
+  public void updateAfterSchemaValidation() throws QueryProcessException {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      measurementsList.add(insertRowNode.measurements);
+      insertRowNode.updateAfterSchemaValidation();
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
+      }
     }
-    return measurementsList;
-  }
-
-  @Override
-  public List<TSDataType[]> getDataTypesList() {
-    List<TSDataType[]> dataTypesList = new ArrayList<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      dataTypesList.add(insertRowNode.getDataTypes());
-    }
-    return dataTypesList;
-  }
-
-  @Override
-  public List<Boolean> getAlignedList() {
-    List<Boolean> alignedList = new ArrayList<>();
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      alignedList.add(insertRowNode.isAligned);
-    }
-    return alignedList;
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -260,6 +230,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // data region for insert row node
@@ -269,6 +240,8 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
                   TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
+      // collect redirectInfo
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       if (splitMap.containsKey(dataRegionReplicaSet)) {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
@@ -279,6 +252,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }
     }
+    analysis.setRedirectNodeList(redirectInfo);
 
     return new ArrayList<>(splitMap.values());
   }

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
@@ -198,7 +198,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -283,7 +283,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -370,7 +370,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -444,7 +444,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -547,7 +547,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -621,7 +621,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -698,7 +698,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -768,7 +768,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
@@ -841,7 +841,7 @@ public class FastCompactionPerformerNoAlignedTest {
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();

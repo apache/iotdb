@@ -41,7 +41,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -61,8 +61,8 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
-    return new MicrometerAutoGauge<T>(
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+    return new MicrometerAutoGauge<>(
         meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }
 
@@ -76,7 +76,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     io.micrometer.core.instrument.DistributionSummary distributionSummary =
         io.micrometer.core.instrument.DistributionSummary.builder(metricInfo.getName())
             .tags(metricInfo.getTagsInArray())
-            .publishPercentiles(0, 0.25, 0.5, 0.75, 1)
+            .publishPercentiles(0, 0.5, 0.75, 0.99, 0.999)
             .register(meterRegistry);
     return new MicrometerHistogram(distributionSummary);
   }
@@ -93,7 +93,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     io.micrometer.core.instrument.Timer timer =
         io.micrometer.core.instrument.Timer.builder(metricInfo.getName())
             .tags(metricInfo.getTagsInArray())
-            .publishPercentiles(0, 0.25, 0.5, 0.75, 1)
+            .publishPercentiles(0, 0.5, 0.75, 0.99, 0.999)
             .register(meterRegistry);
     return new MicrometerTimer(timer);
   }

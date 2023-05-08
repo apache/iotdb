@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
@@ -42,7 +41,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -75,7 +74,6 @@ public class ReadPointCompactionPerformer
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
-  private long tempFileSize = 0L;
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -103,8 +101,7 @@ public class ReadPointCompactionPerformer
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(seqFiles.isEmpty(), false, targetFiles.size());
+    summary.setTemporalFileNum(targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -124,6 +121,7 @@ public class ReadPointCompactionPerformer
           compactNonAlignedSeries(
               device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
         }
+        summary.setTemporalFileSize(compactionWriter.getWriterSize());
       }
 
       compactionWriter.endFile();
@@ -131,10 +129,6 @@ public class ReadPointCompactionPerformer
 
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(seqFiles.isEmpty(), false, -targetFiles.size());
-      TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(seqFiles.isEmpty(), false, tempFileSize);
     }
   }
 
@@ -156,6 +150,7 @@ public class ReadPointCompactionPerformer
       QueryDataSource queryDataSource)
       throws IOException, MetadataException {
     Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -177,6 +172,7 @@ public class ReadPointCompactionPerformer
     if (dataBlockReader.hasNextBatch()) {
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
+      measurementSchemas.add(0, timeSchema);
       compactionWriter.startMeasurement(measurementSchemas, 0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
@@ -184,11 +180,6 @@ public class ReadPointCompactionPerformer
       // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
-    // add temp file metrics
-    long currentWriterSize = compactionWriter.getWriterSize();
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileSize(seqFiles.isEmpty(), false, currentWriterSize - tempFileSize);
-    tempFileSize = currentWriterSize;
   }
 
   private void compactNonAlignedSeries(
@@ -236,12 +227,6 @@ public class ReadPointCompactionPerformer
       // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
-
-    // add temp file metrics
-    long currentWriterSize = compactionWriter.getWriterSize();
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileSize(seqFiles.isEmpty(), false, currentWriterSize - tempFileSize);
-    tempFileSize = currentWriterSize;
   }
 
   /**
@@ -258,21 +243,13 @@ public class ReadPointCompactionPerformer
       boolean isAlign)
       throws IllegalPathException {
     PartialPath seriesPath;
-    TSDataType tsDataType;
     if (isAlign) {
       seriesPath = new AlignedPath(deviceId, measurementIds, measurementSchemas);
-      tsDataType = TSDataType.VECTOR;
     } else {
       seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
-      tsDataType = measurementSchemas.get(0).getType();
     }
     return new SeriesDataBlockReader(
-        seriesPath,
-        new HashSet<>(allSensors),
-        tsDataType,
-        fragmentInstanceContext,
-        queryDataSource,
-        true);
+        seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
   }
 
   public static void writeWithReader(

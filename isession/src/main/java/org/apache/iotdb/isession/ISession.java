@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
@@ -52,6 +54,12 @@ public interface ISession extends AutoCloseable {
   void open(boolean enableRPCCompression) throws IoTDBConnectionException;
 
   void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+      throws IoTDBConnectionException;
+
+  void open(
+      boolean enableRPCCompression,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint)
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;
@@ -155,6 +163,30 @@ public interface ISession extends AutoCloseable {
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeLastDataQuery(List<String> paths)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeAggregationQuery(List<String> paths, List<TAggregationType> aggregations)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void insertRecord(
@@ -444,6 +476,9 @@ public interface ISession extends AutoCloseable {
       throws IoTDBConnectionException, StatementExecutionException;
 
   void dropSchemaTemplate(String templateName)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws IoTDBConnectionException, StatementExecutionException;
 
   boolean isEnableQueryRedirection();

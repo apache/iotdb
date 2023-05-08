@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -75,15 +77,15 @@ public class QueryStatement extends Statement {
   private WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
-  // row limit and offset for result set. The default value is 0, which means no limit
-  private int rowLimit = 0;
+  // row limit for result set. The default value is 0, which means no limit
+  private long rowLimit = 0;
   // row offset for result set. The default value is 0
-  private int rowOffset = 0;
+  private long rowOffset = 0;
 
   // series limit and offset for result set. The default value is 0, which means no limit
-  private int seriesLimit = 0;
+  private long seriesLimit = 0;
   // series offset for result set. The default value is 0
-  private int seriesOffset = 0;
+  private long seriesOffset = 0;
 
   private FillComponent fillComponent;
 
@@ -100,13 +102,23 @@ public class QueryStatement extends Statement {
   // `GROUP BY TAG` clause
   private GroupByTagComponent groupByTagComponent;
 
+  // `GROUP BY VARIATION` clause
+  private GroupByComponent groupByComponent;
+
   // `INTO` clause
   private IntoComponent intoComponent;
 
   private boolean isCqQueryBody;
 
+  private boolean isOutputEndTime = false;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return true;
   }
 
   @Override
@@ -161,35 +173,35 @@ public class QueryStatement extends Statement {
     this.havingCondition = havingCondition;
   }
 
-  public int getRowLimit() {
+  public long getRowLimit() {
     return rowLimit;
   }
 
-  public void setRowLimit(int rowLimit) {
+  public void setRowLimit(long rowLimit) {
     this.rowLimit = rowLimit;
   }
 
-  public int getRowOffset() {
+  public long getRowOffset() {
     return rowOffset;
   }
 
-  public void setRowOffset(int rowOffset) {
+  public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
   }
 
-  public int getSeriesLimit() {
+  public long getSeriesLimit() {
     return seriesLimit;
   }
 
-  public void setSeriesLimit(int seriesLimit) {
+  public void setSeriesLimit(long seriesLimit) {
     this.seriesLimit = seriesLimit;
   }
 
-  public int getSeriesOffset() {
+  public long getSeriesOffset() {
     return seriesOffset;
   }
 
-  public void setSeriesOffset(int seriesOffset) {
+  public void setSeriesOffset(long seriesOffset) {
     this.seriesOffset = seriesOffset;
   }
 
@@ -241,6 +253,22 @@ public class QueryStatement extends Statement {
     this.groupByTagComponent = groupByTagComponent;
   }
 
+  public GroupByComponent getGroupByComponent() {
+    return groupByComponent;
+  }
+
+  public void setGroupByComponent(GroupByComponent groupByComponent) {
+    this.groupByComponent = groupByComponent;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    isOutputEndTime = outputEndTime;
+  }
+
+  public boolean isOutputEndTime() {
+    return isOutputEndTime;
+  }
+
   public boolean isLastQuery() {
     return selectComponent.hasLast();
   }
@@ -259,6 +287,32 @@ public class QueryStatement extends Statement {
 
   public boolean isGroupByTime() {
     return groupByTimeComponent != null;
+  }
+
+  public boolean isGroupBy() {
+    return isGroupByTime() || groupByComponent != null;
+  }
+
+  private boolean isGroupByVariation() {
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
+  }
+
+  private boolean isGroupByCondition() {
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
+  }
+
+  private boolean isGroupByCount() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
+  }
+
+  public boolean hasGroupByExpression() {
+    return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
+  }
+
+  public boolean hasOrderByExpression() {
+    return !getExpressionSortItemList().isEmpty();
   }
 
   public boolean isAlignByTime() {
@@ -307,11 +361,63 @@ public class QueryStatement extends Statement {
     return orderByComponent.getDeviceOrder();
   }
 
+  // push down only support raw data query currently
+  public boolean needPushDownSort() {
+    return !isAggregationQuery() && hasOrderByExpression() && isOrderByBasedOnDevice();
+  }
+
+  public boolean isOrderByBasedOnDevice() {
+    return orderByComponent != null && orderByComponent.isBasedOnDevice();
+  }
+
+  public boolean isOrderByBasedOnTime() {
+    return orderByComponent != null && orderByComponent.isBasedOnTime();
+  }
+
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();
     }
     return orderByComponent.getSortItemList();
+  }
+
+  public List<Expression> getExpressionSortItemList() {
+    if (orderByComponent == null) {
+      return Collections.emptyList();
+    }
+    return orderByComponent.getExpressionSortItemList();
+  }
+
+  //  update the sortItems with expressionSortItems
+  public void updateSortItems(Set<Expression> orderByExpressions) {
+    Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
+    List<SortItem> sortItems = getSortItemList();
+    int expressionIndex = 0;
+    for (int i = 0; i < sortItems.size() && expressionIndex < sortItemExpressions.length; i++) {
+      SortItem sortItem = sortItems.get(i);
+      if (sortItem.isExpression()) {
+        sortItem.setExpression(sortItemExpressions[expressionIndex]);
+        expressionIndex++;
+      }
+    }
+  }
+
+  public List<SortItem> getUpdatedSortItems(Set<Expression> orderByExpressions) {
+    Expression[] sortItemExpressions = orderByExpressions.toArray(new Expression[0]);
+    List<SortItem> sortItems = getSortItemList();
+    List<SortItem> newSortItems = new ArrayList<>();
+    int expressionIndex = 0;
+    for (int i = 0; i < sortItems.size(); i++) {
+      SortItem sortItem = sortItems.get(i);
+      SortItem newSortItem =
+          new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
+      if (sortItem.isExpression()) {
+        newSortItem.setExpression(sortItemExpressions[expressionIndex]);
+        expressionIndex++;
+      }
+      newSortItems.add(newSortItem);
+    }
+    return newSortItems;
   }
 
   public boolean hasFill() {
@@ -334,10 +440,21 @@ public class QueryStatement extends Statement {
     isCqQueryBody = cqQueryBody;
   }
 
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
+  public boolean hasOffset() {
+    return rowOffset > 0;
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+      }
+      if (groupByComponent != null && isGroupByLevel()) {
+        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
@@ -354,6 +471,23 @@ public class QueryStatement extends Statement {
             resultColumn.getAlias() != null
                 ? resultColumn.getAlias()
                 : resultColumn.getExpression().getExpressionString());
+      }
+      for (Expression expression : getExpressionSortItemList()) {
+        if (expression instanceof FunctionExpression) {
+          if (!expression.isBuiltInAggregationFunctionExpression()) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          }
+        } else {
+          if (expression instanceof TimeSeriesOperand) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          }
+          for (Expression subExpression : expression.getExpressions()) {
+            if (!subExpression.isBuiltInAggregationFunctionExpression()) {
+              throw new SemanticException(
+                  "Raw data and aggregation hybrid query is not supported.");
+            }
+          }
+        }
       }
       if (isGroupByTag()) {
         if (hasHaving()) {
@@ -378,9 +512,24 @@ public class QueryStatement extends Statement {
         }
       }
     } else {
-      if (isGroupByTime() || isGroupByLevel()) {
+      if (isGroupBy() || isGroupByLevel() || isGroupByTag()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
+      for (Expression expression : getExpressionSortItemList()) {
+        for (Expression subExpression : expression.getExpressions()) {
+          if (subExpression.isBuiltInAggregationFunctionExpression()) {
+            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          }
+        }
+      }
+    }
+
+    if (hasWhere()) {
+      Expression whereExpression = getWhereCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
+          == ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
     }
 
@@ -439,6 +588,9 @@ public class QueryStatement extends Statement {
       }
       if (isOrderByTime()) {
         throw new SemanticException("Sorting by time is not yet supported in last queries.");
+      }
+      if (seriesLimit != 0 || seriesOffset != 0) {
+        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
       }
     }
 

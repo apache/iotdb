@@ -38,6 +38,11 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
+  protected boolean mayTargetNodeType(SchemaNode node) {
+    return node.isMeasurement();
+  }
+
+  @Override
   protected IFAState tryGetNextState(
       SchemaNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
     IFATransition transition;
@@ -111,7 +116,8 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
     MeasurementPath result =
         new MeasurementPath(
-            generateFullPathNodes(), nextMatchedNode.getAsMeasurementNode().getSchema());
+            getFullPathFromRootToNode(nextMatchedNode),
+            nextMatchedNode.getAsMeasurementNode().getSchema());
     result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
     result.setUnderAlignedEntity(getParentOfNextMatchedNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();

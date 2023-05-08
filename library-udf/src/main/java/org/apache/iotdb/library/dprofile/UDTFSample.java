@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.NoNumberException;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -33,6 +31,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import com.github.ggalmazor.ltdownsampling.LTThreeBuckets;
 import com.github.ggalmazor.ltdownsampling.Point;
@@ -59,7 +58,7 @@ public class UDTFSample implements UDTF {
   private Pair<Long, Object>[] samples; // sampled data
   private int num = 0; // number of points already sampled
   private Random random;
-  private TSDataType dataType;
+  private Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -82,7 +81,7 @@ public class UDTFSample implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
-    this.dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    this.dataType = parameters.getDataType(0);
     String method = parameters.getStringOrDefault("method", "reservoir");
     if ("triangle".equalsIgnoreCase(method)) this.method = Method.TRIANGLE;
     else if ("isometric".equalsIgnoreCase(method)) this.method = Method.ISOMETRIC;

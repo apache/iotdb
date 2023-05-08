@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -139,9 +140,9 @@ public class CompactionExceptionHandler {
       String fullStorageGroupName)
       throws IOException {
     TsFileResourceList unseqTsFileResourceList =
-        tsFileManager.getUnsequenceListByTimePartition(timePartition);
+        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     TsFileResourceList seqTsFileResourceList =
-        tsFileManager.getSequenceListByTimePartition(timePartition);
+        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
 
     // delete compaction mods files
     CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);
@@ -233,7 +234,15 @@ public class CompactionExceptionHandler {
       String fullStorageGroupName)
       throws IOException {
     for (TsFileResource targetResource : targetResources) {
-      if (targetResource != null && !TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
+      if (targetResource.isDeleted()) {
+        // target resource is empty after compaction, then delete it
+        targetResource.remove();
+        continue;
+      } else {
+        // set target resources to CLOSED, so that they can be selected to compact
+        targetResource.setStatus(TsFileResourceStatus.CLOSED);
+      }
+      if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,

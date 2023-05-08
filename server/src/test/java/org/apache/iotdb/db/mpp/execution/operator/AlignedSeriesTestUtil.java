@@ -19,14 +19,11 @@
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -43,9 +40,7 @@ import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -67,7 +62,6 @@ public class AlignedSeriesTestUtil {
       List<TsFileResource> unseqResources,
       String sgName)
       throws MetadataException, IOException, WriteProcessException {
-    LocalConfigNode.getInstance().init();
     prepareSeries(measurementSchemas, sgName);
     prepareFiles(seqResources, unseqResources, measurementSchemas, sgName);
   }
@@ -79,7 +73,6 @@ public class AlignedSeriesTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    LocalConfigNode.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -206,52 +199,6 @@ public class AlignedSeriesTestUtil {
     measurementSchemas.add(
         new MeasurementSchema(
             "sensor5", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY));
-
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sgName));
-    LocalSchemaProcessor.getInstance()
-        .createAlignedTimeSeries(
-            new PartialPath(sgName + PATH_SEPARATOR + "device0"),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getMeasurementId)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getType)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getEncodingType)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getCompressor)
-                .collect(Collectors.toList()));
-    LocalSchemaProcessor.getInstance()
-        .createAlignedTimeSeries(
-            new PartialPath(sgName + PATH_SEPARATOR + "device1"),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getMeasurementId)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getType)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getEncodingType)
-                .collect(Collectors.toList()),
-            measurementSchemas.stream()
-                .map(MeasurementSchema::getCompressor)
-                .collect(Collectors.toList()));
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      LocalSchemaProcessor.getInstance()
-          .createTimeseries(
-              new PartialPath(
-                  sgName
-                      + PATH_SEPARATOR
-                      + "device2"
-                      + PATH_SEPARATOR
-                      + measurementSchema.getMeasurementId()),
-              measurementSchema.getType(),
-              measurementSchema.getEncodingType(),
-              measurementSchema.getCompressor(),
-              Collections.emptyMap());
-    }
   }
 
   private static void removeFiles(

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -46,6 +47,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -96,6 +98,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
 
   @Before
   public void setUp() throws MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
@@ -427,7 +430,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
               TsFileResource targetResource =
@@ -731,7 +734,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
@@ -1034,7 +1037,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =

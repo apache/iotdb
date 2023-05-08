@@ -18,29 +18,25 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
-import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -59,97 +55,54 @@ public class LocalExecutionPlanner {
     return InstanceHolder.INSTANCE;
   }
 
-  public DataDriver plan(
-      PlanNode plan,
-      TypeProvider types,
-      FragmentInstanceContext instanceContext,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegion)
-      throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
+  public List<PipelineDriverFactory> plan(
+      PlanNode plan, TypeProvider types, FragmentInstanceContext instanceContext)
+      throws MemoryNotEnoughException, QueryProcessException {
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
+    // Generate pipelines, return the last pipeline data structure
+    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
 
-    // calculate memory distribution of ISinkHandle/ISourceHandle
-    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
+    context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    instanceContext.setSourcePaths(collectSourcePaths(context));
 
-    DataDriverContext dataDriverContext =
-        new DataDriverContext(
-            instanceContext,
-            context.getPaths(),
-            timeFilter,
-            dataRegion,
-            context.getSourceOperators());
-    instanceContext.setDriverContext(dataDriverContext);
-    return new DataDriver(root, context.getSinkHandle(), dataDriverContext);
+    // set maxBytes one SourceHandle can reserve after visiting the whole tree
+    context.setMaxBytesOneHandleCanReserve();
+
+    return context.getPipelineDriverFactories();
   }
 
-  public SchemaDriver plan(
+  public List<PipelineDriverFactory> plan(
       PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
-
-    SchemaDriverContext schemaDriverContext =
-        new SchemaDriverContext(instanceContext, schemaRegion);
-    instanceContext.setDriverContext(schemaDriverContext);
-
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(instanceContext, schemaRegion);
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
-
-    // calculate memory distribution of ISinkHandle/ISourceHandle
-    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
-    return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
+    // set maxBytes one SourceHandle can reserve after visiting the whole tree
+    context.setMaxBytesOneHandleCanReserve();
+
+    return context.getPipelineDriverFactories();
   }
 
-  private void setMemoryLimitForHandle(TFragmentInstanceId fragmentInstanceId, PlanNode plan) {
-    MemoryDistributionCalculator visitor = new MemoryDistributionCalculator();
-    plan.accept(visitor, null);
-    int totalSplit = visitor.calculateTotalSplit();
-    if (totalSplit == 0) {
-      return;
-    }
-    long maxBytesOneHandleCanReserve =
-        IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance() / totalSplit;
-    for (ISourceHandle handle :
-        MPPDataExchangeService.getInstance()
-            .getMPPDataExchangeManager()
-            .getISourceHandle(fragmentInstanceId)) {
-      handle.setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
-    }
-    MPPDataExchangeService.getInstance()
-        .getMPPDataExchangeManager()
-        .getISinkHandle(fragmentInstanceId)
-        .setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
-  }
-
-  private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()) {
-      return;
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()
+        && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      return 0;
     }
 
     long estimatedMemorySize = root.calculateMaxPeekMemory();
@@ -189,6 +142,17 @@ public class LocalExecutionPlanner {
             }
           }
         });
+    return estimatedMemorySize;
+  }
+
+  private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
+    List<PartialPath> sourcePaths = new ArrayList<>();
+    context
+        .getPipelineDriverFactories()
+        .forEach(
+            pipeline ->
+                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+    return sourcePaths;
   }
 
   private static class InstanceHolder {

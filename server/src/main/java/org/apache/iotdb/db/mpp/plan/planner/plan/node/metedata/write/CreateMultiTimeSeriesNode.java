@@ -83,8 +83,10 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
         measurementGroupMap.put(devicePath, measurementGroup);
       }
 
-      measurementGroup.addMeasurement(
-          paths.get(i).getMeasurement(), dataTypes.get(i), encodings.get(i), compressors.get(i));
+      if (!measurementGroup.addMeasurement(
+          paths.get(i).getMeasurement(), dataTypes.get(i), encodings.get(i), compressors.get(i))) {
+        continue;
+      }
 
       if (propsList != null) {
         measurementGroup.addProps(propsList.get(i));

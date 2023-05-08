@@ -21,16 +21,17 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -42,9 +43,10 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -63,9 +65,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaValidation {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
@@ -104,6 +105,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+    // collect redirectInfo
+    analysis.setRedirectNodeList(
+        Collections.singletonList(
+            dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
     return Collections.singletonList(this);
   }
 
@@ -152,6 +157,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  @Override
+  public TSEncoding getEncoding(int index) {
+    return null;
+  }
+
+  @Override
+  public CompressionType getCompressionType(int index) {
+    return null;
+  }
+
   public Object[] getValues() {
     return values;
   }
@@ -179,38 +194,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
-  }
-
-  @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree)
-      throws QueryProcessException, MetadataException {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    if (deviceSchemaInfo == null) {
-      throw new PathNotExistException(
-          Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
-              .collect(Collectors.toList()));
-    }
-    if (deviceSchemaInfo.isAligned() != isAligned) {
-      throw new AlignedTimeseriesException(
-          String.format(
-              "timeseries under this device are%s aligned, " + "please use %s interface",
-              deviceSchemaInfo.isAligned() ? "" : " not",
-              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
-          devicePath.getFullPath());
-    }
-    this.measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
-
-    // transfer data types from string values when necessary
-    if (isNeedInferType) {
-      transferType();
-      return;
-    }
-
-    // validate whether data types are matched
-    selfCheckDataTypes();
   }
 
   @Override
@@ -826,5 +809,50 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+  }
+
+  @Override
+  public void validateDeviceSchema(boolean isAligned) {
+    if (this.isAligned != isAligned) {
+      throw new SemanticException(
+          new AlignedTimeseriesException(
+              String.format(
+                  "timeseries under this device are%s aligned, " + "please use %s interface",
+                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
+              devicePath.getFullPath()));
+    }
+  }
+
+  @Override
+  public ISchemaValidation getSchemaValidation() {
+    return this;
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    if (isNeedInferType) {
+      transferType();
+    }
+  }
+
+  @Override
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    if (measurementSchemaInfo == null) {
+      measurementSchemas[index] = null;
+    } else {
+      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+    }
+    if (isNeedInferType) {
+      return;
+    }
+
+    try {
+      selfCheckDataTypes(index);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
+    }
   }
 }

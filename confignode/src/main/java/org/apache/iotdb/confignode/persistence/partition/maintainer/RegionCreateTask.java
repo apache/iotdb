@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence.partition.maintainer;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -67,6 +68,11 @@ public class RegionCreateTask extends RegionMaintainTask {
   public RegionCreateTask setTTL(long TTL) {
     this.TTL = TTL;
     return this;
+  }
+
+  @Override
+  public TConsensusGroupId getRegionId() {
+    return regionReplicaSet.getRegionId();
   }
 
   @Override

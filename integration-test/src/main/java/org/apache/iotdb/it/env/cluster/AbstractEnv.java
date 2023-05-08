@@ -16,19 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.itbase.runtime.NodeConnection;
@@ -43,6 +50,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -52,6 +60,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -109,7 +118,8 @@ public abstract class AbstractEnv implements BaseEnv {
     seedConfigNodeWrapper.createDir();
     seedConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -138,7 +148,8 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodeWrapper.createDir();
       configNodeWrapper.changeConfig(
           (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+          (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -164,7 +175,8 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodeWrapper.createDir();
       dataNodeWrapper.changeConfig(
           (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
-          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
+          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
+          (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -285,7 +297,6 @@ public abstract class AbstractEnv implements BaseEnv {
         Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
             .collect(Collectors.toList())) {
       nodeWrapper.stop();
-      nodeWrapper.waitingToShutDown();
       nodeWrapper.destroyDir();
       String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       if (!new File(lockPath).delete()) {
@@ -337,7 +348,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public SessionPool getSessionPool(int maxSize) {
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            nodeUrls,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool(
@@ -415,6 +443,7 @@ public abstract class AbstractEnv implements BaseEnv {
     this.testMethodName = testMethodName;
   }
 
+  @Override
   public void dumpTestJVMSnapshot() {
     for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
       configNodeWrapper.dumpJVMSnapshot(testMethodName);
@@ -459,9 +488,6 @@ public abstract class AbstractEnv implements BaseEnv {
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             // Only the ConfigNodeClient who connects to the ConfigNode-leader
             // will respond the SUCCESS_STATUS
-            logger.info(
-                "Successfully get connection to the leader ConfigNode: {}",
-                configNodeWrapper.getIpAndPortString());
             return client;
           } else {
             // Return client otherwise
@@ -565,7 +591,8 @@ public abstract class AbstractEnv implements BaseEnv {
     newConfigNodeWrapper.createDir();
     newConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     return newConfigNodeWrapper;
   }
 
@@ -581,7 +608,8 @@ public abstract class AbstractEnv implements BaseEnv {
     newDataNodeWrapper.createDir();
     newDataNodeWrapper.changeConfig(
         (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
-        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
     return newDataNodeWrapper;
   }
 
@@ -651,8 +679,63 @@ public abstract class AbstractEnv implements BaseEnv {
     dataNodeWrapperList.get(index).start();
   }
 
+  @Override
   public void shutdownDataNode(int index) {
     dataNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus)
+      throws IllegalStateException {
+    Throwable lastException = null;
+    for (int i = 0; i < 30; i++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        List<String> errorMessages = new ArrayList<>(nodes.size());
+        Map<String, Integer> nodeIds = new HashMap<>(nodes.size());
+        TShowClusterResp showClusterResp = client.showCluster();
+        for (TConfigNodeLocation node : showClusterResp.getConfigNodeList()) {
+          nodeIds.put(
+              node.getInternalEndPoint().getIp() + ":" + node.getInternalEndPoint().getPort(),
+              node.getConfigNodeId());
+        }
+        for (TDataNodeLocation node : showClusterResp.getDataNodeList()) {
+          nodeIds.put(
+              node.getClientRpcEndPoint().getIp() + ":" + node.getClientRpcEndPoint().getPort(),
+              node.getDataNodeId());
+        }
+        for (int j = 0; j < nodes.size(); j++) {
+          String endpoint = nodes.get(j).getIpAndPortString();
+          if (!nodeIds.containsKey(endpoint)) {
+            // Node not exist
+            // Notice: Never modify this line, since the NodeLocation might be modified in IT
+            errorMessages.add("The node " + nodes.get(j).getIpAndPortString() + " is not found!");
+            continue;
+          }
+          String status = showClusterResp.getNodeStatus().get(nodeIds.get(endpoint));
+          if (!targetStatus.get(j).getStatus().equals(status)) {
+            // Error status
+            errorMessages.add(
+                String.format(
+                    "Node %s is in status %s, but expected %s",
+                    endpoint, status, targetStatus.get(j)));
+          }
+        }
+        if (errorMessages.isEmpty()) {
+          return;
+        } else {
+          lastException = new IllegalStateException(String.join(". ", errorMessages));
+        }
+      } catch (TException | ClientManagerException | IOException | InterruptedException e) {
+        lastException = e;
+      }
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    throw new IllegalStateException(lastException);
   }
 
   @Override

@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
@@ -116,6 +118,22 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
+    config.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
+                .trim()));
+
+    config.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
+                .trim()));
+
     config.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
@@ -139,20 +157,20 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
-    config.setMaxTotalClientForEachNode(
+    config.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
-                    String.valueOf(config.getMaxTotalClientForEachNode()))
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
                 .trim()));
 
-    config.setMaxIdleClientForEachNode(
+    config.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_core_connection_for_internal_service",
-                    String.valueOf(config.getMaxIdleClientForEachNode()))
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
     config.setHandleSystemErrorStrategy(
@@ -169,6 +187,26 @@ public class CommonDescriptor {
                     "disk_space_warning_threshold",
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
+
+    config.setTTimePartitionSlotTransmitLimit(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "time_partition_slot_transmit_limit",
+                    String.valueOf(config.getTTimePartitionSlotTransmitLimit()))
+                .trim()));
+
+    String endPointUrl =
+        properties.getProperty(
+            "target_ml_node_endpoint",
+            NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
+    try {
+      config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn(
+          "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
+          endPointUrl);
+    }
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

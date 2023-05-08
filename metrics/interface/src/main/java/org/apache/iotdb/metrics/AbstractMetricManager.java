@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
@@ -56,7 +56,6 @@ public abstract class AbstractMetricManager {
     metrics = new ConcurrentHashMap<>();
   }
 
-  // region get or create metric
   /**
    * Get counter. return if exists, create if not.
    *
@@ -67,7 +66,7 @@ public abstract class AbstractMetricManager {
    */
   public Counter getOrCreateCounter(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingCounter;
+      return DoNothingMetricManager.DO_NOTHING_COUNTER;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, name, tags);
     IMetric metric =
@@ -97,12 +96,12 @@ public abstract class AbstractMetricManager {
    * @param name the name of name
    * @param metricLevel the level of name
    * @param obj which will be monitored automatically
-   * @param mapper use which to map the obj to a long value
+   * @param mapper use which to map the obj to a double value
    */
   public <T> AutoGauge createAutoGauge(
-      String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String name, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingAutoGauge;
+      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
     AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
@@ -116,10 +115,10 @@ public abstract class AbstractMetricManager {
    *
    * @param metricInfo the metricInfo of autoGauge
    * @param obj which will be monitored automatically
-   * @param mapper use which to map the obj to a long value
+   * @param mapper use which to map the obj to a double value
    */
   protected abstract <T> AutoGauge createAutoGauge(
-      MetricInfo metricInfo, T obj, ToLongFunction<T> mapper);
+      MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper);
 
   /**
    * Get autoGauge.
@@ -130,12 +129,12 @@ public abstract class AbstractMetricManager {
    */
   public AutoGauge getAutoGauge(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingAutoGauge;
+      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
     IMetric metric = metrics.get(metricInfo);
     if (metric == null) {
-      return DoNothingMetricManager.doNothingAutoGauge;
+      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
     } else if (metric instanceof AutoGauge) {
       return (AutoGauge) metric;
     }
@@ -153,7 +152,7 @@ public abstract class AbstractMetricManager {
    */
   public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingGauge;
+      return DoNothingMetricManager.DO_NOTHING_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
     IMetric metric =
@@ -188,7 +187,7 @@ public abstract class AbstractMetricManager {
    */
   public Rate getOrCreateRate(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingRate;
+      return DoNothingMetricManager.DO_NOTHING_RATE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.RATE, name, tags);
     IMetric metric =
@@ -223,7 +222,7 @@ public abstract class AbstractMetricManager {
    */
   public Histogram getOrCreateHistogram(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingHistogram;
+      return DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, name, tags);
     IMetric metric =
@@ -258,7 +257,7 @@ public abstract class AbstractMetricManager {
    */
   public Timer getOrCreateTimer(String name, MetricLevel metricLevel, String... tags) {
     if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.doNothingTimer;
+      return DoNothingMetricManager.DO_NOTHING_TIMER;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, name, tags);
     IMetric metric =

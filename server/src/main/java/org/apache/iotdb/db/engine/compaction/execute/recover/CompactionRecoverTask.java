@@ -91,6 +91,8 @@ public class CompactionRecoverTask {
         }
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
         List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+        List<TsFileIdentifier> deletedTargetFileIdentifiers =
+            logAnalyzer.getDeletedTargetFileInfos();
 
         // compaction log file is incomplete
         if (targetFileIdentifiers.isEmpty() || sourceFileIdentifiers.isEmpty()) {
@@ -125,7 +127,8 @@ public class CompactionRecoverTask {
                     targetFileIdentifiers, sourceFileIdentifiers);
           } else {
             recoverSuccess =
-                handleWithSomeSourceFilesLost(targetFileIdentifiers, sourceFileIdentifiers);
+                handleWithSomeSourceFilesLost(
+                    targetFileIdentifiers, deletedTargetFileIdentifiers, sourceFileIdentifiers);
           }
         }
       }
@@ -222,48 +225,18 @@ public class CompactionRecoverTask {
    * file and compaction mods file.
    */
   private boolean handleWithSomeSourceFilesLost(
-      List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers)
+      List<TsFileIdentifier> targetFileIdentifiers,
+      List<TsFileIdentifier> deletedTargetFileIdentifiers,
+      List<TsFileIdentifier> sourceFileIdentifiers)
       throws IOException {
     // some source files have been deleted, while target file must exist and complete.
-    if (!checkIsTargetFilesComplete(targetFileIdentifiers)) {
+    if (!checkIsTargetFilesComplete(targetFileIdentifiers, deletedTargetFileIdentifiers)) {
       return false;
     }
 
     boolean handleSuccess = true;
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
-      if (sourceFile != null) {
-        // delete source tsfile, resource file and mods file
-        if (!new TsFileResource(sourceFile).remove()) {
-          LOGGER.error(
-              "{} [Compaction][Recover] fail to delete remaining source file {}.",
-              fullStorageGroupName,
-              sourceFile);
-          handleSuccess = false;
-        }
-      } else {
-        // if source file does not exist, its resource file may still exist, so delete it.
-        File resourceFile =
-            getFileFromDataDirs(
-                sourceFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
-
-        if (!checkAndDeleteFile(resourceFile)) {
-          handleSuccess = false;
-        }
-
-        // delete .mods file of source tsfile
-        File modFile =
-            getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
-        if (!checkAndDeleteFile(modFile)) {
-          handleSuccess = false;
-        }
-      }
-
-      // delete .compaction.mods file of all source files
-      File compactionModFile =
-          getFileFromDataDirs(
-              sourceFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
-      if (!checkAndDeleteFile(compactionModFile)) {
+      if (!deleteFile(sourceFileIdentifier)) {
         handleSuccess = false;
       }
     }
@@ -285,19 +258,28 @@ public class CompactionRecoverTask {
     return null;
   }
 
-  private boolean checkIsTargetFilesComplete(List<TsFileIdentifier> targetFileIdentifiers)
+  private boolean checkIsTargetFilesComplete(
+      List<TsFileIdentifier> targetFileIdentifiers,
+      List<TsFileIdentifier> deletedTargetFileIdentifiers)
       throws IOException {
     for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
+      targetFileIdentifier.setFilename(
+          targetFileIdentifier
+              .getFilename()
+              .replace(
+                  isInnerSpace
+                      ? IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX
+                      : IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
+                  TsFileConstant.TSFILE_SUFFIX));
+      boolean isTargetFileDeleted = deletedTargetFileIdentifiers.contains(targetFileIdentifier);
+      if (isTargetFileDeleted) {
+        if (!deleteFile(targetFileIdentifier)) {
+          return false;
+        }
+        continue;
+      }
       // xxx.tsfile
-      File targetFile =
-          getFileFromDataDirs(
-              targetFileIdentifier
-                  .getFilePath()
-                  .replace(
-                      isInnerSpace
-                          ? IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX
-                          : IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
-                      TsFileConstant.TSFILE_SUFFIX));
+      File targetFile = getFileFromDataDirs(targetFileIdentifier.getFilePath());
       if (targetFile == null
           || !TsFileUtils.isTsFileComplete(new TsFileResource(targetFile).getTsFile())) {
         LOGGER.error(
@@ -309,6 +291,42 @@ public class CompactionRecoverTask {
       }
     }
     return true;
+  }
+
+  /**
+   * Delete tsfile and its corresponding files, including resource file, mods file and compaction
+   * mods file. Return true if the file is not existed or if the file is existed and has been
+   * deleted correctly. Otherwise, return false.
+   */
+  private boolean deleteFile(TsFileIdentifier tsFileIdentifier) {
+    boolean success = true;
+    // delete tsfile
+    File file = tsFileIdentifier.getFileFromDataDirs();
+    if (!checkAndDeleteFile(file)) {
+      success = false;
+    }
+
+    // delete resource file
+    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    if (!checkAndDeleteFile(file)) {
+      success = false;
+    }
+
+    // delete mods file
+    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+    if (!checkAndDeleteFile(file)) {
+      success = false;
+    }
+
+    // delete compaction mods file
+    file =
+        getFileFromDataDirs(
+            tsFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+    if (!checkAndDeleteFile(file)) {
+      success = false;
+    }
+
+    return success;
   }
 
   /**

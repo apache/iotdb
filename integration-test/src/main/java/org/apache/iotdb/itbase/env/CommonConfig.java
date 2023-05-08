@@ -33,9 +33,7 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
-  CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum);
-
-  CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
+  CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
 
@@ -67,11 +65,11 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
-  CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase);
+  CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
 
   CommonConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy);
 
-  CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase);
+  CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase);
 
   CommonConfig setSchemaReplicationFactor(int schemaReplicationFactor);
 
@@ -103,11 +101,21 @@ public interface CommonConfig {
   CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
       boolean enableAutoLeaderBalanceForIoTConsensus);
 
-  CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum);
-
   CommonConfig setQueryThreadCount(int queryThreadCount);
+
+  CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
+
+  CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
+
+  CommonConfig setQuotaEnable(boolean quotaEnable);
+
+  CommonConfig setSortBufferSize(long sortBufferSize);
+
+  CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 }

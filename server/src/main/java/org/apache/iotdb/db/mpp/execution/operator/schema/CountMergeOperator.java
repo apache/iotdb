@@ -76,10 +76,11 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
+
     if (resultTsBlockList != null) {
       currentIndex++;
       return resultTsBlockList.get(currentIndex - 1);
@@ -122,12 +123,12 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 
@@ -158,5 +159,12 @@ public class CountMergeOperator implements ProcessOperator {
       retainedSize += child.calculateRetainedSizeAfterCallingNext();
     }
     return retainedSize;
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (Operator child : children) {
+      child.close();
+    }
   }
 }

@@ -178,6 +178,7 @@ public class GroupByTimeParameter {
     return groupByTimeParameter;
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (!(obj instanceof GroupByTimeParameter)) {
       return false;
@@ -192,6 +193,7 @@ public class GroupByTimeParameter {
         && this.leftCRightO == other.leftCRightO;
   }
 
+  @Override
   public int hashCode() {
     return Objects.hash(
         startTime,

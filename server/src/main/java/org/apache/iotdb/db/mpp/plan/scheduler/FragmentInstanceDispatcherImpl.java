@@ -22,9 +22,11 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -38,10 +40,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -49,6 +52,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -67,21 +72,28 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      internalServiceClientManager;
+      syncInternalServiceClientManager;
+  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      asyncInternalServiceClientManager;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
       MPPQueryContext queryContext,
       ExecutorService executor,
       ExecutorService writeOperationExecutor,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
+      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+          asyncInternalServiceClientManager) {
     this.type = type;
     this.queryContext = queryContext;
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
-    this.internalServiceClientManager = internalServiceClientManager;
+    this.syncInternalServiceClientManager = syncInternalServiceClientManager;
+    this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
@@ -91,7 +103,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
-      return dispatchWriteSync(instances);
+      return dispatchWriteAsync(instances);
     }
   }
 
@@ -119,20 +131,107 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    List<TSStatus> failureStatusList = new ArrayList<>();
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+        TSStatus failureStatus = e.getFailureStatus();
+        if (instances.size() == 1) {
+          failureStatusList.add(failureStatus);
+        } else {
+          if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            failureStatusList.addAll(failureStatus.getSubStatus());
+          } else {
+            failureStatusList.add(failureStatus);
+          }
+        }
       } catch (Throwable t) {
         logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+        failureStatusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
       }
     }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+    if (failureStatusList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } else {
+      if (instances.size() == 1) {
+        return immediateFuture(new FragInstanceDispatchResult(failureStatusList.get(0)));
+      } else {
+        return immediateFuture(
+            new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+      }
+    }
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
+    // split local and remote instances
+    List<FragmentInstance> localInstances = new ArrayList<>();
+    List<FragmentInstance> remoteInstances = new ArrayList<>();
+    for (FragmentInstance instance : instances) {
+      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+      if (isDispatchedToLocal(endPoint)) {
+        localInstances.add(instance);
+      } else {
+        remoteInstances.add(instance);
+      }
+    }
+    // async dispatch to remote
+    AsyncPlanNodeSender asyncPlanNodeSender =
+        new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
+    asyncPlanNodeSender.sendAll();
+
+    List<TSStatus> dataNodeFailureList = new ArrayList<>();
+
+    if (!localInstances.isEmpty()) {
+      // sync dispatch to local
+      long localScheduleStartTime = System.nanoTime();
+      for (FragmentInstance localInstance : localInstances) {
+        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
+          dispatchOneInstance(localInstance);
+        } catch (FragmentInstanceDispatchException e) {
+          dataNodeFailureList.add(e.getFailureStatus());
+        } catch (Throwable t) {
+          logger.warn("[DispatchFailed]", t);
+          dataNodeFailureList.add(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+        }
+      }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+          System.nanoTime() - localScheduleStartTime);
+    }
+    // wait until remote dispatch done
+    try {
+      asyncPlanNodeSender.waitUntilCompleted();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Interrupted when dispatching write async", e);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+    }
+
+    dataNodeFailureList.addAll(asyncPlanNodeSender.getFailureStatusList());
+
+    if (dataNodeFailureList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    }
+    if (instances.size() == 1) {
+      return immediateFuture(new FragInstanceDispatchResult(dataNodeFailureList.get(0)));
+    } else {
+      List<TSStatus> failureStatusList = new ArrayList<>();
+      for (TSStatus dataNodeFailure : dataNodeFailureList) {
+        if (dataNodeFailure.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          failureStatusList.addAll(dataNodeFailure.getSubStatus());
+        } else {
+          failureStatusList.add(dataNodeFailure);
+        }
+      }
+      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+    }
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -152,7 +251,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
+        syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
         case READ:
           TSendFragmentInstanceReq sendFragmentInstanceReq =
@@ -171,11 +270,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
           break;
         case WRITE:
-          TSendPlanNodeReq sendPlanNodeReq =
-              new TSendPlanNodeReq(
-                  new TPlanNode(instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                  instance.getRegionReplicaSet().getRegionId());
-          TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
+          TSendBatchPlanNodeReq sendPlanNodeReq =
+              new TSendBatchPlanNodeReq(
+                  Collections.singletonList(
+                      new TSendSinglePlanNodeReq(
+                          new TPlanNode(
+                              instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
+                          instance.getRegionReplicaSet().getRegionId())));
+          TSendSinglePlanNodeResp sendPlanNodeResp =
+              client.sendBatchPlanNode(sendPlanNodeReq).getResponses().get(0);
           if (!sendPlanNodeResp.accepted) {
             logger.warn(
                 "dispatch write failed. status: {}, code: {}, message: {}, node {}",
@@ -190,6 +293,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             } else {
               throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
             }
+          } else {
+            // some expected and accepted status except SUCCESS_STATUS need to be returned
+            TSStatus status = sendPlanNodeResp.getStatus();
+            if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new FragmentInstanceDispatchException(status);
+            }
           }
           break;
         default:
@@ -201,7 +310,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage("can't connect to node " + endPoint);
       // If the DataNode cannot be connected, its endPoint will be put into black list
       // so that the following retry will avoid dispatching instance towards this DataNode.
@@ -254,6 +363,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {
             throw new FragmentInstanceDispatchException(writeResult.getStatus());
+          }
+        } else {
+          // some expected and accepted status except SUCCESS_STATUS need to be returned
+          TSStatus status = writeResult.getStatus();
+          if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new FragmentInstanceDispatchException(status);
           }
         }
         break;

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mtree.disk;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 
 import org.junit.Test;
 
@@ -30,20 +31,22 @@ import java.util.Map;
 
 public class CachedMNodeContainerTest {
 
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Test
   public void testIterator() {
     CachedMNodeContainer container = new CachedMNodeContainer();
-    Map<String, IMNode> childCache = new HashMap<>();
-    childCache.put("1", new InternalMNode(null, "1"));
-    childCache.put("2", new InternalMNode(null, "2"));
-    childCache.put("5", new InternalMNode(null, "5"));
+    Map<String, ICachedMNode> childCache = new HashMap<>();
+    childCache.put("1", nodeFactory.createInternalMNode(null, "1"));
+    childCache.put("2", nodeFactory.createInternalMNode(null, "2"));
+    childCache.put("5", nodeFactory.createInternalMNode(null, "5"));
     container.loadChildrenFromDisk(childCache);
-    container.put("3", new InternalMNode(null, "3"));
-    container.put("4", new InternalMNode(null, "4"));
-    container.put("6", new InternalMNode(null, "6"));
+    container.put("3", nodeFactory.createInternalMNode(null, "3"));
+    container.put("4", nodeFactory.createInternalMNode(null, "4"));
+    container.put("6", nodeFactory.createInternalMNode(null, "6"));
     container.updateMNode("5");
     container.updateMNode("6");
-    Iterator<IMNode> iterator = container.getChildrenIterator();
+    Iterator<ICachedMNode> iterator = container.getChildrenIterator();
     while (iterator.hasNext()) {
       System.out.println(iterator.next());
     }

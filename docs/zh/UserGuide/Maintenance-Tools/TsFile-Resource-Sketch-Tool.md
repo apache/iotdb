@@ -19,11 +19,11 @@
 
 -->
 
-# TsFile Resource概览工具
+## TsFile Resource概览工具
 
 TsFile resource概览工具用于打印出TsFile resource文件的内容，工具位置为 tools/tsfile/print-tsfile-resource-files。
 
-## 用法
+### 用法
 
 -   Windows:
 
@@ -37,7 +37,7 @@ TsFile resource概览工具用于打印出TsFile resource文件的内容，工�
 ./print-tsfile-resource-files.sh <TsFile resource文件所在的文件夹路径，或者单个TsFile resource文件路径> 
 ```
 
-## 示例
+### 示例
 
 以Windows系统为例：
 

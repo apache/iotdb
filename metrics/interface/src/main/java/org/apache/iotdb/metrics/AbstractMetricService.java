@@ -46,12 +46,13 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
@@ -67,7 +68,7 @@ public abstract class AbstractMetricService {
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
 
   /** The list of metric sets. */
-  protected List<IMetricSet> metricSets = new ArrayList<>();
+  protected Set<IMetricSet> metricSets = new HashSet<>();
 
   public AbstractMetricService() {
     // empty constructor
@@ -76,15 +77,19 @@ public abstract class AbstractMetricService {
   /** Start metric service. */
   public void startService() {
     startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.bindTo(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.bindTo(this);
+      }
     }
   }
 
   /** Stop metric service. */
   public void stopService() {
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.unbindFrom(this);
+      }
     }
     stopCoreModule();
   }
@@ -219,7 +224,7 @@ public abstract class AbstractMetricService {
   }
 
   public <T> AutoGauge createAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
     return metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
   }
 
@@ -274,7 +279,7 @@ public abstract class AbstractMetricService {
 
   /** GetOrCreateAutoGauge with internal report. */
   public <T> AutoGauge createAutoGaugeWithInternalReport(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
     AutoGauge gauge = metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
     internalReporter.addAutoGauge(gauge, metric, tags);
     return gauge;
@@ -313,35 +318,35 @@ public abstract class AbstractMetricService {
   }
 
   /** Count with internal report. */
-  public void countWithInternalReport(
+  public void countWithInternalReportAsync(
       long delta, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.count(delta, metric, metricLevel, tags), metric, tags);
   }
 
   /** Gauge value with internal report */
-  public void gaugeWithInternalReport(
+  public void gaugeWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.gauge(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Rate with internal report. */
-  public void rateWithInternalReport(
+  public void rateWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.rate(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Histogram with internal report. */
-  public void histogramWithInternalReport(
+  public void histogramWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.histogram(value, metric, metricLevel, tags), metric, tags);
   }
 
   /** Timer with internal report. */
-  public void timerWithInternalReport(
+  public void timerWithInternalReportAsync(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(
         metricManager.timer(delta, timeUnit, metric, metricLevel, tags), metric, tags);
@@ -370,7 +375,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Bind metrics and store metric set. */
-  public void addMetricSet(IMetricSet metricSet) {
+  public synchronized void addMetricSet(IMetricSet metricSet) {
     if (!metricSets.contains(metricSet)) {
       metricSet.bindTo(this);
       metricSets.add(metricSet);
@@ -378,7 +383,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Remove metrics. */
-  public void removeMetricSet(IMetricSet metricSet) {
+  public synchronized void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);
       metricSets.remove(metricSet);
