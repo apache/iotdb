@@ -19,27 +19,33 @@
 package org.apache.iotdb.confignode.consensus.request.auth;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 public class AuthorPlan extends ConfigPhysicalPlan {
+  private static final Logger logger = org.slf4j.LoggerFactory.getLogger(AuthorPlan.class);
 
   private ConfigPhysicalPlanType authorType;
   private String roleName;
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
-  private List<String> nodeNameList;
+  private List<PartialPath> nodeNameList;
   private String userName;
 
   public AuthorPlan(ConfigPhysicalPlanType type) {
@@ -66,7 +72,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       String password,
       String newPassword,
       Set<Integer> permissions,
-      List<String> nodeNameList)
+      List<PartialPath> nodeNameList)
       throws AuthException {
     this(authorType);
     this.authorType = authorType;
@@ -118,11 +124,11 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.permissions = permissions;
   }
 
-  public List<String> getNodeNameList() {
+  public List<PartialPath> getNodeNameList() {
     return nodeNameList;
   }
 
-  public void setNodeNameList(List<String> nodeNameList) {
+  public void setNodeNameList(List<PartialPath> nodeNameList) {
     this.nodeNameList = nodeNameList;
   }
 
@@ -150,7 +156,10 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(nodeNameList, stream);
+    BasicStructureSerDeUtil.write(nodeNameList.size(), stream);
+    for (PartialPath partialPath : nodeNameList) {
+      BasicStructureSerDeUtil.write(partialPath.getFullPath(), stream);
+    }
   }
 
   @Override
@@ -169,7 +178,15 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    nodeNameList = BasicStructureSerDeUtil.readStringList(buffer);
+    int nodeNameListSize = BasicStructureSerDeUtil.readInt(buffer);
+    nodeNameList = new ArrayList<>(nodeNameListSize);
+    try {
+      for (int i = 0; i < nodeNameListSize; i++) {
+        nodeNameList.add(new PartialPath(BasicStructureSerDeUtil.readString(buffer)));
+      }
+    } catch (MetadataException e) {
+      logger.error("Invalid path when deserialize authPlan: {}", nodeNameList, e);
+    }
   }
 
   private short getPlanType(ConfigPhysicalPlanType configPhysicalPlanType) {

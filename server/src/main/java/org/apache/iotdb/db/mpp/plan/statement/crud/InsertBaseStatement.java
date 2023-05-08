@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,6 +78,4 @@ public abstract class InsertBaseStatement extends Statement {
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
-
-  public abstract List<TEndPoint> collectRedirectInfo(DataPartition dataPartition);
 }

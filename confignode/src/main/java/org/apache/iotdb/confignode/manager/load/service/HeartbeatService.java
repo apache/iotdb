@@ -171,7 +171,6 @@ public class HeartbeatService {
           new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation().getDataNodeId(),
               loadCache,
-              configManager.getLoadManager().getRouteBalancer(),
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk());

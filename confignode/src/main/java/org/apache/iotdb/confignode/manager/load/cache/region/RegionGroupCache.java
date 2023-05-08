@@ -163,4 +163,8 @@ public class RegionGroupCache {
   public RegionGroupStatistics getStatistics() {
     return currentStatistics.get();
   }
+
+  public RegionGroupStatistics getPreviousStatistics() {
+    return previousStatistics.get();
+  }
 }

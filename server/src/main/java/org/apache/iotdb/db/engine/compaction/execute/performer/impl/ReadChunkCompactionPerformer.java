@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.MultiTsFileDeviceIterator;
@@ -50,7 +49,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
   private CompactionTaskSummary summary;
-  private long tempFileSize = 0L;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -72,7 +70,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
             new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
@@ -87,19 +84,13 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
         // update temporal file metrics
-        long newTempFileSize = writer.getPos();
-        TsFileMetricManager.getInstance()
-            .addCompactionTempFileSize(true, true, newTempFileSize - tempFileSize);
-        tempFileSize = newTempFileSize;
+        summary.setTemporalFileSize(writer.getPos());
       }
 
       for (TsFileResource tsFileResource : seqFiles) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
       writer.endFile();
-    } finally {
-      TsFileMetricManager.getInstance().addCompactionTempFileSize(true, true, -tempFileSize);
-      TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, -1);
     }
   }
 

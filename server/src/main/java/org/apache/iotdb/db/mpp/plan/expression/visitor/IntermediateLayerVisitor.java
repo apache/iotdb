@@ -444,7 +444,7 @@ public class IntermediateLayerVisitor
   }
 
   public static class IntermediateLayerVisitorContext {
-    long queryId;
+    String queryId;
 
     UDTFContext udtfContext;
 
@@ -457,7 +457,7 @@ public class IntermediateLayerVisitor
     LayerMemoryAssigner memoryAssigner;
 
     public IntermediateLayerVisitorContext(
-        long queryId,
+        String queryId,
         UDTFContext udtfContext,
         QueryDataSetInputLayer rawTimeSeriesInputLayer,
         Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.execution.executor;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -99,7 +99,15 @@ public abstract class PipeSubtaskExecutor {
   public final void deregister(String subTaskID) {
     stop(subTaskID);
 
-    registeredIdSubtaskMapper.remove(subTaskID);
+    final PipeSubtask subtask = registeredIdSubtaskMapper.remove(subTaskID);
+
+    if (subtask != null) {
+      try {
+        subtask.close();
+      } catch (Exception e) {
+        LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
+      }
+    }
   }
 
   @TestOnly

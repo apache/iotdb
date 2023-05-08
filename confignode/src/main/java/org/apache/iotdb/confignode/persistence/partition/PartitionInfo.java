@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegio
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
@@ -75,6 +77,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +89,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
@@ -257,6 +261,11 @@ public class PartitionInfo implements SnapshotProcessor {
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public boolean isDatabasePreDeleted(String database) {
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    return databasePartitionTable != null && !databasePartitionTable.isNotPreDeleted();
   }
 
   /**
@@ -832,28 +841,124 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Get the RegionId of the specific Database or seriesSlotId(device).
+   *
+   * @param plan GetRegionIdPlan with the specific Database ,seriesSlotId(device) , timeSlotId.
+   * @return GetRegionIdResp with STATUS and List<TConsensusGroupId>.
+   */
   public DataSet getRegionId(GetRegionIdPlan plan) {
-    if (!isDatabaseExisted(plan.getDatabase())) {
+    if (!plan.getDatabase().equals("")) {
+      // get regionId of specific database.
+      if (!isDatabaseExisted(plan.getDatabase())) {
+        return new GetRegionIdResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+      } else {
+        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        return new GetRegionIdResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sgPartitionTable
+                .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+                .stream()
+                .distinct()
+                .sorted(Comparator.comparing(TConsensusGroupId::getId))
+                .collect(Collectors.toList()));
+      }
+    } else {
+      // get regionId of specific seriesSlotId(device).
+      List<TConsensusGroupId> regionIds = new ArrayList<>();
+      databasePartitionTables.forEach(
+          (database, databasePartitionTable) ->
+              regionIds.addAll(
+                  databasePartitionTable.getRegionId(
+                      plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())));
       return new GetRegionIdResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          regionIds.stream()
+              .distinct()
+              .sorted(Comparator.comparing(TConsensusGroupId::getId))
+              .collect(Collectors.toList()));
     }
-    DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
-    return new GetRegionIdResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        sgPartitionTable.getRegionId(
-            plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId()));
   }
 
+  /**
+   * Get the timePartition of the specific Database or seriesSlotId(device) or regionId.
+   *
+   * @param plan GetRegionIdPlan with the specific Database ,seriesSlotId(device) , regionId.
+   * @return GetRegionIdResp with STATUS and List<TTimePartitionSlot>.
+   */
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
-    if (!isDatabaseExisted(plan.getDatabase())) {
+    if (!plan.getDatabase().equals("")) {
+      if (!isDatabaseExisted(plan.getDatabase())) {
+        return new GetTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+      } else {
+        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        return new GetTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sgPartitionTable
+                .getTimeSlotList(
+                    plan.getSeriesSlotId(),
+                    plan.getRegionId(),
+                    plan.getStartTime(),
+                    plan.getEndTime())
+                .stream()
+                .distinct()
+                .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
+                .collect(Collectors.toList()));
+      }
+    } else {
+      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+      databasePartitionTables.forEach(
+          (database, databasePartitionTable) ->
+              timePartitionSlots.addAll(
+                  databasePartitionTable.getTimeSlotList(
+                      plan.getSeriesSlotId(),
+                      plan.getRegionId(),
+                      plan.getStartTime(),
+                      plan.getEndTime())));
       return new GetTimeSlotListResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          timePartitionSlots.stream()
+              .distinct()
+              .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
+              .collect(Collectors.toList()));
     }
-    DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
-    return new GetTimeSlotListResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        sgPartitionTable.getTimeSlotList(
-            plan.getSeriesSlotId(), plan.getStartTime(), plan.getEndTime()));
+  }
+
+  public DataSet countTimeSlotList(CountTimeSlotListPlan plan) {
+    if (!plan.getDatabase().equals("")) {
+      if (!isDatabaseExisted(plan.getDatabase())) {
+        return new CountTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), 0);
+      } else {
+        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        return new CountTimeSlotListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            sgPartitionTable
+                .getTimeSlotList(
+                    plan.getSeriesSlotId(),
+                    plan.getRegionId(),
+                    plan.getStartTime(),
+                    plan.getEndTime())
+                .stream()
+                .distinct()
+                .count());
+      }
+    } else {
+      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+      databasePartitionTables.forEach(
+          (database, databasePartitionTable) ->
+              timePartitionSlots.addAll(
+                  databasePartitionTable.getTimeSlotList(
+                      plan.getSeriesSlotId(),
+                      plan.getRegionId(),
+                      plan.getStartTime(),
+                      plan.getEndTime())));
+      return new CountTimeSlotListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          timePartitionSlots.stream().distinct().count());
+    }
   }
 
   public DataSet getSeriesSlotList(GetSeriesSlotListPlan plan) {

@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -38,7 +37,6 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -59,10 +57,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
@@ -70,7 +66,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -83,6 +79,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -529,9 +526,15 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
   }
 
+  /**
+   * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
+   * use this RegionGroup to allocate new Partitions
+   *
+   * @param regionGroupId Specified RegionGroup
+   * @param regionStatusMap Map<DataNodeId, RegionStatus>
+   */
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    // Force activating RegionGroup
     long currentTime = System.currentTimeMillis();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
@@ -539,27 +542,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
-
-    // Select leader greedily for iot consensus protocol
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.IOT_CONSENSUS.equals(
-            ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
-      List<Integer> availableDataNodes = new ArrayList<>();
-      for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
-        if (RegionStatus.isNormalStatus(statusEntry.getValue())) {
-          availableDataNodes.add(statusEntry.getKey());
-        }
-      }
-      getLoadManager().getRouteBalancer().greedySelectLeader(regionGroupId, availableDataNodes);
-    }
-
-    // Force update RegionRouteMap
-    getLoadManager().getRouteBalancer().updateRegionRouteMap();
-  }
-
-  public void broadcastRegionGroup() {
-    // Broadcast the latest RegionRouteMap
-    getLoadManager().broadcastLatestRegionRouteMap();
+    // Wait for leader election
+    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
@@ -652,24 +636,13 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> createPipeOnDataNodes(PipeMeta pipeMeta) throws IOException {
+  public List<TSStatus> pushPipeMetaToDataNodes(List<ByteBuffer> pipeMetaBinaryList) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
-    TCreatePipeOnDataNodeReq request =
-        new TCreatePipeOnDataNodeReq().setPipeMeta(pipeMeta.serialize());
-    final AsyncClientHandler<TCreatePipeOnDataNodeReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CREATE_PIPE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
-  }
-
-  public List<TSStatus> operatePipeOnDataNodes(TOperatePipeOnDataNodeReq request) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-
-    final AsyncClientHandler<TOperatePipeOnDataNodeReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.OPERATE_PIPE, request, dataNodeLocationMap);
+    final AsyncClientHandler<TPushPipeMetaReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

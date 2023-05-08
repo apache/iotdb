@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -153,7 +154,7 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean grantPrivilegeToUser(String username, String path, int privilegeId)
+  public boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(username);
@@ -181,7 +182,7 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean revokePrivilegeFromUser(String username, String path, int privilegeId)
+  public boolean revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(username);

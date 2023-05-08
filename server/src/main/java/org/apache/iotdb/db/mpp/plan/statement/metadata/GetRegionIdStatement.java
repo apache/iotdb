@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,58 +45,41 @@ import java.util.List;
  */
 public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
-  private final String storageGroup;
+  private String database;
 
-  private String deviceId;
-
-  private TSeriesPartitionSlot seriesSlotId;
-
+  private String device;
   private final TConsensusGroupType partitionType;
-
-  private TTimePartitionSlot timeSlotId;
-
   private long timeStamp = -1;
 
-  public GetRegionIdStatement(String storageGroup, TConsensusGroupType partitionType) {
+  private static final Logger LOGGER = LoggerFactory.getLogger(GetRegionIdStatement.class);
+
+  public GetRegionIdStatement(TConsensusGroupType partitionType) {
     super();
-    this.storageGroup = storageGroup;
     this.partitionType = partitionType;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
   public TConsensusGroupType getPartitionType() {
     return partitionType;
   }
 
-  public TSeriesPartitionSlot getSeriesSlotId() {
-    return seriesSlotId;
-  }
-
-  public String getDeviceId() {
-    return deviceId;
-  }
-
-  public TTimePartitionSlot getTimeSlotId() {
-    return timeSlotId;
+  public String getDevice() {
+    return device;
   }
 
   public long getTimeStamp() {
     return timeStamp;
   }
 
-  public void setTimeSlotId(TTimePartitionSlot timeSlotId) {
-    this.timeSlotId = timeSlotId;
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
-  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
-    this.seriesSlotId = seriesSlotId;
-  }
-
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+  public void setDevice(String device) {
+    this.device = device;
   }
 
   public void setTimeStamp(long timeStamp) {
@@ -114,9 +98,13 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
 
   @Override
   public List<PartialPath> getPaths() {
+    if (database == null) {
+      return new ArrayList<>();
+    }
     try {
-      return Collections.singletonList(new PartialPath(storageGroup));
+      return Collections.singletonList(new PartialPath(database));
     } catch (IllegalPathException e) {
+      LOGGER.warn("illegal path: {}", database);
       return new ArrayList<>();
     }
   }

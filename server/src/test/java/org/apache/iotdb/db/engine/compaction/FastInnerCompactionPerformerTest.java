@@ -128,7 +128,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
 
@@ -226,7 +226,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -367,7 +367,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -481,7 +481,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(false);
@@ -596,7 +596,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -742,7 +742,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -877,7 +877,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -998,7 +998,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1089,7 +1089,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
@@ -1209,7 +1209,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1338,7 +1338,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
@@ -1472,7 +1472,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1656,7 +1656,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1820,7 +1820,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
@@ -1936,7 +1936,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             new AtomicInteger(0),
             0);
-    task.start();
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);

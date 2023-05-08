@@ -105,6 +105,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+    // collect redirectInfo
+    analysis.setRedirectNodeList(
+        Collections.singletonList(
+            dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
     return Collections.singletonList(this);
   }
 

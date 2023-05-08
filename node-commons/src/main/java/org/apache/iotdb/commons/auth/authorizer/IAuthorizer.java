@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.auth.authorizer;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
@@ -69,7 +70,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or the permission already exists.
    */
-  void grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
+  void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
@@ -81,7 +83,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or if the permission does not exist.
    */
-  void revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException;
+  void revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Add a role.
@@ -109,7 +112,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege already exists.
    */
-  void grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException;
+  void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Remove a privilege on a seriesPath from a role.
@@ -121,7 +125,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege does not exists.
    */
-  void revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException;
+  void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Add a role to a user.
@@ -150,7 +155,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return A set of integers each present a privilege.
    * @throws AuthException if exception raised when finding the privileges.
    */
-  Set<Integer> getPrivileges(String username, String path) throws AuthException;
+  Set<Integer> getPrivileges(String username, PartialPath path) throws AuthException;
 
   /**
    * Modify the password of a user.
@@ -171,7 +176,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
-  boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException;
+  boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;
@@ -209,8 +215,7 @@ public interface IAuthorizer extends SnapshotProcessor {
   /**
    * Whether data water-mark is enabled for user 'userName'.
    *
-   * @param userName
-   * @return
+   * @param userName the name of user
    * @throws AuthException if the user does not exist
    */
   boolean isUserUseWaterMark(String userName) throws AuthException;
@@ -218,8 +223,8 @@ public interface IAuthorizer extends SnapshotProcessor {
   /**
    * Enable or disable data water-mark for user 'userName'.
    *
-   * @param userName
-   * @param useWaterMark
+   * @param userName the name of user
+   * @param useWaterMark whether to use water-mark or not
    * @throws AuthException if the user does not exist.
    */
   void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
@@ -246,18 +251,18 @@ public interface IAuthorizer extends SnapshotProcessor {
   Map<String, Role> getAllRoles();
 
   /**
-   * clear all old users info, replace the old users with the new one
+   * clear all old user info, replace the old users with the new one
    *
    * @param users new users info
-   * @throws AuthException
+   * @throws AuthException IOException
    */
   void replaceAllUsers(Map<String, User> users) throws AuthException;
 
   /**
-   * clear all old roles info, replace the old roles with the new one
+   * clear all old role info, replace the old roles with the new one
    *
    * @param roles new roles info
-   * @throws AuthException
+   * @throws AuthException IOException
    */
   void replaceAllRoles(Map<String, Role> roles) throws AuthException;
 }

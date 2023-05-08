@@ -19,20 +19,11 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,11 +35,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.fail;
@@ -669,55 +658,63 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testInsertRecordsWithTemplate() throws Exception {
-    ISession session = EnvFactory.getEnv().getSessionConnection();
+  public void testShowTemplateSeriesWithFuzzyQuery() throws Exception {
+    // test create schema template repeatedly
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
+      // activate schema template
+      statement.execute("create timeseries using schema template on root.sg1.d1");
+      statement.execute("create timeseries using schema template on root.sg2.d2");
+      statement.execute("create timeseries using schema template on root.sg3.d3");
 
-    session.createDatabase("root.db");
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg2.d2.s1,INT64,RLE,SNAPPY",
+                  "root.sg2.d2.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg3.d3.s1,INT64,RLE,SNAPPY"));
 
-    Template temp1 = getTemplate("template1");
-    session.createSchemaTemplate(temp1);
-
-    session.setSchemaTemplate("template1", "root.db.v1");
-
-    List<String> devices = new ArrayList<>();
-    List<List<String>> measurementsList = new ArrayList<>();
-    List<String> measurements = Arrays.asList(new String[] {"x", "y"});
-    List<Long> times = new ArrayList<>();
-    List<List<String>> values = new ArrayList<>();
-    List<String> value = Arrays.asList(new String[] {"1.23", "2.34"});
-    for (int i = 0; i < 101; i++) {
-      devices.add("root.db.v1.d" + i);
-      measurementsList.add(measurements);
-      times.add(12345L + i);
-      values.add(value);
-    }
-
-    session.insertRecords(devices, times, measurementsList, values);
-    SessionDataSet dataSet;
-    RowRecord row;
-    for (int i = 0; i < 10; i++) {
-      dataSet =
-          session.executeQueryStatement(
-              String.format("SELECT * from root.db.v1.d%d", (int) (Math.random() * 100)));
-      while (dataSet.hasNext()) {
-        row = dataSet.next();
-        Assert.assertEquals("1.23", row.getFields().get(0).toString());
-        Assert.assertEquals("2.34", row.getFields().get(1).toString());
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
       }
+      Assert.assertTrue(expectedResult.isEmpty());
+      expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
     }
-  }
-
-  private Template getTemplate(String name) throws StatementExecutionException {
-    Template sessionTemplate = new Template(name, false);
-
-    TemplateNode mNodeX =
-        new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    TemplateNode mNodeY =
-        new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-
-    sessionTemplate.addToTemplate(mNodeX);
-    sessionTemplate.addToTemplate(mNodeY);
-
-    return sessionTemplate;
   }
 }

@@ -52,11 +52,13 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // Pipe Plugin
+    | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
-    | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
     | createModel | dropModel | showModels | showTrails
     // Quota
@@ -452,22 +454,35 @@ showConfigNodes
 
 // ---- Get Region Id
 getRegionId
-    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
-        seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
-        TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
+    : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
+        |DEVICE operator_eq device=prefixPath)
+        (OPERATOR_AND (TIMESTAMP|TIME) operator_eq time = timeValue)?
     ;
 
 // ---- Get Time Slot List
 getTimeSlotList
-    : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+    : SHOW (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
+        (OPERATOR_AND STARTTIME operator_eq startTime=timeValue)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=timeValue)?
+    ;
+
+// ---- Count Time Slot List
+countTimeSlotList
+    : COUNT (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
         (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // ---- Get Series Slot List
 getSeriesSlotList
-    : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
+    : SHOW (DATA|SCHEMA) SERIESSLOTID WHERE DATABASE operator_eq database=prefixPath
     ;
+
+
 
 // ---- Migrate Region
 migrateRegion
@@ -489,7 +504,6 @@ dropPipePlugin
 showPipePlugins
     : SHOW PIPEPLUGINS
     ;
-
 
 // ML Model =========================================================================================
 // ---- Create Model
@@ -609,6 +623,7 @@ orderByClause
 
 orderByAttributeClause
     : sortKey (DESC | ASC)?
+    | expression (DESC | ASC)? (NULLS (FIRST|LAST))?
     ;
 
 sortKey

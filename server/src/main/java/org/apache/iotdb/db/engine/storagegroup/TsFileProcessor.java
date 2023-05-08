@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -278,6 +279,11 @@ public class TsFileProcessor {
       workMemTable.insert(insertRowNode);
     }
 
+    // collect plan node in pipe
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
+
     // update start time of this memtable
     tsFileResource.updateStartTime(
         insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
@@ -379,13 +385,17 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
-
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
+
+    // collect plan node in pipe
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
+
     tsFileResource.updateStartTime(
         insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
-
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
@@ -843,6 +853,9 @@ public class TsFileProcessor {
                 .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
           syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
         }
+        PipeInsertionDataNodeListener.getInstance()
+            .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
+
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);

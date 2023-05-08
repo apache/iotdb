@@ -31,13 +31,16 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
-import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
+import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -52,7 +55,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class StatisticsService {
+public class StatisticsService implements IClusterStatusSubscriber {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);
 
@@ -110,109 +113,135 @@ public class StatisticsService {
     // Broadcast the RegionRouteMap if some LoadStatistics has changed
     boolean isNeedBroadcast = false;
 
-    // Update NodeStatistics:
-    // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one
-    // means the previous NodeStatistics
+    // Update NodeStatistics
+    // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
         loadCache.updateNodeStatistics();
     if (!differentNodeStatisticsMap.isEmpty()) {
       isNeedBroadcast = true;
-      recordNodeStatistics(differentNodeStatisticsMap);
-      eventBus.post(new NodeStatisticsEvent(differentNodeStatisticsMap));
     }
 
     // Update RegionGroupStatistics
-    Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap =
-        loadCache.updateRegionGroupStatistics();
+    // Map<RegionGroupId, Pair<old RegionGroupStatistics, new RegionGroupStatistics>>
+    Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+        differentRegionGroupStatisticsMap = loadCache.updateRegionGroupStatistics();
     if (!differentRegionGroupStatisticsMap.isEmpty()) {
       isNeedBroadcast = true;
-      recordRegionGroupStatistics(differentRegionGroupStatisticsMap);
     }
 
-    // Update RegionRouteMap
-    if (routeBalancer.updateRegionRouteMap()) {
+    // Update RegionGroupLeaders
+    // Map<RegionGroupId, Pair<old leader index, new leader index>>
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
+        loadCache.updateRegionGroupLeader();
+    if (!differentRegionLeaderMap.isEmpty()) {
       isNeedBroadcast = true;
-      recordRegionRouteMap(routeBalancer.getRegionRouteMap());
     }
 
     if (isNeedBroadcast) {
+      differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
+      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+          differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
+
+      eventBus.post(
+          new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));
+      eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
       broadcastLatestRegionRouteMap();
     }
   }
 
-  private void recordNodeStatistics(
-      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
-        differentNodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue().left);
-    }
-  }
-
-  private void recordRegionGroupStatistics(
-      Map<TConsensusGroupId, RegionGroupStatistics> differentRegionGroupStatisticsMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionGroupStatisticsMap: ");
-    for (Map.Entry<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsEntry :
-        differentRegionGroupStatisticsMap.entrySet()) {
-      LOGGER.info("[UpdateLoadStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
-      LOGGER.info("[UpdateLoadStatistics]\t {}", regionGroupStatisticsEntry.getValue());
-      for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
-          regionGroupStatisticsEntry.getValue().getRegionStatisticsMap().entrySet()) {
-        LOGGER.info(
-            "[UpdateLoadStatistics]\t dataNodeId{}={}",
-            regionStatisticsEntry.getKey(),
-            regionStatisticsEntry.getValue());
-      }
-    }
-  }
-
-  private void recordRegionRouteMap(RegionRouteMap regionRouteMap) {
-    LOGGER.info("[UpdateLoadStatistics] RegionLeaderMap: ");
-    for (Map.Entry<TConsensusGroupId, Integer> regionLeaderEntry :
-        regionRouteMap.getRegionLeaderMap().entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionLeaderEntry.getKey(),
-          regionLeaderEntry.getValue());
-    }
-
-    LOGGER.info("[UpdateLoadStatistics] RegionPriorityMap: ");
-    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> regionPriorityEntry :
-        regionRouteMap.getRegionPriorityMap().entrySet()) {
-      LOGGER.info(
-          "[UpdateLoadStatistics]\t {}={}",
-          regionPriorityEntry.getKey(),
-          regionPriorityEntry.getValue().getDataNodeLocations().stream()
-              .map(TDataNodeLocation::getDataNodeId)
-              .collect(Collectors.toList()));
-    }
-  }
-
   public void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap =
-        routeBalancer.getLatestRegionPriorityMap();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
+        getLoadManager().getRegionPriorityMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
-    configManager
-        .getNodeManager()
+    getNodeManager()
         .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Removing, NodeStatus.ReadOnly)
         .forEach(
             onlineDataNode ->
                 dataNodeLocationMap.put(
                     onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("[UpdateLoadStatistics] Begin to broadcast RegionRouteMap:");
     long broadcastTime = System.currentTimeMillis();
-
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
+            new TRegionRouteReq(broadcastTime, regionPriorityMap),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    LOGGER.info("[UpdateLoadStatistics] Broadcast the latest RegionRouteMap finished.");
+  }
+
+  private void recordNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
+    LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
+    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
+        differentNodeStatisticsMap.entrySet()) {
+      LOGGER.info(
+          "[NodeStatistics]\t {}={}",
+          "nodeId{" + nodeCacheEntry.getKey() + "}",
+          nodeCacheEntry.getValue().getRight());
+    }
+  }
+
+  private void recordRegionGroupStatistics(
+      Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+          differentRegionGroupStatisticsMap) {
+    LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
+    for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+        regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
+      LOGGER.info("[RegionGroupStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
+      LOGGER.info("[RegionGroupStatistics]\t {}", regionGroupStatisticsEntry.getValue());
+      for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
+          regionGroupStatisticsEntry.getValue().getRight().getRegionStatisticsMap().entrySet()) {
+        LOGGER.info(
+            "[RegionGroupStatistics]\t dataNodeId{}={}",
+            regionStatisticsEntry.getKey(),
+            regionStatisticsEntry.getValue());
+      }
+    }
+  }
+
+  @Override
+  public synchronized void onClusterStatisticsChanged(StatisticsChangeEvent event) {
+    recordNodeStatistics(event.getNodeStatisticsMap());
+    recordRegionGroupStatistics(event.getRegionGroupStatisticsMap());
+  }
+
+  private void recordRegionLeaderMap(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
+    LOGGER.info("[RegionLeader] RegionLeaderMap: ");
+    for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> regionLeaderEntry :
+        leaderMap.entrySet()) {
+      LOGGER.info(
+          "[RegionLeader]\t {}={}",
+          regionLeaderEntry.getKey(),
+          regionLeaderEntry.getValue().getRight());
+    }
+  }
+
+  private void recordRegionPriorityMap(
+      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
+    LOGGER.info("[RegionPriority] RegionPriorityMap: ");
+    for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+        regionPriorityEntry : priorityMap.entrySet()) {
+      LOGGER.info(
+          "[RegionPriority]\t {}={}",
+          regionPriorityEntry.getKey(),
+          regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
+    }
+  }
+
+  @Override
+  public synchronized void onRegionGroupLeaderChanged(RouteChangeEvent event) {
+    recordRegionLeaderMap(event.getLeaderMap());
+    recordRegionPriorityMap(event.getPriorityMap());
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

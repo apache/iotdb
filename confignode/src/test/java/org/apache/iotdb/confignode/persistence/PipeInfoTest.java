@@ -73,6 +73,7 @@ public class PipeInfoTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(0, 1);
+    pipeTaskMeta.trackException(true, "someError");
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -84,7 +85,7 @@ public class PipeInfoTest {
 
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
-            new PipePluginMeta("testPlugin", "org.apache.iotdb.testJar", "testJar", "???"),
+            new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123"));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 

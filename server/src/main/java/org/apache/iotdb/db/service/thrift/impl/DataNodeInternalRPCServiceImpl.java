@@ -44,7 +44,6 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
@@ -62,7 +61,6 @@ import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.cache.DataNodeTemplateSchemaCache;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -138,7 +136,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
@@ -167,17 +164,18 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -290,18 +288,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req) {
-    LOGGER.debug("receive PlanNode to group[{}]", req.getConsensusGroupId());
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
-    RegionWriteExecutor executor = new RegionWriteExecutor();
-    TSendPlanNodeResp resp = new TSendPlanNodeResp();
-    RegionExecutionResult executionResult = executor.execute(groupId, planNode);
-    resp.setAccepted(executionResult.isAccepted());
-    resp.setMessage(executionResult.getMessage());
-    resp.setStatus(executionResult.getStatus());
-    return resp;
+  public TSendBatchPlanNodeResp sendBatchPlanNode(TSendBatchPlanNodeReq req) {
+    List<TSendSinglePlanNodeResp> responses =
+        req.getRequests().stream()
+            .map(
+                request -> {
+                  ConsensusGroupId groupId =
+                      ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                          request.getConsensusGroupId());
+                  PlanNode planNode = PlanNodeType.deserialize(request.planNode.body);
+                  RegionWriteExecutor executor = new RegionWriteExecutor();
+                  TSendSinglePlanNodeResp resp = new TSendSinglePlanNodeResp();
+                  RegionExecutionResult executionResult = executor.execute(groupId, planNode);
+                  resp.setAccepted(executionResult.isAccepted());
+                  resp.setMessage(executionResult.getMessage());
+                  resp.setStatus(executionResult.getStatus());
+                  return resp;
+                })
+            .collect(Collectors.toList());
+    return new TSendBatchPlanNodeResp(responses);
   }
 
   @Override
@@ -415,14 +420,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().takeWriteLock();
-    DataNodeTemplateSchemaCache.getInstance().takeWriteLock();
     try {
       DataNodeSchemaCache.getInstance().invalidateAll();
-      DataNodeTemplateSchemaCache.getInstance().invalidateCache();
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
-      DataNodeTemplateSchemaCache.getInstance().releaseWriteLock();
     }
   }
 
@@ -488,16 +490,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
       throws TException {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
-    DataNodeTemplateSchemaCache templateSchemaCache = DataNodeTemplateSchemaCache.getInstance();
     cache.takeWriteLock();
-    templateSchemaCache.takeWriteLock();
     try {
       // todo implement precise timeseries clean rather than clean all
       cache.invalidateAll();
-      templateSchemaCache.invalidateCache();
     } finally {
       cache.releaseWriteLock();
-      templateSchemaCache.releaseWriteLock();
     }
     return RpcUtils.SUCCESS_STATUS;
   }
@@ -802,6 +800,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
+  @Override
+  public TSStatus pushPipeMeta(TPushPipeMetaReq req) throws TException {
+    return null;
+  }
+
   private TSStatus executeInternalSchemaTask(
       List<TConsensusGroupId> consensusGroupIdList,
       Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
@@ -819,28 +822,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(statusList);
     } else {
       return RpcUtils.SUCCESS_STATUS;
-    }
-  }
-
-  @Override
-  public TSStatus createPipeOnDataNode(TCreatePipeOnDataNodeReq req) {
-    throw new NotImplementedException("TODO: createPipeOnDataNode");
-  }
-
-  @Override
-  public TSStatus operatePipeOnDataNode(TOperatePipeOnDataNodeReq req) {
-    try {
-      switch (SyncOperation.values()[req.getOperation()]) {
-        case START_PIPE:
-        case STOP_PIPE:
-        case DROP_PIPE:
-          throw new NotImplementedException("TODO: operatePipeOnDataNode");
-        default:
-          return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-              .setMessage("Unsupported operation.");
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
@@ -1633,7 +1614,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setMessage("disable datanode succeed");
     // TODO what need to clean?
     ClusterPartitionFetcher.getInstance().invalidAllCache();
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().cleanUp();
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+    }
     DataNodeDevicePathCache.getInstance().cleanUp();
     return status;
   }

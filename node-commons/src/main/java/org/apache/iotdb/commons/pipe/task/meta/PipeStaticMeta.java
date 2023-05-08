@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,45 +32,45 @@ import java.util.Map;
 public class PipeStaticMeta {
 
   private String pipeName;
-  private long createTime;
+  private long creationTime;
 
-  private Map<String, String> collectorAttributes = new HashMap<>();
-  private Map<String, String> processorAttributes = new HashMap<>();
-  private Map<String, String> connectorAttributes = new HashMap<>();
+  private PipeParameters collectorParameters;
+  private PipeParameters processorParameters;
+  private PipeParameters connectorParameters;
 
   private PipeStaticMeta() {}
 
   public PipeStaticMeta(
       String pipeName,
-      long createTime,
+      long creationTime,
       Map<String, String> collectorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes) {
     this.pipeName = pipeName.toUpperCase();
-    this.createTime = createTime;
-    this.collectorAttributes = collectorAttributes;
-    this.processorAttributes = processorAttributes;
-    this.connectorAttributes = connectorAttributes;
+    this.creationTime = creationTime;
+    collectorParameters = new PipeParameters(collectorAttributes);
+    processorParameters = new PipeParameters(processorAttributes);
+    connectorParameters = new PipeParameters(connectorAttributes);
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public long getCreateTime() {
-    return createTime;
+  public long getCreationTime() {
+    return creationTime;
   }
 
-  public Map<String, String> getCollectorAttributes() {
-    return collectorAttributes;
+  public PipeParameters getCollectorParameters() {
+    return collectorParameters;
   }
 
-  public Map<String, String> getProcessorAttributes() {
-    return processorAttributes;
+  public PipeParameters getProcessorParameters() {
+    return processorParameters;
   }
 
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
+  public PipeParameters getConnectorParameters() {
+    return connectorParameters;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -81,20 +82,20 @@ public class PipeStaticMeta {
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
 
-    outputStream.writeInt(collectorAttributes.size());
-    for (Map.Entry<String, String> entry : collectorAttributes.entrySet()) {
+    outputStream.writeInt(collectorParameters.getAttribute().size());
+    for (Map.Entry<String, String> entry : collectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    outputStream.writeInt(processorAttributes.size());
-    for (Map.Entry<String, String> entry : processorAttributes.entrySet()) {
+    outputStream.writeInt(processorParameters.getAttribute().size());
+    for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    outputStream.writeInt(connectorAttributes.size());
-    for (Map.Entry<String, String> entry : connectorAttributes.entrySet()) {
+    outputStream.writeInt(connectorParameters.getAttribute().size());
+    for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -109,22 +110,32 @@ public class PipeStaticMeta {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeStaticMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
+    pipeStaticMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
+
+    pipeStaticMeta.collectorParameters = new PipeParameters(new HashMap<>());
+    pipeStaticMeta.processorParameters = new PipeParameters(new HashMap<>());
+    pipeStaticMeta.connectorParameters = new PipeParameters(new HashMap<>());
 
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta.collectorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      pipeStaticMeta
+          .collectorParameters
+          .getAttribute()
+          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta.processorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      pipeStaticMeta
+          .processorParameters
+          .getAttribute()
+          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     size = byteBuffer.getInt();
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta.connectorAttributes.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      pipeStaticMeta
+          .connectorParameters
+          .getAttribute()
+          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
 
     return pipeStaticMeta;
@@ -140,10 +151,10 @@ public class PipeStaticMeta {
     }
     PipeStaticMeta that = (PipeStaticMeta) obj;
     return pipeName.equals(that.pipeName)
-        && createTime == that.createTime
-        && collectorAttributes.equals(that.collectorAttributes)
-        && processorAttributes.equals(that.processorAttributes)
-        && connectorAttributes.equals(that.connectorAttributes);
+        && creationTime == that.creationTime
+        && collectorParameters.equals(that.collectorParameters)
+        && processorParameters.equals(that.processorParameters)
+        && connectorParameters.equals(that.connectorParameters);
   }
 
   @Override
@@ -157,14 +168,14 @@ public class PipeStaticMeta {
         + "pipeName='"
         + pipeName
         + '\''
-        + ", createTime="
-        + createTime
-        + ", collectorAttributes="
-        + collectorAttributes
-        + ", processorAttributes="
-        + processorAttributes
-        + ", connectorAttributes="
-        + connectorAttributes
+        + ", creationTime="
+        + creationTime
+        + ", collectorParameters="
+        + collectorParameters.getAttribute()
+        + ", processorParameters="
+        + processorParameters.getAttribute()
+        + ", connectorParameters="
+        + connectorParameters.getAttribute()
         + '}';
   }
 }
