@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.HandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -166,18 +167,34 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
   public TSStatus handleLeaderChange(HandleLeaderChangePlan plan) {
-    pipeMetaKeeper
-        .getPipeMetaList()
+    plan.getNewLeaderMap()
         .forEach(
-            pipeMeta ->
-                pipeMeta
-                    .getRuntimeMeta()
-                    .getConsensusGroupIdToTaskMetaMap()
+            (regionId, newLeader) ->
+                pipeMetaKeeper
+                    .getPipeMetaList()
                     .forEach(
-                        (regionId, pipeTaskMeta) ->
-                            pipeTaskMeta.setRegionLeader(
-                                plan.getNewLeaderMap()
-                                    .getOrDefault(regionId, pipeTaskMeta.getRegionLeader()))));
+                        pipeMeta -> {
+                          if (!pipeMeta
+                              .getRuntimeMeta()
+                              .getConsensusGroupIdToTaskMetaMap()
+                              .containsKey(regionId)) {
+                            pipeMeta
+                                .getRuntimeMeta()
+                                .getConsensusGroupIdToTaskMetaMap()
+                                .put(regionId, new PipeTaskMeta(0, newLeader));
+                          } else if (newLeader == -1) {
+                            pipeMeta
+                                .getRuntimeMeta()
+                                .getConsensusGroupIdToTaskMetaMap()
+                                .remove(regionId);
+                          } else {
+                            pipeMeta
+                                .getRuntimeMeta()
+                                .getConsensusGroupIdToTaskMetaMap()
+                                .get(regionId)
+                                .setRegionLeader(newLeader);
+                          }
+                        }));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
