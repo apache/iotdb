@@ -483,6 +483,36 @@ public class IoTDBSelectIntoIT {
         "select k1, k2, k3 from root.sg_abd_expr.*;", expectedQueryHeader, queryRetArray);
   }
 
+  @Test
+  public void testExpressionAlignByDevice2() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,avg(s1),root.agg_expr.d1.avg_s1,1,",
+          "root.sg.d1,sum(s1) + sum(s1),root.agg_expr.d1.sum_s1_add_s1,1,",
+          "root.sg.d1,count(s2),root.agg_expr.d1.count_s2,1,",
+          "root.sg.d2,avg(s1),root.agg_expr.d2.avg_s1,1,",
+          "root.sg.d2,sum(s1) + sum(s1),root.agg_expr.d2.sum_s1_add_s1,1,",
+          "root.sg.d2,count(s2),root.agg_expr.d2.count_s2,1,",
+        };
+    resultSetEqualTest(
+        "select avg(s1), sum(s1) + sum(s1), count(s2)"
+            + " into root.agg_expr.${2}(avg_s1, sum_s1_add_s1, count_s2)"
+            + " from root.sg.d1, root.sg.d2 align by device;",
+        selectIntoAlignByDeviceHeader, intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.agg_expr.d1.avg_s1,root.agg_expr.d2.avg_s1,root.agg_expr.d1.sum_s1_add_s1,"
+            + "root.agg_expr.d2.sum_s1_add_s1,root.agg_expr.d1.count_s2,root.agg_expr.d2.count_s2,";
+    String[] queryRetArray =
+        new String[] {
+          "0,6.5,6.428571428571429,130.0,90.0,9,8,",
+        };
+    resultSetEqualTest(
+        "select avg_s1, sum_s1_add_s1, count_s2 from root.agg_expr.*;",
+        expectedQueryHeader,
+        queryRetArray);
+  }
+
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
   @Test
