@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.collections4.comparators.ComparatorChain;
@@ -33,70 +33,65 @@ import java.util.List;
 
 public class MergeSortComparator {
 
-  private static final Comparator<MergeSortKey> TIME_ASC_COMPARATOR =
+  private static final Comparator<SortKey> TIME_ASC_COMPARATOR =
       Comparator.comparingLong(
-          (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
+          (SortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
 
-  private static final Comparator<MergeSortKey> TIME_DESC_COMPARATOR =
+  private static final Comparator<SortKey> TIME_DESC_COMPARATOR =
       Comparator.comparingLong(
-              (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex))
+              (SortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex))
           .reversed();
 
   /** @param indexList -1 for time column */
-  public static Comparator<MergeSortKey> getComparator(
+  public static Comparator<SortKey> getComparator(
       List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
 
     // use code-gen compile this comparator
-    List<Comparator<MergeSortKey>> list = new ArrayList<>(indexList.size());
+    List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
     for (int i = 0; i < indexList.size(); i++) {
       int index = indexList.get(i);
+      if (index == -2) continue;
       TSDataType dataType = dataTypeList.get(i);
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
       boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;
       list.add(genSingleComparator(asc, index, dataType, nullFirst));
     }
-    return new ComparatorChain<>(list);
+
+    return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);
   }
 
-  public static Comparator<MergeSortKey> getComparator(
-      TSDataType dataType, int index, boolean asc) {
-    Comparator<MergeSortKey> comparator;
+  public static Comparator<SortKey> getComparator(TSDataType dataType, int index, boolean asc) {
+    Comparator<SortKey> comparator;
     switch (dataType) {
       case INT32:
         comparator =
             Comparator.comparingInt(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
         break;
       case INT64:
         comparator =
             Comparator.comparingLong(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
         break;
       case FLOAT:
         comparator =
             Comparator.comparingDouble(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
         break;
       case DOUBLE:
         comparator =
             Comparator.comparingDouble(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
         break;
       case TEXT:
         comparator =
             Comparator.comparing(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
         break;
       case BOOLEAN:
         comparator =
             Comparator.comparing(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
         break;
       default:
         throw new IllegalArgumentException("Data type: " + dataType + " cannot be ordered");
@@ -108,12 +103,12 @@ public class MergeSortComparator {
     return comparator;
   }
 
-  private static Comparator<MergeSortKey> genSingleComparator(
+  private static Comparator<SortKey> genSingleComparator(
       boolean asc, int index, TSDataType dataType, boolean nullFirst) {
 
     if (index == -1) {
       return asc ? TIME_ASC_COMPARATOR : TIME_DESC_COMPARATOR;
     }
-    return new MergeSortKeyComparator(index, nullFirst, getComparator(dataType, index, asc));
+    return new SortKeyComparator(index, nullFirst, getComparator(dataType, index, asc));
   }
 }

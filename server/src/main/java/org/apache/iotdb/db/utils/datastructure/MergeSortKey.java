@@ -21,21 +21,24 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-public class MergeSortKey {
+public class MergeSortKey extends SortKey {
 
-  public TsBlock tsBlock;
-  public int rowIndex;
-
-  public int columnIndex;
+  // This filed only used in operation as a intermediate tool, which is used to locate the origin of
+  // sortKey when there are more than one channels as input of mergeSort.
+  // It was initialized during the calculation in operator.
+  public int inputChannelIndex;
 
   public MergeSortKey(TsBlock tsBlock, int rowIndex) {
-    this.tsBlock = tsBlock;
-    this.rowIndex = rowIndex;
+    super(tsBlock, rowIndex);
   }
 
-  public MergeSortKey(TsBlock tsBlock, int rowIndex, int columnIndex) {
-    this.tsBlock = tsBlock;
-    this.rowIndex = rowIndex;
-    this.columnIndex = columnIndex;
+  public MergeSortKey(TsBlock tsBlock, int rowIndex, int inputChannelIndex) {
+    super(tsBlock, rowIndex);
+    this.inputChannelIndex = inputChannelIndex;
+  }
+
+  public MergeSortKey(SortKey sortKey) {
+    super(sortKey.tsBlock, sortKey.rowIndex);
+    this.inputChannelIndex = -1;
   }
 }
