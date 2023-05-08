@@ -17,22 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import java.util.Objects;
 
-public class DataRegionId extends ConsensusGroupId {
+public abstract class PipeRuntimeException extends PipeException {
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
-
-  public DataRegionId(String id) {
-    this.id = Integer.parseInt(id);
+  public PipeRuntimeException(String message) {
+    super(message);
   }
 
   @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
+  public boolean equals(Object obj) {
+    return obj instanceof PipeRuntimeException
+        && Objects.equals(getMessage(), ((PipeRuntimeException) obj).getMessage());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getMessage());
   }
 }

@@ -17,22 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 
-public class DataRegionId extends ConsensusGroupId {
+public interface SortReader {
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
+  /** output the cached data in sortReader, it needs to be called after hasNext() returns true. */
+  MergeSortKey next();
 
-  public DataRegionId(String id) {
-    this.id = Integer.parseInt(id);
-  }
+  /**
+   * Check if there is cached data in sortReader, cache more data if current ones are run out. This
+   * method should be called before next() to ensure that there is data to read.
+   */
+  boolean hasNext() throws IoTDBException;
 
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
-  }
+  void close() throws IoTDBException;
 }

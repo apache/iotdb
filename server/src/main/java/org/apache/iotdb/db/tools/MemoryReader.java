@@ -17,32 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.impl;
+package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 
-import java.io.File;
+import java.util.List;
 
-public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
-  private final File tsFile;
+public class MemoryReader implements SortReader {
 
-  public PipeTsFileInsertionEvent(File tsFile) {
-    this.tsFile = tsFile;
+  // all the data in MemoryReader lies in memory
+  private final List<MergeSortKey> cachedData;
+  private final int size;
+  private int rowIndex;
+
+  public MemoryReader(List<MergeSortKey> cachedTsBlock) {
+    this.cachedData = cachedTsBlock;
+    this.size = cachedTsBlock.size();
+    this.rowIndex = 0;
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    throw new UnsupportedOperationException("Not implemented yet");
+  public MergeSortKey next() {
+    MergeSortKey sortKey = cachedData.get(rowIndex);
+    rowIndex++;
+    return sortKey;
   }
 
   @Override
-  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
-    throw new UnsupportedOperationException("Not implemented yet");
+  public boolean hasNext() throws IoTDBException {
+    return cachedData != null && rowIndex != size;
   }
 
   @Override
-  public String toString() {
-    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
+  public void close() throws IoTDBException {
+    // do nothing
   }
 }
