@@ -184,14 +184,20 @@ public class IoTDBConfig {
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
 
-  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 1000;
+  /**
+   * Duration a wal flush operation will wait before calling fsync in the async mode. Unit:
+   * millisecond
+   */
+  private volatile long walAsyncModeFsyncDelayInMs = 1_000;
+
+  /**
+   * Duration a wal flush operation will wait before calling fsync in the sync mode. Unit:
+   * millisecond
+   */
+  private volatile long walSyncModeFsyncDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
-
-  /** Buffer entry size of each wal buffer. Unit: byte */
-  private int walBufferEntrySize = 16 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -1673,12 +1679,20 @@ public class IoTDBConfig {
     this.maxWalNodesNum = maxWalNodesNum;
   }
 
-  public long getFsyncWalDelayInMs() {
-    return fsyncWalDelayInMs;
+  public long getWalAsyncModeFsyncDelayInMs() {
+    return walAsyncModeFsyncDelayInMs;
   }
 
-  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
-    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
+  public void setWalAsyncModeFsyncDelayInMs(long walAsyncModeFsyncDelayInMs) {
+    this.walAsyncModeFsyncDelayInMs = walAsyncModeFsyncDelayInMs;
+  }
+
+  public long getWalSyncModeFsyncDelayInMs() {
+    return walSyncModeFsyncDelayInMs;
+  }
+
+  public void setWalSyncModeFsyncDelayInMs(long walSyncModeFsyncDelayInMs) {
+    this.walSyncModeFsyncDelayInMs = walSyncModeFsyncDelayInMs;
   }
 
   public int getWalBufferSize() {
@@ -1687,14 +1701,6 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
-  }
-
-  public int getWalBufferEntrySize() {
-    return walBufferEntrySize;
-  }
-
-  void setWalBufferEntrySize(int walBufferEntrySize) {
-    this.walBufferEntrySize = walBufferEntrySize;
   }
 
   public int getWalBufferQueueCapacity() {
