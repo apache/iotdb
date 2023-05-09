@@ -236,7 +236,18 @@ public class ClusterSchemaManager {
    * @return DatabaseSchemaResp
    */
   public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getStorageGroupPlan) {
-    return (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+    DatabaseSchemaResp resp =
+        (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+    List<String> preDeletedDatabaseList = new ArrayList<>();
+    for (String database : resp.getSchemaMap().keySet()) {
+      if (getPartitionManager().isDatabasePreDeleted(database)) {
+        preDeletedDatabaseList.add(database);
+      }
+    }
+    for (String preDeletedDatabase : preDeletedDatabaseList) {
+      resp.getSchemaMap().remove(preDeletedDatabase);
+    }
+    return resp;
   }
 
   /** Only used in cluster tool show Databases. */
