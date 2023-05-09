@@ -18,13 +18,10 @@
 
 import multiprocessing as mp
 
-from typing import Dict
-
-from torch import nn
+from typing import Dict, Union
 from torch.utils.data import Dataset
-
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.process.task import ForecastingTrainingTask
+from iotdb.mlnode.process.task import ForecastingSingleTrainingTask, ForecastingTuningTrainingTask
 
 
 class TaskManager(object):
@@ -43,14 +40,14 @@ class TaskManager(object):
 
     def create_training_task(self,
                              dataset: Dataset,
-                             model: nn.Module,
+                             data_configs: Dict,
                              model_configs: Dict,
-                             task_configs: Dict) -> ForecastingTrainingTask:
+                             task_configs: Dict):
         """
 
         Args:
             dataset: a torch dataset to be used for training
-            model: torch.nn.Module
+            data_configs: dict of data configurations
             model_configs: dict of model configurations
             task_configs: dict of task configurations
 
@@ -59,16 +56,27 @@ class TaskManager(object):
         """
         model_id = task_configs['model_id']
         self.__pid_info[model_id] = self.__shared_resource_manager.dict()
-        task = ForecastingTrainingTask(
-            task_configs,
-            model_configs,
-            model,
-            dataset,
-            self.__pid_info
-        )
+        if task_configs['tuning']:
+            task = ForecastingTuningTrainingTask(
+                task_configs,
+                model_configs,
+                self.__pid_info,
+                data_configs,
+                dataset,
+                model_id,
+            )
+        else:
+            task = ForecastingSingleTrainingTask(
+                task_configs,
+                model_configs,
+                self.__pid_info,
+                data_configs,
+                dataset,
+                model_id,
+            )
         return task
 
-    def submit_training_task(self, task: ForecastingTrainingTask) -> None:
+    def submit_training_task(self, task: Union[ForecastingTuningTrainingTask, ForecastingSingleTrainingTask]) -> None:
         if task is not None:
             self.__training_process_pool.apply_async(task, args=())
             logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')

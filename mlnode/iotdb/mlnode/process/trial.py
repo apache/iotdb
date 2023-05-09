@@ -22,10 +22,12 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn.modules import loss
+from torch.optim import Optimizer
 from torch.utils.data import DataLoader, Dataset
 
 from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
-from iotdb.mlnode.client import client_manager
+from iotdb.mlnode.client import client_manager, DataNodeClient, ConfigNodeClient
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
@@ -79,17 +81,23 @@ def _parse_trial_config(**kwargs):
 
 
 class BasicTrial(object):
-    def __init__(self, trial_configs: Dict, model: nn.Module, model_configs: Dict, dataset: Dataset, **kwargs):
-        trial_configs = self.trial_configs = _parse_trial_config(**trial_configs)
-        self.model_id = trial_configs['model_id']
-        self.trial_id = trial_configs['trial_id']
-        self.batch_size = trial_configs['batch_size']
-        self.learning_rate = trial_configs['learning_rate']
-        self.epochs = trial_configs['epochs']
-        self.num_workers = trial_configs['num_workers']
-        self.pred_len = trial_configs['pred_len']
-        self.metric_names = trial_configs['metric_names']
-        self.use_gpu = trial_configs['use_gpu']
+    def __init__(
+            self,
+            task_configs: Dict,
+            model: nn.Module,
+            model_configs: Dict,
+            dataset: Dataset
+    ):
+        self.trial_configs = task_configs
+        self.model_id = task_configs['model_id']
+        self.trial_id = task_configs['trial_id']
+        self.batch_size = task_configs['batch_size']
+        self.learning_rate = task_configs['learning_rate']
+        self.epochs = task_configs['epochs']
+        self.num_workers = task_configs['num_workers']
+        self.pred_len = task_configs['pred_len']
+        self.metric_names = task_configs['metric_names']
+        self.use_gpu = task_configs['use_gpu']
         self.model = model
         self.model_configs = model_configs
 
@@ -104,36 +112,6 @@ class BasicTrial(object):
             device = torch.device('cpu')
         return device
 
-    @abstractmethod
-    def _build_dataloader(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def start(self):
-        raise NotImplementedError
-
-
-class ForecastingTrainingTrial(BasicTrial):
-    def __init__(self, trial_configs: dict, model: nn.Module, model_configs: dict, dataset: Dataset, **kwargs):
-        """
-        A training trial, accept all parameters needed and train a single model.
-
-        Args:
-            trial_configs: dict of trial's configurations
-            model: torch.nn.Module
-            model_configs: dict of model's configurations
-            dataset: training dataset
-            **kwargs:
-        """
-        super(ForecastingTrainingTrial, self).__init__(trial_configs, model, model_configs, dataset, **kwargs)
-
-        self.dataloader = self._build_dataloader()
-        self.datanode_client = client_manager.borrow_data_node_client()
-        self.confignode_client = client_manager.borrow_config_node_client()
-        self.criterion = torch.nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.metrics_dict = build_metrics(self.metric_names)
-
     def _build_dataloader(self) -> DataLoader:
         """
         Returns:
@@ -147,7 +125,39 @@ class ForecastingTrainingTrial(BasicTrial):
             num_workers=self.num_workers
         )
 
-    def _train(self, epoch: int) -> float:
+    @abstractmethod
+    def start(self):
+        raise NotImplementedError
+
+
+class ForecastingTrainingTrial(BasicTrial):
+    def __init__(
+            self,
+            task_configs: Dict,
+            model: nn.Module,
+            model_configs: Dict,
+            dataset: Dataset,
+    ):
+        """
+        A training trial, accept all parameters needed and train a single model.
+
+        Args:
+            trial_configs: dict of trial's configurations
+            model: torch.nn.Module
+            model_configs: dict of model's configurations
+            dataset: training dataset
+            **kwargs:
+        """
+        super(ForecastingTrainingTrial, self).__init__(task_configs, model, model_configs, dataset)
+
+        self.dataloader = self._build_dataloader()
+        self.datanode_client = client_manager.borrow_data_node_client()
+        self.confignode_client = client_manager.borrow_config_node_client()
+        self.criterion = torch.nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.metrics_dict = build_metrics(self.metric_names)
+
+    def train(self, epoch: int) -> float:
         self.model.train()
         train_loss = []
         epoch_time = time.time()
@@ -182,7 +192,7 @@ class ForecastingTrainingTrial(BasicTrial):
                     .format(epoch + 1, time.time() - epoch_time, train_loss))
         return train_loss
 
-    def _validate(self, epoch: int) -> Tuple[float, Dict]:
+    def vali(self, epoch: int) -> Tuple[float, Dict]:
         self.model.eval()
         val_loss = []
         metrics_value_dict = {name: [] for name in self.metric_names}
@@ -231,8 +241,8 @@ class ForecastingTrainingTrial(BasicTrial):
             best_metrics_dict = None
             model_path = None
             for epoch in range(self.epochs):
-                self._train(epoch)
-                val_loss, metrics_dict = self._validate(epoch)
+                self.train(epoch)
+                val_loss, metrics_dict = self.vali(epoch)
                 if val_loss < best_loss:
                     best_loss = val_loss
                     best_metrics_dict = metrics_dict
