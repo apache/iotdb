@@ -23,11 +23,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.tieredstorage.task.TsFileMigrationTriggerType;
 
 /**
- * // (jinrui)
- * 该类为一个单例类，用来在运行时提供多级存储的相关配置（可能需要定义更多的类来实现它），其功能为：
- * 1. 启动时，根据配置文件处理多级存储的配置信息
- * 2. 将配置信息存储在该单例类的对象中，并提供对外的访问接口
- * 3. 提供判断一个 TsFile 是否需要迁移的方法，并返回迁移的原因
+ * // (jinrui) 该类为一个单例类，用来在运行时提供多级存储的相关配置（可能需要定义更多的类来实现它），其功能为： 1. 启动时，根据配置文件处理多级存储的配置信息 2.
+ * 将配置信息存储在该单例类的对象中，并提供对外的访问接口 3. 提供判断一个 TsFile 是否需要迁移的方法，并返回迁移的原因
  */
 public class TieredStorageConfig {
 

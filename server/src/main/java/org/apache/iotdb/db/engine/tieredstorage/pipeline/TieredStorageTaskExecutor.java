@@ -19,9 +19,5 @@
 
 package org.apache.iotdb.db.engine.tieredstorage.pipeline;
 
-/**
- * // (jinrui)
- * 设定一个并发执行的线程数，从 queue 中取出 task，并执行
- */
-public class TieredStorageTaskExecutor {
-}
+/** // (jinrui) 设定一个并发执行的线程数，从 queue 中取出 task，并执行 */
+public class TieredStorageTaskExecutor {}

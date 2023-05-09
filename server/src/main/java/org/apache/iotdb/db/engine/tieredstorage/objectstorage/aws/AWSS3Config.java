@@ -17,7 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tieredstorage.pipeline;
+package org.apache.iotdb.db.engine.tieredstorage.objectstorage.aws;
 
-/** // (jinrui) 一个单例的、线程安全的队列，用来储存内存中的 MigrationTask 任务 */
-public class TieredStorageTaskQueue {}
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+
+public class AWSS3Config {
+
+  private static String region;
+  private static String bucketName;
+  private static String access_key_id;
+  private static String access_key_secret;
+
+  public static String getRegion() {
+    return region;
+  }
+
+  public static String getBucketName() {
+    return bucketName;
+  }
+
+  public static AwsCredentialsProvider getCredentialProvider() {
+    return StaticCredentialsProvider.create(
+        AwsBasicCredentials.create(access_key_id, access_key_secret));
+  }
+}

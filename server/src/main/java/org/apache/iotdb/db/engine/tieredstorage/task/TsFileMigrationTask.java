@@ -36,7 +36,11 @@ public abstract class TsFileMigrationTask {
   // (jinrui) 定义一个输出文件的接口，不同的 MigrationTask 提供不同的输出文件接口的实现，需要确认当前写 TsFile 是用的什么接口
   // private XXFileWriter writer;
 
-  public TsFileMigrationTask(String sourceFilePath, String targetFilePath, TsFileMigrationTriggerType triggerType, TsFileMigrationTaskType taskType) {
+  public TsFileMigrationTask(
+      String sourceFilePath,
+      String targetFilePath,
+      TsFileMigrationTriggerType triggerType,
+      TsFileMigrationTaskType taskType) {
     this.sourceFilePath = sourceFilePath;
     this.targetFilePath = targetFilePath;
     this.triggerType = triggerType;
@@ -44,21 +48,14 @@ public abstract class TsFileMigrationTask {
   }
 
   /**
-   * // (jinrui)
-   * 该方法实现迁移一个 TsFile 的完整步骤：
-   * 1. 根据 getSourceFileList() 获取到所有要迁移的文件
-   * 2. 按照文件列表中的顺序，使用对应的 reader 和 writer 对文件进行读写
-   * 3. 如果迁移过程中遇到了异常，则执行 cleanupWhenException()
+   * // (jinrui) 该方法实现迁移一个 TsFile 的完整步骤： 1. 根据 getSourceFileList() 获取到所有要迁移的文件 2. 按照文件列表中的顺序，使用对应的
+   * reader 和 writer 对文件进行读写 3. 如果迁移过程中遇到了异常，则执行 cleanupWhenException()
    */
-  public void doMigration() throws TsFileMigrationException {
-
-  }
+  public void doMigration() throws TsFileMigrationException {}
 
   // (jinrui) 不同的迁移任务它涉及的文件不同，比如 local_to_local 不仅需要迁移 source file，还需要迁移对应的 mod、resource 文件
   protected abstract List<String> getSourceFileList();
 
-  /**
-   * (jinrui) 迁移任务如果遇到异常，则需要进行相应的清理工作。可以考虑是否需要将该方式实现成一个统一的方法
-    */
+  /** (jinrui) 迁移任务如果遇到异常，则需要进行相应的清理工作。可以考虑是否需要将该方式实现成一个统一的方法 */
   protected abstract void cleanupWhenException() throws TsFileMigrationException;
 }

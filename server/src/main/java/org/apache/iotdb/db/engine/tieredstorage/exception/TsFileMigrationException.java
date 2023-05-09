@@ -19,5 +19,23 @@
 
 package org.apache.iotdb.db.engine.tieredstorage.exception;
 
-public class TsFileMigrationException extends Exception{
+public class TsFileMigrationException extends Exception {
+  public TsFileMigrationException() {}
+
+  public TsFileMigrationException(String message) {
+    super(message);
+  }
+
+  public TsFileMigrationException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public TsFileMigrationException(Throwable cause) {
+    super(cause);
+  }
+
+  public TsFileMigrationException(
+      String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    super(message, cause, enableSuppression, writableStackTrace);
+  }
 }

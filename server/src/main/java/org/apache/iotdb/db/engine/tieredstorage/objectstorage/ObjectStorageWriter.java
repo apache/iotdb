@@ -17,7 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tieredstorage.pipeline;
+package org.apache.iotdb.db.engine.tieredstorage.objectstorage;
 
-/** // (jinrui) 一个单例的、线程安全的队列，用来储存内存中的 MigrationTask 任务 */
-public class TieredStorageTaskQueue {}
+import org.apache.iotdb.db.engine.tieredstorage.exception.ObjectStorageException;
+
+public interface ObjectStorageWriter {
+  void write(String sourceFile, String containerName, String targetFileName)
+      throws ObjectStorageException;
+}

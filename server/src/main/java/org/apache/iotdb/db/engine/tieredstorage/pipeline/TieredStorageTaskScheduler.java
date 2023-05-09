@@ -22,9 +22,8 @@ package org.apache.iotdb.db.engine.tieredstorage.pipeline;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 /**
- * // (jinrui)
- * 取一个什么名字好呢？
- * 负责周期性地检查是否需要提交 TsFileMigrationTask，初步计划每个 DataRegion 有一个这样的实例，定期执行；DataRegion 之间不混用
+ * // (jinrui) 取一个什么名字好呢？ 负责周期性地检查是否需要提交 TsFileMigrationTask，初步计划每个 DataRegion
+ * 有一个这样的实例，定期执行；DataRegion 之间不混用
  */
 public class TieredStorageTaskScheduler {
 
@@ -38,19 +37,13 @@ public class TieredStorageTaskScheduler {
     this.dataRegionId = dataRegionId;
   }
 
-  public void schedule() {
+  public void schedule() {}
 
-  }
-
-  private void checkTsFileTTL() {
-
-  }
+  private void checkTsFileTTL() {}
 
   // (jinrui)
   // 这里涉及到了一个问题，就是当磁盘超过阈值时，迁移文件时候怎么进行选择，有两个倾向
   // 1. 从一个 DataRegion 迁移，直至预期空间小于阈值为止
   // 2. 每个 DataRegion 迁移最老的 N 个文件，然后等待下一轮再进行检查
-  private void checkDiskThreshold() {
-
-  }
+  private void checkDiskThreshold() {}
 }
