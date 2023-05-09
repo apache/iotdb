@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
@@ -88,5 +89,9 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
 
   public R visitDeactivateTemplate(IDeactivateTemplatePlan deactivateTemplatePlan, C context) {
     return visitSchemaRegionPlan(deactivateTemplatePlan, context);
+  }
+
+  public R visitCreateLogicalView(ICreateLogicalViewPlan createLogicalViewPlan, C context) {
+    return visitSchemaRegionPlan(createLogicalViewPlan, context);
   }
 }
