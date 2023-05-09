@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.core.collector.realtime;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -37,9 +37,10 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final PendingQueue<Event> pendingQueue;
+  private final ListenableUnblockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionHybridCollector(PendingQueue<Event> pendingQueue) {
+  public PipeRealtimeDataRegionHybridCollector(
+      ListenableUnblockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
   }
 
@@ -87,9 +88,9 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
           String.format(
               "Pending Queue of Hybrid Realtime Collector %s has reached capacity, discard TsFile Event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this)));
-      // TODO: more degradation strategies
-      // TODO: dynamic control of the pending queue capacity
-      // TODO: should be handled by the PipeRuntimeAgent
+      // this would not happen, but just in case.
+      // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
+      // TODO: memory control when elements in queue are too many.
     }
   }
 

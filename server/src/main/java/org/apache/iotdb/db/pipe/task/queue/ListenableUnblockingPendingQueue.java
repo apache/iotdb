@@ -17,10 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.binder;
+package org.apache.iotdb.db.pipe.task.queue;
 
-@FunctionalInterface
-public interface PendingQueueNotFullToFullListener {
+import org.apache.iotdb.pipe.api.event.Event;
 
-  void onPendingQueueNotFullToFull();
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+public class ListenableUnblockingPendingQueue<E extends Event> extends ListenablePendingQueue<E> {
+
+  public ListenableUnblockingPendingQueue() {
+    super(new ConcurrentLinkedQueue<>());
+  }
 }

@@ -17,17 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.binder;
-
-import org.apache.iotdb.pipe.api.event.Event;
+package org.apache.iotdb.db.pipe.task.queue;
 
 @FunctionalInterface
-public interface EventSupplier {
+public interface PendingQueueNotFullToFullListener {
 
-  /**
-   * @return the event to be supplied. the event may be null if the collector has no more events at
-   *     the moment, but the collector is still running for more events.
-   * @throws Exception if the supplier fails to supply the event.
-   */
-  Event supply() throws Exception;
+  void onPendingQueueNotFullToFull();
 }

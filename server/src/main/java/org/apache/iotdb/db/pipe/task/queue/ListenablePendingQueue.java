@@ -17,17 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.binder;
+package org.apache.iotdb.db.pipe.task.queue;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PendingQueue<E extends Event> {
+public abstract class ListenablePendingQueue<E extends Event> {
 
   private final Queue<E> pendingQueue;
 
@@ -42,12 +41,11 @@ public class PendingQueue<E extends Event> {
 
   private final AtomicBoolean isFull = new AtomicBoolean(false);
 
-  public PendingQueue(int pendingQueueSize) {
-    // TODO: make the size of the queue size reasonable and configurable
-    this.pendingQueue = new ArrayBlockingQueue<>(pendingQueueSize);
+  protected ListenablePendingQueue(Queue<E> pendingQueue) {
+    this.pendingQueue = pendingQueue;
   }
 
-  public PendingQueue<E> registerEmptyToNotEmptyListener(
+  public ListenablePendingQueue<E> registerEmptyToNotEmptyListener(
       String id, PendingQueueEmptyToNotEmptyListener listener) {
     emptyToNotEmptyListeners.put(id, listener);
     return this;
@@ -63,7 +61,7 @@ public class PendingQueue<E extends Event> {
         .forEach(PendingQueueEmptyToNotEmptyListener::onPendingQueueEmptyToNotEmpty);
   }
 
-  public PendingQueue<E> registerNotEmptyToEmptyListener(
+  public ListenablePendingQueue<E> registerNotEmptyToEmptyListener(
       String id, PendingQueueNotEmptyToEmptyListener listener) {
     notEmptyToEmptyListeners.put(id, listener);
     return this;
@@ -79,7 +77,7 @@ public class PendingQueue<E extends Event> {
         .forEach(PendingQueueNotEmptyToEmptyListener::onPendingQueueNotEmptyToEmpty);
   }
 
-  public PendingQueue<E> registerFullToNotFullListener(
+  public ListenablePendingQueue<E> registerFullToNotFullListener(
       String id, PendingQueueFullToNotFullListener listener) {
     fullToNotFullListeners.put(id, listener);
     return this;
@@ -95,7 +93,7 @@ public class PendingQueue<E extends Event> {
         .forEach(PendingQueueFullToNotFullListener::onPendingQueueFullToNotFull);
   }
 
-  public PendingQueue<E> registerNotFullToFullListener(
+  public ListenablePendingQueue<E> registerNotFullToFullListener(
       String id, PendingQueueNotFullToFullListener listener) {
     notFullToFullListeners.put(id, listener);
     return this;
@@ -157,9 +155,5 @@ public class PendingQueue<E extends Event> {
 
   public int size() {
     return pendingQueue.size();
-  }
-
-  public void disable() {
-    pendingQueue = null;
   }
 }

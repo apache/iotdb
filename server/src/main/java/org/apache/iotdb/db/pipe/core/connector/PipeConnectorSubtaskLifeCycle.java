@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.core.connector;
 
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -28,7 +28,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   private final PipeConnectorSubtaskExecutor executor;
   private final PipeConnectorSubtask subtask;
-  private final PendingQueue<Event> pendingQueue;
+  private final ListenableBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;
   private int aliveTaskCount;
@@ -36,20 +36,20 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   public PipeConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor,
       PipeConnectorSubtask subtask,
-      PendingQueue<Event> pendingQueue) {
+      ListenableBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
-    this.pendingQueue =
-        pendingQueue
-            .registerEmptyToNotEmptyListener(
-                subtask.getTaskID(),
-                () -> {
-                  if (hasRunningTasks()) {
-                    executor.start(subtask.getTaskID());
-                  }
-                })
-            .registerNotEmptyToEmptyListener(
-                subtask.getTaskID(), () -> executor.stop(subtask.getTaskID()));
+    this.pendingQueue = pendingQueue;
+
+    pendingQueue.registerEmptyToNotEmptyListener(
+        subtask.getTaskID(),
+        () -> {
+          if (hasRunningTasks()) {
+            executor.start(subtask.getTaskID());
+          }
+        });
+    this.pendingQueue.registerNotEmptyToEmptyListener(
+        subtask.getTaskID(), () -> executor.stop(subtask.getTaskID()));
 
     runningTaskCount = 0;
     aliveTaskCount = 0;
@@ -59,7 +59,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     return subtask;
   }
 
-  public PendingQueue<Event> getPendingQueue() {
+  public ListenableBlockingPendingQueue<Event> getPendingQueue() {
     return pendingQueue;
   }
 

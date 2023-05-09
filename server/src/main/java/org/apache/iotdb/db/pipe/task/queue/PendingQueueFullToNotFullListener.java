@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.binder;
+package org.apache.iotdb.db.pipe.task.queue;
 
 @FunctionalInterface
-public interface PendingQueueEmptyToNotEmptyListener {
+public interface PendingQueueFullToNotFullListener {
 
-  void onPendingQueueEmptyToNotEmpty();
+  void onPendingQueueFullToNotFull();
 }

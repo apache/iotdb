@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.core.connector;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -45,7 +45,8 @@ public class PipeConnectorSubtaskManager {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeConnector pipeConnector = PipeAgent.plugin().reflectConnector(connectorAttributes);
       // TODO: make pendingQueue size configurable
-      final PendingQueue<Event> pendingQueue = new PendingQueue<>(1024 * 1024);
+      final ListenableBlockingPendingQueue<Event> pendingQueue =
+          new ListenableBlockingPendingQueue<>(65535);
       final PipeConnectorSubtask pipeConnectorSubtask =
           new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
@@ -97,7 +98,8 @@ public class PipeConnectorSubtaskManager {
     return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getSubtask();
   }
 
-  public PendingQueue<Event> getPipeConnectorPendingQueue(String attributeSortedString) {
+  public ListenableBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+      String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);

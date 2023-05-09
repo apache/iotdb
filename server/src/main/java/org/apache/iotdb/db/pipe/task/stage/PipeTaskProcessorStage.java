@@ -24,8 +24,9 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.task.binder.EventSupplier;
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenablePendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -41,8 +42,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
   protected final PipeProcessorSubtask subtask;
 
-  protected final PendingQueue<Event> pipeCollectorInputPendingQueue;
-  protected final PendingQueue<Event> pipeConnectorOutputPendingQueue;
+  protected final ListenablePendingQueue<Event> pipeCollectorInputPendingQueue;
+  protected final ListenablePendingQueue<Event> pipeConnectorOutputPendingQueue;
 
   /**
    * @param pipeName pipe name
@@ -57,9 +58,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       String pipeName,
       String dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
-      @Nullable PendingQueue<Event> pipeCollectorInputPendingQueue,
+      @Nullable ListenablePendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
-      PendingQueue<Event> pipeConnectorOutputPendingQueue) {
+      ListenableBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final String taskId = pipeName + "_" + dataRegionId;
     final PipeProcessor pipeProcessor =
         PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.db.pipe.core.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -60,7 +60,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
     PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
   }
 
-  public PendingQueue<Event> getPipeConnectorPendingQueue() {
+  public ListenableBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
     return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
   }
 }
