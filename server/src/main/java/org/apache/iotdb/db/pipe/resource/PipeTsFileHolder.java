@@ -53,10 +53,14 @@ public class PipeTsFileHolder {
     lock.writeLock().lock();
 
     try {
-      File link = getFileHardlink(tsFile);
-      if (!link.exists()) {
-        createTsFileHardLink(tsFile);
+      // if the tsfile is already referenced, just return it
+      if (tsFileReferenceMap.containsKey(tsFile.getPath())) {
+        tsFileReferenceMap.get(tsFile.getPath()).incrementAndGet();
+        return tsFile;
       }
+
+      File link = getFileHardlink(tsFile);
+      createTsFileHardLink(tsFile);
       tsFileReferenceMap
           .computeIfAbsent(link.getPath(), k -> new AtomicInteger(0))
           .incrementAndGet();
@@ -72,17 +76,22 @@ public class PipeTsFileHolder {
     lock.writeLock().lock();
 
     try {
-      File link = getFileHardlink(tsFile);
-      if (!link.exists()) {
-        // hardlink for mods
-        createTsFileModHardLink(tsFile, modsOffset);
-
-        // hardlink for tsfileResource
-        createTsFileResourceHardLink(tsFile);
-
-        // hardlink for tsfile
-        createTsFileHardLink(tsFile);
+      // if the tsfile is already referenced, just return it
+      if (tsFileReferenceMap.containsKey(tsFile.getPath())) {
+        tsFileReferenceMap.get(tsFile.getPath()).incrementAndGet();
+        return tsFile;
       }
+
+      File link = getFileHardlink(tsFile);
+      // hardlink for mods
+      createTsFileModHardLink(tsFile, modsOffset);
+
+      // hardlink for tsfileResource
+      createTsFileResourceHardLink(tsFile);
+
+      // hardlink for tsfile
+      createTsFileHardLink(tsFile);
+
       tsFileReferenceMap
           .computeIfAbsent(link.getPath(), k -> new AtomicInteger(0))
           .incrementAndGet();
@@ -98,7 +107,6 @@ public class PipeTsFileHolder {
     try {
       if (tsFileReferenceMap.containsKey(tsFile.getPath())) {
         if (tsFileReferenceMap.get(tsFile.getPath()).decrementAndGet() == 0) {
-          // delete hardlink
           deleteHardLink(tsFile);
         }
       }
