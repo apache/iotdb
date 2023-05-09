@@ -269,7 +269,9 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    sinkChannel.close();
+    if (sinkChannel != null) {
+      sinkChannel.close();
+    }
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
