@@ -46,10 +46,12 @@ public class BackupByCopyTask extends WrappedRunnable {
 
   public void backupByCopy() {
     try {
+      logger.info(String.format("Copying file: from %s to %s", sourcePath, targetPath));
       BackupUtils.copyFile(Paths.get(sourcePath), Paths.get(targetPath));
     } catch (IOException e) {
       logger.error(
           String.format("Copy failed during backup: from %s to %s", sourcePath, targetPath));
+      e.printStackTrace();
     }
     if (BackupService.getINSTANCE().getBackupByCopyCount().addAndGet(-1) == 0) {
       logger.info("Backup completed.");

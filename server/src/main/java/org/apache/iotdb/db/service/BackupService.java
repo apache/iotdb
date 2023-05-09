@@ -86,15 +86,12 @@ public class BackupService implements IService {
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
       backupTmpFileCheckPool.scheduleWithFixedDelay(
-          this::cleanUpBackupTmpDir,
-          0,
-          BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE,
-          TimeUnit.MINUTES);
+          this::cleanUpBackupTmpDir, 0, BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE, TimeUnit.MINUTES);
     }
     if (BackupUtils.checkConfDir()) {
-      logger.info("BackupService found the config directory: " + BackupUtils.getConfDir());
+      logger.info("Found the config directory: " + BackupUtils.getConfDir());
     } else {
-      logger.error("BackupService couldn't find the config directory, will skip it during backup.");
+      logger.error("Couldn't find the config directory, will skip it during backup.");
     }
   }
 
@@ -173,8 +170,14 @@ public class BackupService implements IService {
       configFiles = BackupUtils.getAllFilesInOneDir(configDirPath);
       for (File file : configFiles) {
         String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
-        backupByCopyTaskList.add(
-            new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+        try {
+          if (!BackupUtils.createTargetDirAndTryCreateLink(new File(configFileTargetPath), file)) {
+            backupByCopyTaskList.add(
+                new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+          }
+        } catch (IOException e) {
+          logger.error("Failed to create directory during backup: " + e.getMessage());
+        }
       }
     } else {
       logger.warn("Can't find config directory during backup, skipping.");
@@ -243,7 +246,7 @@ public class BackupService implements IService {
         String.format(
             "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
             resources.size(), systemFileCount, configFileCount));
-    logger.debug(
+    logger.info(
         String.format(
             "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
 
@@ -356,7 +359,7 @@ public class BackupService implements IService {
         String.format(
             "Backup starting, found %d TsFiles and their related files, %d system files and %d config files.",
             resources.size(), systemFileCount, configFileCount));
-    logger.debug(
+    logger.info(
         String.format(
             "%d files can't be hard-linked and should be copied.", backupByCopyTaskList.size()));
 
@@ -388,15 +391,15 @@ public class BackupService implements IService {
   }
 
   public void cleanUpBackupTmpDir() {
-    if(isBackupRunning.get()) {
-      logger.debug("Backup is running, will not remove temporary files.");
+    if (isBackupRunning.get()) {
+      logger.info("Backup is running, will not remove temporary files.");
       return;
     }
-    logger.debug("Removing back up temporary files now.");
+    logger.info("Removing back up temporary files now.");
     if (BackupUtils.deleteBackupTmpDir()) {
-      logger.debug("Back up temporary files are all clear.");
+      logger.info("Back up temporary files are all clear.");
     } else {
-      logger.warn("Failed to delete some backup temporary files.");
+      logger.warn("Failed to delete some backup temporary files. Will try later.");
     }
   }
 
