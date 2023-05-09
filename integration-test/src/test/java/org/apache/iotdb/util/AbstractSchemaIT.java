@@ -69,7 +69,7 @@ public abstract class AbstractSchemaIT {
     mode = 0;
   }
 
-  public static SchemaTestMode setUpEnvironment() throws Exception {
+  protected static SchemaTestMode setUpEnvironment() throws Exception {
     SchemaTestMode schemaTestMode = schemaTestModes.get(mode++);
     switch (schemaTestMode) {
       case Memory:
@@ -83,9 +83,9 @@ public abstract class AbstractSchemaIT {
     return schemaTestMode;
   }
 
-  public static void tearDownEnvironment() throws Exception {}
+  protected static void tearDownEnvironment() throws Exception {}
 
-  public static void clearSchema() throws Exception {
+  protected static void clearSchema() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
