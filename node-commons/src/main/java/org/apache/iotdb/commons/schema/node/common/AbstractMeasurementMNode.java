@@ -253,4 +253,8 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   public int estimateSize() {
     return 8 + 8 + measurementInfo.estimateSize() + basicMNode.estimateSize();
   }
+
+  protected IMeasurementInfo getMeasurementInfo() {
+    return this.measurementInfo;
+  }
 }
