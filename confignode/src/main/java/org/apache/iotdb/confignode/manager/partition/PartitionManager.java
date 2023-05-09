@@ -64,11 +64,11 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -736,6 +736,15 @@ public class PartitionManager {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * @return TConsensusGroupId set of all schema region
+   */
+  public Set<TConsensusGroupId> getAllSchemaPartition() {
+    return partitionInfo.getAllSchemaPartition();
+  }
+
+  /**
    * Only leader use this interface
    *
    * @return the next RegionGroupId
@@ -758,10 +767,10 @@ public class PartitionManager {
     return schemaNodeManagementResp;
   }
 
-  public void preDeleteStorageGroup(
-      String storageGroup, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
+  public void preDeleteDatabase(
+      String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
-        new PreDeleteDatabasePlan(storageGroup, preDeleteType);
+        new PreDeleteDatabasePlan(database, preDeleteType);
     getConsensusManager().write(preDeleteDatabasePlan);
   }
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.mnode.mem.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -47,6 +48,9 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private IMemMNode root;
 

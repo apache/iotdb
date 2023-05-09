@@ -999,6 +999,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setLoadSample(loadSample);
     }
 
+    // Update schema quota if necessary
+    Map<TConsensusGroupId, Long> schemaCountMap =
+        SchemaEngine.getInstance().updateAndGenerateSchemaCountMap(req.schemaQuotaCount);
+    if (schemaCountMap != null) {
+      resp.setSchemaCountMap(schemaCountMap);
+    }
+
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {

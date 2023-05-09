@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -30,8 +31,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
@@ -72,6 +75,9 @@ public class SchemaEngine {
   private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   private ISchemaEngineStatistics schemaEngineStatistics;
+
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private static class SchemaEngineManagerHolder {
 
@@ -369,6 +375,45 @@ public class SchemaEngine {
       // no
     }
     return timeSeriesNum;
+  }
+
+  /**
+   * Update total count in schema quota manager and generate local count map response.
+   *
+   * @param totalCount cluster schema usage
+   * @return if limit is -1, return null; else return schemaCountMap of the SchemaRegion whose
+   *     current node is the leader
+   */
+  public Map<TConsensusGroupId, Long> updateAndGenerateSchemaCountMap(long totalCount) {
+    // update DataNodeSchemaQuotaManager
+    schemaQuotaManager.updateRemain(totalCount);
+    if (schemaQuotaManager.getLimit() < 0) {
+      return null;
+    }
+    Map<TConsensusGroupId, Long> res = new HashMap<>();
+    switch (schemaQuotaManager.getLevel()) {
+      case MEASUREMENT:
+        schemaRegionMap.values().stream()
+            .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+            .forEach(
+                i ->
+                    res.put(
+                        i.getSchemaRegionId().convertToTConsensusGroupId(),
+                        i.getSchemaRegionStatistics().getSeriesNumber()));
+        break;
+      case DEVICE:
+        schemaRegionMap.values().stream()
+            .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+            .forEach(
+                i ->
+                    res.put(
+                        i.getSchemaRegionId().convertToTConsensusGroupId(),
+                        i.getSchemaRegionStatistics().getDevicesNumber()));
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+    return res;
   }
 
   @TestOnly

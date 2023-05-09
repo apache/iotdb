@@ -371,4 +371,18 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setMaxTsBlockSizeInByte(maxTsBlockSizeInByte);
     return this;
   }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    dnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
+    cnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+    dnConfig.setClusterMaxSchemaCount(clusterMaxSchemaCount);
+    cnConfig.setClusterMaxSchemaCount(clusterMaxSchemaCount);
+    return this;
+  }
 }

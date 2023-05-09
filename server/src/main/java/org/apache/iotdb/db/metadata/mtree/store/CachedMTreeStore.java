@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.mem.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -64,7 +66,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final Runnable flushCallback;
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
   private final CachedSchemaRegionStatistics regionStatistics;
-
+  private final DataNodeSchemaQuotaManager quotaManager = DataNodeSchemaQuotaManager.getInstance();
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(
@@ -330,7 +332,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   @Override
-  public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
+  public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node)
+      throws SchemaQuotaExceededException {
     IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
       regionStatistics.addDevice();

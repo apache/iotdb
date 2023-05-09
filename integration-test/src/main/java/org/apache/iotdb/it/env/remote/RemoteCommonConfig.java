@@ -266,4 +266,14 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
     return this;
   }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+    return this;
+  }
 }

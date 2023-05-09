@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-public class ClusterSchemaManagerTest {
-
-  @Test
-  public void testCalcMaxRegionGroupNum() {
-
-    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
-
-    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
-
-    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+public class SchemaQuotaExceededException extends MetadataException {
+  public SchemaQuotaExceededException(ClusterSchemaQuotaLevel level, long limit) {
+    super(
+        String.format(
+            "The current metadata capacity has exceeded the cluster quota. The cluster quota is set at the %s level, with a limit number of %d. Please review your configuration or delete some existing time series to comply with the quota.",
+            level.toString(), limit),
+        TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
   }
 }

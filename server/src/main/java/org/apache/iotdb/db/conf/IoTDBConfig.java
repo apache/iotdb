@@ -1078,6 +1078,12 @@ public class IoTDBConfig {
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
+  /** This configuration parameter sets the level at which the time series limit is applied.* */
+  private String clusterSchemaLimitLevel = "MEASUREMENT";
+
+  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
+  private long clusterMaxSchemaCount = -1;
+
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
       Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
@@ -3802,5 +3808,21 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public String getClusterSchemaLimitLevel() {
+    return clusterSchemaLimitLevel;
+  }
+
+  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
+  }
+
+  public long getClusterMaxSchemaCount() {
+    return clusterMaxSchemaCount;
+  }
+
+  public void setClusterMaxSchemaCount(long clusterMaxSchemaCount) {
+    this.clusterMaxSchemaCount = clusterMaxSchemaCount;
   }
 }

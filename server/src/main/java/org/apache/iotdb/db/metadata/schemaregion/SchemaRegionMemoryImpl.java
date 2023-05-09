@@ -72,6 +72,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -145,6 +146,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
   private final MemSchemaRegionStatistics regionStatistics;
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
@@ -540,6 +543,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (seriesNumberMonitor != null && !seriesNumberMonitor.addTimeSeries(1)) {
       throw new SeriesNumberOverflowException();
     }
+    schemaQuotaManager.checkMeasurementLevel(1);
 
     try {
       IMeasurementMNode<IMemMNode> leafMNode;
@@ -620,6 +624,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (seriesNumberMonitor != null && !seriesNumberMonitor.addTimeSeries(seriesCount)) {
       throw new SeriesNumberOverflowException();
     }
+    schemaQuotaManager.checkMeasurementLevel(seriesCount);
 
     try {
       PartialPath prefixPath = plan.getDevicePath();
@@ -1121,7 +1126,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-  private void recoverActivatingSchemaTemplate(IActivateTemplateInClusterPlan plan) {
+  private void recoverActivatingSchemaTemplate(IActivateTemplateInClusterPlan plan)
+      throws MetadataException {
     mtree.activateTemplateWithoutCheck(
         plan.getActivatePath(), plan.getTemplateId(), plan.isAligned());
   }
@@ -1352,8 +1358,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     public RecoverOperationResult visitActivateTemplateInCluster(
         IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
         SchemaRegionMemoryImpl context) {
-      recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
-      return RecoverOperationResult.SUCCESS;
+      try {
+        recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
     }
 
     @Override

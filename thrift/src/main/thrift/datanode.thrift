@@ -247,6 +247,7 @@ struct THeartbeatReq {
   4: optional list<i32> schemaRegionIds
   5: optional list<i32> dataRegionIds
   6: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+  7: required i64 schemaQuotaCount
 }
 
 struct THeartbeatResp {

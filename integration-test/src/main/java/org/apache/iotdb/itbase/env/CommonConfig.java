@@ -113,6 +113,10 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
+  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+
+  CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount);
+
   CommonConfig setQuotaEnable(boolean quotaEnable);
 
   CommonConfig setSortBufferSize(long sortBufferSize);
