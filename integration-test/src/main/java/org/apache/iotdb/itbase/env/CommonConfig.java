@@ -114,4 +114,8 @@ public interface CommonConfig {
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
   CommonConfig setQuotaEnable(boolean quotaEnable);
+
+  CommonConfig setSortBufferSize(long sortBufferSize);
+
+  CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 }

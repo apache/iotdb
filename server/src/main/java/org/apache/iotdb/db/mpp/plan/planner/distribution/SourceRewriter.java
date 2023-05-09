@@ -62,9 +62,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -573,7 +573,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
         OrderByParameter orderByParameter =
             new OrderByParameter(
-                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
+                Collections.singletonList(new SortItem(OrderByKey.TIMESERIES, Ordering.ASC)));
         addSortForEachLastQueryNode(root, orderByParameter);
       }
       root.getChildren().forEach(newRoot::addChild);

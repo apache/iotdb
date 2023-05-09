@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.schema.node.utils;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -39,4 +40,7 @@ public interface IMNodeFactory<N extends IMNode<N>> {
   N createAboveDatabaseMNode(N parent, String name);
 
   N createInternalMNode(N parent, String name);
+
+  IMeasurementMNode<N> createLogicalViewMNode(
+      IDeviceMNode<N> parent, String name, IMeasurementInfo measurementInfo);
 }

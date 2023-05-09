@@ -81,9 +81,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
       return false;
     }
 
-    if (getPipeStatus(pipeName) == PipeStatus.RUNNING) {
+    final PipeStatus pipeStatus = getPipeStatus(pipeName);
+    if (pipeStatus == PipeStatus.RUNNING) {
       LOGGER.info(
           String.format("Failed to start pipe [%s], the pipe is already running", pipeName));
+      return false;
+    }
+    if (pipeStatus == PipeStatus.DROPPED) {
+      LOGGER.info(
+          String.format("Failed to start pipe [%s], the pipe is already dropped", pipeName));
       return false;
     }
 
@@ -96,8 +102,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
       return false;
     }
 
-    if (getPipeStatus(pipeName) == PipeStatus.STOPPED) {
+    final PipeStatus pipeStatus = getPipeStatus(pipeName);
+    if (pipeStatus == PipeStatus.STOPPED) {
       LOGGER.info(String.format("Failed to stop pipe [%s], the pipe is already stop", pipeName));
+      return false;
+    }
+    if (pipeStatus == PipeStatus.DROPPED) {
+      LOGGER.info(String.format("Failed to stop pipe [%s], the pipe is already dropped", pipeName));
       return false;
     }
 
@@ -105,12 +116,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public boolean checkBeforeDropPipe(String pipeName) {
-    if (isPipeExisted(pipeName)) {
-      return true;
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Check before drop pipe {}, pipe exists: {}.",
+          pipeName,
+          isPipeExisted(pipeName) ? "true" : "false");
     }
-
-    LOGGER.info(String.format("Failed to drop pipe [%s], the pipe does not exist", pipeName));
-    return false;
+    // no matter whether the pipe exists, we allow the drop operation executed on all nodes to
+    // ensure the consistency
+    return true;
   }
 
   private boolean isPipeExisted(String pipeName) {
@@ -142,6 +156,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     pipeMetaKeeper.removePipeMeta(plan.getPipeName());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public Iterable<PipeMeta> getPipeMetaList() {
+    return pipeMetaKeeper.getPipeMetaList();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
