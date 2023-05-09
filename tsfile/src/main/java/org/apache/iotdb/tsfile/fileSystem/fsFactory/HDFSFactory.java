@@ -27,6 +27,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -234,4 +235,7 @@ public class HDFSFactory implements FSFactory {
   public boolean deleteIfExists(File file) {
     return file.delete();
   }
+
+  @Override
+  public void deleteDirectory(String dir) throws IOException {}
 }

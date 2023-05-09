@@ -137,4 +137,9 @@ public class LocalFSFactory implements FSFactory {
   public boolean deleteIfExists(File file) throws IOException {
     return Files.deleteIfExists(file.toPath());
   }
+
+  @Override
+  public void deleteDirectory(String dir) throws IOException {
+    FileUtils.deleteDirectory(new File(dir));
+  }
 }

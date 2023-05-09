@@ -94,4 +94,12 @@ public class FSUtils {
     }
     return new FSPath(type, path);
   }
+
+  public static boolean isLocal(String fsPath) {
+    return getFSType(fsPath) == FSType.LOCAL;
+  }
+
+  public static boolean isLocal(File file) {
+    return getFSType(file) == FSType.LOCAL;
+  }
 }

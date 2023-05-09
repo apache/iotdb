@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -359,7 +358,14 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
+    String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
+    for (int i = 0; i < defaultTierDirs.length; ++i) {
+      defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
+    }
+    conf.setTierDataDirs(
+        parseDataDirs(
+            properties.getProperty(
+                "dn_data_dirs", String.join(IoTDBConstant.TIER_SEPARATOR, defaultTierDirs))));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
@@ -1454,12 +1460,22 @@ public class IoTDBDescriptor {
     }
   }
 
+  private String[][] parseDataDirs(String dataDirs) {
+    String[] tiers = dataDirs.split(IoTDBConstant.TIER_SEPARATOR);
+    String[][] tierDataDirs = new String[tiers.length][];
+    for (int i = 0; i < tiers.length; ++i) {
+      tierDataDirs[i] = tiers[i].split(",");
+    }
+    return tierDataDirs;
+  }
+
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
+      /* TODO(zhm) 暂时不支持更新data dirs和DirStrategy
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.split(","));
+        conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
 
       // update dir strategy, must update after data dirs
@@ -1470,6 +1486,7 @@ public class IoTDBDescriptor {
         conf.confirmMultiDirStrategy();
         DirectoryManager.getInstance().updateDirectoryStrategy();
       }
+      */
 
       // update timed flush & close conf
       loadTimedService(properties);

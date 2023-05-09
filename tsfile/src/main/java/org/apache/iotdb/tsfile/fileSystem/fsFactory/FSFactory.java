@@ -136,4 +136,7 @@ public interface FSFactory {
    * @param file local file or HDFS file
    */
   boolean deleteIfExists(File file) throws IOException;
+
+  /** Force delete the directory */
+  void deleteDirectory(String dir) throws IOException;
 }

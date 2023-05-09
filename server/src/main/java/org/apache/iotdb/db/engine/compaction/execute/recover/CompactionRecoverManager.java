@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -67,10 +67,11 @@ public class CompactionRecoverManager {
 
   private void recoverCompaction(boolean isInnerSpace, boolean isLogSequence) {
     List<String> dirs;
+    // TODO(zhm) 当前远端存储介质不开启合并，无需恢复
     if (isLogSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+      dirs = TierManager.getInstance().getAllLocalSequenceFileFolders();
     } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+      dirs = TierManager.getInstance().getAllLocalUnSequenceFileFolders();
     }
     for (String dir : dirs) {
       File storageGroupDir =

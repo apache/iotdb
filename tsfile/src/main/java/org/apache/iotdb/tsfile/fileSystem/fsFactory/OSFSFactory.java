@@ -94,4 +94,7 @@ public class OSFSFactory implements FSFactory {
   public boolean deleteIfExists(File file) throws IOException {
     return false;
   }
+
+  @Override
+  public void deleteDirectory(String dir) throws IOException {}
 }

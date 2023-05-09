@@ -37,7 +37,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -323,7 +323,7 @@ public class DataRegion implements IDataRegionForQuery {
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
           databaseName,
           dataRegionId);
-      for (String fileFolder : DirectoryManager.getInstance().getAllFilesFolders()) {
+      for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
         File dataRegionFolder =
             fsFactory.getFile(fileFolder, databaseName + File.separator + dataRegionId);
         if (dataRegionFolder.exists()) {
@@ -440,12 +440,12 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllUnSequenceFileFolders());
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
@@ -1524,7 +1524,7 @@ public class DataRegion implements IDataRegionForQuery {
               TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
             }
           });
-      deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
+      deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
@@ -2672,7 +2672,7 @@ public class DataRegion implements IDataRegionForQuery {
       case LOAD_UNSEQUENCE:
         targetFile =
             fsFactory.getFile(
-                DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
+                TierManager.getInstance().getNextFolderForUnSequenceFile(0),
                 databaseName
                     + File.separatorChar
                     + dataRegionId
@@ -2694,7 +2694,7 @@ public class DataRegion implements IDataRegionForQuery {
       case LOAD_SEQUENCE:
         targetFile =
             fsFactory.getFile(
-                DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+                TierManager.getInstance().getNextFolderForSequenceFile(0),
                 databaseName
                     + File.separatorChar
                     + dataRegionId
@@ -3237,7 +3237,7 @@ public class DataRegion implements IDataRegionForQuery {
   /** @return the disk space occupied by this data region, unit is MB */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
-    DirectoryManager.getInstance()
+    TierManager.getInstance()
         .getAllFilesFolders()
         .forEach(
             folder -> {
@@ -3252,7 +3252,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @param diskSize the disk space occupied by this folder, unit is MB
    */
   private void countFolderDiskSize(String folder, AtomicLong diskSize) {
-    File file = new File(folder);
+    File file = FSFactoryProducer.getFSFactory().getFile(folder);
     File[] allFile = file.listFiles();
     if (allFile == null) {
       return;

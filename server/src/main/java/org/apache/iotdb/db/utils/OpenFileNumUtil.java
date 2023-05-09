@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +54,7 @@ public class OpenFileNumUtil {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static TierManager tierManager = TierManager.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
   private static boolean isOutputValid = false;
   private int pid;
@@ -266,8 +266,8 @@ public class OpenFileNumUtil {
 
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
-    SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
-    UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
+    SEQUENCE_FILE_OPEN_NUM(tierManager.getAllLocalSequenceFileFolders()),
+    UNSEQUENCE_FILE_OPEN_NUM(tierManager.getAllLocalUnSequenceFileFolders()),
     WAL_OPEN_FILE_NUM(Arrays.asList(commonConfig.getWalDirs())),
     DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);

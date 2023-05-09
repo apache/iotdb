@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
@@ -70,8 +70,8 @@ public class UpgradeTask extends WrappedRunnable {
           UpgradeSevice.getTotalUpgradeFileNum().get());
       if (UpgradeSevice.getTotalUpgradeFileNum().get() == 0) {
         logger.info("Start delete empty tmp folders");
-        clearTmpFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-        clearTmpFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+        clearTmpFolders(TierManager.getInstance().getAllLocalSequenceFileFolders());
+        clearTmpFolders(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
         UpgradeSevice.getINSTANCE().stop();
         logger.info("All files upgraded successfully! ");
       }

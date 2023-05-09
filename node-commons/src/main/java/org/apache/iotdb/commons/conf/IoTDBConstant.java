@@ -328,4 +328,6 @@ public class IoTDBConstant {
   public static final String DOUBLE_COLONS = "::";
 
   public static final int MAX_DATABASE_NAME_LENGTH = 64;
+
+  public static final String TIER_SEPARATOR = ";";
 }

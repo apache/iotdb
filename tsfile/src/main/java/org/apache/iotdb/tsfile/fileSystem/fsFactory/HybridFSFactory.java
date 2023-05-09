@@ -120,4 +120,10 @@ public class HybridFSFactory implements FSFactory {
     FSType type = FSUtils.getFSType(file);
     return fsFactories.get(type).deleteIfExists(file);
   }
+
+  @Override
+  public void deleteDirectory(String dir) throws IOException {
+    FSType type = FSUtils.getFSType(dir);
+    fsFactories.get(type).deleteDirectory(dir);
+  }
 }

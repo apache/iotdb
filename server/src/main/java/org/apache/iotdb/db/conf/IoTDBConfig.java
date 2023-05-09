@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -46,6 +45,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -294,13 +294,13 @@ public class IoTDBConfig {
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
-  /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME
+  /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
+  private String[][] tierDataDirs = {
+    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
   private String loadTsFileDir =
-      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+      tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -1203,52 +1203,48 @@ public class IoTDBConfig {
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     mqttDir = addDataHomeDir(mqttDir);
-
     extPipeDir = addDataHomeDir(extPipeDir);
+    queryDir = addDataHomeDir(queryDir);
+    formulateDataDirs(tierDataDirs);
+  }
 
-    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = getHdfsDir();
-      queryDir = hdfsDir + File.separatorChar + queryDir;
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
-      }
-    } else {
-      queryDir = addDataHomeDir(queryDir);
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
+  private void formulateDataDirs(String[][] tierDataDirs) {
+    for (int i = 0; i < tierDataDirs.length; i++) {
+      for (int j = 0; j < tierDataDirs[i].length; j++) {
+        switch (FSUtils.getFSType(tierDataDirs[i][j])) {
+          case HDFS:
+            tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
+            break;
+          case OBJECT_STORAGE:
+            // TODO(zhm) 对象存储路径配置
+            break;
+          case LOCAL:
+          default:
+            tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
+            break;
+        }
       }
     }
   }
 
-  void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
+  void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
     // format data directories
-    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = getHdfsDir();
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
-      }
-    } else {
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
-      }
-    }
-    // make sure old data directories not removed
-    HashSet<String> newDirs = new HashSet<>(Arrays.asList(dataDirs));
-    for (String oldDir : this.dataDirs) {
-      if (!newDirs.contains(oldDir)) {
-        String msg =
-            String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
-        logger.error(msg);
-        throw new LoadConfigurationException(msg);
+    formulateDataDirs(tierDataDirs);
+    // make sure old data directories not removed, TODO(zhm) 层级关系是否可以变化，当前实现仅支持在最后添加层级
+    for (int i = 0; i < this.tierDataDirs.length; ++i) {
+      HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
+      for (String oldDir : this.tierDataDirs[i]) {
+        if (!newDirs.contains(oldDir)) {
+          String msg =
+              String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+          logger.error(msg);
+          throw new LoadConfigurationException(msg);
+        }
       }
     }
-    this.dataDirs = dataDirs;
-    DirectoryManager.getInstance().updateFileFolders();
+    this.tierDataDirs = tierDataDirs;
+    //    TierManager.getInstance().updateFileFolders();
   }
-
-  //  private String addHomeDir(String dir) {
-  //    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
-  //  }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
   // In this way, we can keep consistent with v0.13.0~2.
@@ -1302,15 +1298,26 @@ public class IoTDBConfig {
   }
 
   public String[] getDataDirs() {
-    return dataDirs;
+    return Arrays.stream(tierDataDirs).flatMap(Arrays::stream).toArray(String[]::new);
   }
 
-  public void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
+  public String[] getLocalDataDirs() {
+    return Arrays.stream(tierDataDirs)
+        .flatMap(Arrays::stream)
+        .filter(FSUtils::isLocal)
+        .toArray(String[]::new);
+  }
+
+  public String[][] getTierDataDirs() {
+    return tierDataDirs;
+  }
+
+  public void setTierDataDirs(String[][] tierDataDirs) {
+    this.tierDataDirs = tierDataDirs;
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
-        dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
-    setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
+        tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    setLoadTsFileDir(tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {

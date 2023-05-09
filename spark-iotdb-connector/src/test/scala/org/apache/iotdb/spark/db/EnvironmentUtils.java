@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.jdbc.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +92,7 @@ public class EnvironmentUtils {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -132,11 +133,11 @@ public class EnvironmentUtils {
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
-    for (String path : directoryManager.getAllSequenceFileFolders()) {
+    for (String path : tierManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete unsequence files
-    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
+    for (String path : tierManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete system info
@@ -152,7 +153,7 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteDirectory(new File(dir));
+    FSFactoryProducer.getFSFactory().deleteDirectory(dir);
   }
 
   /** disable memory control</br> this function should be called before all code in the setup */
@@ -178,11 +179,11 @@ public class EnvironmentUtils {
 
   private static void createAllDir() {
     // create sequential files
-    for (String path : directoryManager.getAllSequenceFileFolders()) {
+    for (String path : tierManager.getAllSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
+    for (String path : tierManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
     // create database
@@ -198,7 +199,7 @@ public class EnvironmentUtils {
   }
 
   private static void createDir(String dir) {
-    File file = new File(dir);
+    File file = FSFactoryProducer.getFSFactory().getFile(dir);
     file.mkdirs();
   }
 
