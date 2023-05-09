@@ -18,11 +18,12 @@
 import multiprocessing
 import os
 from abc import abstractmethod
-from typing import Dict
+from typing import Dict, Tuple
 
 import optuna
 from torch import nn
 from torch.utils.data import Dataset
+from multiprocessing import Pipe
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
@@ -118,6 +119,27 @@ class _BasicTrainingTask(_BasicTask):
         raise NotImplementedError
 
 
+class _BasicInferenceTask(_BasicTask):
+    def __int__(
+            self,
+            task_configs: Dict,
+            model_configs: Dict,
+            pid_info: Dict,
+            data: Tuple,
+    ):
+        super().__init__(task_configs, model_configs, pid_info)
+        self.data = data
+        self.model, self.model_configs = create_forecast_model(**self.model_configs)
+
+    @abstractmethod
+    def __call__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def data_align(self):
+        raise NotImplementedError
+
+
 class ForecastingSingleTrainingTask(_BasicTrainingTask):
     def __init__(
             self,
@@ -189,3 +211,24 @@ class ForecastingTuningTrainingTask(_BasicTrainingTask):
         # except Exception as e:
         #     logger.warn(e)
         #     raise e
+
+
+class ForecastingInferenceTask(_BasicInferenceTask):
+    def __int__(
+            self,
+            task_configs: Dict,
+            model_configs: Dict,
+            pid_info: Dict,
+            data: Tuple,
+            pipe: Pipe,
+    ):
+        super().__init__(task_configs, model_configs, pid_info, data)
+
+    def __call__(self):
+        pass
+
+    def data_align(self):
+        pass
+
+    def generate_future_mark(self):
+        pass
