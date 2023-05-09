@@ -39,7 +39,7 @@ public abstract class AbstractCompactionEstimator {
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio();
+  protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio() + 1;
 
   /**
    * Estimate the memory cost of compacting the unseq file and its corresponding overlapped seq
