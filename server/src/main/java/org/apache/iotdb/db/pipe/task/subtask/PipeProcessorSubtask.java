@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -30,34 +31,31 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ArrayBlockingQueue;
-
 public class PipeProcessorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
-  private final ArrayBlockingQueue<Event> pendingEventQueue;
+  private final PendingQueue inputPendingQueue;
   private final PipeProcessor pipeProcessor;
   private final EventCollector outputEventCollector;
 
   public PipeProcessorSubtask(
       String taskID,
-      ArrayBlockingQueue<Event> pendingEventQueue,
+      PendingQueue inputPendingQueue,
       PipeProcessor pipeProcessor,
       EventCollector outputEventCollector) {
     super(taskID);
+    this.inputPendingQueue = inputPendingQueue;
     this.pipeProcessor = pipeProcessor;
-    this.pendingEventQueue = pendingEventQueue;
     this.outputEventCollector = outputEventCollector;
   }
 
   @Override
   protected void executeForAWhile() {
-    if (pendingEventQueue.isEmpty()) {
+    final Event event = inputPendingQueue.poll();
+    if (event == null) {
       return;
     }
-
-    final Event event = pendingEventQueue.poll();
 
     try {
       if (event instanceof TabletInsertionEvent) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
@@ -32,53 +33,44 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ArrayBlockingQueue;
-
 public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  // input
-  private final ArrayBlockingQueue<Event> pendingQueue;
-  // output
-  private final PipeConnector pipeConnector;
+  private final PendingQueue inputPendingQueue;
+  private final PipeConnector outputPipeConnector;
 
   /** @param taskID connectorAttributeSortedString */
-  public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
+  public PipeConnectorSubtask(
+      String taskID, PendingQueue inputPendingQueue, PipeConnector outputPipeConnector) {
     super(taskID);
-    // TODO: make the size of the queue size reasonable and configurable
-    this.pendingQueue = new ArrayBlockingQueue<>(1024 * 1024);
-    this.pipeConnector = pipeConnector;
-  }
-
-  public ArrayBlockingQueue<Event> getInputPendingQueue() {
-    return pendingQueue;
+    this.inputPendingQueue = inputPendingQueue;
+    this.outputPipeConnector = outputPipeConnector;
   }
 
   // TODO: for a while
   @Override
   protected void executeForAWhile() {
-    if (pendingQueue.isEmpty()) {
-      return;
-    }
-
     try {
       // TODO: reduce the frequency of heartbeat
-      pipeConnector.heartbeat();
+      outputPipeConnector.heartbeat();
     } catch (Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: failed to connect to the target system.", e);
     }
 
-    final Event event = pendingQueue.poll();
+    final Event event = inputPendingQueue.poll();
+    if (event == null) {
+      return;
+    }
 
     try {
       if (event instanceof TabletInsertionEvent) {
-        pipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
-        pipeConnector.transfer((TsFileInsertionEvent) event);
+        outputPipeConnector.transfer((TsFileInsertionEvent) event);
       } else if (event instanceof DeletionEvent) {
-        pipeConnector.transfer((DeletionEvent) event);
+        outputPipeConnector.transfer((DeletionEvent) event);
       } else {
         throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
       }
@@ -97,7 +89,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
       int retry = 0;
       while (retry < MAX_RETRY_TIMES) {
         try {
-          pipeConnector.handshake();
+          outputPipeConnector.handshake();
           break;
         } catch (Exception e) {
           retry++;
@@ -131,7 +123,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   @Override
   public void close() {
     try {
-      pipeConnector.close();
+      outputPipeConnector.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

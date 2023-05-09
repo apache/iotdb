@@ -17,21 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.pipe.task.binder;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+@FunctionalInterface
+public interface PendingQueueEmptyToNotEmptyListener {
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
-  }
-
-  @Override
-  protected void executeForAWhile() {
-    // do nothing
-  }
-
-  @Override
-  public void close() {
-    // TODO
-  }
+  void onPendingQueueEmptyToNotEmpty();
 }

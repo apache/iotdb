@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.core.connector;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -42,10 +43,12 @@ public class PipeConnectorSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeConnector pipeConnector = PipeAgent.plugin().reflectConnector(connectorAttributes);
+      // TODO: make pendingQueue size configurable
+      final PendingQueue pendingQueue = new PendingQueue(1024 * 1024);
       final PipeConnectorSubtask pipeConnectorSubtask =
-          new PipeConnectorSubtask(attributeSortedString, pipeConnector);
+          new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-          new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask);
+          new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
       attributeSortedString2SubtaskLifeCycleMap.put(
           attributeSortedString, pipeConnectorSubtaskLifeCycle);
     }
@@ -91,6 +94,15 @@ public class PipeConnectorSubtaskManager {
     }
 
     return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getSubtask();
+  }
+
+  public PendingQueue getPipeConnectorPendingQueue(String attributeSortedString) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throw new PipeException(
+          "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
+    }
+
+    return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getPendingQueue();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

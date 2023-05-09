@@ -25,7 +25,7 @@ import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskCollectorStage implements PipeTaskStage {
+public class PipeTaskCollectorStage extends PipeTaskStage {
 
   private final PipeParameters collectorParameters;
 
@@ -36,12 +36,12 @@ public class PipeTaskCollectorStage implements PipeTaskStage {
   }
 
   @Override
-  public void create() throws PipeException {
+  public void createSubtask() throws PipeException {
     this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
   }
 
   @Override
-  public void start() throws PipeException {
+  public void startSubtask() throws PipeException {
     try {
       pipeCollector.start();
     } catch (Exception e) {
@@ -50,12 +50,12 @@ public class PipeTaskCollectorStage implements PipeTaskStage {
   }
 
   @Override
-  public void stop() throws PipeException {
+  public void stopSubtask() throws PipeException {
     // collector continuously collects data, so do nothing in stop
   }
 
   @Override
-  public void drop() throws PipeException {
+  public void dropSubtask() throws PipeException {
     try {
       pipeCollector.close();
     } catch (Exception e) {
