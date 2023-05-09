@@ -27,9 +27,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PendingQueue {
+public class PendingQueue<E extends Event> {
 
-  private final Queue<Event> pendingQueue;
+  private final Queue<E> pendingQueue;
 
   private final Map<String, PendingQueueEmptyToNotEmptyListener> emptyToNotEmptyListeners =
       new ConcurrentHashMap<>();
@@ -47,7 +47,7 @@ public class PendingQueue {
     this.pendingQueue = new ArrayBlockingQueue<>(pendingQueueSize);
   }
 
-  public PendingQueue registerEmptyToNotEmptyListener(
+  public PendingQueue<E> registerEmptyToNotEmptyListener(
       String id, PendingQueueEmptyToNotEmptyListener listener) {
     emptyToNotEmptyListeners.put(id, listener);
     return this;
@@ -63,7 +63,7 @@ public class PendingQueue {
         .forEach(PendingQueueEmptyToNotEmptyListener::onPendingQueueEmptyToNotEmpty);
   }
 
-  public PendingQueue registerNotEmptyToEmptyListener(
+  public PendingQueue<E> registerNotEmptyToEmptyListener(
       String id, PendingQueueNotEmptyToEmptyListener listener) {
     notEmptyToEmptyListeners.put(id, listener);
     return this;
@@ -79,7 +79,7 @@ public class PendingQueue {
         .forEach(PendingQueueNotEmptyToEmptyListener::onPendingQueueNotEmptyToEmpty);
   }
 
-  public PendingQueue registerFullToNotFullListener(
+  public PendingQueue<E> registerFullToNotFullListener(
       String id, PendingQueueFullToNotFullListener listener) {
     fullToNotFullListeners.put(id, listener);
     return this;
@@ -95,7 +95,7 @@ public class PendingQueue {
         .forEach(PendingQueueFullToNotFullListener::onPendingQueueFullToNotFull);
   }
 
-  public PendingQueue registerNotFullToFullListener(
+  public PendingQueue<E> registerNotFullToFullListener(
       String id, PendingQueueNotFullToFullListener listener) {
     notFullToFullListeners.put(id, listener);
     return this;
@@ -111,7 +111,7 @@ public class PendingQueue {
         .forEach(PendingQueueNotFullToFullListener::onPendingQueueNotFullToFull);
   }
 
-  public boolean offer(Event event) {
+  public boolean offer(E event) {
     final boolean isEmpty = pendingQueue.isEmpty();
     final boolean isAdded = pendingQueue.offer(event);
 
@@ -131,9 +131,9 @@ public class PendingQueue {
     return isAdded;
   }
 
-  public Event poll() {
+  public E poll() {
     final boolean isEmpty = pendingQueue.isEmpty();
-    final Event event = pendingQueue.poll();
+    final E event = pendingQueue.poll();
 
     if (event == null) {
       // we don't use size() == 0 to check whether the listener should be called,
@@ -157,5 +157,9 @@ public class PendingQueue {
 
   public int size() {
     return pendingQueue.size();
+  }
+
+  public void disable() {
+    pendingQueue = null;
   }
 }

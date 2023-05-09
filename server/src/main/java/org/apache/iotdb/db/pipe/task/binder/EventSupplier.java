@@ -17,15 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.task.binder;
 
-public class PipeCollectorConstant {
+import org.apache.iotdb.pipe.api.event.Event;
 
-  public static final String COLLECTOR_KEY = "collector";
-  public static final String PATTERN_PATTERN_KEY = "collector.pattern";
-  public static final String DATA_REGION_KEY = "collector.data-region";
+@FunctionalInterface
+public interface EventSupplier {
 
-  private PipeCollectorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
+  /**
+   * @return the event to be supplied. the event may be null if the collector has no more events at
+   *     the moment, but the collector is still running for more events.
+   * @throws Exception if the supplier fails to supply the event.
+   */
+  Event supply() throws Exception;
 }

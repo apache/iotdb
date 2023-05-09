@@ -19,25 +19,56 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
+import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskCollectorStage extends PipeTaskStage {
 
   private final PipeParameters collectorParameters;
 
+  /**
+   * TODO: have a better way to control busy/idle status of PipeTaskCollectorStage.
+   *
+   * <p>Currently, this field is for IoTDBDataRegionCollector only. IoTDBDataRegionCollector uses
+   * collectorPendingQueue as an internal data structure to store realtime events.
+   *
+   * <p>PendingQueue can detect whether the queue is empty or not, and it can notify the
+   * PipeTaskProcessorStage to stop processing data when the queue is empty to avoid unnecessary
+   * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
+   * queue is not empty.
+   */
+  private PendingQueue<Event> collectorPendingQueue;
+
   private PipeCollector pipeCollector;
 
-  PipeTaskCollectorStage(PipeParameters collectorParameters) {
+  public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
     this.collectorParameters = collectorParameters;
+    // set data region id to collector parameters, so that collector can get data region id inside
+    // collector
+    collectorParameters.getAttribute().put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
   }
 
   @Override
   public void createSubtask() throws PipeException {
-    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
+    if (collectorParameters
+        .getStringOrDefault(
+            PipeCollectorConstant.COLLECTOR_KEY,
+            BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())
+        .equals(BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())) {
+      collectorPendingQueue =
+          new PendingQueue<>(PipeConfig.getInstance().getRealtimeCollectorPendingQueueCapacity());
+      this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
+    } else {
+      this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
+    }
   }
 
   @Override
@@ -63,8 +94,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     }
   }
 
-  @Override
-  public PipeSubtask getSubtask() {
-    throw new UnsupportedOperationException("Collector stage does not have subtask.");
+  public PendingQueue<Event> getCollectorPendingQueue() {
+    return collectorPendingQueue;
   }
 }

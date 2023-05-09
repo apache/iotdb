@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.db.pipe.task.binder.PendingQueue;
+import org.apache.iotdb.db.pipe.task.binder.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -35,24 +35,24 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
-  private final PendingQueue inputPendingQueue;
+  private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
   private final EventCollector outputEventCollector;
 
   public PipeProcessorSubtask(
       String taskID,
-      PendingQueue inputPendingQueue,
+      EventSupplier inputEventSupplier,
       PipeProcessor pipeProcessor,
       EventCollector outputEventCollector) {
     super(taskID);
-    this.inputPendingQueue = inputPendingQueue;
+    this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
   }
 
   @Override
-  protected void executeForAWhile() {
-    final Event event = inputPendingQueue.poll();
+  protected void executeForAWhile() throws Exception {
+    final Event event = inputEventSupplier.supply();
     if (event == null) {
       return;
     }

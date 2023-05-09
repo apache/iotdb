@@ -83,20 +83,20 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector();
+            new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector();
+            new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector();
+            new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
         PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector()) {
+            new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue)) {
 
       collector1.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
-                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion1);
+                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
           null);
@@ -105,7 +105,7 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
-                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion1);
+                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
           null);
@@ -114,7 +114,7 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
-                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion2);
+                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
           null);
@@ -123,7 +123,7 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
-                  put(PipeCollectorConstant.PATTERN_DATA_REGION_KEY, dataRegion2);
+                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
           null);

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public abstract class PipeTaskStage {
@@ -129,11 +128,4 @@ public abstract class PipeTaskStage {
   }
 
   protected abstract void dropSubtask() throws PipeException;
-
-  /**
-   * Get the pipe subtask.
-   *
-   * @return the pipe subtask.
-   */
-  public abstract PipeSubtask getSubtask();
 }

@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.pipe.config;
 
-public class PipeCollectorConstant {
+public class PipeConnectorConstant {
 
-  public static final String COLLECTOR_KEY = "collector";
-  public static final String PATTERN_PATTERN_KEY = "collector.pattern";
-  public static final String DATA_REGION_KEY = "collector.data-region";
+  public static final String CONNECTOR_KEY = "connector";
 
-  private PipeCollectorConstant() {
+  private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }
 }
