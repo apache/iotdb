@@ -31,7 +31,7 @@ import java.util.Queue;
 
 public class PipeEventCollector implements EventCollector {
 
-  private final PendingQueue pendingQueue;
+  private final PendingQueue<Event> pendingQueue;
 
   // buffer queue is used to store events that are not offered to pending queue
   // because the pending queue is full. when pending queue is full, pending queue
@@ -41,7 +41,7 @@ public class PipeEventCollector implements EventCollector {
   // events before events in buffer queue are offered to pending queue.
   private final Queue<Event> bufferQueue;
 
-  public PipeEventCollector(PendingQueue pendingQueue) {
+  public PipeEventCollector(PendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
     bufferQueue = new LinkedList<>();
   }
