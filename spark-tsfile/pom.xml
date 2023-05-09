@@ -43,7 +43,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
+            <artifactId>spark-core_2.11</artifactId>
+            <version>2.4.5</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -58,16 +59,14 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.12</artifactId>
+            <artifactId>spark-sql_2.11</artifactId>
+            <version>2.4.5</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.12</artifactId>
+            <artifactId>scalatest_2.11</artifactId>
+            <version>3.0.5</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -76,7 +75,7 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
+                <version>4.4.0</version>
                 <executions>
                     <execution>
                         <id>compile-scala</id>
@@ -95,6 +94,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <scalaVersion>2.11.12</scalaVersion>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -110,12 +112,13 @@
                     <plugin>
                         <groupId>net.alchim31.maven</groupId>
                         <artifactId>scala-maven-plugin</artifactId>
-                        <version>3.2.2</version>
+                        <version>4.4.0</version>
                         <!-- Added to avoid problems with Java 11 and above -->
                         <configuration>
                             <args>
                                 <arg>-nobootcp</arg>
                             </args>
+                            <scalaVersion>2.11.12</scalaVersion>
                         </configuration>
                     </plugin>
                 </plugins>

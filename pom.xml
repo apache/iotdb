@@ -423,16 +423,6 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-core_2.12</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.12</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-core-asl</artifactId>
                 <version>${jackson-core-asl.version}</version>
@@ -478,16 +468,6 @@
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-module-junit4</artifactId>
                 <version>${powermock-core.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-library</artifactId>
-                <version>${scala.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-reflect</artifactId>
-                <version>${scala.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.scalatest</groupId>
