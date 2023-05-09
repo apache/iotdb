@@ -29,7 +29,6 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import java.util.HashMap;
 import java.util.Map;
 
-/** PipeTaskBuilder is used to build a PipeTask. */
 public class PipeBuilder {
 
   private final PipeMeta pipeMeta;
