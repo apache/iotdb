@@ -39,9 +39,6 @@ public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
             new PipeConnectorSubtask(
                 "PipeConnectorSubtaskExecutorTest",
                 mock(ListenableBlockingPendingQueue.class),
-                mock(PipeConnector.class)) {
-              @Override
-              public void executeForAWhile() {}
-            });
+                mock(PipeConnector.class)));
   }
 }

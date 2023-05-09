@@ -41,9 +41,6 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 "PipeProcessorSubtaskExecutorTest",
                 mock(EventSupplier.class),
                 mock(PipeProcessor.class),
-                mock(EventCollector.class)) {
-              @Override
-              public void executeForAWhile() {}
-            });
+                mock(EventCollector.class)));
   }
 }
