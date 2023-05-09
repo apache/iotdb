@@ -223,12 +223,19 @@ public class RouteBalancer {
   public Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
       balanceRegionPriority() {
 
+    LOGGER.info("[NoElect] balanceRegionPriority");
+
     Map<TConsensusGroupId, TRegionReplicaSet> currentPriorityMap =
         getLoadManager().getRegionPriorityMap();
     Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
     // Balancing region priority in each SchemaRegionGroup
+    LOGGER.info(
+        "[NoElect] replicaSets: {}",
+        getPartitionManager().getAllReplicaSetsMap(TConsensusGroupType.SchemaRegion));
+    LOGGER.info("[NoElect] regionLeaderMap: {}", regionLeaderMap);
+    LOGGER.info("[NoElect] dataNodeLoadScoreMap: {}", dataNodeLoadScoreMap);
     Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
         priorityRouter.generateOptimalRoutePriority(
             getPartitionManager().getAllReplicaSets(TConsensusGroupType.SchemaRegion),
@@ -254,6 +261,11 @@ public class RouteBalancer {
         getLoadManager().forceUpdateRegionPriority(regionGroupId, optimalRegionPriority);
       }
     }
+
+    LOGGER.info("[NoElect] Current RegionPriority: {}", currentPriorityMap);
+    LOGGER.info("[NoElect] Optimal RegionPriority: {}", optimalRegionPriorityMap);
+    LOGGER.info("[NoElect] Different RegionPriority: {}", differentRegionPriorityMap);
+
     return differentRegionPriorityMap;
   }
 
