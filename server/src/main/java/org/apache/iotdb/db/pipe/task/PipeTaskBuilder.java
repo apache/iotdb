@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskCollectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
@@ -43,6 +44,15 @@ public class PipeTaskBuilder {
     this.pipeCollectorParameters = pipeCollectorParameters;
     this.pipeProcessorParameters = pipeProcessorParameters;
     this.pipeConnectorParameters = pipeConnectorParameters;
+  }
+
+  PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
+    this(
+        pipeStaticMeta.getPipeName(),
+        dataRegionId,
+        pipeStaticMeta.getCollectorParameters(),
+        pipeStaticMeta.getProcessorParameters(),
+        pipeStaticMeta.getConnectorParameters());
   }
 
   public PipeTask build() {
