@@ -39,9 +39,9 @@ import java.util.List;
  * run in both Memory and Schema_File modes. In Schema_File mode, there are three kinds of test
  * environment: full memory, partial memory and non memory.
  *
- * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link AbstractSchemaIT#setUp}
- * before test env initialization and call {@link AbstractSchemaIT#tearDown} after test env
- * cleaning.
+ * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
+ * AbstractSchemaIT#setUpEnvironment} before test env initialization and call {@link
+ * AbstractSchemaIT#tearDownEnvironment} after test env cleaning.
  */
 @RunWith(Parameterized.class)
 @NotThreadSafe
@@ -69,7 +69,7 @@ public abstract class AbstractSchemaIT {
     mode = 0;
   }
 
-  public static SchemaTestMode newSetUp() throws Exception {
+  public static SchemaTestMode setUpEnvironment() throws Exception {
     SchemaTestMode schemaTestMode = schemaTestModes.get(mode++);
     switch (schemaTestMode) {
       case Memory:
@@ -83,9 +83,9 @@ public abstract class AbstractSchemaIT {
     return schemaTestMode;
   }
 
-  public static void newTearDown() throws Exception {}
+  public static void tearDownEnvironment() throws Exception {}
 
-  public static void clear() throws Exception {
+  public static void clearSchema() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {

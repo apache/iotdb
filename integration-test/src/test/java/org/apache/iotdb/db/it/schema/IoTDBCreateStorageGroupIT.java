@@ -55,19 +55,19 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
-    newSetUp();
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @Parameterized.AfterParam
   public static void after() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-    newTearDown();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    clear();
+    clearSchema();
   }
   /** The test creates three databases */
   @Test

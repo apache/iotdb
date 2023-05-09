@@ -52,7 +52,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
-    SchemaTestMode schemaTestMode = newSetUp();
+    SchemaTestMode schemaTestMode = setUpEnvironment();
     if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
       allocateMemoryForSchemaRegion(10000);
     }
@@ -62,12 +62,12 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   @Parameterized.AfterParam
   public static void after() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-    newTearDown();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    clear();
+    clearSchema();
   }
 
   @Test

@@ -53,19 +53,19 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
-    newSetUp();
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @Parameterized.AfterParam
   public static void after() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-    newTearDown();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    clear();
+    clearSchema();
   }
 
   /** Test if creating a time series will cause the database with same name to disappear */

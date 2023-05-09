@@ -54,32 +54,20 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
-    newSetUp();
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @Parameterized.AfterParam
   public static void after() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-    newTearDown();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    clear();
+    clearSchema();
   }
-
-  //  @Before
-  //  public void setUp() throws Exception {
-  //    super.setUp();
-  //    EnvFactory.getEnv().initClusterEnvironment();
-  //  }
-  //
-  //  @After
-  //  public void tearDown() throws Exception {
-  //    EnvFactory.getEnv().cleanClusterEnvironment();
-  //    super.tearDown();
-  //  }
 
   /** create timeseries without setting database */
   @Test
