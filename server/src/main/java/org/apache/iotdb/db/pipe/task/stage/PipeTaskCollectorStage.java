@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
+import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -90,6 +91,10 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
+  }
+
+  public EventSupplier getEventSupplier() {
+    return () -> pipeCollector.supply();
   }
 
   public ListenableUnblockingPendingQueue<Event> getCollectorPendingQueue() {

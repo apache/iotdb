@@ -100,7 +100,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
             // TODO: make the retry interval configurable
             Thread.sleep(retry * 1000L);
           } catch (InterruptedException interruptedException) {
-            interruptedException.printStackTrace();
+            LOGGER.info(
+                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");
+            Thread.currentThread().interrupt();
           }
         }
       }

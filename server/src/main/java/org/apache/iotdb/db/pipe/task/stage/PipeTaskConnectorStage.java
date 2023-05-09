@@ -32,7 +32,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   protected String connectorSubtaskId = null;
 
-  protected PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
+  public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
     this.pipeConnectorParameters = pipeConnectorParameters;
   }
 

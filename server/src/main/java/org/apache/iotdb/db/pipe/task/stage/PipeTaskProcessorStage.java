@@ -54,7 +54,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param pipeProcessorParameters used to create pipe processor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
-  protected PipeTaskProcessorStage(
+  public PipeTaskProcessorStage(
       String pipeName,
       String dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
