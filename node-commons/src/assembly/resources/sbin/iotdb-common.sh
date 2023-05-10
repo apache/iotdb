@@ -100,7 +100,7 @@ checkAllVariables()
   fi
 
   if [ -z "${IOTDB_HOME}" ]; then
-    export IOTDB_HOME="`dirname "$0"`/.."
+    export IOTDB_HOME="$(cd `dirname $0`/..;pwd)"
   fi
 
   if [ -z "${IOTDB_DATA_HOME}" ]; then
@@ -130,7 +130,7 @@ checkAllConfigNodeVariables()
   fi
 
   if [ -z "${CONFIGNODE_HOME}" ]; then
-    export CONFIGNODE_HOME="`dirname "$0"`/.."
+    export CONFIGNODE_HOME="$(cd `dirname $0`/..;pwd)"
   fi
 
   if [ -z "${CONFIGNODE_DATA_HOME}" ]; then
