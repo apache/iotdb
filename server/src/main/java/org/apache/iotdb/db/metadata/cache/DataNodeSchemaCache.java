@@ -68,11 +68,13 @@ public class DataNodeSchemaCache {
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
 
-  public double getHitRate() {
-    return (deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount())
-        * 1.0
-        / (deviceUsingTemplateSchemaCache.getRequestCount()
-            + timeSeriesSchemaCache.getRequestCount());
+  public long getHitCount() {
+    return deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount();
+  }
+
+  public long getRequestCount() {
+    return deviceUsingTemplateSchemaCache.getRequestCount()
+        + timeSeriesSchemaCache.getRequestCount();
   }
 
   public static DataNodeSchemaCache getInstance() {
