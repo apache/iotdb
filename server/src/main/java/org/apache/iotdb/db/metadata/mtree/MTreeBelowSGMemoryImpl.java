@@ -42,6 +42,8 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
+import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrapper;
@@ -64,12 +66,14 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -898,8 +902,8 @@ public class MTreeBelowSGMemoryImpl {
                 return node.getAlias();
               }
 
-              public MeasurementSchema getSchema() {
-                return (MeasurementSchema) node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -918,6 +922,11 @@ public class MTreeBelowSGMemoryImpl {
 
               public boolean isUnderAlignedDevice() {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
+              }
+
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
               }
 
               public String getFullPath() {
@@ -998,6 +1007,68 @@ public class MTreeBelowSGMemoryImpl {
         return collector.next();
       }
     };
+  }
+  // endregion
+
+  // region interfaces for logical view
+  public IMeasurementMNode<IMemMNode> createLogicalView(
+      PartialPath path, ViewExpression viewExpression) throws MetadataException {
+    // check path
+    String[] nodeNames = path.getNodes();
+    if (nodeNames.length <= 2) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    MetaFormatUtils.checkTimeseries(path);
+    PartialPath devicePath = path.getDevicePath();
+    IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+
+    synchronized (this) {
+      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      String leafName = path.getMeasurement();
+
+      // no need to check alias, because logical view has no alias
+
+      if (device.hasChild(leafName)) {
+        IMemMNode node = device.getChild(leafName);
+        if (node.isMeasurement()) {
+          if (node.getAsMeasurementMNode().isPreDeleted()) {
+            throw new MeasurementInBlackListException(path);
+          } else {
+            throw new MeasurementAlreadyExistException(
+                path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+          }
+        } else {
+          throw new PathAlreadyExistException(path.getFullPath());
+        }
+      }
+
+      if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "timeseries under this entity is aligned, can not create view under this entity.",
+            device.getFullPath());
+      }
+
+      IDeviceMNode<IMemMNode> entityMNode;
+      if (device.isDevice()) {
+        entityMNode = device.getAsDeviceMNode();
+      } else {
+        entityMNode = store.setToEntity(device);
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
+        }
+      }
+
+      IMeasurementMNode<IMemMNode> measurementMNode =
+          nodeFactory.createLogicalViewMNode(
+              entityMNode,
+              leafName,
+              new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+
+      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+
+      return measurementMNode;
+    }
   }
   // endregion
 }

@@ -256,4 +256,14 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setQuotaEnable(boolean quotaEnable) {
     return this;
   }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    return this;
+  }
 }

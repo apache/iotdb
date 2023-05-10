@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -239,6 +241,25 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
       stringBuilder.append("{");
       templateSetInfo.forEach((k, v) -> stringBuilder.append(k).append(": ").append(v).append(";"));
       stringBuilder.append("}");
+    }
+
+    @Override
+    public Void visitCreateLogicalView(
+        ICreateLogicalViewPlan createLogicalViewPlan, StringBuilder stringBuilder) {
+      int viewSize = createLogicalViewPlan.getViewSize();
+      List<PartialPath> viewPathList = createLogicalViewPlan.getViewPathList();
+      Map<PartialPath, ViewExpression> viewPathToSourceMap =
+          createLogicalViewPlan.getViewPathToSourceExpressionMap();
+      for (int i = 0; i < viewSize; i++) {
+        PartialPath thisPath = viewPathList.get(i);
+        ViewExpression thisExp = viewPathToSourceMap.get(thisPath);
+        stringBuilder.append(thisPath).append(FIELD_SEPARATOR).append(thisExp.toString());
+        if (i + 1 >= viewSize) {
+          break;
+        }
+        stringBuilder.append(FIELD_SEPARATOR);
+      }
+      return null;
     }
   }
 }

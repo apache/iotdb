@@ -109,4 +109,26 @@ public class PipeParameters {
     String value = attributes.get(key);
     return value == null ? defaultValue : Double.parseDouble(value);
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeParameters that = (PipeParameters) obj;
+    return attributes.equals(that.attributes);
+  }
+
+  @Override
+  public int hashCode() {
+    return attributes.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return attributes.toString();
+  }
 }

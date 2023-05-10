@@ -51,11 +51,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -326,8 +326,8 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
@@ -794,8 +794,8 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator1
@@ -808,8 +808,8 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator2
@@ -823,8 +823,8 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
@@ -1267,8 +1267,8 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.DEVICE, deviceOrdering),
-                      new SortItem(SortKey.TIME, timeOrdering)),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering),
+                      new SortItem(OrderByKey.TIME, timeOrdering)),
                   Arrays.asList(0, -1),
                   Arrays.asList(TSDataType.TEXT, TSDataType.INT64)));
       mergeSortOperator
@@ -1533,11 +1533,11 @@ public class MergeSortOperatorTest {
 
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       List<TSDataType> dataTypes = DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
-      Comparator<MergeSortKey> comparator =
+      Comparator<SortKey> comparator =
           MergeSortComparator.getComparator(
               Arrays.asList(
-                  new SortItem(SortKey.TIME, Ordering.ASC),
-                  new SortItem(SortKey.DATANODEID, Ordering.DESC)),
+                  new SortItem(OrderByKey.TIME, Ordering.ASC),
+                  new SortItem(OrderByKey.DATANODEID, Ordering.DESC)),
               ImmutableList.of(-1, 1),
               ImmutableList.of(TSDataType.INT64, TSDataType.INT32));
 
@@ -1561,9 +1561,11 @@ public class MergeSortOperatorTest {
       ShowQueriesOperator showQueriesOperator2 =
           new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
       SortOperator sortOperator1 =
-          new SortOperator(operatorContexts.get(2), showQueriesOperator1, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(2), showQueriesOperator1, dataTypes, "", comparator);
       SortOperator sortOperator2 =
-          new SortOperator(operatorContexts.get(3), showQueriesOperator2, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(3), showQueriesOperator2, dataTypes, "", comparator);
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),

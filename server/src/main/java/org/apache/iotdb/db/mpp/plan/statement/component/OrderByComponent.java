@@ -50,15 +50,15 @@ public class OrderByComponent extends StatementNode {
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
     switch (sortItem.getSortKey()) {
-      case SortKey.TIME:
+      case OrderByKey.TIME:
         orderByTime = true;
         timeOrderPriority = sortItemList.size() - 1;
         break;
-      case SortKey.TIMESERIES:
+      case OrderByKey.TIMESERIES:
         orderByTimeseries = true;
         timeseriesOrderPriority = sortItemList.size() - 1;
         break;
-      case SortKey.DEVICE:
+      case OrderByKey.DEVICE:
         orderByDevice = true;
         deviceOrderPriority = sortItemList.size() - 1;
         break;
