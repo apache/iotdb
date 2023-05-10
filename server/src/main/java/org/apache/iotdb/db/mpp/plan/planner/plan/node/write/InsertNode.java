@@ -292,7 +292,11 @@ public abstract class InsertNode extends WritePlanNode {
 
   public abstract Object getFirstValueOfIndex(int index);
 
-  public boolean isFromLeader() {
+  /**
+   * Notice: Call this method ONLY when using IOT_CONSENSUS, other consensus protocol cannot
+   * distinguish whether the insertNode is from leader by this method.
+   */
+  public boolean isFromLeaderWhenUsingIoTConsensus() {
     return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
   }
 
