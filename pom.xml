@@ -127,6 +127,7 @@
         <module>mlnode</module>
         <module>pipe-api</module>
         <module>subscription-api</module>
+        <module>object-storage</module>
     </modules>
     <!-- Properties Management -->
     <properties>
