@@ -113,7 +113,7 @@ public class DataNodeSchemaCache {
 
   public ClusterSchemaTree get(PartialPath fullPath) {
     ClusterSchemaTree clusterSchemaTree = deviceUsingTemplateSchemaCache.get(fullPath);
-    if (clusterSchemaTree == null) {
+    if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
       return timeSeriesSchemaCache.get(fullPath);
     } else {
       return clusterSchemaTree;
