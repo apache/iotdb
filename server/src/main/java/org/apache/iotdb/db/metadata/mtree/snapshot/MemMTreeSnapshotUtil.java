@@ -247,6 +247,7 @@ public class MemMTreeSnapshotUtil {
         childrenNum = 0;
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
