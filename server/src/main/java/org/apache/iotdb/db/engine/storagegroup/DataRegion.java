@@ -1146,7 +1146,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled() || !node.isFromLeader()) {
       return;
     }
     DataNodeSchemaCache.getInstance()
@@ -1186,7 +1186,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled() || !node.isFromLeader()) {
       return;
     }
     DataNodeSchemaCache.getInstance()

@@ -292,6 +292,10 @@ public abstract class InsertNode extends WritePlanNode {
 
   public abstract Object getFirstValueOfIndex(int index);
 
+  public boolean isFromLeader() {
+    return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+  }
+
   // region partial insert
   /**
    * Mark failed measurement, measurements[index], dataTypes[index] and values/columns[index] would
