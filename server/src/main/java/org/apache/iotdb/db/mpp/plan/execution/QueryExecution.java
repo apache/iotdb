@@ -226,6 +226,9 @@ public class QueryExecution implements IQueryExecution {
     schedule();
 
     // set partial insert error message
+    // When some columns in one insert failed, other column will continue executing insertion.
+    // The error message should be return to client, therefore we need to set it after the insertion
+    // of other column finished.
     if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
