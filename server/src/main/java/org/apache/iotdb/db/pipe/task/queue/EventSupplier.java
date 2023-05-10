@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.pipe.api.event.Event;
 
-public class DataRegionId extends ConsensusGroupId {
+@FunctionalInterface
+public interface EventSupplier {
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
-
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
-  }
+  /**
+   * @return the event to be supplied. the event may be null if the collector has no more events at
+   *     the moment, but the collector is still running for more events.
+   * @throws Exception if the supplier fails to supply the event.
+   */
+  Event supply() throws Exception;
 }

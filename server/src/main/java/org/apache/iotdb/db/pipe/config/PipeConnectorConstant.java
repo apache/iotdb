@@ -17,18 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.pipe.config;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+public class PipeConnectorConstant {
 
-public class DataRegionId extends ConsensusGroupId {
+  public static final String CONNECTOR_KEY = "connector";
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
-
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
+  private PipeConnectorConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

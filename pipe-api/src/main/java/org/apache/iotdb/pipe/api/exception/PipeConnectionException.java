@@ -17,21 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.pipe.api.exception;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+public class PipeConnectionException extends PipeException {
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
+  public PipeConnectionException(String message) {
+    super(message);
   }
 
-  @Override
-  protected void executeForAWhile() {
-    // do nothing
-  }
-
-  @Override
-  public void close() {
-    // TODO
+  public PipeConnectionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

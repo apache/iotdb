@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.pipe.api.event.Event;
 
-public class DataRegionId extends ConsensusGroupId {
+import org.eclipse.jetty.util.BlockingArrayQueue;
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
+public class ListenableBlockingPendingQueue<E extends Event> extends ListenablePendingQueue<E> {
 
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
+  public ListenableBlockingPendingQueue(int pendingQueueSize) {
+    super(new BlockingArrayQueue<>(pendingQueueSize));
   }
 }

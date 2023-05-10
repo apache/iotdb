@@ -17,18 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+@FunctionalInterface
+public interface PendingQueueEmptyToNotEmptyListener {
 
-public class DataRegionId extends ConsensusGroupId {
-
-  public DataRegionId(int id) {
-    this.id = id;
-  }
-
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
-  }
+  void onPendingQueueEmptyToNotEmpty();
 }
