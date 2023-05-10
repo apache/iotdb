@@ -87,6 +87,13 @@ public class AbstractCompactionTest {
   protected int maxDeviceNum = 25;
   protected int maxMeasurementNum = 25;
 
+  private long[] timestamp = {0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7};
+  // seq version is not in order
+  private int[] seqVersion = {18, 19, 0, 1, 14, 15, 16, 2, 3, 4, 12, 13, 5, 6, 9, 10, 11, 7, 8, 17};
+  private int[] unseqVersion = {
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
+  };
+
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
@@ -147,11 +154,14 @@ public class AbstractCompactionTest {
 
   private int fileVersion = 0;
 
+  private int fileCount = 0;
+
   protected TsFileManager tsFileManager =
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    fileCount = 0;
     if (!SEQ_DIRS.exists()) {
       Assert.assertTrue(SEQ_DIRS.mkdirs());
     }
@@ -196,11 +206,9 @@ public class AbstractCompactionTest {
       boolean isSeq)
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
+      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          System.currentTimeMillis()
-              + FilePathUtils.FILE_NAME_SEPARATOR
-              + fileVersion++
-              + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -270,11 +278,9 @@ public class AbstractCompactionTest {
       throws IOException, WriteProcessException {
     String value = isSeq ? "seqTestValue" : "unseqTestValue";
     for (int i = 0; i < fileNum; i++) {
+      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          System.currentTimeMillis()
-              + FilePathUtils.FILE_NAME_SEPARATOR
-              + fileVersion++
-              + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -576,11 +582,9 @@ public class AbstractCompactionTest {
   }
 
   protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
+    long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
     String fileName =
-        System.currentTimeMillis()
-            + FilePathUtils.FILE_NAME_SEPARATOR
-            + fileVersion
-            + "-0-0.tsfile";
+        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;

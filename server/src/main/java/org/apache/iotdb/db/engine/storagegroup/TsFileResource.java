@@ -1033,7 +1033,15 @@ public class TsFileResource {
           TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
       TsFileNameGenerator.TsFileName n2 =
           TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-      return (int) (n2.getVersion() - n1.getVersion());
+      long timeDiff = n2.getTime() - n1.getTime();
+      if (timeDiff != 0) {
+        return timeDiff < 0 ? -1 : 1;
+      }
+      long versionDiff = n2.getVersion() - n1.getVersion();
+      if (versionDiff != 0) {
+        return versionDiff < 0 ? -1 : 1;
+      }
+      return 0;
     } catch (IOException e) {
       return 0;
     }
