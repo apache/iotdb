@@ -1150,13 +1150,22 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
+    }
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            Arrays.stream(node.getMeasurementSchemas())
-                .map(MeasurementSchema::getMeasurementId)
-                .toArray(String[]::new),
+            rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeLastTimeValuePair,
@@ -1192,13 +1201,22 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
+    }
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            Arrays.stream(node.getMeasurementSchemas())
-                .map(MeasurementSchema::getMeasurementId)
-                .toArray(String[]::new),
+            rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeTimeValuePair,
