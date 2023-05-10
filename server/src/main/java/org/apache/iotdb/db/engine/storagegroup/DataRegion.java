@@ -106,6 +106,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1153,7 +1154,9 @@ public class DataRegion implements IDataRegionForQuery {
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            node.getMeasurements(),
+            Arrays.stream(node.getMeasurementSchemas())
+                .map(MeasurementSchema::getMeasurementId)
+                .toArray(String[]::new),
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeLastTimeValuePair,
@@ -1193,7 +1196,9 @@ public class DataRegion implements IDataRegionForQuery {
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            node.getMeasurements(),
+            Arrays.stream(node.getMeasurementSchemas())
+                .map(MeasurementSchema::getMeasurementId)
+                .toArray(String[]::new),
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeTimeValuePair,
