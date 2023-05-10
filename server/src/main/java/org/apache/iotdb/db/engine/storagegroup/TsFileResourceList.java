@@ -148,8 +148,6 @@ public class TsFileResourceList implements List<TsFileResource> {
       tail = newNode;
       count++;
     } else {
-      // find the position to insert of this node
-      // the list should be ordered by file timestamp
       TsFileNameGenerator.TsFileName newTsFileName =
           TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName());
       long timestampOfNewNode = newTsFileName.getTime();
