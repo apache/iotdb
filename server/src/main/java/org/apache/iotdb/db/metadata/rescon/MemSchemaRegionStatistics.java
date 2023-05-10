@@ -115,8 +115,6 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     return memoryUsage.get();
   }
 
-
-
   @Override
   public int getSchemaRegionId() {
     return schemaRegionId;

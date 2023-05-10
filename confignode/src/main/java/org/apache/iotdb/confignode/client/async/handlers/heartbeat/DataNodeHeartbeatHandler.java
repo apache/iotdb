@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
@@ -41,7 +40,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<Integer, Long> timeSeriesNum;
   private final Map<Integer, Long> regionDisk;
 
-  private final Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess;
+  private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
 
   public DataNodeHeartbeatHandler(
       int nodeId,
@@ -49,7 +48,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
-      Consumer<Map<TConsensusGroupId, Long>> schemaQuotaRespProcess) {
+      Consumer<Map<Integer, Long>> schemaQuotaRespProcess) {
 
     this.nodeId = nodeId;
     this.loadCache = loadCache;
@@ -88,17 +87,24 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
               }
             });
 
-    if (heartbeatResp.getDeviceNum() != null) {
-      deviceNum.putAll(heartbeatResp.getDeviceNum());
+    if (heartbeatResp.getRegionDeviceNumMap() != null) {
+      deviceNum.putAll(heartbeatResp.getRegionDeviceNumMap());
     }
-    if (heartbeatResp.getTimeSeriesNum() != null) {
-      timeSeriesNum.putAll(heartbeatResp.getTimeSeriesNum());
+    if (heartbeatResp.getRegionTimeSeriesNumMap() != null) {
+      timeSeriesNum.putAll(heartbeatResp.getRegionTimeSeriesNumMap());
     }
     if (heartbeatResp.getRegionDisk() != null) {
       regionDisk.putAll(heartbeatResp.getRegionDisk());
     }
-    if (heartbeatResp.getSchemaCountMap() != null) {
-      schemaQuotaRespProcess.accept(heartbeatResp.getSchemaCountMap());
+    if (heartbeatResp.getSchemaLimitLevel() != null) {
+      switch (heartbeatResp.getSchemaLimitLevel()) {
+        case DEVICE:
+          schemaQuotaRespProcess.accept(heartbeatResp.getRegionDeviceNumMap());
+          break;
+        case TIMESERIES:
+          schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
+          break;
+      }
     }
   }
 

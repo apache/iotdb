@@ -173,7 +173,8 @@ public class HeartbeatService {
               loadCache,
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
-              configManager.getClusterQuotaManager().getRegionDisk());
+              configManager.getClusterQuotaManager().getRegionDisk(),
+              configManager.getClusterSchemaManager()::updateSchemaQuota);
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(

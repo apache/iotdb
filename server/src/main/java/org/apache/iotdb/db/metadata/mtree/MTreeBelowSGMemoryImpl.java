@@ -627,7 +627,6 @@ public class MTreeBelowSGMemoryImpl {
    * @param deviceId full path of device
    * @return true if the device node exists
    */
-  @Override
   public boolean checkDeviceNodeExists(PartialPath deviceId) {
     IMemMNode deviceMNode = null;
     try {

@@ -750,13 +750,13 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @return TConsensusGroupId set of all schema region
+   * @return Integer set of all schema region id
    */
-  public Set<TConsensusGroupId> getAllSchemaPartition() {
-    Set<TConsensusGroupId> schemaPartitionSet = new HashSet<>();
+  public Set<Integer> getAllSchemaPartition() {
+    Set<Integer> schemaPartitionSet = new HashSet<>();
     databasePartitionTables
         .values()
-        .forEach(i -> schemaPartitionSet.addAll(i.getAllConsensusGroupId()));
+        .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
     return schemaPartitionSet;
   }
 

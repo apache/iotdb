@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-
 import javax.validation.constraints.NotNull;
 
 import java.util.Map;
@@ -28,13 +26,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClusterSchemaQuotaStatistics {
 
-  private final Map<TConsensusGroupId, Long> countMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Long> countMap = new ConcurrentHashMap<>();
 
-  public void updateCount(@NotNull Map<TConsensusGroupId, Long> schemaCountMap) {
+  public void updateCount(@NotNull Map<Integer, Long> schemaCountMap) {
     countMap.putAll(schemaCountMap);
   }
 
-  public long getSchemaQuotaCount(Set<TConsensusGroupId> consensusGroupIdSet) {
+  public long getSchemaQuotaCount(Set<Integer> consensusGroupIdSet) {
     return countMap.entrySet().stream()
         .filter(i -> consensusGroupIdSet.contains(i.getKey()))
         .mapToLong(Map.Entry::getValue)

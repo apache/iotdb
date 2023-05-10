@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -821,7 +820,7 @@ public class ClusterSchemaManager {
     return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
   }
 
-  public void updateSchemaQuota(Map<TConsensusGroupId, Long> schemaCountMap) {
+  public void updateSchemaQuota(Map<Integer, Long> schemaCountMap) {
     schemaQuotaStatistics.updateCount(schemaCountMap);
   }
 

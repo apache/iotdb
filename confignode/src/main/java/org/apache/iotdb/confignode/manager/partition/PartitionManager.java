@@ -738,9 +738,9 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
-   * @return TConsensusGroupId set of all schema region
+   * @return Integer set of all schema region id
    */
-  public Set<TConsensusGroupId> getAllSchemaPartition() {
+  public Set<Integer> getAllSchemaPartition() {
     return partitionInfo.getAllSchemaPartition();
   }
 
