@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.engine.compaction.execute.exception;
 
-public class PipeCollectorConstant {
+public class CompactionMemoryNotEnoughException extends Exception {
 
-  public static final String COLLECTOR_KEY = "collector";
-  public static final String PATTERN_PATTERN_KEY = "collector.pattern";
-  public static final String DATA_REGION_KEY = "collector.data-region";
-
-  private PipeCollectorConstant() {
-    throw new IllegalStateException("Utility class");
+  public CompactionMemoryNotEnoughException(String message) {
+    super(message);
   }
 }
