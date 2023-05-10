@@ -19,28 +19,28 @@
 
 -->
 
-## Spark-IoTDB
+# Spark-IoTDB 用户手册
 
-### 版本
+## 版本支持
 
 支持的 Spark 与 Scala 版本如下：
 
-| Spark Version  | Scala Version |
-|----------------|---------------|
-| `2.4.0-latest` | `2.11, 2.12`  |
+| Spark 版本       | Scala 版本     |
+|----------------|--------------|
+| `2.4.0-latest` | `2.11, 2.12` |
 
-### 注意
+## 注意事项
 
-1. 当前`spark-iotdb-connector`支持`2.11`与`2.12`两个版本的 Scala ，暂时不支持2.13版本。
-2. `spark-iotdb-connector`支持在Java、Scala版本的 Spark 与 PySpark 中使用。
+1. 当前版本的 `spark-iotdb-connector` 支持 `2.11` 与 `2.12` 两个版本的 Scala，暂不支持 `2.13` 版本。
+2. `spark-iotdb-connector` 支持在 Java、Scala 版本的 Spark 与 PySpark 中使用。
 
-### 部署
+## 部署
 
-spark-iotdb-connector 总共有两个使用场景，分别为 IDE 开发与 spark-shell 调试。
+`spark-iotdb-connector` 总共有两个使用场景，分别为 IDE 开发与 spark-shell 调试。
 
-#### IDE 开发
+### IDE 开发
 
-在 IDE 开发时，只需要在 pom.xml 文件中添加以下依赖即可：
+在 IDE 开发时，只需要在 `pom.xml` 文件中添加以下依赖即可：
 
 ``` xml
     <dependency>
@@ -51,28 +51,32 @@ spark-iotdb-connector 总共有两个使用场景，分别为 IDE 开发与 spar
     </dependency>
 ```
 
-#### spark-shell 调试
+### `spark-shell` 调试
 
-如果需要在 spark-shell 中使用 spark-iotdb-connetcor的话，需要先在官网下载 `with-dependencies` 版本的 jar 包。然后再将 jar
-包拷贝到 ${SPARK_HOME}/jars 目录中即可。
+如果需要在 `spark-shell` 中使用 `spark-iotdb-connetcor`，需要先在官网下载 `with-dependencies` 版本的 jar 包。然后再将 Jar 包拷贝到 `${SPARK_HOME}/jars` 目录中即可。
+执行以下命令即可：
 
-### 使用
+```shell
+cp spark-iotdb-connector-${iotdb.version}-${scala.version}.jar $SPARK_HOME/jars/
+```
 
-#### 参数
+## 使用
 
-| 参数           | 描述                                        | 默认值  | 使用范围       | 能否为空  |
-|--------------|-------------------------------------------|------|------------|-------|
-| url          | 指定IoTDB的JDBC的URL                          | null | read、write | false |
-| user         | IoTDB的用户名                                 | root | read、write | true  |
-| password     | IoTDB的密码                                  | root | read、write | true  |
-| sql          | 用于指定查询的sql语句                              | null | read       | true  |
-| numPartition | 在read中用于指定DataFrame的分区数，在writer中用于设置写入并发数 | 1    | read、write | true  |
-| lowerBound   | 查询的起始时间戳（包含）                              | 0    | read       | true  |
-| upperBound   | 查询的结束时间戳（包含）                              | 0    | read       | true  |
+### 参数
 
-#### 从 IoTDB 读数据
+| 参数           | 描述                                             | 默认值  | 使用范围       | 能否为空  |
+|--------------|------------------------------------------------|------|------------|-------|
+| url          | 指定 IoTDB 的 JDBC 的 URL                          | null | read、write | false |
+| user         | IoTDB 的用户名                                     | root | read、write | true  |
+| password     | IoTDB 的密码                                      | root | read、write | true  |
+| sql          | 用于指定查询的 SQL 语句                                 | null | read       | true  |
+| numPartition | 在 read 中用于指定 DataFrame 的分区数，在 write 中用于设置写入并发数 | 1    | read、write | true  |
+| lowerBound   | 查询的起始时间戳（包含）                                   | 0    | read       | true  |
+| upperBound   | 查询的结束时间戳（包含）                                   | 0    | read       | true  |
 
-以下这个例子将展示在 Spark 中如何从 IoTDB 读取数据成 DataFrame。
+### 从 IoTDB 读取数据
+
+以下是一个示例，演示如何从 IoTDB 中读取数据成为 DataFrame。
 
 ```scala
 import org.apache.iotdb.spark.db._
@@ -81,10 +85,10 @@ val df = spark.read.format("org.apache.iotdb.spark.db")
   .option("user", "root")
   .option("password", "root")
   .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-  .option("sql", "select ** from root") // 查询sql
+  .option("sql", "select ** from root") // 查询 SQL
   .option("lowerBound", "0") // 时间戳下界
   .option("upperBound", "100000000") // 时间戳上界
-  .option("numPartition", "5") //分区数
+  .option("numPartition", "5") // 分区数
   .load
 
 df.printSchema()
@@ -92,9 +96,9 @@ df.printSchema()
 df.show()
 ```
 
-#### 写数据到 IoTDB
+### 将数据写入 IoTDB
 
-以下这个例子将展示如何将数据写到 IoTDB。
+以下是一个示例，演示如何将数据写入 IoTDB。
 
 ```scala
 // 构造窄表数据
@@ -138,7 +142,9 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
   .save
 ```
 
-#### 宽表与窄表转换
+### 宽表与窄表转换
+
+以下是如何转换宽表与窄表的示例：
 
 * 从宽到窄
 
@@ -159,7 +165,7 @@ val wide_df = Transformer.toWideForm(spark, narrow_df)
 
 ## 宽表与窄表
 
-以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
+以下 TsFile 结构为例：TsFile 模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
 | 名称  | 类型      | 编码    |
 |-----|---------|-------|
@@ -167,10 +173,10 @@ val wide_df = Transformer.toWideForm(spark, narrow_df)
 | 温度  | Float   | RLE   |
 | 硬件  | Text    | PLAIN |
 
-TsFile中的现有数据如下：
+TsFile 中的现有数据如下：
 
-* d1:root.ln.wf01.wt01
-* d2:root.ln.wf02.wt02
+* `d1:root.ln.wf01.wt01`
+* `d2:root.ln.wf02.wt02`
 
 | time | d1.status | time | d1.temperature | time | d2.hardware | time | d2.status |
 |------|-----------|------|----------------|------|-------------|------|-----------|
