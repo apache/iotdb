@@ -25,63 +25,120 @@
 
 Spark和Java所需的版本如下：
 
-| Spark Version | Scala Version | Java Version | TsFile   |
-| ------------- | ------------- | ------------ | -------- |
-| `2.4.0-3.2.0`       | `2.12`        | `1.8`        | `0.13.0` |
+| Spark Version  | Scala Version |
+|----------------|---------------|
+| `2.4.0-latest` | `2.11, 2.12`  |
 
 ### 注意
 
-1. Spark IoTDB Connector只支持`Spark 2.4.0`到`Spark 3.2.0`的`Scala 2.12`版本。
-   如果需要对其他版本进行支持，可以通过修改源码中`spark-iotdb-connector`这个模块里面pom文件的Scala版本之后进行重新编译。
+1. 当前`spark-iotdb-connector`支持`2.11`与`2.12`两个版本的 Scala ，暂时不支持2.13版本。
+2. `spark-iotdb-connector`支持在Java、Scala版本的 Spark 与 PySpark 中使用。
 
-2. 因为IoTDB与Spark的thrift版本有冲突，所以需要通过执行`rm -f $SPARK_HOME/jars/libthrift*`和`cp $IOTDB_HOME/lib/libthrift* $SPARK_HOME/jars/`这两个命令来解决。
-   否则的话，就只能在IDE里面进行代码调试。而且如果你需要通过`spark-submit`命令提交任务的话，你打包时必须要带上依赖。
+### 部署
 
-### 安装
+spark-iotdb-connector 总共有两个使用场景，分别为 IDE 开发与 spark-shell 调试。
 
-mvn clean scala:compile compile install
+#### IDE 开发
 
-#### Maven依赖
+在 IDE 开发时，只需要在 pom.xml 文件中添加以下依赖即可：
 
-```
+``` xml
     <dependency>
       <groupId>org.apache.iotdb</groupId>
-      <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.13.0</version>
+      <!-- spark-iotdb-connector_2.11 or spark-iotdb-connector_2.13 -->
+      <artifactId>spark-iotdb-connector_${scala.version}</artifactId>
+      <version>${iotdb.version}</version>
     </dependency>
 ```
 
-#### Spark-shell用户指南
+#### spark-shell 调试
 
-```shell
-spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar
+如果需要在 spark-shell 中使用 spark-iotdb-connetcor的话，需要先在官网下载 `with-dependencies` 版本的 jar 包。然后再将 jar 包拷贝到 ${SPARK_HOME}/jars 目录中即可。
 
+
+### 使用
+
+#### 参数
+
+| 参数         | 描述                                        | 默认值 | 使用范围    | 能否为空 |
+| ------------ |-------------------------------------------| ------ | ----------- | -------- |
+| url          | 指定IoTDB的JDBC的URL                          | null   | read、write | false    |
+| user         | IoTDB的用户名                                 | root   | read、write | true     |
+| password     | IoTDB的密码                                  | root   | read、write | true     |
+| sql          | 用于指定查询的sql语句                              | null   | read        | true     |
+| numPartition | 在read中用于指定DataFrame的分区数，在writer中用于设置写入并发数 | 1      | read、write | true     |
+| lowerBound   | 查询的起始时间戳（包含）                              | 0      | read        | true     |
+| upperBound   | 查询的结束时间戳（包含）                              | 0      | read        | true     |
+
+#### 从 IoTDB 读数据
+
+以下这个例子将展示在 Spark 中如何从 IoTDB 读取数据成 DataFrame。
+
+```scala
 import org.apache.iotdb.spark.db._
 
-val df = spark.read.format("org.apache.iotdb.spark.db").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").load
+val df = spark.read.format("org.apache.iotdb.spark.db")
+      .option("user", "root")
+      .option("password", "root")
+      .option("url","jdbc:iotdb://127.0.0.1:6667/")
+      .option("sql","select ** from root")  // 查询sql
+      .option("lowerBound", "0")    // 时间戳下界
+      .option("upperBound", "100000000")  // 时间戳上界
+      .option("numPartition", "5")  //分区数
+      .load
 
 df.printSchema()
 
 df.show()
 ```
 
-如果要对rdd进行分区，可以执行以下操作
+#### 写数据到 IoTDB
 
-```shell
-spark-shell --jars spark-iotdb-connector-0.13.0.jar,iotdb-jdbc-0.13.0-jar-with-dependencies.jar
+以下这个例子将展示如何将数据写到 IoTDB。
 
-import org.apache.iotdb.spark.db._
+```scala
+// 构造窄表数据
+val df = spark.createDataFrame(List(
+      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
 
-val df = spark.read.format("org.apache.iotdb.spark.db").option("url","jdbc:iotdb://127.0.0.1:6667/").option("sql","select * from root").
-                        option("lowerBound", [lower bound of time that you want query(include)]).option("upperBound", [upper bound of time that you want query(include)]).
-                        option("numPartition", [the partition number you want]).load
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "Device")
+    .withColumnRenamed("_3", "s0")
+    .withColumnRenamed("_4", "s1")
+    .withColumnRenamed("_5", "s2")
+    .withColumnRenamed("_6", "s3")
+    .withColumnRenamed("_7", "s4")
+    .withColumnRenamed("_8", "s5")
 
-df.printSchema()
+// 写入窄表数据
+dfWithColumn
+    .write
+    .format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+    
+// 构造宽表数据
+val df = spark.createDataFrame(List(
+      (1L, 1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
 
-df.show()
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "root.test.d0.s0")
+    .withColumnRenamed("_3", "root.test.d0.s1")
+    .withColumnRenamed("_4", "root.test.d0.s2")
+    .withColumnRenamed("_5", "root.test.d0.s3")
+    .withColumnRenamed("_6", "root.test.d0.s4")
+    .withColumnRenamed("_7", "root.test.d0.s5")
+
+// 写入宽表数据
+dfWithColumn.write.format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+	.option("numPartition", "10")
+    .save
 ```
 
-#### 模式推断
+#### 窄表与宽表转换
 
 以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
@@ -145,78 +202,3 @@ import org.apache.iotdb.spark.db._
 
 val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```
-
-#### Java用户指南
-
-```java
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import org.apache.iotdb.spark.db.*;
-
-public class Example {
-
-  public static void main(String[] args) {
-    SparkSession spark = SparkSession
-        .builder()
-        .appName("Build a DataFrame from Scratch")
-        .master("local[*]")
-        .getOrCreate();
-
-    Dataset<Row> df = spark.read().format("org.apache.iotdb.spark.db")
-        .option("url","jdbc:iotdb://127.0.0.1:6667/")
-        .option("sql","select * from root").load();
-
-    df.printSchema();
-
-    df.show();
-    
-    Dataset<Row> narrowTable = Transformer.toNarrowForm(spark, df);
-    narrowTable.show();
-  }
-}
-```
-
-### 写数据到IoTDB
-#### 用户指南
-``` scala
-// import narrow table
-val df = spark.createDataFrame(List(
-      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
-      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
-
-val dfWithColumn = df.withColumnRenamed("_1", "Time")
-    .withColumnRenamed("_2", "device_name")
-    .withColumnRenamed("_3", "s0")
-    .withColumnRenamed("_4", "s1")
-    .withColumnRenamed("_5", "s2")
-    .withColumnRenamed("_6", "s3")
-    .withColumnRenamed("_7", "s4")
-    .withColumnRenamed("_8", "s5")
-dfWithColumn
-    .write
-    .format("org.apache.iotdb.spark.db")
-    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-    .save
-    
-// import wide table
-val df = spark.createDataFrame(List(
-      (1L, 1, 1L, 1.0F, 1.0D, true, "hello"),
-      (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
-
-val dfWithColumn = df.withColumnRenamed("_1", "Time")
-    .withColumnRenamed("_2", "root.test.d0.s0")
-    .withColumnRenamed("_3", "root.test.d0.s1")
-    .withColumnRenamed("_4", "root.test.d0.s2")
-    .withColumnRenamed("_5", "root.test.d0.s3")
-    .withColumnRenamed("_6", "root.test.d0.s4")
-    .withColumnRenamed("_7", "root.test.d0.s5")
-dfWithColumn.write.format("org.apache.iotdb.spark.db")
-    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-	.option("numPartition", "10")
-    .save
-```
-
-#### 注意
-1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
-2. numPartition参数是用来设置分区数，会在写入数据之前给dataframe进行重分区。每一个分区都会开启一个session进行数据的写入，来提高并发数。
