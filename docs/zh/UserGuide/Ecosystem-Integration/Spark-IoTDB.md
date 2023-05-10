@@ -23,7 +23,7 @@
 
 ### 版本
 
-Spark和Java所需的版本如下：
+支持的 Spark 与 Scala 版本如下：
 
 | Spark Version  | Scala Version |
 |----------------|---------------|
