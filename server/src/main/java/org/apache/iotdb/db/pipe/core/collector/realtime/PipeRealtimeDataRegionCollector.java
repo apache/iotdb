@@ -35,14 +35,14 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validateRequiredAttribute(PipeCollectorConstant.PATTERN_PATTERN_KEY);
-    validator.validateRequiredAttribute(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
+    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
     pattern = parameters.getString(PipeCollectorConstant.PATTERN_PATTERN_KEY);
-    dataRegionId = parameters.getString(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
+    dataRegionId = parameters.getString(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override

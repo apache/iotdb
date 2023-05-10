@@ -26,9 +26,9 @@ import org.slf4j.LoggerFactory;
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
  */
-public class PipeTaskExecutorManager {
+public class PipeSubtaskExecutorManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskExecutorManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutorManager.class);
 
   private final PipeAssignerSubtaskExecutor assignerSubtaskExecutor;
   private final PipeProcessorSubtaskExecutor processorSubtaskExecutor;
@@ -48,19 +48,19 @@ public class PipeTaskExecutorManager {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeTaskExecutorManager() {
+  private PipeSubtaskExecutorManager() {
     assignerSubtaskExecutor = new PipeAssignerSubtaskExecutor();
     processorSubtaskExecutor = new PipeProcessorSubtaskExecutor();
     connectorSubtaskExecutor = new PipeConnectorSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {
-    private static PipeTaskExecutorManager instance = null;
+    private static PipeSubtaskExecutorManager instance = null;
   }
 
-  public static PipeTaskExecutorManager setupAndGetInstance() {
+  public static synchronized PipeSubtaskExecutorManager getInstance() {
     if (PipeTaskExecutorHolder.instance == null) {
-      PipeTaskExecutorHolder.instance = new PipeTaskExecutorManager();
+      PipeTaskExecutorHolder.instance = new PipeSubtaskExecutorManager();
     }
     return PipeTaskExecutorHolder.instance;
   }

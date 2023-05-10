@@ -17,28 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
 
-import org.junit.Before;
-import org.mockito.Mockito;
+import org.eclipse.jetty.util.BlockingArrayQueue;
 
-import static org.mockito.Mockito.mock;
+public class ListenableBlockingPendingQueue<E extends Event> extends ListenablePendingQueue<E> {
 
-public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeConnectorSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeConnectorSubtask(
-                "PipeConnectorSubtaskExecutorTest",
-                mock(ListenableBlockingPendingQueue.class),
-                mock(PipeConnector.class)));
+  public ListenableBlockingPendingQueue(int pendingQueueSize) {
+    super(new BlockingArrayQueue<>(pendingQueueSize));
   }
 }
