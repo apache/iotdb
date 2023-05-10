@@ -112,6 +112,10 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  protected List<String> backupNodeUrls;
+  protected String backupUsername;
+  protected String backupPassword;
+  protected Long checkPrimaryClusterIsConnectedTimeS;
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -270,7 +274,6 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
-  @SuppressWarnings("squid:S107")
   public Session(
       String host,
       int rpcPort,
@@ -282,9 +285,46 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        null,
+        null,
+        null,
+        null,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public Session(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUsername,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
+    this.backupNodeUrls = backupNodeUrls;
+    this.backupUsername = backupUsername;
+    this.backupPassword = backupPassword;
+    this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -298,6 +338,30 @@ public class Session implements ISession {
         nodeUrls,
         username,
         password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUsername,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        backupNodeUrls,
+        backupUsername,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
         SessionConfig.DEFAULT_FETCH_SIZE,
         null,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -324,11 +388,61 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUsername,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int fetchSize) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        backupNodeUrls,
+        backupUsername,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
+        fetchSize,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
     this(
         nodeUrls,
         username,
         password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        zoneId,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUsername,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      ZoneId zoneId) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        backupNodeUrls,
+        backupUsername,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
         SessionConfig.DEFAULT_FETCH_SIZE,
         zoneId,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
@@ -347,9 +461,43 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        null,
+        null,
+        null,
+        null,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        version);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUsername,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
+    this.backupNodeUrls = backupNodeUrls;
+    this.backupUsername = backupUsername;
+    this.backupPassword = backupPassword;
+    this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -472,6 +620,14 @@ public class Session implements ISession {
   public void setTimeZoneOfSession(String zoneId) {
     defaultSessionConnection.setTimeZoneOfSession(zoneId);
     this.zoneId = ZoneId.of(zoneId);
+  }
+
+  @Override
+  public synchronized List<String> fillAllNodeUrls() {
+    List<TEndPoint> tEndPoints = defaultSessionConnection.fillingEndPointList();
+    return tEndPoints.stream()
+        .map(point -> point.getIp() + ":" + point.getPort())
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -3453,6 +3609,9 @@ public class Session implements ISession {
     private int rpcPort = SessionConfig.DEFAULT_PORT;
     private String username = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String backupUsername = SessionConfig.DEFAULT_USER;
+    private String backupPassword = SessionConfig.DEFAULT_PASSWORD;
+    private Long checkPrimaryClusterIsConnectedTimeS = null;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private ZoneId zoneId = null;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -3462,6 +3621,7 @@ public class Session implements ISession {
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
+    private List<String> backupNodeUrls = null;
 
     public Builder host(String host) {
       this.host = host;
@@ -3513,6 +3673,26 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder backupNodeUrls(List<String> backupNodeUrls) {
+      this.backupNodeUrls = backupNodeUrls;
+      return this;
+    }
+
+    public Builder backupUsername(String backupUsername) {
+      this.backupUsername = backupUsername;
+      return this;
+    }
+
+    public Builder backupPassword(String backupPassword) {
+      this.backupPassword = backupPassword;
+      return this;
+    }
+
+    public Builder checkPrimaryClusterIsConnectedTimeS(Long checkPrimaryClusterIsConnectedTimeS) {
+      this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
+      return this;
+    }
+
     public Builder version(Version version) {
       this.version = version;
       return this;
@@ -3536,6 +3716,10 @@ public class Session implements ISession {
                 nodeUrls,
                 username,
                 password,
+                backupNodeUrls,
+                backupUsername,
+                backupPassword,
+                checkPrimaryClusterIsConnectedTimeS,
                 fetchSize,
                 zoneId,
                 thriftDefaultBufferSize,
@@ -3551,6 +3735,10 @@ public class Session implements ISession {
           rpcPort,
           username,
           password,
+          backupNodeUrls,
+          backupUsername,
+          backupPassword,
+          checkPrimaryClusterIsConnectedTimeS,
           fetchSize,
           zoneId,
           thriftDefaultBufferSize,

@@ -61,6 +61,27 @@ public class SessionPoolExample {
             .build();
   }
 
+  /** Build a backup SessionPool for this example */
+  private static void backupSessionPool() {
+    List<String> nodeUrls = new ArrayList<>();
+    nodeUrls.add("127.0.0.1:6667");
+    nodeUrls.add("127.0.0.1:6668");
+    nodeUrls.add("127.0.0.1:6669");
+    List<String> backupList = new ArrayList<>();
+    backupList.add("127.0.0.1:6767");
+    backupList.add("127.0.0.1:6768");
+    sessionPool =
+        new SessionPool.Builder()
+            .nodeUrls(nodeUrls)
+            .user("root")
+            .password("root")
+            .backupNodeUrls(backupList)
+            .backupUser("root")
+            .backupPassword("123456")
+            .maxSize(3)
+            .build();
+  }
+
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use

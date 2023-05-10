@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +118,12 @@ public class SessionPool implements ISessionPool {
   private boolean closed;
 
   // Redirect-able SessionPool
-  private final List<String> nodeUrls;
+  private List<String> nodeUrls;
+  private boolean fillAllNodeUrlsStatus;
+  private List<String> backupNodeUrls;
+  private String backupUser;
+  private String backupPassword;
+  private Long checkPrimaryClusterIsConnectedTimeS;
 
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
@@ -152,6 +158,36 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        backupNodeUrls,
+        backupUser,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
   }
 
   public SessionPool(
@@ -192,6 +228,37 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize,
+      boolean enableCompression) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        backupNodeUrls,
+        backupUser,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+  }
+
+  public SessionPool(
       String host,
       int port,
       String user,
@@ -237,6 +304,38 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableRedirection) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        backupNodeUrls,
+        backupUser,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableRedirection,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
   }
 
   public SessionPool(
@@ -276,7 +375,37 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
-  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize,
+      ZoneId zoneId) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        backupNodeUrls,
+        backupUser,
+        backupPassword,
+        checkPrimaryClusterIsConnectedTimeS,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+  }
+
   public SessionPool(
       String host,
       int port,
@@ -292,24 +421,26 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
-    this.maxSize = maxSize;
-    this.host = host;
-    this.port = port;
-    this.nodeUrls = null;
-    this.user = user;
-    this.password = password;
-    this.fetchSize = fetchSize;
-    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
-    this.enableCompression = enableCompression;
-    this.zoneId = zoneId;
-    this.enableRedirection = enableRedirection;
-    if (this.enableRedirection) {
-      deviceIdToEndpoint = new ConcurrentHashMap<>();
-    }
-    this.connectionTimeoutInMs = connectionTimeoutInMs;
-    this.version = version;
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this(
+        host,
+        port,
+        user,
+        password,
+        null,
+        null,
+        null,
+        null,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
   }
 
   public SessionPool(
@@ -326,10 +457,56 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        null,
+        null,
+        null,
+        null,
+        maxSize,
+        fetchSize,
+        waitToGetSessionTimeoutInMs,
+        enableCompression,
+        zoneId,
+        enableRedirection,
+        connectionTimeoutInMs,
+        version,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean fillAllNodeUrlsStatus) {
     this.maxSize = maxSize;
-    this.host = null;
-    this.port = -1;
-    this.nodeUrls = nodeUrls;
+    this.host = host;
+    this.port = port;
+    this.backupNodeUrls = backupNodeUrls;
+    this.backupUser = backupUser;
+    this.backupPassword = backupPassword;
+    this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
+    this.nodeUrls = null;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -344,6 +521,57 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.fillAllNodeUrlsStatus = fillAllNodeUrlsStatus;
+    if (fillAllNodeUrlsStatus) {
+      fillAllNodeUrls();
+    }
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      List<String> backupNodeUrls,
+      String backupUser,
+      String backupPassword,
+      Long checkPrimaryClusterIsConnectedTimeS,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean fillAllNodeUrlsStatus) {
+    this.maxSize = maxSize;
+    this.host = null;
+    this.port = -1;
+    this.nodeUrls = nodeUrls;
+    this.user = user;
+    this.password = password;
+    this.backupNodeUrls = backupNodeUrls;
+    this.backupUser = backupUser;
+    this.backupPassword = backupPassword;
+    this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
+    this.fetchSize = fetchSize;
+    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
+    this.enableCompression = enableCompression;
+    this.zoneId = zoneId;
+    this.enableRedirection = enableRedirection;
+    if (this.enableRedirection) {
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+    }
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.version = version;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.fillAllNodeUrlsStatus = fillAllNodeUrlsStatus;
+    if (fillAllNodeUrlsStatus) {
+      fillAllNodeUrls();
+    }
   }
 
   private Session constructNewSession() {
@@ -356,6 +584,10 @@ public class SessionPool implements ISessionPool {
               .port(port)
               .username(user)
               .password(password)
+              .backupNodeUrls(backupNodeUrls)
+              .backupUsername(backupUser)
+              .backupPassword(backupPassword)
+              .checkPrimaryClusterIsConnectedTimeS(checkPrimaryClusterIsConnectedTimeS)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
@@ -370,6 +602,10 @@ public class SessionPool implements ISessionPool {
               .nodeUrls(nodeUrls)
               .username(user)
               .password(password)
+              .backupNodeUrls(backupNodeUrls)
+              .backupUsername(backupUser)
+              .backupPassword(backupPassword)
+              .checkPrimaryClusterIsConnectedTimeS(checkPrimaryClusterIsConnectedTimeS)
               .fetchSize(fetchSize)
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
@@ -536,6 +772,38 @@ public class SessionPool implements ISessionPool {
     this.closed = true;
     queue.clear();
     occupied.clear();
+  }
+
+  @Override
+  public synchronized void fillAllNodeUrls() {
+    List<String> allNodeUrls;
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = null;
+      try {
+        session = getSession();
+      } catch (IoTDBConnectionException e) {
+        logger.error("endPointList fill failure", e);
+        continue;
+      }
+      allNodeUrls = session.fillAllNodeUrls();
+      putBack(session);
+      if (null != nodeUrls) {
+        nodeUrls.clear();
+        nodeUrls.addAll(allNodeUrls);
+      } else {
+        nodeUrls = new ArrayList<>();
+        nodeUrls.addAll(allNodeUrls);
+      }
+    }
+
+    for (ISession session : queue) {
+      session.fillAllNodeUrls();
+    }
+    for (ISession session : occupied.keySet()) {
+      session.fillAllNodeUrls();
+    }
+
+    logger.info("Fill all nodeUrls to completion...");
   }
 
   @Override
@@ -2401,6 +2669,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @Override
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2893,9 +3162,14 @@ public class SessionPool implements ISessionPool {
     private String host = SessionConfig.DEFAULT_HOST;
     private int port = SessionConfig.DEFAULT_PORT;
     private List<String> nodeUrls = null;
+    private List<String> backupNodeUrls = null;
     private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String backupUser = SessionConfig.DEFAULT_USER;
+    private String backupPassword = SessionConfig.DEFAULT_PASSWORD;
+    private Long checkPrimaryClusterIsConnectedTimeS = null;
+    private boolean fillAllNodeUrlsStatus = SessionConfig.DEFAULT_FILL_ALL_NODE_URLS_STATUS;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -2934,6 +3208,31 @@ public class SessionPool implements ISessionPool {
 
     public Builder password(String password) {
       this.password = password;
+      return this;
+    }
+
+    public Builder fillAllNodeUrlsStatus(boolean fillAllNodeUrlsStatus) {
+      this.fillAllNodeUrlsStatus = fillAllNodeUrlsStatus;
+      return this;
+    }
+
+    public Builder backupNodeUrls(List<String> backupNodeUrls) {
+      this.backupNodeUrls = backupNodeUrls;
+      return this;
+    }
+
+    public Builder backupUser(String backupUser) {
+      this.backupUser = backupUser;
+      return this;
+    }
+
+    public Builder backupPassword(String backupPassword) {
+      this.backupPassword = backupPassword;
+      return this;
+    }
+
+    public Builder checkPrimaryClusterIsConnectedTimeS(Long checkPrimaryClusterIsConnectedTimeS) {
+      this.checkPrimaryClusterIsConnectedTimeS = checkPrimaryClusterIsConnectedTimeS;
       return this;
     }
 
@@ -2994,6 +3293,10 @@ public class SessionPool implements ISessionPool {
             port,
             user,
             password,
+            backupNodeUrls,
+            backupUser,
+            backupPassword,
+            checkPrimaryClusterIsConnectedTimeS,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,
@@ -3003,12 +3306,17 @@ public class SessionPool implements ISessionPool {
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            fillAllNodeUrlsStatus);
       } else {
         return new SessionPool(
             nodeUrls,
             user,
             password,
+            backupNodeUrls,
+            backupUser,
+            backupPassword,
+            checkPrimaryClusterIsConnectedTimeS,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,
@@ -3018,7 +3326,8 @@ public class SessionPool implements ISessionPool {
             connectionTimeoutInMs,
             version,
             thriftDefaultBufferSize,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            fillAllNodeUrlsStatus);
       }
     }
   }
