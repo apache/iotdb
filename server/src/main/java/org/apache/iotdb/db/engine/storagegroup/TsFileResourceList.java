@@ -143,43 +143,45 @@ public class TsFileResourceList implements List<TsFileResource> {
       return false;
     }
     if (tail == null) {
+      // empty list
       header = newNode;
       tail = newNode;
       count++;
     } else {
       // find the position to insert of this node
       // the list should be ordered by file timestamp
-      long versionOfNewNode =
-          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getVersion();
+      TsFileNameGenerator.TsFileName newTsFileName =
+          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName());
+      long timestampOfNewNode = newTsFileName.getTime();
+      long versionOfNewNode = newTsFileName.getVersion();
 
-      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getVersion()
-          > versionOfNewNode) {
-        // the timestamp of head node is greater than the new node
-        // insert it before the head
-        insertBefore(header, newNode);
-      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getVersion()
-          < versionOfNewNode) {
-        // the timestamp of new node is greater than the tail node
-        // insert it after the tail
+      // find the position to insert, the list should be ordered by file timestamp. If timestamp is
+      // equal to each other, then list should be ordered by file version.
+      boolean isNewNodeAtTail = true;
+      TsFileResource currNode = header;
+      while (currNode != null) {
+        TsFileNameGenerator.TsFileName currTsFileName =
+            TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName());
+        if (timestampOfNewNode == currTsFileName.getTime()
+            && versionOfNewNode < currTsFileName.getVersion()) {
+          // the timestamp of new node is equal to the current node and the version of new node is
+          // less than current node, then insert new node before the current node
+          isNewNodeAtTail = false;
+          break;
+        } else if (timestampOfNewNode < currTsFileName.getTime()) {
+          // the timestamp of new node is less than the current node, insert new node before then
+          // current node
+          isNewNodeAtTail = false;
+          break;
+        }
+        currNode = currNode.next;
+      }
+
+      // insert new node
+      if (isNewNodeAtTail) {
         insertAfter(tail, newNode);
       } else {
-        // the timestamp of new node is between the timestamp of head and tail node
-        // find the first node whose timestamp is greater than new node
-        // and insert the new node before this node
-        TsFileResource currNode = header;
-        while (currNode.next != null) {
-          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
-              > versionOfNewNode) {
-            break;
-          }
-          currNode = currNode.next;
-        }
-        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
-            < versionOfNewNode) {
-          LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
-        } else {
-          insertBefore(currNode, newNode);
-        }
+        insertBefore(currNode, newNode);
       }
     }
     return true;
