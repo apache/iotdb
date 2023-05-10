@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tieredstorage.objectstorage.aws;
+package org.apache.iotdb.os.io.aws;
 
-import org.apache.iotdb.db.engine.tieredstorage.exception.ObjectStorageException;
-import org.apache.iotdb.db.engine.tieredstorage.objectstorage.ObjectStorageWriter;
+import org.apache.iotdb.os.exception.ObjectStorageException;
+import org.apache.iotdb.os.io.ObjectStorageWriter;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;

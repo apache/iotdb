@@ -28,6 +28,4 @@ public class PersistentCache {
   private File cacheFile;
 
   private LoadingCache<ChunkMetadata, CacheEntry> lruCache;
-
-
 }

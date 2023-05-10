@@ -16,7 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.os.io;
 
-public interface ObjectStorageConnector {
+import org.apache.iotdb.os.exception.ObjectStorageException;
+
+public interface ObjectStorageWriter {
+  void write(String sourceFile, String containerName, String targetFileName)
+      throws ObjectStorageException;
 }

@@ -19,5 +19,5 @@
 package org.apache.iotdb.os.utils;
 
 public enum ObjectStorageType {
-  S3,
+  AWS_S3,
 }

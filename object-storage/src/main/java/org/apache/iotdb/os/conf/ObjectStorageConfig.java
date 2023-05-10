@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.os.conf;
 
-import java.io.File;
+import org.apache.iotdb.os.io.aws.AWSS3Config;
 import org.apache.iotdb.os.utils.ObjectStorageType;
 
+import java.io.File;
+
 public class ObjectStorageConfig {
-  private ObjectStorageType osType = ObjectStorageType.S3;
+  private static ObjectStorageType osType = ObjectStorageType.AWS_S3;
 
-  private String osEndpoiont= "yourEndpoint";
+  private static AWSS3Config awss3Config = new AWSS3Config();
 
-  private String osAccessKey="yourAccessKey";
-  private String osAccessSecret="yourAccessSecret";
+  private static String[] cacheDirs = {
+    "data" + File.separator + "datanode" + File.separator + "data" + File.separator + "cache"
+  };
 
-  private String[] cacheDirs = {"data" + File.separator + "datanode" + File.separator + "data" + File.separator + "cache"};
+  private static long cacheSizeThreshold = 10 * 1024 * 1024 * 1024;
 
-  private long cacheSizeThreshold = 10 * 1024 * 1024 * 1024;
+  private static long pageSize = 32 * 1024;
 
-  ObjectStorageConfig() {
-
-  }
+  ObjectStorageConfig() {}
 }

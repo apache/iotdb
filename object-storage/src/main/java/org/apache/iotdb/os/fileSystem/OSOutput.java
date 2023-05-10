@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.os.fileSystem;
 
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OSOutput implements TsFileOutput {
   private static final Logger logger = LoggerFactory.getLogger(OSOutput.class);

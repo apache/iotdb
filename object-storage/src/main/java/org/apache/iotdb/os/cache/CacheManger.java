@@ -18,5 +18,4 @@
  */
 package org.apache.iotdb.os.cache;
 
-public class CacheManger {
-}
+public class CacheManger {}
