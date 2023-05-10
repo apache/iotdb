@@ -308,9 +308,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.2.4. Cache
 
 | Metric    | Tags                               | Type      | Description                                                              |
-| --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
+| --------- |------------------------------------| --------- |--------------------------------------------------------------------------|
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
-| cache_hit | name="schema"                      | AutoGauge | The cache hit ratio of SchemaCache, Unit: %                              |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | The cache hit ratio of TimeseriesMetadataCache, Unit: %                  |
 | cache_hit | name="bloomFilter"                 | AutoGauge | The interception rate of bloomFilter in TimeseriesMetadataCache, Unit: % |
 | cache     | name="Database", type="hit"        | Counter   | The hit number of Database Cache                                         |
@@ -319,6 +318,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 | cache     | name="SchemaPartition", type="all" | Counter   | The access number of SSchemaPartition Cache                              |
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
 | cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
+| cache     | name="schemaCache", type="hit"     | Counter   | The hit number of Schema Cache                                           |
+| cache     | name="schemaCache", type="all"     | Counter   | The access number of Schema Cache                                        |
 
 #### 4.2.5. Memory
 
