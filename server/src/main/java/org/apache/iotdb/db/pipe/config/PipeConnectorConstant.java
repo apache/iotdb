@@ -17,28 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.config;
 
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
-import org.apache.iotdb.pipe.api.PipeConnector;
+public class PipeConnectorConstant {
 
-import org.junit.Before;
-import org.mockito.Mockito;
+  public static final String CONNECTOR_KEY = "connector";
 
-import static org.mockito.Mockito.mock;
-
-public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeConnectorSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeConnectorSubtask(
-                "PipeConnectorSubtaskExecutorTest",
-                mock(ListenableBlockingPendingQueue.class),
-                mock(PipeConnector.class)));
+  private PipeConnectorConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }
