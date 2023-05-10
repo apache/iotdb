@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -34,24 +35,24 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("timeseries");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitThreshold(6);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    setUpQuotaConfig();
-    EnvFactory.getEnv().initClusterEnvironment();
     prepareTimeSeries();
     Thread.sleep(2000); // wait heartbeat
-  }
-
-  protected void setUpQuotaConfig() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("timeseries");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterMaxSchemaCount(6);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
   }
 
   /** Prepare time series: 2 databases, 3 devices, 6 time series */
@@ -106,7 +107,7 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d4");
       statement.execute("create timeseries of schema template on root.sg1.d4");
       statement.execute(
-          "create timeseries root.sg1.d4.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       Thread.sleep(2000); // wait heartbeat
       try {
         statement.execute(

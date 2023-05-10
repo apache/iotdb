@@ -21,14 +21,24 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
+import org.junit.runners.Parameterized;
+
 public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterMeasurementQuotaIT {
   public IoTDBClusterDeviceQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
-  @Override
-  protected void setUpQuotaConfig() {
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("device");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterMaxSchemaCount(3);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitThreshold(3);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
   }
 }

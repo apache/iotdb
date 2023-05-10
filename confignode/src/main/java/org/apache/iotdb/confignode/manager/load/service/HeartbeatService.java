@@ -123,6 +123,7 @@ public class HeartbeatService {
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+    heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);

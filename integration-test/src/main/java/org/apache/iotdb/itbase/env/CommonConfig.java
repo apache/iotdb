@@ -117,8 +117,6 @@ public interface CommonConfig {
 
   CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
 
-  CommonConfig setClusterMaxSchemaCount(long clusterMaxSchemaCount);
-
   CommonConfig setQuotaEnable(boolean quotaEnable);
 
   CommonConfig setSortBufferSize(long sortBufferSize);
