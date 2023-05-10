@@ -259,6 +259,7 @@ struct THeartbeatResp {
   6: optional map<i32, i64> regionDeviceNumMap
   7: optional map<i32, i64> regionTimeSeriesNumMap
   8: optional map<i32, i64> regionDisk
+  // TODO: schemaLimitLevel can be removed if confignode support hot load configuration
   9: optional TSchemaLimitLevel schemaLimitLevel
 }
 

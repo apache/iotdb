@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClusterSchemaQuotaStatistics {
 
+  // TODO: it can be merged with statistics in ClusterQuotaManager
   private final Map<Integer, Long> countMap = new ConcurrentHashMap<>();
 
   public void updateCount(@NotNull Map<Integer, Long> schemaCountMap) {
