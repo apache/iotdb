@@ -266,7 +266,17 @@ public class SharedTsBlockQueue {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkChannel.close();
+    if (sinkChannel != null) {
+      // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we close
+      // LocalSourceHandle(with limit clause it's possible) before constructing the corresponding
+      // LocalSinkChannel.
+      // If this close method is invoked by LocalSourceHandle, listener of LocalSourceHandle will
+      // remove the LocalSourceHandle from the map of MppDataExchangeManager and later when
+      // LocalSinkChannel is initialized, it will construct a new SharedTsBlockQueue.
+      // It is still safe that we let the LocalSourceHandle close successfully in this case. Because
+      // the QueryTerminator will do the final cleaning logic.
+      sinkChannel.close();
+    }
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
