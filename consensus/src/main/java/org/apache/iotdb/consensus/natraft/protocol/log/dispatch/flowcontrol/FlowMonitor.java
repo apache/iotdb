@@ -154,14 +154,27 @@ public class FlowMonitor {
     return flowSum * 1.0 / intervalSum * 1000;
   }
 
+  /**
+   * Get the latest windows whose number at most windowNum. Only windows within currenTime -
+   * windowNum * windowInterval will be returned, i.e., windows too old will not be returned.
+   *
+   * @param windowNum the maximum number of windows to be returned
+   * @return At most windowNum windows, all within currenTime - windowNum * windowInterval
+   */
   public List<FlowWindow> getLatestWindows(int windowNum) {
+    long currentTime = System.currentTimeMillis();
     List<FlowWindow> result = new ArrayList<>();
-    result.add(new FlowWindow(currWindowStart, currWindowSum));
+    if ((currentTime - currWindowStart) <= windowNum * windowInterval) {
+      result.add(new FlowWindow(currWindowStart, currWindowSum));
+    }
+
     Iterator<FlowWindow> windowIterator = windows.descendingIterator();
     for (int i = 1; i < windowNum; i++) {
       if (windowIterator.hasNext()) {
         FlowWindow window = windowIterator.next();
-        result.add(window);
+        if ((currentTime - window.start) <= windowNum * windowInterval) {
+          result.add(window);
+        }
       } else {
         break;
       }
