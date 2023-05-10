@@ -46,7 +46,7 @@ public abstract class Entry implements Comparable<Entry> {
   @SuppressWarnings("java:S3077")
   private volatile Exception exception;
 
-  private long byteSize = 0;
+  private long byteSize = -1;
   private boolean fromThisNode = false;
 
   public long receiveTime;
@@ -56,8 +56,8 @@ public abstract class Entry implements Comparable<Entry> {
   public long applyTime;
   public long waitEndTime;
 
-  private ByteBuffer preSerializationCache;
-  private ByteBuffer serializationCache;
+  protected volatile ByteBuffer preSerializationCache;
+  protected volatile ByteBuffer serializationCache;
 
   public int getDefaultSerializationBufferSize() {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
@@ -87,12 +87,13 @@ public abstract class Entry implements Comparable<Entry> {
       return cache.slice();
     }
     if (preSerializationCache != null) {
-      preSerializationCache.position(1);
-      preSerializationCache.putLong(getCurrLogIndex());
-      preSerializationCache.putLong(getCurrLogTerm());
-      preSerializationCache.putLong(getPrevTerm());
-      preSerializationCache.position(0);
-      serializationCache = preSerializationCache;
+      ByteBuffer slice = preSerializationCache.slice();
+      slice.position(1);
+      slice.putLong(getCurrLogIndex());
+      slice.putLong(getCurrLogTerm());
+      slice.putLong(getPrevTerm());
+      slice.position(0);
+      serializationCache = slice;
       preSerializationCache = null;
     } else {
       long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
@@ -100,6 +101,7 @@ public abstract class Entry implements Comparable<Entry> {
       Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
       serializationCache = byteBuffer;
     }
+    byteSize = serializationCache.remaining();
     return serializationCache.slice();
   }
 
@@ -178,6 +180,10 @@ public abstract class Entry implements Comparable<Entry> {
   }
 
   public long estimateSize() {
+    return cachedSize();
+  }
+
+  public long cachedSize() {
     ByteBuffer cache;
     if ((cache = serializationCache) != null) {
       return cache.remaining();
@@ -185,7 +191,7 @@ public abstract class Entry implements Comparable<Entry> {
       return cache.remaining();
     }
     return byteSize;
-  };
+  }
 
   public long getByteSize() {
     return byteSize;

@@ -49,21 +49,15 @@ public class LogUtils {
   public static VotingEntry buildVotingLog(Entry e, RaftMember member) {
     VotingEntry votingEntry = member.buildVotingLog(e);
 
-    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(e, false, member);
+    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(member);
     votingEntry.setAppendEntryRequest(appendEntryRequest);
 
     return votingEntry;
   }
 
-  public static AppendEntryRequest buildAppendEntryRequest(
-      Entry entry, boolean serializeNow, RaftMember member) {
+  public static AppendEntryRequest buildAppendEntryRequest(RaftMember member) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(member.getStatus().getTerm().get());
-    if (serializeNow) {
-      ByteBuffer byteBuffer = entry.serialize();
-      entry.setByteSize(byteBuffer.array().length);
-      request.entry = byteBuffer;
-    }
 
     request.setLeader(member.getThisNode().getEndpoint());
     request.setLeaderId(member.getThisNode().getNodeId());
@@ -135,18 +129,29 @@ public class LogUtils {
   public static List<Entry> parseEntries(List<ByteBuffer> buffers, IStateMachine stateMachine)
       throws UnknownLogTypeException {
     List<Entry> entries = new ArrayList<>();
-    for (ByteBuffer buffer : buffers) {
-      buffer.mark();
-      Entry e;
+    for (int i = 0; i < buffers.size(); i++) {
+      ByteBuffer buffer = buffers.get(i);
       try {
-        e = LogParser.getINSTANCE().parse(buffer, stateMachine);
+        buffer.mark();
+        Entry e;
+        try {
+          e = LogParser.getINSTANCE().parse(buffer, stateMachine);
+          buffer.reset();
+          e.setSerializationCache(buffer);
+        } catch (BufferUnderflowException ex) {
+          buffer.reset();
+          throw ex;
+        }
+        entries.add(e);
+      } catch (RuntimeException ex) {
         buffer.reset();
-        e.setSerializationCache(buffer);
-      } catch (BufferUnderflowException ex) {
-        buffer.reset();
+        logger.error(
+            "Exception occurred when parsing the {}/{} entry, buffer size: {}",
+            i + 1,
+            buffers.size(),
+            buffer.remaining());
         throw ex;
       }
-      entries.add(e);
     }
     return entries;
   }

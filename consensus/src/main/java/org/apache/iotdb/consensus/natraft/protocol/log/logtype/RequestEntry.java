@@ -38,12 +38,12 @@ import static org.apache.iotdb.consensus.natraft.protocol.log.Entry.Types.CLIENT
 public class RequestEntry extends Entry {
 
   private static final Logger logger = LoggerFactory.getLogger(RequestEntry.class);
-  private IConsensusRequest request;
+  private volatile IConsensusRequest request;
 
   public RequestEntry() {}
 
   public RequestEntry(IConsensusRequest request) {
-    this.request = request;
+    setRequest(request);
   }
 
   @Override
@@ -63,7 +63,7 @@ public class RequestEntry extends Entry {
       request.serializeTo(dataOutputStream);
       requestSize = byteArrayOutputStream.size() - requestPos - 4;
     } catch (IOException e) {
-      // unreachable
+      logger.error("Unexpected IOException when serializing {}", this);
     }
 
     ByteBuffer wrap =
@@ -96,7 +96,13 @@ public class RequestEntry extends Entry {
 
   @Override
   public String toString() {
-    return request + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
+    return request
+        + ",term:"
+        + getCurrLogTerm()
+        + ",index:"
+        + getCurrLogIndex()
+        + ",size:"
+        + cachedSize();
   }
 
   @Override

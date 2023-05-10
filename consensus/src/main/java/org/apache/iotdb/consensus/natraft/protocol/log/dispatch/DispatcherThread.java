@@ -223,7 +223,7 @@ class DispatcherThread extends DynamicThread {
 
       for (; logIndex < currBatch.size(); logIndex++) {
         VotingEntry entry = currBatch.get(logIndex);
-        long curSize = entry.getAppendEntryRequest().entry.array().length;
+        long curSize = entry.getAppendEntryRequest().entry.remaining();
         if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
           break;
         }

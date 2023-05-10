@@ -47,7 +47,7 @@ public class FlowBalancer {
   private double minFlow;
   private int windowsToUse;
   private double overestimateFactor;
-  private int flowBalanceIntervalMS = 1000;
+  private int flowBalanceIntervalMS = 5000;
   private FlowMonitorManager flowMonitorManager = FlowMonitorManager.INSTANCE;
   private LogDispatcher logDispatcher;
   private RaftMember member;
@@ -93,9 +93,7 @@ public class FlowBalancer {
 
     List<FlowWindow> latestWindows =
         flowMonitorManager.getLatestWindows(member.getThisNode().getEndpoint(), windowsToUse);
-    if (latestWindows.size() < windowsToUse) {
-      return;
-    }
+
     int burstWindowNum = 0;
     for (FlowWindow latestWindow : latestWindows) {
       double assumedFlow =
@@ -111,15 +109,6 @@ public class FlowBalancer {
             * flowMonitorWindowInterval
             * overestimateFactor;
 
-    for (Entry<TEndPoint, FlowMonitor> entry : flowMonitorManager.getMonitorMap().entrySet()) {
-      logger.info(
-          "{}: Flow of {}: {}, {}, {}",
-          member.getName(),
-          entry.getKey(),
-          entry.getValue().getLatestWindows(windowsToUse),
-          entry.getValue().averageFlow(windowsToUse),
-          inBurst);
-    }
     Map<Peer, DispatcherGroup> dispatcherGroupMap = logDispatcher.getDispatcherGroupMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
@@ -128,9 +117,27 @@ public class FlowBalancer {
     if (burstWindowNum > latestWindows.size() / 2 && !inBurst) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);
       logDispatcher.updateRateLimiter();
+      for (Entry<TEndPoint, FlowMonitor> entry : flowMonitorManager.getMonitorMap().entrySet()) {
+        logger.info(
+            "{}: Flow of {}: {}, {}, {}",
+            member.getName(),
+            entry.getKey(),
+            entry.getValue().getLatestWindows(windowsToUse),
+            entry.getValue().averageFlow(windowsToUse),
+            inBurst);
+      }
     } else if (burstWindowNum < latestWindows.size() / 2 && inBurst) {
       exitBurst(followerNum, nodesRate, followers);
       logDispatcher.updateRateLimiter();
+      for (Entry<TEndPoint, FlowMonitor> entry : flowMonitorManager.getMonitorMap().entrySet()) {
+        logger.info(
+            "{}: Flow of {}: {}, {}, {}",
+            member.getName(),
+            entry.getKey(),
+            entry.getValue().getLatestWindows(windowsToUse),
+            entry.getValue().averageFlow(windowsToUse),
+            inBurst);
+      }
     }
   }
 

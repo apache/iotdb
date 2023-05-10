@@ -95,7 +95,7 @@ public class DynamicThreadGroup {
   public void onThreadExit(DynamicThread dynamicThread) {
     threadCnt.decrementAndGet();
     threadFutureMap.remove(dynamicThread);
-    logger.info(
+    logger.debug(
         "A dynamic thread exits: {}, idle ratio： {}", dynamicThread, dynamicThread.idleRatio());
   }
 

@@ -6,6 +6,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.snapshot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -97,6 +98,7 @@ public class DirectorySnapshot extends Snapshot {
     }
     member.getStateMachine().loadSnapshot(new File(localSnapshotTmpDirPath));
     member.getLogManager().applySnapshot(this);
+    FileUtils.deleteDirectory(new File(localSnapshotTmpDirPath));
     return tsStatus;
   }
 
@@ -191,7 +193,7 @@ public class DirectorySnapshot extends Snapshot {
       throws IOException, TException, InterruptedException {
     long offset = 0;
     // TODO-Cluster: use elaborate downloading techniques
-    int fetchSize = 64 * 1024;
+    int fetchSize = 4 * 1024 * 1024;
 
     while (true) {
       AsyncRaftServiceClient client = member.getClient(node);

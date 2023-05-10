@@ -63,7 +63,12 @@ public class LogParser {
         RequestEntry requestLog = new RequestEntry();
         requestLog.deserialize(buffer);
         if (stateMachine != null) {
-          requestLog.setRequest(stateMachine.deserializeRequest(requestLog.getRequest()));
+          try {
+            requestLog.setRequest(stateMachine.deserializeRequest(requestLog.getRequest()));
+          } catch (RuntimeException e) {
+            logger.error("Cannot deserialize request {} with statemachine", requestLog);
+            throw e;
+          }
         }
         log = requestLog;
         break;
