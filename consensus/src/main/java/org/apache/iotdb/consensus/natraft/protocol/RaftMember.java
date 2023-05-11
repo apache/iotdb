@@ -795,7 +795,9 @@ public class RaftMember {
   }
 
   public ConsensusWriteResponse executeForwardedRequest(IConsensusRequest request) {
-    return new ConsensusWriteResponse(null, processRequest(request));
+    TSStatus tsStatus = processRequest(request);
+    tsStatus.setRedirectNode(thisNode.getEndpoint());
+    return new ConsensusWriteResponse(null, tsStatus);
   }
 
   /**
