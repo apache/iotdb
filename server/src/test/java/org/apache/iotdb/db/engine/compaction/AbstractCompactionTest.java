@@ -206,9 +206,9 @@ public class AbstractCompactionTest {
       boolean isSeq)
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
-      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -278,9 +278,9 @@ public class AbstractCompactionTest {
       throws IOException, WriteProcessException {
     String value = isSeq ? "seqTestValue" : "unseqTestValue";
     for (int i = 0; i < fileNum; i++) {
-      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -582,9 +582,9 @@ public class AbstractCompactionTest {
   }
 
   protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
-    long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+    fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
     String fileName =
-        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -592,7 +592,7 @@ public class AbstractCompactionTest {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
-    resource.updatePlanIndexes(fileVersion++);
+    resource.updatePlanIndexes(fileVersion);
     resource.setStatus(TsFileResourceStatus.CLOSED);
     return resource;
   }
