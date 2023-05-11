@@ -77,11 +77,11 @@ public class SchemaFetchScanOperatorTest {
         schemaTree.searchDeviceSchemaInfo(
             new PartialPath("root.sg.d2.a"), Arrays.asList("s1", "status"));
     Assert.assertTrue(deviceSchemaInfo.isAligned());
-    List<IMeasurementSchema> iMeasurementSchemaList = deviceSchemaInfo.getMeasurementSchemaList();
-    Assert.assertEquals(2, iMeasurementSchemaList.size());
+    List<MeasurementSchema> measurementSchemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    Assert.assertEquals(2, measurementSchemaList.size());
     Assert.assertEquals(
         Arrays.asList("s1", "s2"),
-        iMeasurementSchemaList.stream()
+        measurementSchemaList.stream()
             .map(IMeasurementSchema::getMeasurementId)
             .sorted()
             .collect(Collectors.toList()));

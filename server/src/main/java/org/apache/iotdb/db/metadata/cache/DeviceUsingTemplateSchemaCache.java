@@ -136,12 +136,17 @@ public class DeviceUsingTemplateSchemaCache {
                 return new LogicalViewSchema(
                     schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
               } else {
-                return new MeasurementSchema(
-                    schema.getMeasurementId(),
-                    schema.getType(),
-                    schema.getEncodingType(),
-                    schema.getCompressor());
+                return this.getSchemaAsMeasurementSchema();
               }
+            }
+
+            @Override
+            public MeasurementSchema getSchemaAsMeasurementSchema() {
+              return new MeasurementSchema(
+                  schema.getMeasurementId(),
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getCompressor());
             }
 
             @Override

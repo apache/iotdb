@@ -251,6 +251,11 @@ public class MeasurementPath extends PartialPath {
       } else if (type
           == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
         measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        // TODO: CRTODO: move LogicalViewSchema to
+        throw new RuntimeException(
+            new UnexpectedException("LOGICAL_VIEW_SCHEMA is not processed."));
       } else {
         throw new RuntimeException(
             new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));

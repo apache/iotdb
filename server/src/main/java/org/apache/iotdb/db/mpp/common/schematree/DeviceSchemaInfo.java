@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.common.schematree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,14 +33,14 @@ public class DeviceSchemaInfo {
 
   private PartialPath devicePath;
   private boolean isAligned;
-  private List<IMeasurementSchemaInfo> measurementSchemaInfoList;
+  private List<MeasurementSchemaInfo> measurementSchemaInfoList;
 
   private DeviceSchemaInfo() {}
 
   public DeviceSchemaInfo(
       PartialPath devicePath,
       boolean isAligned,
-      List<IMeasurementSchemaInfo> measurementSchemaInfoList) {
+      List<MeasurementSchemaInfo> measurementSchemaInfoList) {
     this.devicePath = devicePath;
     this.isAligned = isAligned;
     this.measurementSchemaInfoList = measurementSchemaInfoList;
@@ -54,11 +54,13 @@ public class DeviceSchemaInfo {
     return isAligned;
   }
 
-  public List<IMeasurementSchema> getMeasurementSchemaList() {
+  public List<MeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->
-                measurementSchemaInfo == null ? null : measurementSchemaInfo.getSchema())
+                measurementSchemaInfo == null
+                    ? null
+                    : measurementSchemaInfo.getSchemaAsMeasurementSchema())
         .collect(Collectors.toList());
   }
 

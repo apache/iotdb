@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class acts as common measurement schema format during system module interactions, mainly in
@@ -45,6 +46,14 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 
   public IMeasurementSchema getSchema() {
     return schema;
+  }
+
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.isLogicalView()) {
+      return null;
+    } else {
+      return (MeasurementSchema) this.schema;
+    }
   }
 
   public String getAlias() {

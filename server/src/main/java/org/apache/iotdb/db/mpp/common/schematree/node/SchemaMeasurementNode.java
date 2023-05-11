@@ -60,6 +60,14 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     return schema;
   }
 
+  @Override
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.schema instanceof MeasurementSchema) {
+      return (MeasurementSchema) this.getSchema();
+    }
+    return null;
+  }
+
   public Map<String, String> getTagMap() {
     return tagMap;
   }

@@ -151,7 +151,6 @@ import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -2401,13 +2400,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throws VerifyMetadataException, IllegalPathException {
     for (Map.Entry<String, Map<MeasurementSchema, File>> entry : device2Schemas.entrySet()) {
       String device = entry.getKey();
-      IMeasurementSchema[] tsFileSchemas =
+      MeasurementSchema[] tsFileSchemas =
           entry.getValue().keySet().toArray(new MeasurementSchema[0]);
       DeviceSchemaInfo schemaInfo =
           schemaTree.searchDeviceSchemaInfo(
               new PartialPath(device),
               Arrays.stream(tsFileSchemas)
-                  .map(IMeasurementSchema::getMeasurementId)
+                  .map(MeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()));
       if (schemaInfo.isAligned() != device2IsAligned.get(device).left) {
         throw new VerifyMetadataException(
@@ -2417,11 +2416,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             device2IsAligned.get(device).right.getPath(),
             String.valueOf(schemaInfo.isAligned()));
       }
-      List<IMeasurementSchema> originSchemaList = schemaInfo.getMeasurementSchemaList();
+      List<MeasurementSchema> originSchemaList = schemaInfo.getMeasurementSchemaList();
       int measurementSize = originSchemaList.size();
       for (int j = 0; j < measurementSize; j++) {
-        IMeasurementSchema originSchema = originSchemaList.get(j);
-        IMeasurementSchema tsFileSchema = tsFileSchemas[j];
+        MeasurementSchema originSchema = originSchemaList.get(j);
+        MeasurementSchema tsFileSchema = tsFileSchemas[j];
         String measurementPath =
             device + TsFileConstant.PATH_SEPARATOR + originSchema.getMeasurementId();
         if (!tsFileSchema.getType().equals(originSchema.getType())) {

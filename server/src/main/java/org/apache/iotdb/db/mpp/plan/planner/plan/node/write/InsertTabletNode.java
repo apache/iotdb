@@ -1151,21 +1151,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
   }
 
   @Override
-  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo iMeasurementSchemaInfo) {
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
-    if (iMeasurementSchemaInfo == null) {
+    if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      if (iMeasurementSchemaInfo.isLogicalView()) {
-        throw new RuntimeException(
-            new UnsupportedOperationException(
-                "This iMeasurementSchemaInfo is logical view schema info,"
-                    + " can not convert it into MeasurementSchema. InsertTabletNode should use a measurementSchemaInfo."));
-      } else {
-        measurementSchemas[index] = (MeasurementSchema) iMeasurementSchemaInfo.getSchema();
-      }
+      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
     }
 
     try {

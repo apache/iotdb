@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
@@ -119,6 +120,14 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   @Override
   public IMeasurementSchema getSchema() {
     return iMeasurementSchema;
+  }
+
+  @Override
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.iMeasurementSchema instanceof MeasurementSchema) {
+      return (MeasurementSchema) this.getSchema();
+    }
+    return null;
   }
 
   @Override
