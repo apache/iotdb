@@ -20,8 +20,11 @@
 package org.apache.iotdb.os.io;
 
 import org.apache.iotdb.os.exception.ObjectStorageException;
+import org.apache.iotdb.os.fileSystem.OSURI;
 
-public interface ObjectStorageWriter {
+public interface ObjectStorageConnector {
+  boolean doesObjectExist(OSURI osuri) throws ObjectStorageException;
+
   void write(String sourceFile, String containerName, String targetFileName)
       throws ObjectStorageException;
 }

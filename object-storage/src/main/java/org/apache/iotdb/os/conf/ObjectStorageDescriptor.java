@@ -20,4 +20,18 @@ package org.apache.iotdb.os.conf;
 
 public class ObjectStorageDescriptor {
   private final ObjectStorageConfig conf = new ObjectStorageConfig();
+
+  public ObjectStorageConfig getConfig() {
+    return conf;
+  }
+
+  public static ObjectStorageDescriptor getInstance() {
+    return InstanceHolder.INSTANCE;
+  }
+
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
+    private static final ObjectStorageDescriptor INSTANCE = new ObjectStorageDescriptor();
+  }
 }

@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.os.cache;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-
-import com.github.benmanes.caffeine.cache.LoadingCache;
-
 import java.io.File;
+import java.nio.channels.FileChannel;
 
 public class PersistentCache {
+  private final String cacheDir;
   private File cacheFile;
+  private FileChannel rwChannel;
+  private FileChannel readChannel;
 
-  private LoadingCache<ChunkMetadata, CacheEntry> lruCache;
+  public PersistentCache(String cacheDir) {
+    this.cacheDir = cacheDir;
+    this.cacheFile = cacheFile;
+  }
 }

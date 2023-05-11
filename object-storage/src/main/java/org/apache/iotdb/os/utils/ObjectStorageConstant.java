@@ -16,31 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.cache;
+package org.apache.iotdb.os.utils;
 
-import org.apache.iotdb.os.conf.ObjectStorageConfig;
-import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-
-import java.util.ArrayList;
-import java.util.List;
-
-public class CacheManger {
-  private final ObjectStorageConfig config = ObjectStorageDescriptor.getInstance().getConfig();
-  private final List<PersistentCache> caches = new ArrayList<>();
-
-  private CacheManger() {
-    for (String cacheDir : config.getCacheDirs()) {
-      caches.add(new PersistentCache(cacheDir));
-    }
-  }
-
-  public static CacheManger getInstance() {
-    return InstanceHolder.INSTANCE;
-  }
-
-  private static class InstanceHolder {
-    private InstanceHolder() {}
-
-    private static final CacheManger INSTANCE = new CacheManger();
-  }
+public class ObjectStorageConstant {
+  public static String FILE_SEPARATOR = "/";
 }

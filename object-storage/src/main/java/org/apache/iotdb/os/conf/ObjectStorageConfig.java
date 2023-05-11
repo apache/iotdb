@@ -37,4 +37,20 @@ public class ObjectStorageConfig {
   private static long pageSize = 32 * 1024;
 
   ObjectStorageConfig() {}
+
+  public static ObjectStorageType getOsType() {
+    return osType;
+  }
+
+  public static String[] getCacheDirs() {
+    return cacheDirs;
+  }
+
+  public static long getCacheSizeThreshold() {
+    return cacheSizeThreshold;
+  }
+
+  public static long getPageSize() {
+    return pageSize;
+  }
 }
