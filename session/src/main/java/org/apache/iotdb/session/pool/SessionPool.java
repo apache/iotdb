@@ -119,6 +119,9 @@ public class SessionPool implements ISessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
 
+  // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
+  private final String formattedNodeUrls;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -310,6 +313,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
   public SessionPool(
@@ -344,6 +348,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.formattedNodeUrls = nodeUrls.toString();
   }
 
   private Session constructNewSession() {
@@ -417,10 +422,9 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             logger.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
+                "the SessionPool has wait for {} seconds to get a new connection: {} with {}, {}",
                 (System.currentTimeMillis() - start) / 1000,
-                host,
-                port,
+                formattedNodeUrls,
                 user,
                 password);
             logger.warn(
@@ -430,7 +434,7 @@ public class SessionPool implements ISessionPool {
                 size);
             if (System.currentTimeMillis() - start > waitToGetSessionTimeoutInMs) {
               throw new IoTDBConnectionException(
-                  String.format("timeout to get a connection from %s:%s", host, port));
+                  String.format("timeout to get a connection from %s", formattedNodeUrls));
             }
           }
         } catch (InterruptedException e) {
@@ -599,8 +603,8 @@ public class SessionPool implements ISessionPool {
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
-              "retry to execute statement on %s:%s failed %d times: %s",
-              host, port, RETRY, e.getMessage()),
+              "retry to execute statement on %s failed %d times: %s",
+              formattedNodeUrls, RETRY, e.getMessage()),
           e);
     }
   }
