@@ -89,7 +89,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   @Override
   public void setSchema(IMeasurementSchema schema) {
-    this.schema = (LogicalViewSchema) schema;
+    if (schema.isLogicalView()) {
+      this.schema = (LogicalViewSchema) schema;
+    }
   }
 
   @Override

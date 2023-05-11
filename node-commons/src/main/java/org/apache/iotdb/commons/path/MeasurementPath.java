@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -253,9 +254,7 @@ public class MeasurementPath extends PartialPath {
         measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
       } else if (type
           == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
-        // TODO: CRTODO: move LogicalViewSchema to
-        throw new RuntimeException(
-            new UnexpectedException("LOGICAL_VIEW_SCHEMA is not processed."));
+        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
       } else {
         throw new RuntimeException(
             new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));

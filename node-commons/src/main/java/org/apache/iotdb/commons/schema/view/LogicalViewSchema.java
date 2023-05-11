@@ -201,17 +201,15 @@ public class LogicalViewSchema
 
     ViewExpression expression = ViewExpression.deserialize(inputStream);
 
-    LogicalViewSchema logicalViewSchema = new LogicalViewSchema(measurementId, expression);
-    return logicalViewSchema;
+    return new LogicalViewSchema(measurementId, expression);
   }
 
-  public static LogicalViewSchema deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static LogicalViewSchema deserializeFrom(ByteBuffer buffer) {
     String measurementId = ReadWriteIOUtils.readString(buffer);
 
     ViewExpression expression = ViewExpression.deserialize(buffer);
 
-    LogicalViewSchema logicalViewSchema = new LogicalViewSchema(measurementId, expression);
-    return logicalViewSchema;
+    return new LogicalViewSchema(measurementId, expression);
   }
 
   // endregion

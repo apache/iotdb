@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -84,7 +83,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
 
   @Override
   public boolean isLogicalView() {
-    return this.measurementSchema instanceof LogicalViewSchema;
+    return this.measurementSchema.isLogicalView();
   }
 
   public TSDataType getDataType() {
