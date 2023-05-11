@@ -294,9 +294,10 @@ public abstract class InsertNode extends WritePlanNode {
 
   /**
    * Notice: Call this method ONLY when using IOT_CONSENSUS, other consensus protocol cannot
-   * distinguish whether the insertNode is from leader by this method.
+   * distinguish whether the insertNode sync from leader by this method.
+   * isSyncFromLeaderWhenUsingIoTConsensus == true means this node is a follower
    */
-  public boolean isFromLeaderWhenUsingIoTConsensus() {
+  public boolean isSyncFromLeaderWhenUsingIoTConsensus() {
     return searchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX;
   }
 

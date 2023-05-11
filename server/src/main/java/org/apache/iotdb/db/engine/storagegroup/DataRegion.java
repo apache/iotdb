@@ -1145,7 +1145,8 @@ public class DataRegion implements IDataRegionForQuery {
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !node.isFromLeaderWhenUsingIoTConsensus())) {
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
     }
     for (int i = 0; i < node.getColumns().length; i++) {
@@ -1188,7 +1189,8 @@ public class DataRegion implements IDataRegionForQuery {
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !node.isFromLeaderWhenUsingIoTConsensus())) {
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
     }
     for (int i = 0; i < node.getValues().length; i++) {
