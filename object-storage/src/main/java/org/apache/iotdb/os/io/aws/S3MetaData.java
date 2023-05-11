@@ -16,12 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.cache;
+package org.apache.iotdb.os.io.aws;
 
-import java.io.File;
+import org.apache.iotdb.os.io.IMetaData;
 
-public class CacheEntry {
-  private File cacheFile;
-  // cached value, null when the value has been flushed
-  private byte[] value;
+public class S3MetaData implements IMetaData {
+  private long length;
+
+  private long lastModified;
+
+  public S3MetaData(long length, long lastModified) {
+    this.length = length;
+    this.lastModified = lastModified;
+  }
+
+  @Override
+  public long length() {
+    return length;
+  }
+
+  @Override
+  public long lastModified() {
+    return lastModified;
+  }
 }

@@ -27,10 +27,15 @@ import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -159,8 +164,8 @@ public class OSFile extends File {
       return connector.doesObjectExist(osUri);
     } catch (ObjectStorageException e) {
       logger.error("Fail to get object {}.", osUri, e);
+      return false;
     }
-    return false;
   }
 
   @Override
@@ -180,22 +185,42 @@ public class OSFile extends File {
 
   @Override
   public long lastModified() {
-    return super.lastModified();
+    try {
+      return connector.getMetaData(osUri).lastModified();
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to get lastModified of the object {}.", osUri, e);
+      return 0;
+    }
   }
 
   @Override
   public long length() {
-    return super.length();
+    try {
+      return connector.getMetaData(osUri).length();
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to get length of the object {}.", osUri, e);
+      return 0;
+    }
   }
 
   @Override
   public boolean createNewFile() throws IOException {
-    return super.createNewFile();
+    try {
+      return connector.createNewEmptyObject(osUri);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to create new object {}.", osUri, e);
+      return false;
+    }
   }
 
   @Override
   public boolean delete() {
-    return super.delete();
+    try {
+      return connector.delete(osUri);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to delete object {}.", osUri, e);
+      return false;
+    }
   }
 
   @Override
@@ -240,7 +265,13 @@ public class OSFile extends File {
 
   @Override
   public boolean renameTo(File dest) {
-    return super.renameTo(dest);
+    OSURI targetOSUri = ((OSFile) dest).osUri;
+    try {
+      return connector.renameTo(osUri, targetOSUri);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to rename object from {} to {}.", osUri, targetOSUri, e);
+      return false;
+    }
   }
 
   @Override
@@ -330,5 +361,39 @@ public class OSFile extends File {
   @Override
   public Path toPath() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+  }
+
+  public BufferedReader getBufferedReader() {
+    try {
+      return new BufferedReader(new InputStreamReader(connector.getInputStream(osUri)));
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to open input stream for object {}.", osUri, e);
+      return null;
+    }
+  }
+
+  public BufferedWriter getBufferedWriter(boolean append) {
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+  }
+
+  public BufferedInputStream getBufferedInputStream() {
+    try {
+      return new BufferedInputStream(connector.getInputStream(osUri));
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to open input stream for object {}.", osUri, e);
+      return null;
+    }
+  }
+
+  public BufferedOutputStream getBufferedOutputStream() {
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+  }
+
+  public File[] listFilesBySuffix(String fileFolder, String suffix) {
+    return null;
+  }
+
+  public File[] listFilesByPrefix(String fileFolder, String prefix) {
+    return null;
   }
 }

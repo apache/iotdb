@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.os.cache;
 
-import java.io.File;
+import org.apache.iotdb.os.fileSystem.OSFile;
 
-public class CacheEntry {
-  private File cacheFile;
-  // cached value, null when the value has been flushed
-  private byte[] value;
+public class CacheKey {
+  private OSFile osFile;
+  private long position;
+  private int size;
 }

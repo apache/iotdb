@@ -27,72 +27,212 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 
 public class OSFSFactory implements FSFactory {
   private static final Logger logger = LoggerFactory.getLogger(OSFSFactory.class);
+  private static final String OS_FILE_CLASS_NAME = "org.apache.iotdb.os.fileSystem.OSFile";
+
+  private static Constructor constructorWithPathname;
+  private static Constructor constructorWithParentStringAndChild;
+  private static Constructor constructorWithParentFileAndChild;
+  private static Constructor constructorWithUri;
+  private static Method getBufferedReader;
+  private static Method getBufferedWriter;
+  private static Method getBufferedInputStream;
+  private static Method getBufferedOutputStream;
+  private static Method listFilesBySuffix;
+  private static Method listFilesByPrefix;
+  private static Method renameTo;
+
+  static {
+    try {
+      Class<?> clazz = Class.forName(OS_FILE_CLASS_NAME);
+      constructorWithPathname = clazz.getConstructor(String.class);
+      constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
+      constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);
+      constructorWithUri = clazz.getConstructor(URI.class);
+      getBufferedReader = clazz.getMethod("getBufferedReader");
+      getBufferedWriter = clazz.getMethod("getBufferedWriter", boolean.class);
+      getBufferedInputStream = clazz.getMethod("getBufferedInputStream");
+      getBufferedOutputStream = clazz.getMethod("getBufferedOutputStream");
+      listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class, String.class);
+      listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class, String.class);
+      renameTo = clazz.getMethod("renameTo", File.class);
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
+      logger.error(
+          "Failed to get object storage. Please check your dependency of object storage module.",
+          e);
+    }
+  }
 
   @Override
   public File getFileWithParent(String pathname) {
-    return null;
+    try {
+      return (File) constructorWithPathname.newInstance(pathname);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of object storage module.",
+          pathname,
+          e);
+      return null;
+    }
   }
 
   @Override
   public File getFile(String pathname) {
-    return null;
+    try {
+      return (File) constructorWithPathname.newInstance(pathname);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of Hadoop module.", pathname, e);
+      return null;
+    }
   }
 
   @Override
   public File getFile(String parent, String child) {
-    return null;
+    try {
+      return (File) constructorWithParentStringAndChild.newInstance(parent, child);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of Hadoop module.",
+          parent + File.separator + child,
+          e);
+      return null;
+    }
   }
 
   @Override
   public File getFile(File parent, String child) {
-    return null;
+    try {
+      return (File) constructorWithParentFileAndChild.newInstance(parent, child);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of Hadoop module.",
+          parent.getAbsolutePath() + File.separator + child,
+          e);
+      return null;
+    }
   }
 
   @Override
   public File getFile(URI uri) {
-    return null;
+    try {
+      return (File) constructorWithUri.newInstance(uri);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get file: {}. Please check your dependency of object storage module.", uri, e);
+      return null;
+    }
   }
 
   @Override
   public BufferedReader getBufferedReader(String filePath) {
-    return null;
+    try {
+      return (BufferedReader)
+          getBufferedReader.invoke(constructorWithPathname.newInstance(filePath));
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get buffered reader for {}. Please check your dependency of object storage module.",
+          filePath,
+          e);
+      return null;
+    }
   }
 
   @Override
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
-    return null;
+    try {
+      return (BufferedWriter)
+          getBufferedWriter.invoke(constructorWithPathname.newInstance(filePath), append);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get buffered writer for {}. Please check your dependency of object storage module.",
+          filePath,
+          e);
+      return null;
+    }
   }
 
   @Override
   public BufferedInputStream getBufferedInputStream(String filePath) {
-    return null;
+    try {
+      return (BufferedInputStream)
+          getBufferedInputStream.invoke(constructorWithPathname.newInstance(filePath));
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get buffered input stream for {}. Please check your dependency of object storage module.",
+          filePath,
+          e);
+      return null;
+    }
   }
 
   @Override
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
-    return null;
+    try {
+      return (BufferedOutputStream)
+          getBufferedOutputStream.invoke(constructorWithPathname.newInstance(filePath));
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get buffered output stream for {}. Please check your dependency of object storage module.",
+          filePath,
+          e);
+      return null;
+    }
   }
 
   @Override
-  public void moveFile(File srcFile, File destFile) {}
+  public void moveFile(File srcFile, File destFile) {
+    try {
+      renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to rename file from {} to {}. Please check your dependency of object storage module.",
+          srcFile.getName(),
+          destFile.getName());
+    }
+  }
 
   @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
-    return new File[0];
+    try {
+      return (File[])
+          listFilesBySuffix.invoke(
+              constructorWithPathname.newInstance(fileFolder), fileFolder, suffix);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to list files in {} with SUFFIX {}. Please check your dependency of object storage module.",
+          fileFolder,
+          suffix,
+          e);
+      return null;
+    }
   }
 
   @Override
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
-    return new File[0];
+    try {
+      return (File[])
+          listFilesByPrefix.invoke(
+              constructorWithPathname.newInstance(fileFolder), fileFolder, prefix);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to list files in {} with PREFIX {}. Please check your dependency of object storage module.",
+          fileFolder,
+          prefix,
+          e);
+      return null;
+    }
   }
 
   @Override
-  public boolean deleteIfExists(File file) throws IOException {
-    return false;
+  public boolean deleteIfExists(File file) {
+    return file.delete();
   }
 
   @Override

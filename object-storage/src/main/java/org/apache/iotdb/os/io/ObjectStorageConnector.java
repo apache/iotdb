@@ -22,10 +22,21 @@ package org.apache.iotdb.os.io;
 import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.fileSystem.OSURI;
 
+import java.io.File;
+import java.io.InputStream;
+
 public interface ObjectStorageConnector {
-  boolean doesObjectExist(OSURI osuri) throws ObjectStorageException;
+  boolean doesObjectExist(OSURI osUri) throws ObjectStorageException;
 
-  long size(String fileName) throws ObjectStorageException;
+  IMetaData getMetaData(OSURI osUri) throws ObjectStorageException;
 
-  void write(String sourceFile, String targetFileName) throws ObjectStorageException;
+  boolean createNewEmptyObject(OSURI osUri) throws ObjectStorageException;
+
+  boolean delete(OSURI osUri) throws ObjectStorageException;
+
+  boolean renameTo(OSURI fromOSUri, OSURI toOSUri) throws ObjectStorageException;
+
+  InputStream getInputStream(OSURI osUri) throws ObjectStorageException;
+
+  void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException;
 }

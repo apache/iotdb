@@ -23,6 +23,6 @@ import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 public class OSFileOutputFactory implements FileOutputFactory {
   @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    return null;
+    throw new UnsupportedOperationException("Cannot directly write to object storage.");
   }
 }

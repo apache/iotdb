@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.os.cache;
 
-import java.io.File;
-import java.nio.channels.FileChannel;
-
 public class PersistentCache {
   private final String cacheDir;
-  private File cacheFile;
-  private FileChannel rwChannel;
-  private FileChannel readChannel;
 
   public PersistentCache(String cacheDir) {
     this.cacheDir = cacheDir;
-    this.cacheFile = cacheFile;
   }
+
+  public byte[] get(CacheKey cacheKey) {
+    return null;
+  }
+
+  private void serialize(CacheKey cacheKey, byte[] cacheVal) {}
 }

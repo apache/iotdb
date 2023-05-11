@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.cache;
+package org.apache.iotdb.os.io;
 
-import java.io.File;
+public interface IMetaData {
+  long length();
 
-public class CacheEntry {
-  private File cacheFile;
-  // cached value, null when the value has been flushed
-  private byte[] value;
+  long lastModified();
 }

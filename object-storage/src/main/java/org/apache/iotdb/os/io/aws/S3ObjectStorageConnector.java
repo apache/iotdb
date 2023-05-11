@@ -21,21 +21,24 @@ package org.apache.iotdb.os.io.aws;
 
 import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.fileSystem.OSURI;
+import org.apache.iotdb.os.io.IMetaData;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.File;
-import java.util.List;
+import java.io.InputStream;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private S3Client s3Client;
@@ -51,38 +54,94 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   @Override
   public boolean doesObjectExist(OSURI osUri) throws ObjectStorageException {
     try {
-      HeadObjectRequest objectRequest =
-          HeadObjectRequest.builder().key(osUri.getKey()).bucket(osUri.getBucket()).build();
-      s3Client.headObject(objectRequest);
+      HeadObjectRequest req =
+          HeadObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      s3Client.headObject(req);
+      return true;
     } catch (NoSuchKeyException e) {
       return false;
     } catch (S3Exception e) {
       throw new ObjectStorageException(e);
     }
-    return true;
-  }
-
-  public long size(String fileName) throws ObjectStorageException {
-    ListObjectsV2Request listObjectsRequest =
-        ListObjectsV2Request.builder().bucket(AWSS3Config.getBucketName()).prefix(fileName).build();
-    ListObjectsV2Response res = s3Client.listObjectsV2(listObjectsRequest);
-    List<S3Object> objects = res.contents();
-    if (objects.size() != 1) {
-      throw new ObjectStorageException(
-          String.format("expected 1 S3Object with prefix %s but get %d", fileName, objects.size()));
-    }
-    return objects.get(0).size();
   }
 
   @Override
-  public void write(String sourceFile, String targetFileName) throws ObjectStorageException {
+  public IMetaData getMetaData(OSURI osUri) throws ObjectStorageException {
     try {
-      PutObjectRequest putOb =
-          PutObjectRequest.builder()
-              .bucket(AWSS3Config.getBucketName())
-              .key(targetFileName)
+      HeadObjectRequest req =
+          HeadObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      HeadObjectResponse resp = s3Client.headObject(req);
+      return new S3MetaData(resp.contentLength(), resp.lastModified().toEpochMilli());
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public boolean createNewEmptyObject(OSURI osUri) throws ObjectStorageException {
+    try {
+      PutObjectRequest req =
+          PutObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      s3Client.putObject(req, RequestBody.empty());
+      return true;
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public boolean delete(OSURI osUri) throws ObjectStorageException {
+    try {
+      DeleteObjectRequest req =
+          DeleteObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      DeleteObjectResponse resp = s3Client.deleteObject(req);
+      return resp.deleteMarker();
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public boolean renameTo(OSURI fromOSUri, OSURI toOSUri) throws ObjectStorageException {
+    try {
+      CopyObjectRequest copyReq =
+          CopyObjectRequest.builder()
+              .sourceBucket(fromOSUri.getBucket())
+              .sourceKey(fromOSUri.getKey())
+              .destinationBucket(toOSUri.getBucket())
+              .destinationKey(toOSUri.getKey())
               .build();
-      s3Client.putObject(putOb, RequestBody.fromFile(new File(sourceFile)));
+      s3Client.copyObject(copyReq);
+
+      DeleteObjectRequest deleteReq =
+          DeleteObjectRequest.builder()
+              .bucket(fromOSUri.getBucket())
+              .key(fromOSUri.getKey())
+              .build();
+      DeleteObjectResponse resp = s3Client.deleteObject(deleteReq);
+      return resp.deleteMarker();
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public InputStream getInputStream(OSURI osUri) throws ObjectStorageException {
+    try {
+      GetObjectRequest req =
+          GetObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      return s3Client.getObject(req);
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException {
+    try {
+      PutObjectRequest req =
+          PutObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+      s3Client.putObject(req, RequestBody.fromFile(lcoalFile));
     } catch (S3Exception e) {
       throw new ObjectStorageException(e);
     }

@@ -137,6 +137,6 @@ public interface FSFactory {
    */
   boolean deleteIfExists(File file) throws IOException;
 
-  /** Force delete the directory */
+  /** TODO(zhm) Force delete the directory */
   void deleteDirectory(String dir) throws IOException;
 }
