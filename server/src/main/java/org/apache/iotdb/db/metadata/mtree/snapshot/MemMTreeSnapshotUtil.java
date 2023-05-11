@@ -247,6 +247,7 @@ public class MemMTreeSnapshotUtil {
         childrenNum = 0;
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
@@ -256,6 +257,12 @@ public class MemMTreeSnapshotUtil {
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());
       ancestors.peek().addChild(node);
+      if (node.isMeasurement() && node.getAsMeasurementMNode().getAlias() != null) {
+        ancestors
+            .peek()
+            .getAsDeviceMNode()
+            .addAlias(node.getAsMeasurementMNode().getAlias(), node.getAsMeasurementMNode());
+      }
     }
 
     // Storage type means current node is root node, so it must be returned.
