@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
+package org.apache.iotdb.db.engine.compaction.constant;
 
-public enum DualKeyCachePolicy {
-  LRU,
-  FIFO;
+public enum CompactionTaskType {
+  INNER_SEQ,
+  INNER_UNSEQ,
+  CROSS
 }

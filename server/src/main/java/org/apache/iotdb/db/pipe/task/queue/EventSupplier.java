@@ -17,28 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
 
-import org.junit.Before;
-import org.mockito.Mockito;
+@FunctionalInterface
+public interface EventSupplier {
 
-import static org.mockito.Mockito.mock;
-
-public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeConnectorSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeConnectorSubtask(
-                "PipeConnectorSubtaskExecutorTest",
-                mock(ListenableBlockingPendingQueue.class),
-                mock(PipeConnector.class)));
-  }
+  /**
+   * @return the event to be supplied. the event may be null if the collector has no more events at
+   *     the moment, but the collector is still running for more events.
+   * @throws Exception if the supplier fails to supply the event.
+   */
+  Event supply() throws Exception;
 }

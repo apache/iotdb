@@ -1021,6 +1021,9 @@ public class IoTDBConfig {
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
+  /** Policy of DataNodeSchemaCache eviction */
+  private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -3315,6 +3318,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
+  }
+
+  public String getDataNodeSchemaCacheEvictionPolicy() {
+    return dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
+    this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
   }
 
   public String getReadConsistencyLevel() {
