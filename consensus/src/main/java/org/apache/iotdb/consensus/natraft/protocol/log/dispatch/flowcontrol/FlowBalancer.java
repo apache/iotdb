@@ -106,7 +106,7 @@ public class FlowBalancer {
         latestWindows.stream().mapToLong(w -> w.sum).sum()
             * 1.0
             / latestWindows.size()
-            * flowMonitorWindowInterval
+            * (flowMonitorWindowInterval / 1000.0)
             * overestimateFactor;
 
     Map<Peer, DispatcherGroup> dispatcherGroupMap = logDispatcher.getDispatcherGroupMap();
@@ -143,7 +143,6 @@ public class FlowBalancer {
 
   private void enterBurst(
       Map<Peer, Double> nodesRate, int nodeNum, double assumedFlow, List<Peer> followers) {
-    logger.info("{}: entering burst", member.getName());
     int followerNum = nodeNum - 1;
     int quorumFollowerNum = nodeNum / 2;
     double remainingFlow = maxFlow;
@@ -157,6 +156,15 @@ public class FlowBalancer {
       remainingFlow -= flowToQuorum;
     }
     double flowToRemaining = remainingFlow / (followerNum - quorumFollowerNum);
+    logger.info(
+        "{}: entering burst, quorum flow: {}, non-quorum flow: {}, max flow: {}, min flow: {}, assumed flow: {}, quorum max flow: {}",
+        member.getName(),
+        flowToQuorum,
+        flowToRemaining,
+        maxFlow,
+        minFlow,
+        assumedFlow,
+        quorumMaxFlow);
     if (flowToRemaining < minFlow) {
       flowToRemaining = minFlow;
     }

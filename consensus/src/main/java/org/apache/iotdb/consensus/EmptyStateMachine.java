@@ -27,6 +27,8 @@ import java.io.File;
 
 public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi {
 
+  public EmptyStateMachine() {}
+
   @Override
   public void start() {}
 

@@ -1116,6 +1116,8 @@ public class IoTDBConfig {
   /** A DynamicThread will not automatically exit unless its running time exceeds the value. */
   private long dynamicThreadMinRunningTimeNS = 10_000_000_000L;
 
+  private boolean ignoreStateMachine = false;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3853,5 +3855,13 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public boolean isIgnoreStateMachine() {
+    return ignoreStateMachine;
+  }
+
+  public void setIgnoreStateMachine(boolean ignoreStateMachine) {
+    this.ignoreStateMachine = ignoreStateMachine;
   }
 }

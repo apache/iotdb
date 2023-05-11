@@ -1045,6 +1045,11 @@ public class IoTDBDescriptor {
                 "dynamic_min_running_time_ns",
                 Long.toString(conf.getDynamicThreadMinRunningTimeNS()))));
 
+    conf.setIgnoreStateMachine(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "ignore_state_machine", String.valueOf(conf.isIgnoreStateMachine()))));
+
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());

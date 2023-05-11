@@ -23,11 +23,20 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig.Replication;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.config.RatisConfig.Client;
+import org.apache.iotdb.consensus.config.RatisConfig.Grpc;
+import org.apache.iotdb.consensus.config.RatisConfig.Impl;
+import org.apache.iotdb.consensus.config.RatisConfig.LeaderLogAppender;
+import org.apache.iotdb.consensus.config.RatisConfig.Log;
+import org.apache.iotdb.consensus.config.RatisConfig.Rpc;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -93,7 +102,7 @@ public class DataRegionConsensusImpl {
                                       .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                                       .build())
                               .setReplication(
-                                  IoTConsensusConfig.Replication.newBuilder()
+                                  Replication.newBuilder()
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
@@ -111,7 +120,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusSnapshotTriggerThreshold())
                                       .build())
                               .setLog(
-                                  RatisConfig.Log.newBuilder()
+                                  Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           conf.isDataRatisConsensusLogUnsafeFlushEnable())
                                       .setSegmentSizeMax(
@@ -121,13 +130,13 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
-                                  RatisConfig.Grpc.newBuilder()
+                                  Grpc.newBuilder()
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusGrpcFlowControlWindow()))
                                       .build())
                               .setRpc(
-                                  RatisConfig.Rpc.newBuilder()
+                                  Rpc.newBuilder()
                                       .setTimeoutMin(
                                           TimeDuration.valueOf(
                                               conf
@@ -152,7 +161,7 @@ public class DataRegionConsensusImpl {
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setClient(
-                                  RatisConfig.Client.newBuilder()
+                                  Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -166,11 +175,11 @@ public class DataRegionConsensusImpl {
                                       .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                                       .build())
                               .setImpl(
-                                  RatisConfig.Impl.newBuilder()
+                                  Impl.newBuilder()
                                       .setTriggerSnapshotFileSize(conf.getDataRatisLogMax())
                                       .build())
                               .setLeaderLogAppender(
-                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                  LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
@@ -188,7 +197,11 @@ public class DataRegionConsensusImpl {
     return INSTANCE;
   }
 
-  private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
+  private static IStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
+    if (conf.isIgnoreStateMachine()) {
+      return new EmptyStateMachine();
+    }
+
     DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
     if (ConsensusFactory.IOT_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
       return new IoTConsensusDataRegionStateMachine(dataRegion);
