@@ -25,6 +25,7 @@ import org.apache.iotdb.os.fileSystem.OSURI;
 public interface ObjectStorageConnector {
   boolean doesObjectExist(OSURI osuri) throws ObjectStorageException;
 
-  void write(String sourceFile, String containerName, String targetFileName)
-      throws ObjectStorageException;
+  long size(String fileName) throws ObjectStorageException;
+
+  void write(String sourceFile, String targetFileName) throws ObjectStorageException;
 }

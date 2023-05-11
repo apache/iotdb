@@ -27,11 +27,15 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.File;
+import java.util.List;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private S3Client s3Client;
@@ -58,9 +62,20 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
     return true;
   }
 
+  public long size(String fileName) throws ObjectStorageException {
+    ListObjectsV2Request listObjectsRequest =
+        ListObjectsV2Request.builder().bucket(AWSS3Config.getBucketName()).prefix(fileName).build();
+    ListObjectsV2Response res = s3Client.listObjectsV2(listObjectsRequest);
+    List<S3Object> objects = res.contents();
+    if (objects.size() != 1) {
+      throw new ObjectStorageException(
+          String.format("expected 1 S3Object with prefix %s but get %d", fileName, objects.size()));
+    }
+    return objects.get(0).size();
+  }
+
   @Override
-  public void write(String sourceFile, String containerName, String targetFileName)
-      throws ObjectStorageException {
+  public void write(String sourceFile, String targetFileName) throws ObjectStorageException {
     try {
       PutObjectRequest putOb =
           PutObjectRequest.builder()

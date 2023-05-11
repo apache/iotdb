@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.os.fileSystem;
 
-import java.io.FileFilter;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.Path;
 import org.apache.iotdb.os.conf.ObjectStorageConfig;
 import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
 import org.apache.iotdb.os.exception.ObjectStorageException;
@@ -34,14 +28,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
 
 import static org.apache.iotdb.os.utils.ObjectStorageConstant.FILE_SEPARATOR;
 
-
 public class OSFile extends File {
   private static final Logger logger = LoggerFactory.getLogger(OSFile.class);
-  private static final String UNSUPPORT_OPERATION = "Current object storage file doesn't support this operation.";
+  private static final String UNSUPPORT_OPERATION =
+      "Current object storage file doesn't support this operation.";
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
   private static final ObjectStorageConnector connector;
@@ -97,7 +97,7 @@ public class OSFile extends File {
   @Override
   public File getParentFile() {
     int lastSeparatorIdx = osUri.getKey().lastIndexOf(FILE_SEPARATOR);
-    if(lastSeparatorIdx <= 0) {
+    if (lastSeparatorIdx <= 0) {
       return null;
     }
     return new OSFile(new OSURI(osUri.getBucket(), osUri.getKey().substring(0, lastSeparatorIdx)));
