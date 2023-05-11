@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

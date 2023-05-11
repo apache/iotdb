@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.node;
 
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
