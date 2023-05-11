@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.ratis.utils;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
@@ -50,6 +52,7 @@ public class Utils {
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
+  private static volatile CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private Utils() {}
 
@@ -187,6 +190,20 @@ public class Utils {
       consensusGroupType = TConsensusGroupType.ConfigRegion;
     }
     return consensusGroupType;
+  }
+
+  public static boolean rejectWrite() {
+    return config.isReadOnly();
+  }
+
+  /**
+   * Normally, the RatisConsensus should reject write when system is read-only, i.e, {@link
+   * #rejectWrite()}. However, Ratis RaftServer close() will wait for applyIndex advancing to
+   * commitIndex. So when the system is shutting down, RatisConsensus should still allow
+   * statemachine to apply while rejecting new client write requests.
+   */
+  public static boolean stallApply() {
+    return config.isReadOnly() && !config.isStopping();
   }
 
   public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
