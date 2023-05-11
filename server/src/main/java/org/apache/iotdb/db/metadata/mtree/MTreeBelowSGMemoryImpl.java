@@ -938,6 +938,26 @@ public class MTreeBelowSGMemoryImpl {
               }
             };
           }
+
+          @Override
+          protected boolean acceptFullMatchedNode(IMemMNode node) {
+            return super.acceptFullMatchedNode(node)
+                && pathContains(
+                    getFullPathFromRootToNode(node.getAsMNode()),
+                    showTimeSeriesPlan.getPathContains());
+          }
+
+          private boolean pathContains(String[] fullPaths, String containStr) {
+            if (containStr == null) {
+              return true;
+            }
+            for (String pathNode : fullPaths) {
+              if (pathNode.contains(containStr)) {
+                return true;
+              }
+            }
+            return false;
+          }
         };
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;

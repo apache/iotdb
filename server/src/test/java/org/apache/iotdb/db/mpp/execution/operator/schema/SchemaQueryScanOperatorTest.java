@@ -196,7 +196,7 @@ public class SchemaQueryScanOperatorTest {
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
           SchemaSourceFactory.getTimeSeriesSchemaSource(
-              partialPath, false, 10, 0, null, null, false, Collections.emptyMap());
+              partialPath, false, 10, 0, null, null, false, null, Collections.emptyMap());
       SchemaOperatorTestUtil.mockGetSchemaReader(
           timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 

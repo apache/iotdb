@@ -472,6 +472,10 @@ public interface ISession extends AutoCloseable {
   List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  SessionDataSet showDevicesContain(String pathPattern, String containStr);
+
+  SessionDataSet showTimeseriesContain(String pathPattern, String containStr);
+
   void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException;
 

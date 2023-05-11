@@ -42,6 +42,8 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   private String key;
   private String value;
 
+  private String pathContains;
+
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
 
@@ -61,6 +63,14 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public void setContains(boolean contains) {
     isContains = contains;
+  }
+
+  public String getPathContains() {
+    return pathContains;
+  }
+
+  public void setPathContains(String pathContains) {
+    this.pathContains = pathContains;
   }
 
   public String getKey() {

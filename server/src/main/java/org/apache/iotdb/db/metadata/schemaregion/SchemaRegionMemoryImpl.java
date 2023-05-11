@@ -1239,7 +1239,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 null,
                 0,
                 0,
-                false));
+                false,
+                null));
     long count = 0;
     while (timeSeriesReader.hasNext()) {
       timeSeriesReader.next();

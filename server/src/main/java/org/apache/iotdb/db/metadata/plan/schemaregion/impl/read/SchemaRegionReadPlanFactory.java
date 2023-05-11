@@ -51,23 +51,24 @@ public class SchemaRegionReadPlanFactory {
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path) {
-    return new ShowTimeSeriesPlanImpl(path, Collections.emptyMap(), false, null, null, 0, 0, false);
+    return new ShowTimeSeriesPlanImpl(
+        path, Collections.emptyMap(), false, null, null, 0, 0, false, null);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path, int limit, int offset) {
     return new ShowTimeSeriesPlanImpl(
-        path, Collections.emptyMap(), false, null, null, limit, offset, false);
+        path, Collections.emptyMap(), false, null, null, limit, offset, false, null);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, Map<Integer, Template> relatedTemplate) {
-    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, false, null, null, 0, 0, false);
+    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, false, null, null, 0, 0, false, null);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, boolean isContains, String key, String value) {
     return new ShowTimeSeriesPlanImpl(
-        path, Collections.emptyMap(), isContains, key, value, 0, 0, false);
+        path, Collections.emptyMap(), isContains, key, value, 0, 0, false, null);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
@@ -78,9 +79,10 @@ public class SchemaRegionReadPlanFactory {
       String value,
       long limit,
       long offset,
-      boolean isPrefixMatch) {
+      boolean isPrefixMatch,
+      String pathContains) {
     return new ShowTimeSeriesPlanImpl(
-        path, relatedTemplate, isContains, key, value, limit, offset, isPrefixMatch);
+        path, relatedTemplate, isContains, key, value, limit, offset, isPrefixMatch, pathContains);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path) {

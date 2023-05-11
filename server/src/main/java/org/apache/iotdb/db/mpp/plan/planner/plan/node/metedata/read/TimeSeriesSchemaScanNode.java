@@ -47,6 +47,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;
 
+  private final String pathContains;
+
   private final Map<Integer, Template> templateMap;
 
   public TimeSeriesSchemaScanNode(
@@ -64,6 +66,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     this.value = value;
     this.orderByHeat = orderByHeat;
     this.isContains = isContains;
+    this.pathContains = null;
     this.templateMap = Collections.emptyMap();
   }
 
@@ -77,12 +80,14 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
       boolean orderByHeat,
       boolean isContains,
       boolean isPrefixPath,
+      String pathContains,
       Map<Integer, Template> templateMap) {
     super(id, partialPath, limit, offset, isPrefixPath);
     this.key = key;
     this.value = value;
     this.orderByHeat = orderByHeat;
     this.isContains = isContains;
+    this.pathContains = pathContains;
     this.templateMap = templateMap;
   }
 
@@ -97,6 +102,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(orderByHeat, byteBuffer);
     ReadWriteIOUtils.write(isContains, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+    ReadWriteIOUtils.write(pathContains, byteBuffer);
 
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
     for (Template template : templateMap.values()) {
@@ -115,6 +121,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(orderByHeat, stream);
     ReadWriteIOUtils.write(isContains, stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(pathContains, stream);
 
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
@@ -137,6 +144,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isContains = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
+    String pathContains = ReadWriteIOUtils.readString(byteBuffer);
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
     Map<Integer, Template> templateMap = new HashMap<>();
@@ -159,6 +167,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
         oderByHeat,
         isContains,
         isPrefixPath,
+        pathContains,
         templateMap);
   }
 
@@ -178,6 +187,10 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     return orderByHeat;
   }
 
+  public String getPathContains() {
+    return pathContains;
+  }
+
   public Map<Integer, Template> getTemplateMap() {
     return templateMap;
   }
@@ -194,6 +207,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
         orderByHeat,
         isContains,
         isPrefixPath,
+        pathContains,
         templateMap);
   }
 

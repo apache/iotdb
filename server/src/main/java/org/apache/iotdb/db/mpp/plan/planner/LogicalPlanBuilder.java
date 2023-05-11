@@ -988,6 +988,7 @@ public class LogicalPlanBuilder {
       boolean orderByHeat,
       boolean contains,
       boolean prefixPath,
+      String pathContains,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesSchemaScanNode(
@@ -1000,6 +1001,7 @@ public class LogicalPlanBuilder {
             orderByHeat,
             contains,
             prefixPath,
+            pathContains,
             templateMap);
     return this;
   }

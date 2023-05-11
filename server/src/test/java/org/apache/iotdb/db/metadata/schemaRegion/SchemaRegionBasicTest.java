@@ -766,6 +766,65 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
       actualPathList.add(result.get(index).getFullPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
+
+    // CASE 03: show timeseries where path contains "s"
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"),
+                Collections.emptyMap(),
+                false,
+                null,
+                null,
+                0,
+                0,
+                false,
+                "s"));
+    expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.laptop.d1.s1",
+                "root.laptop.d1.s2.t1",
+                "root.laptop.d1.s3",
+                "root.laptop.d2.s1",
+                "root.laptop.d2.s2"));
+    expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+
+    // CASE 04: show timeseries where path contains "1"
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"),
+                Collections.emptyMap(),
+                false,
+                null,
+                null,
+                0,
+                0,
+                false,
+                "1"));
+    expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.laptop.d1.s1",
+                "root.laptop.d1.s2.t1",
+                "root.laptop.d1.s3",
+                "root.laptop.d2.s1"));
+    expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
   }
 
   @Test

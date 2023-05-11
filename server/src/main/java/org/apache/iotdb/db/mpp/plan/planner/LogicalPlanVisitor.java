@@ -509,6 +509,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.isOrderByHeat(),
                 showTimeSeriesStatement.isContains(),
                 showTimeSeriesStatement.isPrefixPath(),
+                showTimeSeriesStatement.getPathContains(),
                 analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
     // show latest timeseries

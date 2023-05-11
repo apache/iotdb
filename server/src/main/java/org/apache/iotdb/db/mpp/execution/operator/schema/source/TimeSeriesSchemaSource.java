@@ -49,6 +49,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final String key;
   private final String value;
   private final boolean isContains;
+  private final String pathContains;
 
   private final Map<Integer, Template> templateMap;
 
@@ -60,6 +61,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       String key,
       String value,
       boolean isContains,
+      String pathContains,
       Map<Integer, Template> templateMap) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
@@ -70,6 +72,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.key = key;
     this.value = value;
     this.isContains = isContains;
+    this.pathContains = pathContains;
 
     this.templateMap = templateMap;
   }
@@ -79,7 +82,15 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     try {
       return schemaRegion.getTimeSeriesReader(
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-              pathPattern, templateMap, isContains, key, value, limit, offset, isPrefixMatch));
+              pathPattern,
+              templateMap,
+              isContains,
+              key,
+              value,
+              limit,
+              offset,
+              isPrefixMatch,
+              pathContains));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

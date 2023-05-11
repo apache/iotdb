@@ -32,5 +32,7 @@ public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
 
   String getValue();
 
+  String getPathContains();
+
   Map<Integer, Template> getRelatedTemplate();
 }

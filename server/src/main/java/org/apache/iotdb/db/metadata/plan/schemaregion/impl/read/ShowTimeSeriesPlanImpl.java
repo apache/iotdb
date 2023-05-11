@@ -35,6 +35,7 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   private final boolean isContains;
   private final String key;
   private final String value;
+  private final String pathContains;
 
   ShowTimeSeriesPlanImpl(
       PartialPath path,
@@ -44,12 +45,14 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       String value,
       long limit,
       long offset,
-      boolean isPrefixMatch) {
+      boolean isPrefixMatch,
+      String pathContains) {
     super(path, limit, offset, isPrefixMatch);
     this.relatedTemplate = relatedTemplate;
     this.isContains = isContains;
     this.key = key;
     this.value = value;
+    this.pathContains = pathContains;
   }
 
   @Override
@@ -65,6 +68,11 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   @Override
   public String getValue() {
     return value;
+  }
+
+  @Override
+  public String getPathContains() {
+    return pathContains;
   }
 
   @Override

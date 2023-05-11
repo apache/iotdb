@@ -34,7 +34,7 @@ public class SchemaSourceFactory {
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern) {
-    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null, false, null);
+    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null, false, null, null);
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
@@ -45,7 +45,7 @@ public class SchemaSourceFactory {
       boolean isContains,
       Map<Integer, Template> templateMap) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, key, value, isContains, templateMap);
+        pathPattern, isPrefixMatch, 0, 0, key, value, isContains, null, templateMap);
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
@@ -56,9 +56,18 @@ public class SchemaSourceFactory {
       String key,
       String value,
       boolean isContains,
+      String pathContains,
       Map<Integer, Template> templateMap) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, limit, offset, key, value, isContains, templateMap);
+        pathPattern,
+        isPrefixMatch,
+        limit,
+        offset,
+        key,
+        value,
+        isContains,
+        pathContains,
+        templateMap);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
