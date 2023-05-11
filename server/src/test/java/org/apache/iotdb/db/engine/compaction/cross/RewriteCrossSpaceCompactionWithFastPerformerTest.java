@@ -153,7 +153,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
         i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =

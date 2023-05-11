@@ -292,6 +292,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     deleteTimeseriesInMManager(seriesPaths);
 
     createFiles(2, 10, 5, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
 
     // sort the deviceId in lexicographical order from small to large
     List<String> deviceIds = new ArrayList<>();
@@ -347,6 +349,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -491,6 +495,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -634,6 +640,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -777,6 +785,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -930,6 +940,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -1075,6 +1087,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
