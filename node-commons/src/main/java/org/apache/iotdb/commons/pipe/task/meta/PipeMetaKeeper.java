@@ -51,6 +51,10 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.containsKey(pipeName);
   }
 
+  public Iterable<PipeMeta> getPipeMetaList() {
+    return pipeNameToPipeMetaMap.values();
+  }
+
   public void clear() {
     this.pipeNameToPipeMetaMap.clear();
   }

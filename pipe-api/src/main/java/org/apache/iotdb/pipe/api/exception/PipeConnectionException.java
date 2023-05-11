@@ -17,6 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector.historical;
+package org.apache.iotdb.pipe.api.exception;
 
-public class PipeHistoricalCollector {}
+public class PipeConnectionException extends PipeException {
+
+  public PipeConnectionException(String message) {
+    super(message);
+  }
+
+  public PipeConnectionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

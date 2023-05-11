@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
@@ -684,6 +685,54 @@ public class RegionWriteExecutor {
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
+    }
+
+    @Override
+    public RegionExecutionResult visitCreateLogicalView(
+        CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
+      ISchemaRegion schemaRegion =
+          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        context.getRegionWriteValidationRWLock().writeLock().lock();
+        try {
+          // step 1. make sure all target paths are NOT exist.
+          List<PartialPath> targetPaths = node.getViewPathList();
+          List<MetadataException> failingMetadataException = new ArrayList<>();
+          for (PartialPath thisPath : targetPaths) {
+            // no alias list for a view, so the third parameter is null
+            Map<Integer, MetadataException> failingMeasurementMap =
+                schemaRegion.checkMeasurementExistence(
+                    thisPath.getDevicePath(),
+                    Collections.singletonList(thisPath.getMeasurement()),
+                    null);
+            // merge all exception into one map
+            for (Map.Entry<Integer, MetadataException> entry : failingMeasurementMap.entrySet()) {
+              failingMetadataException.add(entry.getValue());
+            }
+          }
+          // if there is some exception, handle each exception and return first of them.
+          if (!failingMetadataException.isEmpty()) {
+            MetadataException metadataException = failingMetadataException.get(0);
+            LOGGER.error("Metadata error: ", metadataException);
+            RegionExecutionResult result = new RegionExecutionResult();
+            result.setAccepted(false);
+            result.setMessage(metadataException.getMessage());
+            result.setStatus(
+                RpcUtils.getStatus(
+                    metadataException.getErrorCode(), metadataException.getMessage()));
+            return result;
+          }
+          // step 2. make sure all source paths are existed.
+          // TODO: CRTODO use a more efficient method
+          //                List<PartialPath> sourcePaths = node.getAllTimeSeriesPathInSource();
+          return super.visitCreateLogicalView(node, context);
+        } finally {
+          context.getRegionWriteValidationRWLock().writeLock().unlock();
+        }
+      } else {
+        return super.visitCreateLogicalView(node, context);
+      }
+      // end of visitCreateLogicalView
     }
   }
 

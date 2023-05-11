@@ -17,14 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.db.metadata.view.viewExpression.leaf;
 
-public class SortKey {
-  public static final String TIME = "TIME";
-  public static final String TIMESERIES = "TIMESERIES";
-  public static final String DEVICE = "DEVICE";
-  public static final String QUERYID = "QUERYID";
-  public static final String DATANODEID = "DATANODEID";
-  public static final String ELAPSEDTIME = "ELAPSEDTIME";
-  public static final String STATEMENT = "STATEMENT";
+import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public abstract class LeafViewOperand extends ViewExpression {
+
+  @Override
+  protected final boolean isLeafOperandInternal() {
+    return true;
+  }
+
+  @Override
+  public final List<ViewExpression> getChildViewExpressions() {
+    // leaf node has no child nodes.
+    return new ArrayList<>();
+  }
 }

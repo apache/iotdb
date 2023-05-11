@@ -19,45 +19,114 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenablePendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskProcessorStage implements PipeTaskStage {
+import javax.annotation.Nullable;
 
-  protected final PipeSubtaskExecutor executor;
-  protected final PipeSubtask subtask;
+public class PipeTaskProcessorStage extends PipeTaskStage {
 
-  protected PipeTaskProcessorStage(
-      PipeProcessorSubtaskExecutor executor, PipeProcessorSubtask subtask) {
-    this.executor = executor;
-    this.subtask = subtask;
+  protected final PipeProcessorSubtaskExecutor executor =
+      PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
+
+  protected final PipeProcessorSubtask subtask;
+
+  protected final ListenablePendingQueue<Event> pipeCollectorInputPendingQueue;
+  protected final ListenablePendingQueue<Event> pipeConnectorOutputPendingQueue;
+
+  /**
+   * @param pipeName pipe name
+   * @param dataRegionId data region id
+   * @param pipeCollectorInputEventSupplier used to input events from pipe collector
+   * @param pipeCollectorInputPendingQueue used to listen whether pipe collector event queue is from
+   *     empty to not empty or from not empty to empty, null means no need to listen
+   * @param pipeProcessorParameters used to create pipe processor
+   * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
+   */
+  public PipeTaskProcessorStage(
+      String pipeName,
+      String dataRegionId,
+      EventSupplier pipeCollectorInputEventSupplier,
+      @Nullable ListenablePendingQueue<Event> pipeCollectorInputPendingQueue,
+      PipeParameters pipeProcessorParameters,
+      ListenableBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+    final String taskId = pipeName + "_" + dataRegionId;
+    final PipeProcessor pipeProcessor =
+        PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+    final PipeEventCollector pipeConnectorOutputEventCollector =
+        new PipeEventCollector(pipeConnectorOutputPendingQueue);
+
+    this.subtask =
+        new PipeProcessorSubtask(
+            taskId,
+            pipeCollectorInputEventSupplier,
+            pipeProcessor,
+            pipeConnectorOutputEventCollector);
+
+    this.pipeCollectorInputPendingQueue =
+        pipeCollectorInputPendingQueue != null
+            ? pipeCollectorInputPendingQueue
+                .registerEmptyToNotEmptyListener(
+                    taskId,
+                    () -> {
+                      if (status == PipeStatus.RUNNING) {
+                        executor.start(subtask.getTaskID());
+                      }
+                    })
+                .registerNotEmptyToEmptyListener(taskId, () -> executor.stop(subtask.getTaskID()))
+            : null;
+    this.pipeConnectorOutputPendingQueue =
+        pipeConnectorOutputPendingQueue
+            .registerNotFullToFullListener(taskId, () -> executor.stop(subtask.getTaskID()))
+            .registerFullToNotFullListener(
+                taskId,
+                () -> {
+                  // only start when the pipe is running
+                  if (status == PipeStatus.RUNNING) {
+                    pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
+                    executor.start(subtask.getTaskID());
+                  }
+                });
   }
 
   @Override
-  public void create() throws PipeException {
+  public void createSubtask() throws PipeException {
     executor.register(subtask);
   }
 
   @Override
-  public void start() throws PipeException {
+  public void startSubtask() throws PipeException {
     executor.start(subtask.getTaskID());
   }
 
   @Override
-  public void stop() throws PipeException {
+  public void stopSubtask() throws PipeException {
     executor.stop(subtask.getTaskID());
   }
 
   @Override
-  public void drop() throws PipeException {
-    executor.deregister(subtask.getTaskID());
-  }
+  public void dropSubtask() throws PipeException {
+    final String taskId = subtask.getTaskID();
 
-  @Override
-  public PipeSubtask getSubtask() {
-    return subtask;
+    if (pipeCollectorInputPendingQueue != null) {
+      pipeCollectorInputPendingQueue.removeEmptyToNotEmptyListener(taskId);
+      pipeCollectorInputPendingQueue.removeNotEmptyToEmptyListener(taskId);
+    }
+
+    pipeConnectorOutputPendingQueue.removeNotFullToFullListener(taskId);
+    pipeConnectorOutputPendingQueue.removeFullToNotFullListener(taskId);
+
+    executor.deregister(taskId);
   }
 }

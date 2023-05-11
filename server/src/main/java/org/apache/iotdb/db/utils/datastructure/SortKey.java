@@ -17,21 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.utils.datastructure;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
-  }
+public class SortKey {
 
-  @Override
-  protected void executeForAWhile() {
-    // do nothing
-  }
+  public TsBlock tsBlock;
+  public int rowIndex;
 
-  @Override
-  public void close() {
-    // TODO
+  public SortKey(TsBlock tsBlock, int rowIndex) {
+    this.tsBlock = tsBlock;
+    this.rowIndex = rowIndex;
   }
 }

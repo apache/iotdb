@@ -46,4 +46,9 @@ public class MeasurementMNode extends AbstractMeasurementMNode<IMemMNode, BasicM
   public IMNodeContainer<IMemMNode> getChildren() {
     return MemMNodeContainer.emptyMNodeContainer();
   }
+
+  @Override
+  public final boolean isLogicalView() {
+    return false;
+  }
 }

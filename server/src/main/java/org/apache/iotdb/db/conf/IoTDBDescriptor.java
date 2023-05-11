@@ -676,6 +676,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+    conf.setMinCrossCompactionUnseqFileLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_cross_compaction_unseq_file_level",
+                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
 
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
@@ -1057,7 +1062,21 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
+    // the buffer for sort operator to calculate
+    conf.setSortBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty("sort_buffer_size_in_bytes", Long.toString(conf.getSortBufferSize()))
+                .trim()));
+
+    // tmp filePath for sort operator
+    conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
+
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
+
+    conf.setDataNodeSchemaCacheEvictionPolicy(
+        properties.getProperty(
+            "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1091,14 +1110,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferEntrySize =
-        Integer.parseInt(
-            properties.getProperty(
-                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
-    if (walBufferEntrySize > 0) {
-      conf.setWalBufferEntrySize(walBufferEntrySize);
-    }
-
     int walBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -1111,12 +1122,22 @@ public class IoTDBDescriptor {
   }
 
   private void loadWALHotModifiedProps(Properties properties) {
-    long fsyncWalDelayInMs =
+    long walAsyncModeFsyncDelayInMs =
         Long.parseLong(
             properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+                "wal_async_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalAsyncModeFsyncDelayInMs())));
+    if (walAsyncModeFsyncDelayInMs > 0) {
+      conf.setWalAsyncModeFsyncDelayInMs(walAsyncModeFsyncDelayInMs);
+    }
+
+    long walSyncModeFsyncDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "wal_sync_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalSyncModeFsyncDelayInMs())));
+    if (walSyncModeFsyncDelayInMs > 0) {
+      conf.setWalSyncModeFsyncDelayInMs(walSyncModeFsyncDelayInMs);
     }
 
     long walFileSizeThreshold =

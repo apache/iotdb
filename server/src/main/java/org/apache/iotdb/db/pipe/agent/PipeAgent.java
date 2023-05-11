@@ -23,7 +23,7 @@ import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
 
-/** PipeAgent is the entry point of the pipe module in DatNode. */
+/** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeAgent {
 
   private final PipePluginAgent pipePluginAgent;
