@@ -437,7 +437,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         addStatementExecutionLatency(
             OperationType.EXECUTE_LAST_DATA_QUERY,
             StatementType.QUERY,
-            System.nanoTime() - startNanoTime);
+            System.nanoTime() - startNanoTime,
+            TimeUnit.NANOSECONDS);
         COORDINATOR.cleanupQueryExecution(queryId, t);
       }
       SESSION_MANAGER.updateIdleTime();

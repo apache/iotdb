@@ -181,12 +181,7 @@ public class StatementGenerator {
 
     // iterate the path list and add it to from operator
     for (String pathStr : lastDataQueryReq.getPaths()) {
-      PartialPath path;
-      if (lastDataQueryReq.isLegalPathNodes()) {
-        path = new PartialPath(pathStr.split("\\."));
-      } else {
-        path = new PartialPath(pathStr);
-      }
+      PartialPath path = new PartialPath(pathStr.split("\\."));
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(

@@ -53,8 +53,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
@@ -119,66 +117,58 @@ public class FileLoaderUtils {
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
-    try {
-      // common path
-      TimeseriesMetadata timeSeriesMetadata;
-      // If the tsfile is closed, we need to load from tsfile
-      if (resource.isClosed()) {
-        // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
-        // we should not ignore the non-exist of device in TsFileMetadata
-        timeSeriesMetadata =
-            TimeSeriesMetadataCache.getInstance()
-                .get(
-                    new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                        resource.getTsFilePath(),
-                        seriesPath.getDevice(),
-                        seriesPath.getMeasurement()),
-                    allSensors,
-                    resource.getTimeIndexType() != 1,
-                    context.isDebug());
-        if (timeSeriesMetadata != null) {
-          timeSeriesMetadata.setChunkMetadataLoader(
-              new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
-        }
-      } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
-        loadFromMem = true;
-
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
-        if (timeSeriesMetadata != null) {
-          timeSeriesMetadata.setChunkMetadataLoader(
-              new MemChunkMetadataLoader(resource, seriesPath, context, filter));
-        }
-      }
-
+    // common path
+    TimeseriesMetadata timeSeriesMetadata;
+    // If the tsfile is closed, we need to load from tsfile
+    if (resource.isClosed()) {
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
+      timeSeriesMetadata =
+          TimeSeriesMetadataCache.getInstance()
+              .get(
+                  new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
+                      resource.getTsFilePath(),
+                      seriesPath.getDevice(),
+                      seriesPath.getMeasurement()),
+                  allSensors,
+                  resource.getTimeIndexType() != 1,
+                  context.isDebug());
       if (timeSeriesMetadata != null) {
-        long t2 = System.nanoTime();
-        try {
-          List<Modification> pathModifications =
-              context.getPathModifications(resource.getModFile(), seriesPath);
-          timeSeriesMetadata.setModified(!pathModifications.isEmpty());
-          if (timeSeriesMetadata.getStatistics().getStartTime()
-              > timeSeriesMetadata.getStatistics().getEndTime()) {
-            return null;
-          }
-          if (filter != null
-              && !filter.satisfyStartEndTime(
-                  timeSeriesMetadata.getStatistics().getStartTime(),
-                  timeSeriesMetadata.getStatistics().getEndTime())) {
-            return null;
-          }
-        } finally {
-          QUERY_METRICS.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_NONALIGNED, System.nanoTime() - t2);
-        }
+        timeSeriesMetadata.setChunkMetadataLoader(
+            new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
-      return timeSeriesMetadata;
-    } finally {
-      QUERY_METRICS.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
-          System.nanoTime() - t1);
+    } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
+      loadFromMem = true;
+
+      timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata.setChunkMetadataLoader(
+            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
+      }
     }
+
+    if (timeSeriesMetadata != null) {
+      long t2 = System.nanoTime();
+      try {
+        List<Modification> pathModifications =
+            context.getPathModifications(resource.getModFile(), seriesPath);
+        timeSeriesMetadata.setModified(!pathModifications.isEmpty());
+        if (timeSeriesMetadata.getStatistics().getStartTime()
+            > timeSeriesMetadata.getStatistics().getEndTime()) {
+          return null;
+        }
+        if (filter != null
+            && !filter.satisfyStartEndTime(
+                timeSeriesMetadata.getStatistics().getStartTime(),
+                timeSeriesMetadata.getStatistics().getEndTime())) {
+          return null;
+        }
+      } finally {
+        QUERY_METRICS.recordSeriesScanCost(
+            TIMESERIES_METADATA_MODIFICATION_NONALIGNED, System.nanoTime() - t2);
+      }
+    }
+    return timeSeriesMetadata;
   }
 
   /**
@@ -278,7 +268,7 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      if (loadFromMem) {
+      if (!loadFromMem) {
         QUERY_METRICS.recordSeriesScanCost(
             LOAD_TIMESERIES_METADATA_ALIGNED_MEM, System.nanoTime() - t1);
       }

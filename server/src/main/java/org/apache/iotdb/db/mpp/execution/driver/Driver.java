@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -383,14 +382,14 @@ public abstract class Driver implements IDriver {
       sink.setNoMoreTsBlocks();
 
       // record operator execution statistics to metrics
-      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
-      for (OperatorContext operatorContext : operatorContexts) {
-        String operatorType = operatorContext.getOperatorType();
-        QUERY_METRICS.recordOperatorExecutionCost(
-            operatorType, operatorContext.getTotalExecutionTimeInNanos());
-        QUERY_METRICS.recordOperatorExecutionCount(
-            operatorType, operatorContext.getNextCalledCount());
-      }
+      //      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
+      //      for (OperatorContext operatorContext : operatorContexts) {
+      //        String operatorType = operatorContext.getOperatorType();
+      //        QUERY_METRICS.recordOperatorExecutionCost(
+      //            operatorType, operatorContext.getTotalExecutionTimeInNanos());
+      //        QUERY_METRICS.recordOperatorExecutionCount(
+      //            operatorType, operatorContext.getNextCalledCount());
+      //      }
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

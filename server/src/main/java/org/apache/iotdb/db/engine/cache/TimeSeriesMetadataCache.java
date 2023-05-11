@@ -52,9 +52,6 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
-
 /**
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
  * LRU.
@@ -124,92 +121,86 @@ public class TimeSeriesMetadataCache {
       throws IOException {
     long startTime = System.nanoTime();
     boolean cacheHit = true;
-    try {
-      if (!CACHE_ENABLE) {
-        cacheHit = false;
+    if (!CACHE_ENABLE) {
+      cacheHit = false;
 
-        // bloom filter part
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-        BloomFilter bloomFilter = reader.readBloomFilter();
-        if (bloomFilter != null
-            && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-          return null;
-        }
-        TimeseriesMetadata timeseriesMetadata =
-            reader.readTimeseriesMetadata(
-                new Path(key.device, key.measurement, true), ignoreNotExists);
-        return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
-            ? null
-            : timeseriesMetadata;
+      // bloom filter part
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
+      BloomFilter bloomFilter = reader.readBloomFilter();
+      if (bloomFilter != null
+          && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+        return null;
       }
+      TimeseriesMetadata timeseriesMetadata =
+          reader.readTimeseriesMetadata(
+              new Path(key.device, key.measurement, true), ignoreNotExists);
+      return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
+          ? null
+          : timeseriesMetadata;
+    }
 
-      TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
+    TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
 
-      if (timeseriesMetadata == null) {
-        if (debug) {
-          DEBUG_LOGGER.info(
-              "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
-          DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
-        }
-        // allow for the parallelism of different devices
-        synchronized (
-            devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
-          // double check
-          timeseriesMetadata = lruCache.getIfPresent(key);
-          if (timeseriesMetadata == null) {
-            cacheHit = false;
+    if (timeseriesMetadata == null) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
+        DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
+      }
+      // allow for the parallelism of different devices
+      synchronized (
+          devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
+        // double check
+        timeseriesMetadata = lruCache.getIfPresent(key);
+        if (timeseriesMetadata == null) {
+          cacheHit = false;
 
-            Path path = new Path(key.device, key.measurement, false);
-            // bloom filter part
-            BloomFilter bloomFilter =
-                BloomFilterCache.getInstance()
-                    .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-            if (bloomFilter != null) {
-              if (!bloomFilter.contains(path.getFullPath())) {
-                if (debug) {
-                  DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
-                }
-                return null;
+          Path path = new Path(key.device, key.measurement, false);
+          // bloom filter part
+          BloomFilter bloomFilter =
+              BloomFilterCache.getInstance()
+                  .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
+          if (bloomFilter != null) {
+            if (!bloomFilter.contains(path.getFullPath())) {
+              if (debug) {
+                DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
+              return null;
             }
-            TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-            List<TimeseriesMetadata> timeSeriesMetadataList =
-                reader.readTimeseriesMetadata(path, allSensors);
-            // put TimeSeriesMetadata of all sensors used in this query into cache
-            for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
-              TimeSeriesMetadataCacheKey k =
-                  new TimeSeriesMetadataCacheKey(
-                      key.filePath, key.device, metadata.getMeasurementId());
-              if (metadata.getStatistics().getCount() != 0) {
-                lruCache.put(k, metadata);
-              }
-              if (metadata.getMeasurementId().equals(key.measurement)) {
-                timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
-              }
+          }
+          TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
+          List<TimeseriesMetadata> timeSeriesMetadataList =
+              reader.readTimeseriesMetadata(path, allSensors);
+          // put TimeSeriesMetadata of all sensors used in this query into cache
+          for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
+            TimeSeriesMetadataCacheKey k =
+                new TimeSeriesMetadataCacheKey(
+                    key.filePath, key.device, metadata.getMeasurementId());
+            if (metadata.getStatistics().getCount() != 0) {
+              lruCache.put(k, metadata);
+            }
+            if (metadata.getMeasurementId().equals(key.measurement)) {
+              timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
             }
           }
         }
       }
-      if (timeseriesMetadata == null) {
-        if (debug) {
-          DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
-        }
-        return null;
-      } else {
-        if (debug) {
-          DEBUG_LOGGER.info(
-              "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
-              key.device,
-              key.measurement,
-              key.filePath,
-              timeseriesMetadata);
-        }
-        return new TimeseriesMetadata(timeseriesMetadata);
+    }
+    if (timeseriesMetadata == null) {
+      if (debug) {
+        DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
       }
-    } finally {
-      QUERY_METRICS.recordSeriesScanCost(
-          cacheHit ? READ_TIMESERIES_METADATA_CACHE : READ_TIMESERIES_METADATA_FILE,
-          System.nanoTime() - startTime);
+      return null;
+    } else {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
+            key.device,
+            key.measurement,
+            key.filePath,
+            timeseriesMetadata);
+      }
+      return new TimeseriesMetadata(timeseriesMetadata);
     }
   }
 
