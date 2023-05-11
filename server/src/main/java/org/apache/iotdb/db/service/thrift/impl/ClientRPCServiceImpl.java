@@ -374,6 +374,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
     long startTime = System.currentTimeMillis();
+    long startNanoTime = System.nanoTime();
     Throwable t = null;
     try {
       Statement s = StatementGenerator.createStatement(req, clientSession.getZoneId());
@@ -436,7 +437,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         addStatementExecutionLatency(
             OperationType.EXECUTE_LAST_DATA_QUERY,
             StatementType.QUERY,
-            COORDINATOR.getTotalExecutionTime(queryId));
+            System.nanoTime() - startNanoTime);
         COORDINATOR.cleanupQueryExecution(queryId, t);
       }
       SESSION_MANAGER.updateIdleTime();
@@ -2168,6 +2169,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   /** Add stat of operation into metrics */
   private void addStatementExecutionLatency(
       OperationType operation, StatementType statementType, long costTime) {
+    addStatementExecutionLatency(operation, statementType, costTime, TimeUnit.MILLISECONDS);
+  }
+
+  private void addStatementExecutionLatency(
+      OperationType operation, StatementType statementType, long costTime, TimeUnit timeUnit) {
     if (statementType == null) {
       return;
     }
@@ -2175,7 +2181,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     MetricService.getInstance()
         .timer(
             costTime,
-            TimeUnit.MILLISECONDS,
+            timeUnit,
             Metric.PERFORMANCE_OVERVIEW.toString(),
             MetricLevel.CORE,
             Tag.INTERFACE.toString(),
