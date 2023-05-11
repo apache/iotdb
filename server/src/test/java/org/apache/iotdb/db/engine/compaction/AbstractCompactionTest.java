@@ -32,11 +32,13 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBloc
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -71,6 +73,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.junit.Assert.fail;
 
@@ -599,5 +602,25 @@ public class AbstractCompactionTest {
 
   protected void setDataType(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  protected void resetFileName(TsFileResource resource, int version) {
+    // rename TsFile
+    File file = resource.getTsFile();
+    String[] fileInfo = file.getPath().split(FILE_NAME_SEPARATOR);
+    fileInfo[1] = String.valueOf(version);
+    String newFileName = StringUtil.join(fileInfo, FILE_NAME_SEPARATOR);
+    file.renameTo(new File(newFileName));
+
+    resource.setVersion(version);
+    resource.setFile(new File(newFileName));
+
+    // rename resource file
+    file = new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
+
+    // rename mods file
+    file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+    file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
   }
 }
