@@ -52,11 +52,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
-import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
@@ -252,45 +250,38 @@ public class FileLoaderUtils {
       }
 
       if (alignedTimeSeriesMetadata != null) {
-        long t2 = System.nanoTime();
-        try {
-          if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
-              > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
-            return null;
-          }
-          if (filter != null
-              && !filter.satisfyStartEndTime(
-                  alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
-                  alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
-            return null;
-          }
-
-          // set modifications to each aligned path
-          List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-              alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
-          boolean modified = false;
-          for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-            if (valueTimeSeriesMetadataList.get(i) != null) {
-              List<Modification> pathModifications =
-                  context.getPathModifications(
-                      resource.getModFile(), vectorPath.getPathWithMeasurement(i));
-              valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
-              modified = (modified || !pathModifications.isEmpty());
-            }
-          }
-          alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
-        } finally {
-          QUERY_METRICS.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_ALIGNED, System.nanoTime() - t2);
+        if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
+            > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+          return null;
         }
+        if (filter != null
+            && !filter.satisfyStartEndTime(
+                alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
+                alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
+          return null;
+        }
+
+        // set modifications to each aligned path
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+            alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
+        boolean modified = false;
+        for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+          if (valueTimeSeriesMetadataList.get(i) != null) {
+            List<Modification> pathModifications =
+                context.getPathModifications(
+                    resource.getModFile(), vectorPath.getPathWithMeasurement(i));
+            valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
+            modified = (modified || !pathModifications.isEmpty());
+          }
+        }
+        alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          System.nanoTime() - t1);
+      if (loadFromMem) {
+        QUERY_METRICS.recordSeriesScanCost(
+            LOAD_TIMESERIES_METADATA_ALIGNED_MEM, System.nanoTime() - t1);
+      }
     }
   }
 
