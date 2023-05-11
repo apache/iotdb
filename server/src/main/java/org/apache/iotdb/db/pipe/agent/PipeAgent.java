@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent;
 
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
+import org.apache.iotdb.db.pipe.agent.receive.PipeReceiveAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
 
@@ -29,12 +30,14 @@ public class PipeAgent {
   private final PipePluginAgent pipePluginAgent;
   private final PipeTaskAgent pipeTaskAgent;
   private final PipeRuntimeAgent pipeRuntimeAgent;
+  private final PipeReceiveAgent pipeReceiveAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
     pipePluginAgent = new PipePluginAgent();
     pipeTaskAgent = new PipeTaskAgent();
     pipeRuntimeAgent = new PipeRuntimeAgent();
+    pipeReceiveAgent = new PipeReceiveAgent();
   }
 
   /** The singleton holder of PipeAgent. */
@@ -67,5 +70,9 @@ public class PipeAgent {
    */
   public static PipeRuntimeAgent runtime() {
     return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
+  }
+
+  public static PipeReceiveAgent receive() {
+    return PipeAgentHolder.HANDLE.pipeReceiveAgent;
   }
 }

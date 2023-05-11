@@ -36,6 +36,10 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     this.insertNode = insertNode;
   }
 
+  public InsertNode getInsertNode() {
+    return insertNode;
+  }
+
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     throw new UnsupportedOperationException("Not implemented yet");

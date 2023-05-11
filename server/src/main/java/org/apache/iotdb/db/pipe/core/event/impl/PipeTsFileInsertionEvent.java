@@ -31,6 +31,10 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent {
     this.tsFile = tsFile;
   }
 
+  public File getTsFile() {
+    return tsFile;
+  }
+
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     throw new UnsupportedOperationException("Not implemented yet");

@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
@@ -75,6 +76,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -2072,6 +2079,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
     return SyncService.getInstance().transportFile(metaInfo, buff);
+  }
+
+  @Override
+  public TPipeHandshakeResp pipeHandshake(TPipeHandshakeReq req) throws TException {
+    return PipeAgent.receive().handshake(req);
+  }
+
+  @Override
+  public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
+    return PipeAgent.receive().heartbeat(req);
+  }
+
+  @Override
+  public TPipeTransferResp pipeTransfer(TPipeTransferReq req) throws TException {
+    return PipeAgent.receive().transfer(req, partitionFetcher, schemaFetcher);
   }
 
   @Override

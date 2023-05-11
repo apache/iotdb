@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.pipe.config;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import java.io.File;
+
 // TODO: make these parameters configurable
 // TODO: make all pipe related parameters in one place
 // TODO: set the default value of the parameters in IoTDBDescriptor
@@ -35,6 +39,15 @@ public class PipeConfig {
   private final int realtimeCollectorPendingQueueTabletLimit =
       realtimeCollectorPendingQueueCapacity / 2;
 
+  private final String pipeVersion = "1.0";
+
+  private final String receiveFileDir =
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+          + File.separator
+          + "pipe"; // TODO: replace with resource manager
+
+  private final int readFileBufferSize = 8388608;
+
   public int getDefaultRingBufferSize() {
     return defaultRingBufferSize;
   }
@@ -49,6 +62,18 @@ public class PipeConfig {
 
   public int getRealtimeCollectorPendingQueueTabletLimit() {
     return realtimeCollectorPendingQueueTabletLimit;
+  }
+
+  public String getPipeVersion() {
+    return pipeVersion;
+  }
+
+  public String getReceiveFileDir() {
+    return receiveFileDir;
+  }
+
+  public int getReadFileBufferSize() {
+    return readFileBufferSize;
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
