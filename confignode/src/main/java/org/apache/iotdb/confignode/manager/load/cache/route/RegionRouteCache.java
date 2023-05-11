@@ -145,6 +145,10 @@ public class RegionRouteCache {
     LOGGER.info("[NoElect] Force update region priority: {}", regionPriority);
   }
 
+  public boolean isRegionGroupUnready() {
+    return unReadyLeaderId == leaderId.get() || unReadyRegionPriority.equals(regionPriority.get());
+  }
+
   public int getLeaderId() {
     return leaderId.get();
   }
