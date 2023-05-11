@@ -125,6 +125,11 @@ public class PipeTsFileHolderTest {
     pipeTsFileHolder.decreaseFileReference(pipeTsfile2);
     Assert.assertEquals(0, pipeTsFileHolder.getFileReferenceCount(pipeTsfile1));
     Assert.assertEquals(0, pipeTsFileHolder.getFileReferenceCount(pipeTsfile2));
+
+    pipeTsFileHolder.decreaseFileReference(pipeTsfile1);
+    pipeTsFileHolder.decreaseFileReference(pipeTsfile2);
+    Assert.assertEquals(0, pipeTsFileHolder.getFileReferenceCount(pipeTsfile1));
+    Assert.assertEquals(0, pipeTsFileHolder.getFileReferenceCount(pipeTsfile2));
   }
 
   private void createTsfile1(String tsfilePath) throws Exception {
