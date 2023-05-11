@@ -35,9 +35,9 @@ public class PipeValidateHandshakeReq extends TPipeHandshakeReq {
   private final String timestampPrecision;
 
   public PipeValidateHandshakeReq(
-      String pipeVersion, String iotdbVersion, String timestampPrecision) {
+      String pipeVersion, String IoTDBVersion, String timestampPrecision) {
     this.pipeVersion = pipeVersion;
-    this.iotdbVersion = iotdbVersion;
+    this.IoTDBVersion = IoTDBVersion;
     this.timestampPrecision = timestampPrecision;
   }
 
@@ -58,7 +58,7 @@ public class PipeValidateHandshakeReq extends TPipeHandshakeReq {
   public static PipeValidateHandshakeReq fromTPipeHandshakeReq(TPipeHandshakeReq req) {
     return new PipeValidateHandshakeReq(
         req.getPipeVersion(),
-        req.getIotdbVersion(),
+        req.getIoTDBVersion(),
         ReadWriteIOUtils.readString(req.handshakeInfo));
   }
 }

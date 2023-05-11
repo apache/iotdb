@@ -63,11 +63,11 @@ public class PipeExecuteThriftReqDirectlyHandler implements PipeThriftReqHandler
   @Override
   public TPipeHandshakeResp handleHandshakeReq(TPipeHandshakeReq req) {
     PipeValidateHandshakeReq validateReq = PipeValidateHandshakeReq.fromTPipeHandshakeReq(req);
-    if (!config.getIoTDBMajorVersion().equals(validateReq.iotdbVersion)) {
+    if (!config.getIoTDBMajorVersion().equals(validateReq.getIoTDBVersion())) {
       String msg =
           String.format(
               "IoTDB version %s, handshake pipe version %s, validate error.",
-              config.getIoTDBMajorVersion(), validateReq.iotdbVersion);
+              config.getIoTDBMajorVersion(), validateReq.getIoTDBVersion());
       LOGGER.warn(msg);
       return new TPipeHandshakeResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
     } else if (!config.getTimestampPrecision().equals(validateReq.getTimestampPrecision())) {

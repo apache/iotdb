@@ -457,7 +457,7 @@ struct TSyncTransportMetaInfo{
 
 struct TPipeHandshakeReq {
     1:required string pipeVersion
-    2:required string iotdbVersion
+    2:required string IoTDBVersion
     3:optional binary handshakeInfo
 }
 

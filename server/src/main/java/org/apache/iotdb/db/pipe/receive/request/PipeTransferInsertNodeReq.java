@@ -31,6 +31,8 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferInsertNodeReq.class);
   private final InsertNode insertNode;
@@ -38,6 +40,16 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
   public PipeTransferInsertNodeReq(String pipeVersion, InsertNode insertNode) {
     this.pipeVersion = pipeVersion;
     this.insertNode = insertNode;
+  }
+
+  public PipeTransferInsertNodeReq(String pipeVersion, InsertNode insertNode, ByteBuffer body) {
+    this.pipeVersion = pipeVersion;
+    this.insertNode = insertNode;
+    this.body = body;
+  }
+
+  public InsertNode getInsertNode() {
+    return insertNode;
   }
 
   public Statement constructStatement() {
@@ -88,6 +100,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
   public static PipeTransferInsertNodeReq fromTPipeTransferReq(TPipeTransferReq req) {
     return new PipeTransferInsertNodeReq(
-        req.pipeVersion, (InsertNode) PlanNodeType.deserialize(req.body));
+        req.pipeVersion, (InsertNode) PlanNodeType.deserialize(req.body), req.body);
   }
 }
