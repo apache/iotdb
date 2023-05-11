@@ -43,7 +43,7 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
-        l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
+        TimeSeriesMetadataCache::calculateTimeSeriesMetadataHitRatio,
         Tag.NAME.toString(),
         "timeSeriesMeta");
     metricService.createAutoGauge(

@@ -74,9 +74,6 @@ public class TimeSeriesMetadataCache {
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
-  private final AtomicLong bloomFilterRequestCount = new AtomicLong(0L);
-  private final AtomicLong bloomFilterPreventCount = new AtomicLong(0L);
-
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
@@ -168,9 +165,7 @@ public class TimeSeriesMetadataCache {
                 BloomFilterCache.getInstance()
                     .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
             if (bloomFilter != null) {
-              bloomFilterRequestCount.incrementAndGet();
               if (!bloomFilter.contains(path.getFullPath())) {
-                bloomFilterPreventCount.incrementAndGet();
                 if (debug) {
                   DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
                 }
@@ -239,10 +234,7 @@ public class TimeSeriesMetadataCache {
   }
 
   public double calculateBloomFilterHitRatio() {
-    if (bloomFilterRequestCount.get() == 0L) {
-      return 1.0d;
-    }
-    return bloomFilterPreventCount.get() * 100.0d / bloomFilterRequestCount.get();
+    return BloomFilterCache.getInstance().calculateHitRatio();
   }
 
   /** clear LRUCache. */

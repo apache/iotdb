@@ -105,7 +105,7 @@ public class BloomFilterCache {
     return bloomFilter;
   }
 
-  public double calculateChunkHitRatio() {
+  public double calculateHitRatio() {
     return lruCache.stats().hitRate();
   }
 
