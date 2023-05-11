@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.common.schematree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,14 +33,14 @@ public class DeviceSchemaInfo {
 
   private PartialPath devicePath;
   private boolean isAligned;
-  private List<MeasurementSchemaInfo> measurementSchemaInfoList;
+  private List<IMeasurementSchemaInfo> measurementSchemaInfoList;
 
   private DeviceSchemaInfo() {}
 
   public DeviceSchemaInfo(
       PartialPath devicePath,
       boolean isAligned,
-      List<MeasurementSchemaInfo> measurementSchemaInfoList) {
+      List<IMeasurementSchemaInfo> measurementSchemaInfoList) {
     this.devicePath = devicePath;
     this.isAligned = isAligned;
     this.measurementSchemaInfoList = measurementSchemaInfoList;
@@ -54,7 +54,7 @@ public class DeviceSchemaInfo {
     return isAligned;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->
@@ -83,17 +83,17 @@ public class DeviceSchemaInfo {
           .collect(Collectors.toList());
     }
     List<MeasurementPath> measurementPaths = new ArrayList<>();
-    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
+    for (IMeasurementSchemaInfo iMeasurementSchemaInfo : measurementSchemaInfoList) {
       MeasurementPath measurementPath =
           new MeasurementPath(
-              devicePath.concatNode(measurementSchemaInfo.getName()),
-              measurementSchemaInfo.getSchema());
+              devicePath.concatNode(iMeasurementSchemaInfo.getName()),
+              iMeasurementSchemaInfo.getSchema());
       measurementPath.setUnderAlignedEntity(isAligned);
-      if (measurements.contains(measurementSchemaInfo.getName())) {
+      if (measurements.contains(iMeasurementSchemaInfo.getName())) {
         measurementPaths.add(measurementPath);
-      } else if (measurementSchemaInfo.getAlias() != null
-          && measurements.contains(measurementSchemaInfo.getAlias())) {
-        measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
+      } else if (iMeasurementSchemaInfo.getAlias() != null
+          && measurements.contains(iMeasurementSchemaInfo.getAlias())) {
+        measurementPath.setMeasurementAlias(iMeasurementSchemaInfo.getAlias());
         measurementPaths.add(measurementPath);
       }
     }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorFactor
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
@@ -533,7 +534,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(MeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementId)
             .collect(Collectors.toList()));
 
     devicePath = new PartialPath("root.sg.d2.a");
@@ -546,7 +547,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(MeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementId)
             .collect(Collectors.toList()));
   }
 

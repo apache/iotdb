@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchemaType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,6 +56,11 @@ public class LogicalViewSchema
     } else {
       return this.measurementId.compareTo(o.measurementId);
     }
+  }
+
+  @Override
+  public MeasurementSchemaType getSchemaType() {
+    return MeasurementSchemaType.LOGICAL_VIEW_SCHEMA;
   }
 
   @Override
@@ -183,6 +189,11 @@ public class LogicalViewSchema
   @Override
   public int partialSerializeTo(OutputStream outputStream) throws IOException {
     return this.serializeTo(outputStream);
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return true;
   }
 
   public static LogicalViewSchema deserializeFrom(InputStream inputStream) throws IOException {

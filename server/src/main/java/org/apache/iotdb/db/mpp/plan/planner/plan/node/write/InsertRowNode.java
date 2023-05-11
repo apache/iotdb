@@ -836,14 +836,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   }
 
   @Override
-  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo iMeasurementSchemaInfo) {
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
-    if (measurementSchemaInfo == null) {
+    if (iMeasurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+      if (iMeasurementSchemaInfo.isLogicalView()) {
+        throw new RuntimeException(
+            new UnsupportedOperationException(
+                "This iMeasurementSchemaInfo is logical view schema info,"
+                    + " can not convert it into MeasurementSchema. InsertRowNode should use a measurementSchemaInfo."));
+      } else {
+        measurementSchemas[index] = (MeasurementSchema) iMeasurementSchemaInfo.getSchema();
+      }
     }
     if (isNeedInferType) {
       return;

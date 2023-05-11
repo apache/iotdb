@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
@@ -53,7 +54,7 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
   @Override
   protected DeviceSchemaInfo generateResult(SchemaNode nextMatchedNode) {
     PartialPath path = getPartialPathFromRootToNode(nextMatchedNode);
-    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
+    List<IMeasurementSchemaInfo> iMeasurementSchemaInfos = new ArrayList<>();
     Iterator<SchemaNode> iterator = getChildrenIterator(nextMatchedNode);
     SchemaNode node;
     SchemaMeasurementNode measurementNode;
@@ -61,7 +62,7 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
       node = iterator.next();
       if (node.isMeasurement()) {
         measurementNode = node.getAsMeasurementNode();
-        measurementSchemaInfoList.add(
+        iMeasurementSchemaInfos.add(
             new MeasurementSchemaInfo(
                 measurementNode.getName(),
                 measurementNode.getSchema(),
@@ -70,6 +71,6 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
     }
 
     return new DeviceSchemaInfo(
-        path, nextMatchedNode.getAsEntityNode().isAligned(), measurementSchemaInfoList);
+        path, nextMatchedNode.getAsEntityNode().isAligned(), iMeasurementSchemaInfos);
   }
 }

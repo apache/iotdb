@@ -16,18 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.write.schema;
 
-package org.apache.iotdb.db.mpp.common.schematree;
+public enum MeasurementSchemaType {
+  MEASUREMENT_SCHEMA((byte) 0),
 
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+  VECTOR_MEASUREMENT_SCHEMA((byte) 1),
 
-public interface IMeasurementSchemaInfo {
+  LOGICAL_VIEW_SCHEMA((byte) 2),
+  ;
 
-  String getName();
+  private final byte type;
 
-  IMeasurementSchema getSchema();
+  MeasurementSchemaType(byte b) {
+    this.type = b;
+  }
 
-  String getAlias();
-
-  boolean isLogicalView();
+  public byte getMeasurementSchemaTypeInByteEnum() {
+    return this.type;
+  }
 }

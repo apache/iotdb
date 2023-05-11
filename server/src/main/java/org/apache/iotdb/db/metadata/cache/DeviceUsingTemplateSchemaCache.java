@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
@@ -130,17 +131,27 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
-            public MeasurementSchema getSchema() {
-              return new MeasurementSchema(
-                  schema.getMeasurementId(),
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor());
+            public IMeasurementSchema getSchema() {
+              if (isLogicalView()) {
+                return new LogicalViewSchema(
+                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+              } else {
+                return new MeasurementSchema(
+                    schema.getMeasurementId(),
+                    schema.getType(),
+                    schema.getEncodingType(),
+                    schema.getCompressor());
+              }
             }
 
             @Override
             public String getAlias() {
               return null;
+            }
+
+            @Override
+            public boolean isLogicalView() {
+              return schema.isLogicalView();
             }
           });
     }

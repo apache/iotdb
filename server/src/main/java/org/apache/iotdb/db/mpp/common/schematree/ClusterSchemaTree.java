@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLi
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -133,16 +133,16 @@ public class ClusterSchemaTree implements ISchemaTree {
       return null;
     }
 
-    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
+    List<IMeasurementSchemaInfo> iMeasurementSchemaInfos = new ArrayList<>();
     SchemaNode node;
     SchemaMeasurementNode measurementNode;
     for (String measurement : measurements) {
       node = cur.getChild(measurement);
       if (node == null) {
-        measurementSchemaInfoList.add(null);
+        iMeasurementSchemaInfos.add(null);
       } else {
         measurementNode = node.getAsMeasurementNode();
-        measurementSchemaInfoList.add(
+        iMeasurementSchemaInfos.add(
             new MeasurementSchemaInfo(
                 measurementNode.getName(),
                 measurementNode.getSchema(),
@@ -151,7 +151,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
 
     return new DeviceSchemaInfo(
-        devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
+        devicePath, cur.getAsEntityNode().isAligned(), iMeasurementSchemaInfos);
   }
 
   public List<Integer> compute(
@@ -195,7 +195,7 @@ public class ClusterSchemaTree implements ISchemaTree {
   private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
     appendSingleMeasurement(
         measurementPath,
-        (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.getMeasurementSchema(),
         measurementPath.getTagMap(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
@@ -203,7 +203,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   public void appendSingleMeasurement(
       PartialPath path,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       Map<String, String> tagMap,
       String alias,
       boolean isAligned) {

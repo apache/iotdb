@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -344,7 +344,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0; i < measurements.length; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(i);
@@ -370,7 +370,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0, size = schemaList.size(); i < size; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));

@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
@@ -76,12 +77,12 @@ public class SchemaFetchScanOperatorTest {
         schemaTree.searchDeviceSchemaInfo(
             new PartialPath("root.sg.d2.a"), Arrays.asList("s1", "status"));
     Assert.assertTrue(deviceSchemaInfo.isAligned());
-    List<MeasurementSchema> measurementSchemaList = deviceSchemaInfo.getMeasurementSchemaList();
-    Assert.assertEquals(2, measurementSchemaList.size());
+    List<IMeasurementSchema> iMeasurementSchemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    Assert.assertEquals(2, iMeasurementSchemaList.size());
     Assert.assertEquals(
         Arrays.asList("s1", "s2"),
-        measurementSchemaList.stream()
-            .map(MeasurementSchema::getMeasurementId)
+        iMeasurementSchemaList.stream()
+            .map(IMeasurementSchema::getMeasurementId)
             .sorted()
             .collect(Collectors.toList()));
 

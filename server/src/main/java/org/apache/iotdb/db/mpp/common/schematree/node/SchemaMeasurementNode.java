@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.node;
 
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchemaType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,11 +34,11 @@ import java.util.Map;
 public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSchemaInfo {
 
   private String alias;
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
 
   private Map<String, String> tagMap;
 
-  public SchemaMeasurementNode(String name, MeasurementSchema schema) {
+  public SchemaMeasurementNode(String name, IMeasurementSchema schema) {
     super(name);
     this.schema = schema;
   }
@@ -44,11 +47,16 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     return alias;
   }
 
+  @Override
+  public boolean isLogicalView() {
+    return this.schema.isLogicalView();
+  }
+
   public void setAlias(String alias) {
     this.alias = alias;
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
@@ -72,7 +80,7 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     measurementNode.setAlias(alias);
   }
 
-  private void setSchema(MeasurementSchema schema) {
+  private void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 
@@ -99,16 +107,30 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(getType(), outputStream);
     ReadWriteIOUtils.write(name, outputStream);
-
     ReadWriteIOUtils.write(alias, outputStream);
+
+    MeasurementSchemaType measurementSchemaType = schema.getSchemaType();
+    ReadWriteIOUtils.write(
+        measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), outputStream);
     schema.serializeTo(outputStream);
+
     ReadWriteIOUtils.write(tagMap, outputStream);
   }
 
   public static SchemaMeasurementNode deserialize(InputStream inputStream) throws IOException {
     String name = ReadWriteIOUtils.readString(inputStream);
     String alias = ReadWriteIOUtils.readString(inputStream);
-    MeasurementSchema schema = MeasurementSchema.deserializeFrom(inputStream);
+
+    IMeasurementSchema schema = null;
+    Byte measurementSchemaType = ReadWriteIOUtils.readByte(inputStream);
+    if (measurementSchemaType
+        == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+      schema = MeasurementSchema.deserializeFrom(inputStream);
+    } else if (measurementSchemaType
+        == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+      schema = LogicalViewSchema.deserializeFrom(inputStream);
+    }
+
     Map<String, String> tagMap = ReadWriteIOUtils.readMap(inputStream);
 
     SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema);
