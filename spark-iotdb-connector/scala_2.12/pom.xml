@@ -23,8 +23,9 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>spark-iotdb-connector</artifactId>
+        <artifactId>iotdb-parent</artifactId>
         <version>1.2.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>spark-iotdb-connector_2.12</artifactId>
     <properties>
@@ -63,7 +64,7 @@
         </dependency>
     </dependencies>
     <build>
-        <sourceDirectory>../src</sourceDirectory>
+        <sourceDirectory>../src/main/scala</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>

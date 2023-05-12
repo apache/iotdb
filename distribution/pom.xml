@@ -152,7 +152,13 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>spark-iotdb-connector</artifactId>
+            <artifactId>spark-iotdb-connector_2.11</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>spark-iotdb-connector_2.12</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
