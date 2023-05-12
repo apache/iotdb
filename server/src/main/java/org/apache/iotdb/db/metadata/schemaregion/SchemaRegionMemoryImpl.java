@@ -1412,5 +1412,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         return new RecoverOperationResult(e);
       }
     }
+
+    public RecoverOperationResult visitCreateLogicalView(
+        ICreateLogicalViewPlan createLogicalViewPlan, SchemaRegionMemoryImpl context) {
+      try {
+        createLogicalView(createLogicalViewPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
   }
 }
