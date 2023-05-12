@@ -124,7 +124,8 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    byte[] bytes = s.getBytes();
+    byte[] bytes = new byte[s.length()];
+    s.getBytes(0, s.length(), bytes, 0);
     len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
