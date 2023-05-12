@@ -132,7 +132,7 @@ class DataNodeClient(object):
                          timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
             queryExpressions=query_expressions,
-            # queryFilter=query_filter,
+            queryFilter=query_filter,
             fetchSize=fetch_size,
             timeout=timeout
         )

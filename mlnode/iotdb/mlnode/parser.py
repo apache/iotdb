@@ -54,6 +54,8 @@ class _ConfigParser(argparse.ArgumentParser):
         args = []
         for k, v in config_dict.items():
             args.append("--{}".format(k))
+            if v is None:
+                continue
             if isinstance(v, str) and re.match(r'^\[(.*)]$', v):
                 v = eval(v)
                 v = [str(i) for i in v]
@@ -113,7 +115,7 @@ _data_config_parser.add_argument('--dataset_type',
                                  choices=list(DatasetType))
 _data_config_parser.add_argument('--filename', type=str, default='')
 _data_config_parser.add_argument('--query_expressions', type=str, nargs='*', default=[])
-_data_config_parser.add_argument('--query_filter', type=str, default='')
+_data_config_parser.add_argument('--query_filter', type=str, default=None)
 _data_config_parser.add_argument('--time_embed', type=str, default='h')
 _data_config_parser.add_argument('--input_len', type=int, default=96)
 _data_config_parser.add_argument('--pred_len', type=int, default=96)
