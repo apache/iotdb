@@ -85,10 +85,6 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.getLeft() > this.leaderSample.get().getLeft()) {
           this.leaderSample.set(leaderSample);
-          LOGGER.info(
-              "[NoElect] Cache leader sample: {} for region group: {}",
-              leaderSample,
-              consensusGroupId);
         }
         break;
       case ConsensusFactory.IOT_CONSENSUS:
@@ -110,10 +106,6 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
           leaderId.set(leaderSample.get().getRight());
-          LOGGER.info(
-              "[NoElect] Periodic update leaderId: {} for region group: {}",
-              leaderId.get(),
-              consensusGroupId);
           return true;
         }
         return false;
@@ -142,7 +134,6 @@ public class RegionRouteCache {
    */
   public void forceUpdateRegionPriority(TRegionReplicaSet regionPriority) {
     this.regionPriority.set(regionPriority);
-    LOGGER.info("[NoElect] Force update region priority: {}", regionPriority);
   }
 
   public boolean isRegionGroupUnready() {
