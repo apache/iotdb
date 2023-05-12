@@ -142,6 +142,8 @@ class DispatcherThread extends DynamicThread {
       if (appendEntryResult != null) {
         handler.onComplete(appendEntryResult);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       handler.onError(e);
     }
@@ -168,6 +170,8 @@ class DispatcherThread extends DynamicThread {
       if (appendEntryResult != null) {
         handler.onComplete(appendEntryResult);
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       handler.onError(e);
     }
