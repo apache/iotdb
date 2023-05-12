@@ -125,6 +125,8 @@ public class WALWriteUtils {
     }
     int len = 0;
     byte[] bytes = new byte[s.length()];
+    // the String should come from Thrift, and it should always be UTF-8 encoding.
+    // use this method to skip UTF-8 encoding
     s.getBytes(0, s.length(), bytes, 0);
     len += write(bytes.length, buffer);
     buffer.put(bytes);
