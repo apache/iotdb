@@ -232,6 +232,10 @@ public class SessionConnection {
     this.zoneId = ZoneId.of(zoneId);
   }
 
+  protected void setEndPointList(List<String> nodeUrls) {
+    this.endPointList = SessionUtils.parseSeedNodeUrls(nodeUrls);
+  }
+
   protected String getTimeZone() {
     if (zoneId == null) {
       zoneId = ZoneId.systemDefault();

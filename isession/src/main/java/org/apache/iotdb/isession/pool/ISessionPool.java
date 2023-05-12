@@ -45,6 +45,8 @@ public interface ISessionPool {
 
   void close();
 
+  void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs);
+
   void closeResultSet(SessionDataSetWrapper wrapper);
 
   void insertTablet(Tablet tablet) throws IoTDBConnectionException, StatementExecutionException;

@@ -500,6 +500,10 @@ public interface ISession extends AutoCloseable {
 
   long getQueryTimeout();
 
+  void setNodeUrls(List<String> nodeUrls);
+
+  void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs);
+
   @Deprecated
   default SystemStatus getSystemStatus() {
     return SystemStatus.NORMAL;
