@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -92,7 +93,7 @@ public class LogDispatcher {
     // Thus, the size of this threadPool will be the same as the count of LogDispatcherThread.
     this.executorService =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            "LogDispatcher-" + impl.getThisNode().getGroupId());
+            ThreadName.LOG_DISPATCHER.getName() + "-" + impl.getThisNode().getGroupId());
   }
 
   public synchronized void start() {

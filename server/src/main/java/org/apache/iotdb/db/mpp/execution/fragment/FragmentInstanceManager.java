@@ -86,7 +86,8 @@ public class FragmentInstanceManager {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT_THREAD.getName());
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT_THREAD.getName());
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION_THREAD.getName());
