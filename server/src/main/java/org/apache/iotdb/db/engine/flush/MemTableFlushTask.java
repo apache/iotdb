@@ -218,6 +218,24 @@ public class MemTableFlushTask {
     encodingTasks.cancelAll();
     sortTasks.cancelAll();
 
+    LOGGER.info(
+        "Database {}, flushing memtable {} into disk: Sort data cost "
+            + "{} ms. (total thread time)",
+        storageGroup,
+        allContext.getWriter().getFile().getName(),
+        allContext.getSortTime().get());
+    LOGGER.info(
+        "Database {}, flushing memtable {} into disk: Encoding data cost "
+            + "{} ms. (total thread time)",
+        storageGroup,
+        allContext.getWriter().getFile().getName(),
+        allContext.getEncodingTime().get());
+    LOGGER.info(
+        "Database {}, flushing memtable {} into disk: IO cost " + "{} ms. (total thread time)",
+        storageGroup,
+        allContext.getWriter().getFile().getName(),
+        allContext.getIoTime().get());
+
     try {
       long writePlanIndicesStartTime = System.currentTimeMillis();
       allContext.getWriter().writePlanIndices();
@@ -287,35 +305,19 @@ public class MemTableFlushTask {
 
   private void cleanSortThread() {
     metricFlush();
-    LOGGER.info(
-        "Database {}, flushing memtable {} into disk: Sort data cost "
-            + "{} ms. (total thread time)",
-        storageGroup,
-        allContext.getWriter().getFile().getName(),
-        allContext.getSortTime().get());
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_SORT, allContext.getSortTime().get());
   }
 
   private void cleanEncodingThread() {
     metricFlush();
-    LOGGER.info(
-        "Database {}, flushing memtable {} into disk: Encoding data cost "
-            + "{} ms. (total thread time)",
-        storageGroup,
-        allContext.getWriter().getFile().getName(),
-        allContext.getEncodingTime().get());
+
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_ENCODING, allContext.getEncodingTime().get());
   }
 
   private void cleanIOThread() {
     metricFlush();
-    LOGGER.info(
-        "Database {}, flushing memtable {} into disk: IO cost " + "{} ms. (total thread time)",
-        storageGroup,
-        allContext.getWriter().getFile().getName(),
-        allContext.getIoTime().get());
     WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, allContext.getIoTime().get());
     WRITING_METRICS.recordFlushTsFileSize(storageGroup, allContext.getWriter().getFile().length());
   }
