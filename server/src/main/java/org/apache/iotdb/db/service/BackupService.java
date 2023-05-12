@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,9 +54,9 @@ public class BackupService implements IService {
   private List<BackupByCopyTask> backupByCopyTaskList = new ArrayList<>();
 
   /** Record the files in incremental backup. */
-  private HashMap<String, File> backupTsFileMap = new HashMap<>();
+  private Map<String, File> backupTsFileMap = new HashMap<>();
 
-  private HashMap<String, TsFileResource> databaseTsFileResourceMap = new HashMap<>();
+  private Map<String, TsFileResource> databaseTsFileResourceMap = new HashMap<>();
 
   private ScheduledExecutorService backupTmpFileCheckPool;
 

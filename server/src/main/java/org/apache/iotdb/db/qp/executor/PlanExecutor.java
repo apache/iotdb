@@ -2742,12 +2742,14 @@ public class PlanExecutor implements IPlanExecutor {
       if (plan.getIsFullBackup()) {
         BackupService.getINSTANCE().checkFullBackupPathValid(outputPath);
         List<TsFileResource> resources = new ArrayList<>();
-        StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
+        StorageEngine.getInstance().syncCloseAllProcessor();
+        StorageEngine.getInstance().takeReadLockAndCollectFilesForBackup(resources);
         BackupService.getINSTANCE().performFullBackup(resources, outputPath);
       } else {
         BackupService.getINSTANCE().checkIncrementalBackupPathValid(outputPath);
         List<TsFileResource> resources = new ArrayList<>();
-        StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
+        StorageEngine.getInstance().syncCloseAllProcessor();
+        StorageEngine.getInstance().takeReadLockAndCollectFilesForBackup(resources);
         BackupService.getINSTANCE().performIncrementalBackup(resources, outputPath);
       }
     } catch (WriteProcessException e) {

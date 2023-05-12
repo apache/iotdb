@@ -1011,9 +1011,9 @@ public class StorageEngine implements IService {
     processorMap.get(sgPath).setSettling(isSettling);
   }
 
-  public void appendAndReadLockFilesForBackup(List<TsFileResource> resources) {
+  public void takeReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.appendAndReadLockFilesForBackup(resources);
+      storageGroupManager.takeReadLockAndCollectFilesForBackup(resources);
     }
   }
 

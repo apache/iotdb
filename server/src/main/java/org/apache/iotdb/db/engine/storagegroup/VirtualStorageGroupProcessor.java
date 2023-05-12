@@ -3267,10 +3267,12 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  public void appendAndReadLockFilesForBackup(List<TsFileResource> resources) {
-    tsFileManager.readLock();
+  public void takeReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+    readLock();
     try {
+      //
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+        // 正在被删的tsfile加读锁
         resource.readLock();
         resources.add(resource);
       }
@@ -3279,11 +3281,8 @@ public class VirtualStorageGroupProcessor {
         resources.add(resource);
       }
     } finally {
-      tsFileManager.readUnlock();
+      readUnlock();
     }
-    tsFileManager.writeLock("backup");
-    syncCloseAllWorkingTsFileProcessors();
-    tsFileManager.writeUnlock();
   }
 
   public void setCustomCloseFileListeners(List<CloseFileListener> customCloseFileListeners) {
