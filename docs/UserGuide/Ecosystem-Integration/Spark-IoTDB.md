@@ -58,7 +58,7 @@ from the official website. After that, copy the jar package to the `${SPARK_HOME
 Simply execute the following command:
 
 ```shell
-cp spark-iotdb-connector-${iotdb.version}-${scala.version}.jar $SPARK_HOME/jars/
+cp spark-iotdb-connector_${scala.version}-${iotdb.version}.jar $SPARK_HOME/jars/
 ```
 
 ## Usage

@@ -57,7 +57,7 @@
 执行以下命令即可：
 
 ```shell
-cp spark-iotdb-connector-${iotdb.version}-${scala.version}.jar $SPARK_HOME/jars/
+cp spark-iotdb-connector_${scala.version}-${iotdb.version}.jar $SPARK_HOME/jars/
 ```
 
 ## 使用

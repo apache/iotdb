@@ -28,7 +28,14 @@
     <baseDirectory>apache-iotdb-${project.version}-spark-connector-bin</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/target/</directory>
+            <directory>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/scala_2.11/target/</directory>
+            <outputDirectory>${file.separator}</outputDirectory>
+            <includes>
+                <include>*jar-with-dependencies.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/spark-iotdb-connector/scala_2.12/target/</directory>
             <outputDirectory>${file.separator}</outputDirectory>
             <includes>
                 <include>*jar-with-dependencies.jar</include>
