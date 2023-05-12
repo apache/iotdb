@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.commons.schema;
 
-import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+public enum ClusterSchemaQuotaLevel {
+  TIMESERIES(0),
+  DEVICE(1);
 
-import org.junit.Assert;
-import org.junit.Test;
+  private final int code;
 
-public class ClusterSchemaManagerTest {
+  ClusterSchemaQuotaLevel(int code) {
+    this.code = code;
+  }
 
-  @Test
-  public void testCalcMaxRegionGroupNum() {
-
-    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
-
-    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
-    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
-
-    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
-    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  public int getCode() {
+    return code;
   }
 }

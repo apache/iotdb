@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -103,10 +104,15 @@ public class ClusterSchemaManager {
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
+  private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
 
-  public ClusterSchemaManager(IManager configManager, ClusterSchemaInfo clusterSchemaInfo) {
+  public ClusterSchemaManager(
+      IManager configManager,
+      ClusterSchemaInfo clusterSchemaInfo,
+      ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
+    this.schemaQuotaStatistics = schemaQuotaStatistics;
   }
 
   // ======================================================
@@ -819,6 +825,18 @@ public class ClusterSchemaManager {
       }
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getSchemaQuotaCount() {
+    return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
+  }
+
+  public void updateSchemaQuota(Map<Integer, Long> schemaCountMap) {
+    schemaQuotaStatistics.updateCount(schemaCountMap);
+  }
+
+  public void clearSchemaQuotaCache() {
+    schemaQuotaStatistics.clear();
   }
 
   private NodeManager getNodeManager() {

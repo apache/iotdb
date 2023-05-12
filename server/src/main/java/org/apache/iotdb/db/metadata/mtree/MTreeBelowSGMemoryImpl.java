@@ -620,6 +620,23 @@ public class MTreeBelowSGMemoryImpl {
     }
     return cur;
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    IMemMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -806,7 +823,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) {
+      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
     String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
