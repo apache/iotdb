@@ -21,12 +21,13 @@ package org.apache.iotdb.db.metadata.view.viewExpression.visitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.binary.BinaryViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.db.metadata.view.viewExpression.multi.FunctionViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.ternary.TernaryViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.unary.UnaryViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.binary.BinaryViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
+import org.apache.iotdb.commons.schema.view.viewExpression.multi.FunctionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ternary.TernaryViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.unary.UnaryViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
 
 import java.util.ArrayList;
 import java.util.Collections;

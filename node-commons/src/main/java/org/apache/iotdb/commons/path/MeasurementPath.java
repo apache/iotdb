@@ -20,10 +20,12 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchemaType;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -35,6 +37,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.rmi.UnexpectedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -85,7 +88,7 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
-  public MeasurementPath(String[] nodes, MeasurementSchema schema) {
+  public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
     super(nodes);
     this.measurementSchema = schema;
   }
@@ -201,11 +204,9 @@ public class MeasurementPath extends PartialPath {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      if (measurementSchema instanceof MeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 0, byteBuffer);
-      } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      }
+      MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
+      ReadWriteIOUtils.write(
+          measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), byteBuffer);
       measurementSchema.serializeTo(byteBuffer);
     }
     if (tagMap == null) {
@@ -226,11 +227,8 @@ public class MeasurementPath extends PartialPath {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      if (measurementSchema instanceof MeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 0, stream);
-      } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        ReadWriteIOUtils.write((byte) 1, stream);
-      }
+      MeasurementSchemaType measurementSchemaType = measurementSchema.getSchemaType();
+      ReadWriteIOUtils.write(measurementSchemaType.getMeasurementSchemaTypeInByteEnum(), stream);
       measurementSchema.serializeTo(stream);
     }
     if (tagMap == null) {
@@ -249,10 +247,17 @@ public class MeasurementPath extends PartialPath {
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     if (isNull == 1) {
       byte type = ReadWriteIOUtils.readByte(byteBuffer);
-      if (type == 0) {
+      if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
         measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
-      } else if (type == 1) {
+      } else if (type
+          == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
         measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
+      } else {
+        throw new RuntimeException(
+            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
       }
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);

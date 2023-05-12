@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
@@ -130,7 +131,17 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
-            public MeasurementSchema getSchema() {
+            public IMeasurementSchema getSchema() {
+              if (isLogicalView()) {
+                return new LogicalViewSchema(
+                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+              } else {
+                return this.getSchemaAsMeasurementSchema();
+              }
+            }
+
+            @Override
+            public MeasurementSchema getSchemaAsMeasurementSchema() {
               return new MeasurementSchema(
                   schema.getMeasurementId(),
                   schema.getType(),
@@ -141,6 +152,11 @@ public class DeviceUsingTemplateSchemaCache {
             @Override
             public String getAlias() {
               return null;
+            }
+
+            @Override
+            public boolean isLogicalView() {
+              return schema.isLogicalView();
             }
           });
     }
