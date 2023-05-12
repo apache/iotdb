@@ -198,14 +198,13 @@ public class DataRegionConsensusImpl {
   }
 
   private static IStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
-    if (conf.isIgnoreStateMachine()) {
-      return new EmptyStateMachine();
-    }
-
     DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
     if (ConsensusFactory.IOT_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
       return new IoTConsensusDataRegionStateMachine(dataRegion);
     } else {
+      if (conf.isIgnoreStateMachine()) {
+        return new EmptyStateMachine();
+      }
       return new DataRegionStateMachine(dataRegion);
     }
   }

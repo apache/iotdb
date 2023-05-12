@@ -53,6 +53,8 @@ public class FlowBalancer {
   private RaftMember member;
   private ScheduledExecutorService scheduledExecutorService;
   private volatile boolean inBurst = false;
+  private long burstStart;
+  private long burstDuration;
   private RaftConfig config;
 
   public FlowBalancer(LogDispatcher logDispatcher, RaftMember member, RaftConfig config) {
@@ -77,6 +79,7 @@ public class FlowBalancer {
 
   public void stop() {
     scheduledExecutorService.shutdownNow();
+    logger.info("Total burst duration: {}ms", burstDuration);
   }
 
   private void rebalance() {
@@ -173,6 +176,7 @@ public class FlowBalancer {
       nodesRate.put(node, flowToRemaining);
     }
     inBurst = true;
+    burstStart = System.currentTimeMillis();
   }
 
   private void exitBurst(int followerNum, Map<Peer, Double> nodesRate, List<Peer> followers) {
@@ -183,5 +187,6 @@ public class FlowBalancer {
       nodesRate.put(node, Double.MAX_VALUE);
     }
     inBurst = false;
+    burstDuration += System.currentTimeMillis() - burstStart;
   }
 }
