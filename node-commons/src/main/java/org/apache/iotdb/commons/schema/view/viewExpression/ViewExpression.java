@@ -223,6 +223,7 @@ public abstract class ViewExpression {
       switch (type) {
         case -4:
           expression = new ConstantViewOperand(inputStream);
+          break;
         case -3:
           expression = new TimestampViewOperand(inputStream);
           break;
