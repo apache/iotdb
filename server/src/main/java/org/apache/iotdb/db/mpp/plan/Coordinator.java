@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -59,10 +60,6 @@ import java.util.concurrent.ScheduledExecutorService;
 public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
-
-  private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
-  private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -189,19 +186,21 @@ public class Coordinator {
     int coordinatorReadExecutorSize =
         CONFIG.isClusterMode() ? CONFIG.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
+        coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL_NAME.getName());
   }
 
   private ExecutorService getWriteExecutor() {
     int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
+        coordinatorWriteExecutorSize,
+        ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME.getName());
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
-        COORDINATOR_SCHEDULED_EXECUTOR_SIZE, COORDINATOR_SCHEDULED_EXECUTOR_NAME);
+        COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
+        ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME.getName());
   }
 
   public QueryId createQueryId() {

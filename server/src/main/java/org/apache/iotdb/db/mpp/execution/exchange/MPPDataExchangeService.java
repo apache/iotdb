@@ -60,8 +60,8 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             TimeUnit.MILLISECONDS,
             // TODO: Use a priority queue.
             new LinkedBlockingQueue<>(),
-            new IoTThreadFactory("mpp-data-exchange-task-executors"),
-            "mpp-data-exchange-task-executors");
+            new IoTThreadFactory(ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL.getName()),
+            ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL.getName());
     this.mppDataExchangeManager =
         new MPPDataExchangeManager(
             new LocalMemoryManager(),

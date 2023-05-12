@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
@@ -85,9 +86,10 @@ public class FragmentInstanceManager {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT_THREAD.getName());
     this.instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION_THREAD.getName());
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -114,7 +115,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       int index = i;
-      String threadName = "Query-Worker-Thread-" + i;
+      String threadName = ThreadName.QUERY_WORKER_THREAD_NAME + "-" + i;
       ThreadProducer producer =
           new ThreadProducer() {
             @Override
@@ -135,7 +136,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       t.start();
     }
 
-    String threadName = "Query-Sentinel-Thread";
+    String threadName = ThreadName.QUERY_SENTINEL_THREAD_NAME.getName();
     ThreadProducer producer =
         new ThreadProducer() {
           @Override

@@ -71,6 +71,15 @@ public enum ThreadName {
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
+  MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL("MPP-Data-Exchange-Task-Executors"),
+  FRAGMENT_INSTANCE_MANAGEMENT_THREAD("Fragment-Instance-Management"),
+  FRAGMENT_INSTANCE_NOTIFICATION_THREAD("Fragment-Instance-Notification"),
+  QUERY_WORKER_THREAD_NAME("Query-Worker-Thread"),
+  QUERY_SENTINEL_THREAD_NAME("Query-Sentinel-Thread"),
+  MPP_COORDINATOR_EXECUTOR_POOL_NAME("MPP-Coordinator-Executor"),
+  MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME("MPP-Coordinator-Write-Executor"),
+  MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME("MPP-Coordinator-Scheduled-Executor"),
+  TIMED_QUERY_SQL_COUNT_THREAD_POOL_NAME("Timed-Query-SQL-Count"),
   ;
 
   private final String name;
