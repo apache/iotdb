@@ -39,6 +39,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -49,6 +52,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaFetcher.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -134,6 +139,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         for (PartialPath fullPath : fullPathList) {
           cachedSchema = schemaCache.get(fullPath);
           if (cachedSchema.isEmpty()) {
+            LOGGER.info("Schema Cache Miss {}", fullPath.getFullPath());
             isAllCached = false;
             break;
           } else {
