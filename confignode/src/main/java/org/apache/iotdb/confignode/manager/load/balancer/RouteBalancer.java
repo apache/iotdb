@@ -222,6 +222,7 @@ public class RouteBalancer {
    */
   public Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
       balanceRegionPriority() {
+
     Map<TConsensusGroupId, TRegionReplicaSet> currentPriorityMap =
         getLoadManager().getRegionPriorityMap();
     Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
@@ -253,7 +254,6 @@ public class RouteBalancer {
         getLoadManager().forceUpdateRegionPriority(regionGroupId, optimalRegionPriority);
       }
     }
-
     return differentRegionPriorityMap;
   }
 
