@@ -65,6 +65,8 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceLogicalViewVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
@@ -437,6 +439,119 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
   }
 
+  /**
+   * This function will check the expression you put in, find the TimeSeriesOperand which has
+   * LogicalViewSchema. These TimeSeriesOperand will be replaced with logical view expression, and
+   * this function will record paths that appeared in view expression. The logical view you replaced
+   * have INCOMPLETE path information, and use PartialPath in TimeSeriesOperand. This may cause
+   * ERROR, therefore you should call completeMeasurementPathCausedByView() later, make sure the
+   * path info is complete and using MeasurementPath with full MeasurementSchema.
+   *
+   * @param expression the expression you want to check.
+   * @param pathList record paths that appeared in view expression.
+   * @return pair of replaced expression and whether replacement was happened. 'True' means the
+   *     expression you put in contains logical view, and has been replaced. 'False' means there is
+   *     no need to modify the expression you put in.
+   */
+  private Pair<Expression, Boolean> replaceLogicalViewAndCollectPaths(
+      Expression expression, List<PartialPath> pathList) {
+    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
+    // step 1. check whether this expression contains logical view, that means finding
+    // TimeSeriesOperand which has
+    // the LogicalViewSchema.
+    // step 2. replace that TimeSeriesOperand with expression recorded in LogicalViewSchema (view
+    // expression).
+    // step 3. record paths that appeared in view expression. They should be fetched, then you can
+    // use fetched schema
+    // to complete new added TimeSeriesOperand.
+    int oldSize = pathList.size();
+    Expression result = replaceLogicalViewVisitor.process(expression, pathList);
+    int newSize = pathList.size();
+    if (oldSize != newSize) {
+      return new Pair<>(result, true);
+    }
+    return new Pair<>(expression, false);
+  }
+
+  /**
+   * After replace a TimeSeriesOperand which is a logical view, there may appear new
+   * TimeSeriesOperand without full path. This function can help you handle this situation. This
+   * function will complete those new added TimeSeriesOperand by completing its MeasurementPath.
+   *
+   * @param oldExpression if this expression contains logical view, it will be modified.
+   * @param schemaTree the schema tree of all paths that appeared in logical view.
+   * @return the modified expression.
+   */
+  private Expression completeMeasurementPathCausedByView(
+      Expression oldExpression, ISchemaTree schemaTree) {
+    CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
+        new CompleteMeasurementSchemaVisitor();
+    Expression processedExp = completeMeasurementSchemaVisitor.process(oldExpression, schemaTree);
+    return processedExp;
+  }
+
+  /**
+   * Fetch all paths in logical view from given ResultColumns.
+   *
+   * @param resultColumnList the ResultColumns that you want to analyze.
+   * @param originSchemaTree the schema tree that generated WITHOUT concern logical view. It
+   *     contains no paths for logical view.
+   * @return return null if there is no logical view; else return the schema tree for all paths in
+   *     logical view.
+   */
+  private ISchemaTree fetchAllPathsInLogicalViewFromResultColumnsForAlignedByTime(
+      List<ResultColumn> resultColumnList, ISchemaTree originSchemaTree) {
+    // record paths that need to re-fetch. It's useful if expression contains logical view.
+    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+    for (ResultColumn resultColumn : resultColumnList) {
+      List<Expression> resultExpressions =
+          ExpressionAnalyzer.removeWildcardInExpression(
+              resultColumn.getExpression(), originSchemaTree);
+      for (Expression expression : resultExpressions) {
+        replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+      }
+    }
+    if (!pathsNeedToReFetch.isEmpty()) {
+      PathPatternTree reFetchPathPatternTree = new PathPatternTree();
+      for (PartialPath path : pathsNeedToReFetch) {
+        reFetchPathPatternTree.appendFullPath(path);
+      }
+      // This schemaTree only contains paths in view expression!
+      ISchemaTree viewSchemaTree = schemaFetcher.fetchSchema(reFetchPathPatternTree, null);
+      return viewSchemaTree;
+    }
+    return null;
+  }
+
+  private ISchemaTree fetchAllPathsInLogicalViewFromResultColumnsForAlignedByDevice(
+      List<ResultColumn> resultColumnList,
+      ISchemaTree originSchemaTree,
+      Set<PartialPath> deviceSet) {
+    // record paths that need to re-fetch. It's useful if expression contains logical view.
+    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+    for (ResultColumn resultColumn : resultColumnList) {
+      Expression selectExpression = resultColumn.getExpression();
+      for (PartialPath device : deviceSet) {
+        List<Expression> selectExpressionsOfOneDevice =
+            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(
+                selectExpression, device, originSchemaTree);
+        for (Expression expression : selectExpressionsOfOneDevice) {
+          replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+        }
+      }
+    }
+    if (!pathsNeedToReFetch.isEmpty()) {
+      PathPatternTree reFetchPathPatternTree = new PathPatternTree();
+      for (PartialPath path : pathsNeedToReFetch) {
+        reFetchPathPatternTree.appendFullPath(path);
+      }
+      // This schemaTree only contains paths in view expression!
+      ISchemaTree viewSchemaTree = schemaFetcher.fetchSchema(reFetchPathPatternTree, null);
+      return viewSchemaTree;
+    }
+    return null;
+  }
+
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
@@ -451,6 +566,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<String> aliasSet = new HashSet<>();
 
     int columnIndex = 0;
+    // generate schema tree for paths contained in logical view. It will be null if there is no
+    // logical view.
+    ISchemaTree viewSchemaTree =
+        this.fetchAllPathsInLogicalViewFromResultColumnsForAlignedByTime(
+            queryStatement.getSelectComponent().getResultColumns(), schemaTree);
+    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
 
@@ -458,9 +580,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
       for (Expression expression : resultExpressions) {
-        // TODO: CRTODO If this expression is a logical view, replace the original expression with
-        // the parsed View Expression.
-        // And the view expression should be converted into expression.
+
+        // If this expression is a logical view, replace the view with it's parsed view expression.
+        String oldExpressionAlias = null;
+        if (viewSchemaTree != null) {
+          Pair<Expression, Boolean> replaceResult =
+              replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+          if (replaceResult.right) {
+            // some part of the expression is replaced by view expression
+            oldExpressionAlias = expression.getExpressionString();
+            // complete the replaced expression, use MeasurementPath to replace normal PartialPath.
+            expression = completeMeasurementPathCausedByView(replaceResult.left, viewSchemaTree);
+          }
+        }
 
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
@@ -480,6 +612,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 !Objects.equals(expressionWithoutAlias, expression)
                     ? expression.getExpressionString()
                     : null;
+            // use old expression to generate alias if it contains logical view.
+            if (oldExpressionAlias != null) {
+              alias = oldExpressionAlias;
+            }
             alias = hasAlias ? resultColumn.getAlias() : alias;
             if (hasAlias) {
               if (aliasSet.contains(alias)) {
@@ -496,7 +632,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           break;
         }
       }
-      outputExpressionMap.put(columnIndex++, outputExpressions);
+      outputExpressionMap.put(columnIndex, outputExpressions);
+      columnIndex += 1;
     }
     return outputExpressionMap;
   }
