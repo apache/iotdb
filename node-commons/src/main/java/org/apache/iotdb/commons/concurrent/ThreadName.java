@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 public enum ThreadName {
   // -------------------------- QueryThread --------------------------
   QUERY_WORKER_THREAD_NAME("Query-Worker-Thread"),
@@ -31,6 +35,8 @@ public enum ThreadName {
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
   MPP_COORDINATOR_EXECUTOR_POOL_NAME("MPP-Coordinator-Executor"),
+  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
   // -------------------------- MPPSchedule --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME("MPP-Coordinator-Scheduled-Executor"),
@@ -71,7 +77,6 @@ public enum ThreadName {
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
-  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
   // -------------------------- Ratis(In regex form) --------------------------
@@ -126,6 +131,106 @@ public enum ThreadName {
   ;
 
   private final String name;
+  private static Set<ThreadName> queryThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              QUERY_WORKER_THREAD_NAME,
+              QUERY_SENTINEL_THREAD_NAME,
+              TIMED_QUERY_SQL_COUNT_THREAD_POOL_NAME,
+              MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL,
+              FRAGMENT_INSTANCE_MANAGEMENT_THREAD,
+              FRAGMENT_INSTANCE_NOTIFICATION_THREAD,
+              DATANODE_INTERNAL_RPC_SERVICE,
+              DATANODE_INTERNAL_RPC_PROCESSOR,
+              MPP_DATA_EXCHANGE_RPC_SERVICE,
+              MPP_DATA_EXCHANGE_RPC_PROCESSOR,
+              MPP_COORDINATOR_EXECUTOR_POOL_NAME,
+              DRIVER_TASK_SCHEDULER_NOTIFICATION,
+              ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
+  private static Set<ThreadName> compactionThreadNames =
+      new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
+
+  private static Set<ThreadName> walThreadNames =
+      new HashSet<>(Arrays.asList(WAL_DELETE, WAL_SYNC, WAL_DELETE, WAL_RECOVER));
+
+  private static Set<ThreadName> flushThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              FLUSH_SERVICE,
+              FLUSH_SUB_TASK_SERVICE,
+              FLUSH_TASK_SUBMIT,
+              TIMED_FLUSH_SEQ_MEMTABLE,
+              TIMED_FLUSH_UNSEQ_MEMTABLE));
+
+  private static Set<ThreadName> schemaEngineThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              SCHEMA_REGION_FLUSH_PROCESSOR,
+              SCHEMA_RELEASE_MONITOR,
+              SCHEMA_REGION_RELEASE_PROCESSOR,
+              SCHEMA_FLUSH_MONITOR));
+
+  private static Set<ThreadName> clientServiceThreadNames =
+      new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
+
+  private static Set<ThreadName> iotConsensusThrreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              IOT_CONSENSUS_RPC_SERVICE,
+              IOT_CONSENSUS_RPC_PROCESSOR,
+              ASYNC_DATANODE_CLIENT_POOL,
+              ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
+              LOG_DISPATCHER));
+
+  private static Set<ThreadName> ratisThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              RAFT_SERVER_PROXY_EXECUTOR_THREAD_NAME_PATTERN,
+              RAFT_SERVER_EXECUTOR_THREAD_NAME_PATTERN,
+              RAFT_SERVER_CLIENT_EXECUTOR_THREAD_NAME_PATTERN,
+              SEGMENT_RAFT_WORKER_THREAD_NAME_PATTERN,
+              STATE_MACHINE_UPDATER_THREAD_NAME_PATTERN,
+              FOLLOWER_STATE_THREAD_NAME_PATTERN,
+              LEADER_STATE_IMPL_PROCESSOR_THREAD_NAME,
+              LEADER_ELECTION_THREAD_NAME,
+              LOG_APPENDER_THREAD_NAME,
+              EVENT_PROCESSOR_THREAD_NAME,
+              RATIS_BG_DISK_GUARDIAN_THREAD_NAME,
+              GRPC_DEFAULT_BOSS_ELG,
+              GRPC_DEFAULT_EXECUTOR,
+              GROUP_MANAGMENT));
+  private static Set<ThreadName> computeThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              PIPE_ASSIGNER_EXECUTOR_POOL,
+              PIPE_PROCESSOR_EXECUTOR_POOL,
+              PIPE_CONNECTOR_EXECUTOR_POOL,
+              PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
+              EXT_PIPE_PLUGIN_WORKER,
+              WINDOW_EVALUATION_SERVICE));
+  private static Set<ThreadName> syncThreadNames =
+      new HashSet<>(Arrays.asList(SYNC_SENDER_PIPE, SYNC_SENDER_HEARTBEAT));
+  private static Set<ThreadName> jvmThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              JVM_PAUSE_MONITOR_THREAD_NAME,
+              GC_THREAD_NAME,
+              COMPILE_THREAD_NAME,
+              VM_PERIODIC_TASK,
+              VM_THREAD,
+              REFERENCE_HANDLER,
+              FINALIZER,
+              SIGNAL_DISPATCHER,
+              DESTROY_JVM));
+  private static Set<ThreadName> otherThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              TTL_CHECK_SERVICE,
+              SETTLE_SERVICE,
+              INFLUXDB_RPC_SERVICE,
+              INFLUXDB_RPC_PROCESSOR,
+              STORAGE_ENGINE_CACHED_SERVICE,
+              MLNODE_RPC_SERVICE));
 
   ThreadName(String name) {
     this.name = name;
@@ -133,5 +238,78 @@ public enum ThreadName {
 
   public String getName() {
     return name;
+  }
+
+  public static ThreadModule getModuleTheThreadBelongs(String givenThreadName) {
+    for (ThreadName threadName : queryThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.QUERY;
+      }
+    }
+    if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME.getName())) {
+      return ThreadModule.MPP_SCHEDULE;
+    }
+    for (ThreadName threadName : compactionThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.COMPACTION;
+      }
+    }
+    for (ThreadName threadName : walThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.WAL;
+      }
+    }
+    if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME.getName())) {
+      return ThreadModule.MPP_WRITE;
+    }
+    for (ThreadName threadName : flushThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.FLUSH;
+      }
+    }
+    for (ThreadName threadName : schemaEngineThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.SCHEMA_ENGINE;
+      }
+    }
+    for (ThreadName threadName : clientServiceThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.CLIENT_SERVICE;
+      }
+    }
+    for (ThreadName threadName : iotConsensusThrreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.IOT_CONSENSUS;
+      }
+    }
+    for (ThreadName threadName : ratisThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.RATIS_CONSENSUS;
+      }
+    }
+    for (ThreadName threadName : computeThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.COMPUTE;
+      }
+    }
+    for (ThreadName threadName : syncThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.SYNC;
+      }
+    }
+    for (ThreadName threadName : jvmThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.JVM;
+      }
+    }
+    if (givenThreadName.contains(LOG_BACK.getName())) {
+      return ThreadModule.LOG_BACK;
+    }
+    for (ThreadName threadName : otherThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return ThreadModule.OTHER;
+      }
+    }
+    return ThreadModule.UNKNOWN;
   }
 }
