@@ -25,6 +25,8 @@ package org.apache.iotdb.db.pipe.config;
 // TODO: move it to common module?
 public class PipeConfig {
 
+  public static final String PIPE_TSFILE_DIR_NAME = "pipe-tsfile";
+
   private final int defaultRingBufferSize = 65536;
 
   private final int matcherCacheSize = 1024;
