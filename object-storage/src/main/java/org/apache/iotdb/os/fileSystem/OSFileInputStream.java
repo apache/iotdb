@@ -16,18 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.cache;
 
-public class PersistentCache {
-  private final String cacheDir;
+package org.apache.iotdb.os.fileSystem;
 
-  public PersistentCache(String cacheDir) {
-    this.cacheDir = cacheDir;
+import java.io.IOException;
+import java.io.InputStream;
+
+public class OSFileInputStream extends InputStream {
+
+  private OSInput osInput;
+  private long position; // 15
+  private long size; // 100
+  private InputStream currentInputStream; // 第二个文件，从 5 开始
+
+  public OSFileInputStream(OSInput osInput, long position, long size) {
+    this.osInput = osInput;
+    this.position = position;
+    this.size = size;
   }
 
-  public byte[] get(OSFileCacheKey OSFileCacheKey) {
-    return null;
-  }
+  @Override
+  public int read() throws IOException {
 
-  private void serialize(OSFileCacheKey OSFileCacheKey, byte[] cacheVal) {}
+    return 0;
+  }
 }

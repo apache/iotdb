@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.os.fileSystem;
 
+import org.apache.iotdb.os.cache.OSFileCache;
+import org.apache.iotdb.os.cache.OSFileCacheImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import org.slf4j.Logger;
@@ -30,6 +32,9 @@ import java.nio.channels.FileChannel;
 
 public class OSInput implements TsFileInput {
   private static final Logger logger = LoggerFactory.getLogger(OSInput.class);
+
+  private String osFileName;
+  private OSFileCache cache = OSFileCacheImpl.getInstance();
 
   @Override
   public long size() throws IOException {
@@ -48,6 +53,7 @@ public class OSInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
+
     return 0;
   }
 
@@ -92,5 +98,9 @@ public class OSInput implements TsFileInput {
   @Override
   public String getFilePath() {
     return null;
+  }
+
+  public InputStream getNextInputStream(long position) throws IOException{
+    return cache.getAsInputSteam(osFileName, position);
   }
 }

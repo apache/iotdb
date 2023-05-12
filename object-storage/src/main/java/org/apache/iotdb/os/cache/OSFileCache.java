@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.os.cache;
 
-import org.apache.iotdb.os.fileSystem.OSFile;
+import java.io.IOException;
+import java.io.InputStream;
 
-public class CacheKey {
-  private OSFile osFile;
-  private long position;
-  private int size;
+public interface OSFileCache {
+  InputStream getAsInputSteam(String fileName, long startPosition) throws IOException;
 }
