@@ -91,14 +91,14 @@ public class ConfigNodeConfig {
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.CUSTOM;
+      RegionGroupExtensionPolicy.AUTO;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupNumPerDatabase = 1;
+  private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerDataNode = 5.0;
