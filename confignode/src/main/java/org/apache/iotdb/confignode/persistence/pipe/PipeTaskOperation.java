@@ -24,5 +24,6 @@ public enum PipeTaskOperation {
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,
+  HANDLE_LEADER_CHANGE,
   ;
 }

@@ -64,12 +64,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
+  protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.CREATE_PIPE;
   }
 
   @Override
-  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -85,7 +85,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -110,7 +111,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
@@ -126,7 +127,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException, IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",

@@ -46,7 +46,7 @@ public class PipeTaskBuilder {
     this.pipeConnectorParameters = pipeConnectorParameters;
   }
 
-  PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
+  public PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
     this(
         pipeStaticMeta.getPipeName(),
         dataRegionId,
