@@ -2324,9 +2324,10 @@ public class DataRegion implements IDataRegionForQuery {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
+    tsFileManager.writeLock("loadNewTsFile");
     try {
       List<TsFileResource> sequenceList =
-          tsFileManager.getOrCreateSequenceListByTimePartition(newFilePartitionId);
+          tsFileManager.getOrCreateSequenceListByTimePartition(newFilePartitionId).getArrayList();
 
       int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       LoadTsFileType tsFileType = getLoadingTsFileType(insertPos, sequenceList);
@@ -2374,6 +2375,7 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
+      tsFileManager.writeUnlock();
     }
   }
 
@@ -2422,31 +2424,66 @@ public class DataRegion implements IDataRegionForQuery {
   private int findInsertionPosition(
       TsFileResource newTsFileResource, List<TsFileResource> sequenceList) {
 
-    int insertPos = -1;
+    //    int insertPos = -1;
+    //
+    //    // find the position where the new file should be inserted
+    //    for (int i = 0; i < sequenceList.size(); i++) {
+    //      TsFileResource localFile = sequenceList.get(i);
+    //
+    //      if (!localFile.isClosed() && localFile.getProcessor() != null) {
+    //        // we cannot compare two files by TsFileResource unless they are both closed
+    //        syncCloseOneTsFileProcessor(true, localFile.getProcessor());
+    //      }
+    //      int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
+    //      switch (fileComparison) {
+    //        case 0:
+    //          // some devices are newer but some devices are older, the two files overlap in
+    // general
+    //          return POS_OVERLAP;
+    //        case -1:
+    //          // all devices in localFile are newer than the new file, the new file can be
+    //          // inserted before localFile
+    //          return i - 1;
+    //        default:
+    //          // all devices in the local file are older than the new file, proceed to the next
+    // file
+    //          insertPos = i;
+    //      }
+    //    }
+    //    return insertPos;
 
-    // find the position where the new file should be inserted
-    for (int i = 0; i < sequenceList.size(); i++) {
+    int insertPosition = sequenceList.size() - 1;
+    Set<String> unmatchedDevices = newTsFileResource.getDevices();
+
+    for (int i = 0; i < sequenceList.size() && !unmatchedDevices.isEmpty(); ++i) {
       TsFileResource localFile = sequenceList.get(i);
-
       if (!localFile.isClosed() && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
         syncCloseOneTsFileProcessor(true, localFile.getProcessor());
       }
-      int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
-      switch (fileComparison) {
-        case 0:
-          // some devices are newer but some devices are older, the two files overlap in general
+
+      Set<String> localFileDevices = localFile.getDevices();
+      Iterator<String> iterator = unmatchedDevices.iterator();
+      while (iterator.hasNext()) {
+        String device = iterator.next();
+        if (!localFileDevices.contains(device)) {
+          continue;
+        }
+
+        if (newTsFileResource.getStartTime(device) > localFile.getEndTime(device)) {
+          if (i > insertPosition) {
+            return POS_OVERLAP;
+          }
+        } else if (newTsFileResource.getEndTime(device) < localFile.getStartTime(device)) {
+          insertPosition = Math.min(insertPosition, i - 1);
+          iterator.remove();
+        } else {
           return POS_OVERLAP;
-        case -1:
-          // all devices in localFile are newer than the new file, the new file can be
-          // inserted before localFile
-          return i - 1;
-        default:
-          // all devices in the local file are older than the new file, proceed to the next file
-          insertPos = i;
+        }
       }
     }
-    return insertPos;
+
+    return insertPosition;
   }
 
   /**

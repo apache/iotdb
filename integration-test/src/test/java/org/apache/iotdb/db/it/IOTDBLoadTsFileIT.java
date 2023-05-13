@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -63,8 +62,9 @@ public class IOTDBLoadTsFileIT {
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
-//    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
-//    EnvFactory.getEnv().initClusterEnvironment();
+    //
+    // EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    //    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
