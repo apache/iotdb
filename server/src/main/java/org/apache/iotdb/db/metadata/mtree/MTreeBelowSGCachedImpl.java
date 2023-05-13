@@ -717,6 +717,27 @@ public class MTreeBelowSGCachedImpl {
       unPinPath(cur);
     }
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    ICachedMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    } finally {
+      if (deviceMNode != null) {
+        unPinMNode(deviceMNode);
+      }
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query

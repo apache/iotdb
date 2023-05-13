@@ -23,10 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.task.PipeBuilder;
+import org.apache.iotdb.db.pipe.task.PipeTask;
+import org.apache.iotdb.db.pipe.task.PipeTaskManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 /**
  * State transition diagram of a pipe task:
@@ -46,14 +50,16 @@ public class PipeTaskAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
 
   private final PipeMetaKeeper pipeMetaKeeper;
+  private final PipeTaskManager pipeTaskManager;
 
   public PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
+    pipeTaskManager = new PipeTaskManager();
   }
 
   ////////////////////////// Pipe Task Management //////////////////////////
 
-  public void createPipe(PipeMeta pipeMeta) {
+  public synchronized void createPipe(PipeMeta pipeMeta) {
     final String pipeName = pipeMeta.getStaticMeta().getPipeName();
     final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
 
@@ -91,28 +97,20 @@ public class PipeTaskAgent {
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
 
-    // build pipe task by consensus group
-    pipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .forEach(
-            ((consensusGroupId, pipeTaskMeta) -> {
-              createPipeTaskByConsensusGroup(
-                  pipeName, creationTime, consensusGroupId, pipeTaskMeta);
-            }));
+    // create pipe tasks and trigger create() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks = new PipeBuilder(pipeMeta).build();
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.create();
+    }
+    pipeTaskManager.addPipeTasks(pipeMeta.getStaticMeta(), pipeTasks);
+
     // add pipe meta to pipe meta keeper
     // note that we do not need to set the status of pipe meta here, because the status of pipe meta
     // is already set to STOPPED when it is created
     pipeMetaKeeper.addPipeMeta(pipeName, pipeMeta);
   }
 
-  public void createPipeTaskByConsensusGroup(
-      String pipeName,
-      long creationTime,
-      TConsensusGroupId consensusGroupId,
-      PipeTaskMeta pipeTaskMeta) {}
-
-  public void dropPipe(String pipeName, long creationTime) {
+  public synchronized void dropPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (existedPipeMeta == null) {
@@ -135,22 +133,26 @@ public class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-    // drop pipe task by consensus group
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .forEach(
-            ((consensusGroupId, pipeTaskMeta) -> {
-              dropPipeTaskByConsensusGroup(pipeName, creationTime, consensusGroupId);
-            }));
+
+    // drop pipe tasks and trigger drop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.drop();
+    }
+
     // remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
   }
 
-  public void dropPipeTaskByConsensusGroup(
-      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
-
-  public void dropPipe(String pipeName) {
+  public synchronized void dropPipe(String pipeName) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (existedPipeMeta == null) {
@@ -163,21 +165,24 @@ public class PipeTaskAgent {
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-    // drop pipe task by consensus group
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .forEach(
-            ((consensusGroupId, pipeTaskMeta) -> {
-              dropPipeTaskByConsensusGroup(pipeName, consensusGroupId);
-            }));
+
+    // drop pipe tasks and trigger drop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.drop();
+    }
+
     // remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
   }
 
-  public void dropPipeTaskByConsensusGroup(String pipeName, TConsensusGroupId consensusGroupId) {}
-
-  public void startPipe(String pipeName, long creationTime) {
+  public synchronized void startPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (existedPipeMeta == null) {
@@ -223,22 +228,25 @@ public class PipeTaskAgent {
             "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
     }
 
-    // start pipe task by consensus group
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .forEach(
-            ((consensusGroupId, pipeTaskMeta) -> {
-              startPipeTaskByConsensusGroup(pipeName, creationTime, consensusGroupId);
-            }));
+    // trigger start() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.start();
+    }
+
     // set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
   }
 
-  public void startPipeTaskByConsensusGroup(
-      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
-
-  public void stopPipe(String pipeName, long creationTime) {
+  public synchronized void stopPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (existedPipeMeta == null) {
@@ -284,18 +292,21 @@ public class PipeTaskAgent {
             "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
     }
 
-    // stop pipe task by consensus group
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .forEach(
-            ((consensusGroupId, pipeTaskMeta) -> {
-              stopPipeTaskByConsensusGroup(pipeName, creationTime, consensusGroupId);
-            }));
+    // trigger stop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.stop();
+    }
+
     // set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
   }
-
-  public void stopPipeTaskByConsensusGroup(
-      String pipeName, long creationTime, TConsensusGroupId consensusGroupId) {}
 }

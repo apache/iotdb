@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.metadata.view;
 
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.binary.arithmetic.AdditionViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.binary.arithmetic.MultiplicationViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.leaf.ConstantViewOperand;
-import org.apache.iotdb.db.metadata.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.db.metadata.view.viewExpression.leaf.TimestampViewOperand;
-import org.apache.iotdb.db.metadata.view.viewExpression.multi.FunctionViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.ternary.BetweenViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.AdditionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.MultiplicationViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOperand;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimestampViewOperand;
+import org.apache.iotdb.commons.schema.view.viewExpression.multi.FunctionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ternary.BetweenViewExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;

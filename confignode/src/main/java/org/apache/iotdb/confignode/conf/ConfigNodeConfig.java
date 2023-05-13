@@ -29,6 +29,8 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
@@ -1135,5 +1137,30 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public String getConfigMessage() {
+    StringBuilder configMessage = new StringBuilder();
+    String configContent;
+    for (Field configField : ConfigNodeConfig.class.getDeclaredFields()) {
+      try {
+        String configType = configField.getGenericType().getTypeName();
+        if (configType.contains("java.lang.String[]")) {
+          String[] configList = (String[]) configField.get(this);
+          configContent = Arrays.asList(configList).toString();
+        } else {
+          configContent = configField.get(this).toString();
+        }
+        configMessage
+            .append("\n\t")
+            .append(configField.getName())
+            .append("=")
+            .append(configContent)
+            .append(";");
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    return configMessage.toString();
   }
 }
