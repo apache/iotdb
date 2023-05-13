@@ -17,13 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence.pipe;
+package org.apache.iotdb.confignode.consensus.request.read.pipe.task;
 
-public enum PipeTaskOperation {
-  CREATE_PIPE,
-  START_PIPE,
-  STOP_PIPE,
-  DROP_PIPE,
-  HANDLE_LEADER_CHANGE,
-  ;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public class ShowPipePlanV2 extends ConfigPhysicalPlan {
+
+  public ShowPipePlanV2() {
+    super(ConfigPhysicalPlanType.ShowPipeV2);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

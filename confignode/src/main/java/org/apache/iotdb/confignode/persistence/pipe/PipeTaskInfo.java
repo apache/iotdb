@@ -18,15 +18,20 @@
  */
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -36,7 +41,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -158,8 +166,56 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public DataSet showPipes() {
+    return new PipeTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        StreamSupport.stream(getPipeMetaList().spliterator(), false).collect(Collectors.toList()));
+  }
+
   public Iterable<PipeMeta> getPipeMetaList() {
     return pipeMetaKeeper.getPipeMetaList();
+  }
+
+  /////////////////////////////// Pipe Runtime Management ///////////////////////////////
+
+  /** handle the data region leader change event and update the pipe task meta accordingly */
+  public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
+    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+        .forEach(
+            (dataRegionGroupId, newDataRegionLeader) ->
+                pipeMetaKeeper
+                    .getPipeMetaList()
+                    .forEach(
+                        pipeMeta -> {
+                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                              pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+
+                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                            // if the data region leader is -1, it means the data region is
+                            // removed
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap
+                                  .get(dataRegionGroupId)
+                                  .setRegionLeader(newDataRegionLeader);
+                            } else {
+                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                            }
+                          } else {
+                            // if CN does not contain the data region group, it means the data
+                            // region group is newly added.
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap.put(
+                                  // TODO: the progress index should be passed from the leader
+                                  // correctly
+                                  dataRegionGroupId, new PipeTaskMeta(0, newDataRegionLeader));
+                            } else {
+                              LOGGER.warn(
+                                  "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
+                                  dataRegionGroupId);
+                            }
+                          }
+                        }));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
