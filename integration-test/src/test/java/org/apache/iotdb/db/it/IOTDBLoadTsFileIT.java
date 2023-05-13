@@ -40,12 +40,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,8 +63,8 @@ public class IOTDBLoadTsFileIT {
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
-    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
-    EnvFactory.getEnv().initClusterEnvironment();
+//    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+//    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
@@ -563,6 +565,38 @@ public class IOTDBLoadTsFileIT {
         }
       }
     }
+  }
+
+  @Test
+  public void test() throws Exception {
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+      generator.generateData(SchemaConfig.DEVICE_0, 1, 1, false);
+    }
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_1, Collections.singletonList(SchemaConfig.MEASUREMENT_10));
+      generator.generateData(SchemaConfig.DEVICE_0, 1, 1, false, 1);
+      generator.generateData(SchemaConfig.DEVICE_1, 1, 1, false, 1);
+    }
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "3-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+      generator.generateData(SchemaConfig.DEVICE_0, 1, 1, false, 2);
+    }
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "4-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_1, Collections.singletonList(SchemaConfig.MEASUREMENT_10));
+      generator.generateData(SchemaConfig.DEVICE_0, 1, 1, false, 3);
+      generator.generateData(SchemaConfig.DEVICE_1, 1, 1, false, 1);
+    }
+
+    System.out.println("finish");
   }
 
   private static class SchemaConfig {
