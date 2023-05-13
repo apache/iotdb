@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receive;
+package org.apache.iotdb.db.pipe.agent.receiver;
 
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.core.receiver.PipeExecuteThriftReqDirectlyHandler;
-import org.apache.iotdb.db.pipe.core.receiver.PipeThriftReqHandler;
+import org.apache.iotdb.db.pipe.core.receiver.PipeExecuteThriftRequestDirectlyHandler;
+import org.apache.iotdb.db.pipe.core.receiver.PipeThriftRequestHandler;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
@@ -33,18 +33,20 @@ import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public class PipeReceiveAgent {
-  private ThreadLocal<PipeThriftReqHandler> reqHandler = new ThreadLocal<>();
+public class PipeReceiverAgent {
+
+  private final ThreadLocal<PipeThriftRequestHandler> pipeThriftRequestHandler =
+      new ThreadLocal<>();
 
   private boolean validatePipeVersion(String pipeVersion) {
     return pipeVersion.equals(PipeConfig.getInstance().getPipeVersion());
   }
 
-  private ThreadLocal<PipeThriftReqHandler> getReqHandler(String pipeVersion) {
-    if (reqHandler.get() == null) {
-      reqHandler.set(new PipeExecuteThriftReqDirectlyHandler());
+  private ThreadLocal<PipeThriftRequestHandler> getReqHandler(String pipeVersion) {
+    if (pipeThriftRequestHandler.get() == null) {
+      pipeThriftRequestHandler.set(new PipeExecuteThriftRequestDirectlyHandler());
     }
-    return reqHandler;
+    return pipeThriftRequestHandler;
   }
 
   public TPipeHandshakeResp handshake(TPipeHandshakeReq req) {

@@ -52,9 +52,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public class PipeExecuteThriftReqDirectlyHandler implements PipeThriftReqHandler {
+public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftRequestHandler {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeExecuteThriftReqDirectlyHandler.class);
+      LoggerFactory.getLogger(PipeExecuteThriftRequestDirectlyHandler.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private File writingFile;

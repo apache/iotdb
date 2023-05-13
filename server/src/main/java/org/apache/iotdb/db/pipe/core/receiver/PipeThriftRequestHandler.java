@@ -28,7 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public interface PipeThriftReqHandler {
+public interface PipeThriftRequestHandler {
   TPipeHandshakeResp handleHandshakeReq(TPipeHandshakeReq req);
 
   TPipeHeartbeatResp handleHeartbeatReq(TPipeHeartbeatReq req);
