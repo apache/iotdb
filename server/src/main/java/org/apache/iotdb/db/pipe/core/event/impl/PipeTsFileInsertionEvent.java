@@ -56,7 +56,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   @Override
   public boolean increaseReferenceCount(String invokerMessage) {
     try {
-      this.tsFile = PipeResourceManager.file().increaseFileReference(tsFile, false);
+      this.tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
     } catch (IOException e) {
       LOGGER.warn(
           String.format(

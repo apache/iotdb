@@ -137,13 +137,13 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
         .migrateState(
             this,
             state ->
-                (state.equals(TsFileEpoch.State.EMPTY)
-                        && event.increaseReferenceCount(
-                            PipeRealtimeDataRegionHybridCollector.class.getName()))
-                    ? TsFileEpoch.State.USING_TABLET
-                    : state);
+                (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
+      if (!event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+        event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+        return null;
+      }
       return event.getEvent();
     }
     // if the state is USING_TSFILE, discard the event and poll the next one.
