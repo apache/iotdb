@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.agent;
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 
 /** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeAgent {
@@ -31,14 +30,11 @@ public class PipeAgent {
   private final PipeTaskAgent pipeTaskAgent;
   private final PipeRuntimeAgent pipeRuntimeAgent;
 
-  private final PipeResourceManager pipeResourceManager;
-
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
     pipePluginAgent = new PipePluginAgent();
     pipeTaskAgent = new PipeTaskAgent();
     pipeRuntimeAgent = new PipeRuntimeAgent();
-    pipeResourceManager = PipeResourceManager.getInstance();
   }
 
   /** The singleton holder of PipeAgent. */
@@ -71,14 +67,5 @@ public class PipeAgent {
    */
   public static PipeRuntimeAgent runtime() {
     return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
-  }
-
-  /**
-   * Get the singleton instance of PipeResourceManager.
-   *
-   * @return the singleton instance of PipeResourceManager
-   */
-  public static PipeResourceManager resource() {
-    return PipeAgentHolder.HANDLE.pipeResourceManager;
   }
 }

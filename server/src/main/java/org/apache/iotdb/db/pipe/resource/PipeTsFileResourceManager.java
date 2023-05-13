@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 
 import java.io.File;
@@ -30,80 +30,88 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Map;
 
 public class PipeTsFileResourceManager {
 
-  private final HashMap<String, Integer> tsFileReferenceMap = new HashMap<>();
+  private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
 
   /**
-   * increase the reference count of the file, if the file is a hardlink, just increase reference
+   * given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
+   * hardlink or copied file, and return the hardlink or copied file.
    *
-   * @param file the file must be in sequence, unsequence or pipe-tsfile dir
-   * @param needHardlink whether to create a hardlink or copy the file
-   * @return the file in pipe dir
+   * <p>if the given file is already a hardlink or copied file, increase its reference count and
+   * return it.
+   *
+   * <p>if the given file is a tsfile, create a hardlink in pipe dir, increase the reference count
+   * of the hardlink and return it.
+   *
+   * <p>otherwise, copy the file (.mod or .resource) to pipe dir, increase the reference count of
+   * the copied file and return it.
+   *
+   * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
+   *     original file
+   * @param isTsFile true to create hardlink, false to copy file
+   * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
-  public synchronized File increaseFileReference(File file, boolean needHardlink)
-      throws IOException {
-
-    // if the file is a hardlink, just increase reference count and return it
+  public synchronized File increaseFileReference(File file, boolean isTsFile) throws IOException {
+    // if the file is already a hardlink or copied file, just increase reference count and return it
     if (increaseReferenceIfExists(file.getPath())) {
       return file;
     }
 
-    // if the hardlink of file is already exist, just increase reference count and return it
-    File link = getFileInPipeDir(file);
-    if (increaseReferenceIfExists(link.getPath())) {
-      return link;
+    // if the file is not a hardlink or copied file, check if there is a related hardlink or copied
+    // file in pipe dir. if so, increase reference count and return it
+    final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
+    if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
+      return hardlinkOrCopiedFile;
     }
 
-    // if the file is a tsfile, create a hardlink in pipe dir and return it
-    // otherwise, copy the file (.mod or .resource) to pipe dir and return it
-    tsFileReferenceMap.put(link.getPath(), 1);
-    return needHardlink ? createHardLink(file, link) : copyFile(file, link);
-  }
-
-  /**
-   * decrease the reference count of the file, if the reference count is 0, delete the file
-   *
-   * @param file the copied or hardlinked file
-   * @throws IOException when delete file failed
-   */
-  public synchronized void decreaseFileReference(File file) throws IOException {
-    Integer updatedValue = tsFileReferenceMap.computeIfPresent(file.getPath(), (k, v) -> v - 1);
-    if (updatedValue != null && updatedValue == 0) {
-      Files.deleteIfExists(file.toPath());
-      tsFileReferenceMap.remove(file.getPath());
-    }
+    // if the file is not a hardlink or copied file, and there is no related hardlink or copied
+    // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
+    // the hardlink or copied file, and return the hardlink or copied file.
+    hardlinkOrCopiedFileToReferenceMap.put(hardlinkOrCopiedFile.getPath(), 1);
+    // if the file is a tsfile, create a hardlink in pipe dir and return it.
+    // otherwise, copy the file (.mod or .resource) to pipe dir and return it.
+    return isTsFile
+        ? createHardLink(file, hardlinkOrCopiedFile)
+        : copyFile(file, hardlinkOrCopiedFile);
   }
 
   private boolean increaseReferenceIfExists(String path) {
-    if (tsFileReferenceMap.containsKey(path)) {
-      tsFileReferenceMap.put(path, tsFileReferenceMap.get(path) + 1);
+    if (hardlinkOrCopiedFileToReferenceMap.containsKey(path)) {
+      hardlinkOrCopiedFileToReferenceMap.put(
+          path, hardlinkOrCopiedFileToReferenceMap.get(path) + 1);
       return true;
     }
     return false;
   }
 
-  private File createHardLink(File sourceFile, File hardlink) throws IOException {
-    if (!hardlink.getParentFile().exists()) {
-      boolean ignored = hardlink.getParentFile().mkdirs();
+  private static File getHardlinkOrCopiedFileInPipeDir(File file) throws IOException {
+    try {
+      return new File(getPipeTsFileDirPath(file), getRelativeFilePath(file));
+    } catch (Exception e) {
+      throw new IOException(
+          String.format(
+              "failed to get hardlink or copied file in pipe dir for file %s, it is not a tsfile, mod file or resource file",
+              file.getPath()),
+          e);
     }
-    Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
-    Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
-    return hardlink;
   }
 
-  private File copyFile(File sourceFile, File targetFile) throws IOException {
-    if (!targetFile.getParentFile().exists()) {
-      boolean ignored = targetFile.getParentFile().mkdirs();
+  private static String getPipeTsFileDirPath(File file) throws IOException {
+    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        && !file.getName().equals(PipeConfig.PIPE_TSFILE_DIR_NAME)) {
+      file = file.getParentFile();
     }
-    Files.copy(sourceFile.toPath(), targetFile.toPath());
-    return targetFile;
+    return file.getParentFile().getCanonicalPath()
+        + File.separator
+        + PipeConfig.PIPE_TSFILE_DIR_NAME;
   }
 
-  private String getRelativeFilePath(File file) {
+  private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
@@ -117,32 +125,64 @@ public class PipeTsFileResourceManager {
     return builder.toString();
   }
 
-  private String getPipeTsFileDirPath(File file) throws IOException {
-    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.PIPE_TSFILE_DIR_NAME)) {
-      file = file.getParentFile();
+  private static File createHardLink(File sourceFile, File hardlink) throws IOException {
+    if (!hardlink.getParentFile().exists()) {
+      boolean ignored = hardlink.getParentFile().mkdirs();
     }
-    return file.getParentFile().getCanonicalPath()
-        + File.separator
-        + PipeConfig.PIPE_TSFILE_DIR_NAME;
+
+    final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
+    final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
+    Files.createLink(linkPath, sourcePath);
+    return hardlink;
   }
 
-  private File getFileInPipeDir(File file) throws IOException {
-    return new File(getPipeTsFileDirPath(file), getRelativeFilePath(file));
-  }
-
-  public int getFileReferenceCount(File tsFile) {
-    return tsFileReferenceMap.getOrDefault(tsFile.getPath(), 0);
-  }
-
-  public void clear() {
-    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-      File pipeTsFileDir = new File(dataDir, PipeConfig.PIPE_TSFILE_DIR_NAME);
-      if (pipeTsFileDir.exists()) {
-        FileUtils.deleteDirectory(pipeTsFileDir);
-      }
+  private static File copyFile(File sourceFile, File targetFile) throws IOException {
+    if (!targetFile.getParentFile().exists()) {
+      boolean ignored = targetFile.getParentFile().mkdirs();
     }
-    tsFileReferenceMap.clear();
+
+    Files.copy(sourceFile.toPath(), targetFile.toPath());
+    return targetFile;
+  }
+
+  /**
+   * given a hardlink or copied file, decrease its reference count, if the reference count is 0,
+   * delete the file. if the given file is not a hardlink or copied file, do nothing.
+   *
+   * @param hardlinkOrCopiedFile the copied or hardlinked file
+   * @throws IOException when delete file failed
+   */
+  public synchronized void decreaseFileReference(File hardlinkOrCopiedFile) throws IOException {
+    final Integer updatedReference =
+        hardlinkOrCopiedFileToReferenceMap.computeIfPresent(
+            hardlinkOrCopiedFile.getPath(), (file, reference) -> reference - 1);
+
+    if (updatedReference != null && updatedReference == 0) {
+      Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+      hardlinkOrCopiedFileToReferenceMap.remove(hardlinkOrCopiedFile.getPath());
+    }
+  }
+
+  /**
+   * clear all hardlink or copied files under pipe dir of the given data dir.
+   *
+   * <p>this method can be only invoked when the system is booting up.
+   */
+  public synchronized void clear(String dataDir) {
+    File pipeTsFileDir = new File(dataDir, PipeConfig.PIPE_TSFILE_DIR_NAME);
+    if (pipeTsFileDir.exists()) {
+      FileUtils.deleteDirectory(pipeTsFileDir);
+    }
+  }
+
+  /**
+   * get the reference count of the file
+   *
+   * @param hardlinkOrCopiedFile the copied or hardlinked file
+   * @return the reference count of the file
+   */
+  @TestOnly
+  public synchronized int getFileReferenceCount(File hardlinkOrCopiedFile) {
+    return hardlinkOrCopiedFileToReferenceMap.getOrDefault(hardlinkOrCopiedFile.getPath(), 0);
   }
 }
