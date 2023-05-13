@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receive;
+package org.apache.iotdb.db.pipe.core.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -29,11 +29,11 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.receive.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeValidateHandshakeReq;
+import org.apache.iotdb.db.pipe.core.receiver.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeValidateHandshakeReq;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;

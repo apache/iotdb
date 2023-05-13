@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receive.request;
+package org.apache.iotdb.db.pipe.core.receiver.request;
 
 public enum PipeTransferReqType {
   INSERT_NODE((short) 0),
