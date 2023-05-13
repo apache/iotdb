@@ -2421,37 +2421,8 @@ public class DataRegion implements IDataRegionForQuery {
    *     POS_OVERLAP(-3) if some file overlaps the new file an insertion position i >= -1 if the new
    *     file can be inserted between [i, i+1]
    */
-  private int findInsertionPosition(
+  public int findInsertionPosition(
       TsFileResource newTsFileResource, List<TsFileResource> sequenceList) {
-
-    //    int insertPos = -1;
-    //
-    //    // find the position where the new file should be inserted
-    //    for (int i = 0; i < sequenceList.size(); i++) {
-    //      TsFileResource localFile = sequenceList.get(i);
-    //
-    //      if (!localFile.isClosed() && localFile.getProcessor() != null) {
-    //        // we cannot compare two files by TsFileResource unless they are both closed
-    //        syncCloseOneTsFileProcessor(true, localFile.getProcessor());
-    //      }
-    //      int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
-    //      switch (fileComparison) {
-    //        case 0:
-    //          // some devices are newer but some devices are older, the two files overlap in
-    // general
-    //          return POS_OVERLAP;
-    //        case -1:
-    //          // all devices in localFile are newer than the new file, the new file can be
-    //          // inserted before localFile
-    //          return i - 1;
-    //        default:
-    //          // all devices in the local file are older than the new file, proceed to the next
-    // file
-    //          insertPos = i;
-    //      }
-    //    }
-    //    return insertPos;
-
     int insertPosition = sequenceList.size() - 1;
     Set<String> unmatchedDevices = newTsFileResource.getDevices();
 
@@ -2484,47 +2455,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     return insertPosition;
-  }
-
-  /**
-   * Compare each device in the two files to find the time relation of them.
-   *
-   * @return -1 if fileA is totally older than fileB (A < B) 0 if fileA is partially older than
-   *     fileB and partially newer than fileB (A X B) 1 if fileA is totally newer than fileB (B < A)
-   */
-  private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) {
-    boolean hasPre = false, hasSubsequence = false;
-    Set<String> fileADevices = fileA.getDevices();
-    Set<String> fileBDevices = fileB.getDevices();
-    for (String device : fileADevices) {
-      if (!fileBDevices.contains(device)) {
-        continue;
-      }
-      long startTimeA = fileA.getStartTime(device);
-      long endTimeA = fileA.getEndTime(device);
-      long startTimeB = fileB.getStartTime(device);
-      long endTimeB = fileB.getEndTime(device);
-      if (startTimeA > endTimeB) {
-        // A's data of the device is later than to the B's data
-        hasPre = true;
-      } else if (startTimeB > endTimeA) {
-        // A's data of the device is previous to the B's data
-        hasSubsequence = true;
-      } else {
-        // the two files overlap in the device
-        return 0;
-      }
-    }
-    if (hasPre && hasSubsequence) {
-      // some devices are newer but some devices are older, the two files overlap in general
-      return 0;
-    }
-    if (!hasPre && hasSubsequence) {
-      // all devices in B are newer than those in A
-      return -1;
-    }
-    // all devices in B are older than those in A
-    return 1;
   }
 
   /**
