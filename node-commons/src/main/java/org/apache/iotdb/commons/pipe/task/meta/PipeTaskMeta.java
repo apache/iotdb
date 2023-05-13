@@ -39,19 +39,19 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeTaskMeta {
 
   // TODO: replace it with consensus index
-  private final AtomicLong index = new AtomicLong(0L);
+  private final AtomicLong progressIndex = new AtomicLong(0L);
   private final AtomicInteger regionLeader = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   private PipeTaskMeta() {}
 
-  public PipeTaskMeta(long index, int regionLeader) {
-    this.index.set(index);
+  public PipeTaskMeta(long progressIndex, int regionLeader) {
+    this.progressIndex.set(progressIndex);
     this.regionLeader.set(regionLeader);
   }
 
-  public long getIndex() {
-    return index.get();
+  public long getProgressIndex() {
+    return progressIndex.get();
   }
 
   public int getRegionLeader() {
@@ -74,8 +74,8 @@ public class PipeTaskMeta {
             : new PipeRuntimeNonCriticalException(message));
   }
 
-  public void setIndex(long index) {
-    this.index.set(index);
+  public void setProgressIndex(long progressIndex) {
+    this.progressIndex.set(progressIndex);
   }
 
   public void setRegionLeader(int regionLeader) {
@@ -83,7 +83,7 @@ public class PipeTaskMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(index.get(), outputStream);
+    ReadWriteIOUtils.write(progressIndex.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
@@ -95,7 +95,7 @@ public class PipeTaskMeta {
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
-    PipeTaskMeta.index.set(ReadWriteIOUtils.readLong(byteBuffer));
+    PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(byteBuffer));
     PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
@@ -123,21 +123,21 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return index.get() == that.index.get()
+    return progressIndex.get() == that.progressIndex.get()
         && regionLeader.get() == that.regionLeader.get()
         && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(index, regionLeader, exceptionMessages);
+    return Objects.hash(progressIndex, regionLeader, exceptionMessages);
   }
 
   @Override
   public String toString() {
     return "PipeTask{"
-        + "index='"
-        + index
+        + "progressIndex='"
+        + progressIndex
         + '\''
         + ", regionLeader='"
         + regionLeader
