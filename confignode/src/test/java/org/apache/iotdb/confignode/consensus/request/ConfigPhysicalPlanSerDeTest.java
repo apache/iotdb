@@ -1132,8 +1132,8 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeHandleLeaderChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
-        pipeHandleLeaderChangePlan.getNewConsensusGroupId2DataRegionLeaderIdMap(),
-        pipeHandleLeaderChangePlan1.getNewConsensusGroupId2DataRegionLeaderIdMap());
+        pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
+        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
   }
 
   @Test

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
@@ -38,6 +39,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskInfo implements SnapshotProcessor {
@@ -166,34 +168,41 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
+  /** handle the data region leader change event and update the pipe task meta accordingly */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
-    plan.getNewConsensusGroupId2DataRegionLeaderIdMap()
+    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
         .forEach(
-            (regionId, newLeader) ->
+            (dataRegionGroupId, newDataRegionLeader) ->
                 pipeMetaKeeper
                     .getPipeMetaList()
                     .forEach(
                         pipeMeta -> {
-                          if (!pipeMeta
-                                  .getRuntimeMeta()
-                                  .getConsensusGroupIdToTaskMetaMap()
-                                  .containsKey(regionId)
-                              && newLeader != -1) {
-                            pipeMeta
-                                .getRuntimeMeta()
-                                .getConsensusGroupIdToTaskMetaMap()
-                                .put(regionId, new PipeTaskMeta(0, newLeader));
-                          } else if (newLeader == -1) {
-                            pipeMeta
-                                .getRuntimeMeta()
-                                .getConsensusGroupIdToTaskMetaMap()
-                                .remove(regionId);
+                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                              pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+
+                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                            // if the data region leader is -1, it means the data region is
+                            // removed
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap
+                                  .get(dataRegionGroupId)
+                                  .setRegionLeader(newDataRegionLeader);
+                            } else {
+                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                            }
                           } else {
-                            pipeMeta
-                                .getRuntimeMeta()
-                                .getConsensusGroupIdToTaskMetaMap()
-                                .get(regionId)
-                                .setRegionLeader(newLeader);
+                            // if CN does not contain the data region group, it means the data
+                            // region group is newly added.
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap.put(
+                                  // TODO: the progress index should be passed from the leader
+                                  // correctly
+                                  dataRegionGroupId, new PipeTaskMeta(0, newDataRegionLeader));
+                            } else {
+                              LOGGER.warn(
+                                  "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
+                                  dataRegionGroupId);
+                            }
                           }
                         }));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
