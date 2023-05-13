@@ -53,24 +53,26 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     // we only care about data region leader change
-    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupNewLeaderMap =
+    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
         .getLeaderMap()
         .forEach(
             (regionId, pair) -> {
               if (regionId.getType().equals(TConsensusGroupType.DataRegion)) {
-                dataRegionGroupNewLeaderMap.put(regionId, pair);
+                dataRegionGroupToOldAndNewLeaderPairMap.put(regionId, pair);
               }
             });
 
     // if no data region leader change, return
-    if (dataRegionGroupNewLeaderMap.isEmpty()) {
+    if (dataRegionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return;
     }
 
     final TSStatus result =
-        configManager.getProcedureManager().pipeHandleLeaderChange(dataRegionGroupNewLeaderMap);
+        configManager
+            .getProcedureManager()
+            .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap);
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "PipeRuntimeCoordinator meets error in handling data region leader change, status: ({})",

@@ -48,7 +48,8 @@ import java.util.List;
  * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.
  */
-abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<OperatePipeTaskState> {
+public abstract class AbstractOperatePipeProcedureV2
+    extends AbstractNodeProcedure<OperatePipeTaskState> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
@@ -58,25 +59,26 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
   // only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
-  abstract PipeTaskOperation getOperation();
+  protected abstract PipeTaskOperation getOperation();
 
   /**
    * Execute at state VALIDATE_TASK
    *
    * @return true if procedure can finish directly
    */
-  abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
       throws PipeException, PipeSinkException;
 
   /** Execute at state CALCULATE_INFO_FOR_TASK */
-  abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeException;
 
   /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
-  abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
   /** Execute at state OPERATE_ON_DATA_NODES */
-  abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
   @Override

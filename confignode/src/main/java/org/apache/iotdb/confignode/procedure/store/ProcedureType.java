@@ -73,7 +73,7 @@ public enum ProcedureType {
   DROP_PIPE_PROCEDURE_V2((short) 1003),
 
   /** Pipe Runtime */
-  HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100);
+  PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100);
 
   private final short typeCode;
 
