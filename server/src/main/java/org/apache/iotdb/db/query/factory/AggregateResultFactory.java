@@ -119,6 +119,48 @@ public class AggregateResultFactory {
         return new DDSketchSingleAggrResult(dataType);
       case SQLConstant.CHUNK_STAT_AVAIL:
         return new KLLStatChunkAvailAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case SQLConstant.EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -202,6 +244,48 @@ public class AggregateResultFactory {
         return new DDSketchSingleAggrResult(dataType);
       case SQLConstant.CHUNK_STAT_AVAIL:
         return new KLLStatChunkAvailAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case SQLConstant.EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -286,6 +370,48 @@ public class AggregateResultFactory {
         return new DDSketchSingleAggrResult(dataType);
       case CHUNK_STAT_AVAIL:
         return new KLLStatChunkAvailAggrResult(dataType);
+      case EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

@@ -100,13 +100,14 @@ public class SeriesReader {
    * TimeSeriesMetadata cache
    */
   protected ITimeSeriesMetadata firstTimeSeriesMetadata;
+  public boolean NoUpdateAndConsumingUnSeq = false;
   protected final List<ITimeSeriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
   protected final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
   /*
    * chunk cache
    */
-  protected IChunkMetadata firstChunkMetadata;
+  public IChunkMetadata firstChunkMetadata;
   protected final ObjectAVLTreeSet<IChunkMetadata> cachedChunkMetadata;
 
   /*
@@ -127,7 +128,11 @@ public class SeriesReader {
   protected boolean hasCachedNextOverlappedPage;
   protected BatchData cachedBatchData;
 
-  public final boolean NoUpdate = IoTDBDescriptor.getInstance().getConfig().getNoUpdate();
+  private boolean NoUpdate = IoTDBDescriptor.getInstance().getConfig().getNoUpdate();
+
+  public void setNoUpdate(boolean no) {
+    NoUpdate = no;
+  }
 
   public boolean aggrSST = false;
   public AggregateResult quantileAggrResult;
@@ -550,8 +555,8 @@ public class SeriesReader {
       throws IOException {
     unpackedTSEndTime =
         Math.max(unpackedTSEndTime, timeSeriesMetadata.getStatistics().getEndTime());
-    System.out.println(
-        "\t\t\t\t\tunpackOneTimeSeriesMetadata. unpackedTSEndTime<--" + unpackedTSEndTime);
+    //    System.out.println(
+    //        "\t\t\t\t\tunpackOneTimeSeriesMetadata. unpackedTSEndTime<--" + unpackedTSEndTime);
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
@@ -746,10 +751,12 @@ public class SeriesReader {
   }
 
   protected void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
-    //    List<IPageReader> pageReaderList =
-    //        FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
     List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadLazyPageReaderList(chunkMetaData, timeFilter);
+        FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
+    //    List<IPageReader> pageReaderList =
+    //        FileLoaderUtils.loadLazyPageReaderList(chunkMetaData, timeFilter);
+    // DANGER CHECK IT !!!
+
     //    System.out.println(
     //        "\t\t\t\tdebug\tunpackOneChunkMd:"
     //            + chunkMetaData.getStartTime()
@@ -1193,6 +1200,7 @@ public class SeriesReader {
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     if (!NoUpdate || seqTimeSeriesMetadata.isEmpty()) {
+      if (NoUpdate) NoUpdateAndConsumingUnSeq = true; // seq consumed first. now consuming unSeq.
       while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
         unpackUnseqTsFileResource();
       }

@@ -59,6 +59,8 @@ del %temp%\tmp.vbs
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 set /a half_=%system_memory_in_mb%/2
+set /a half_=%system_memory_in_mb%/2
+set /a oneThird_=%system_memory_in_mb%/3
 set /a quarter_=%half_%/2
 
 if %half_% GTR 2048 set half_=2048
@@ -67,6 +69,8 @@ if %quarter_% GTR 65536 set quarter_=65536
 if %half_% GTR %quarter_% (
 	set max_heap_size_in_mb=%half_%
 ) else set max_heap_size_in_mb=%quarter_%
+
+set max_heap_size_in_mb=%oneThird_%
 
 set MAX_HEAP_SIZE=%max_heap_size_in_mb%M
 set max_sensible_yg_per_core_in_mb=100

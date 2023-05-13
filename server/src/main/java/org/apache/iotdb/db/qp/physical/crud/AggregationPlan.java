@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.apache.thrift.TException;
 
 import java.util.*;
@@ -42,6 +43,7 @@ public class AggregationPlan extends RawDataQueryPlan {
   // deduplicatedAggregations are count, count, sum
 
   private List<String> aggregations = new ArrayList<>();
+  public List<Map<String, String>> aggrAttrs = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
   private int[] levels;
@@ -49,7 +51,8 @@ public class AggregationPlan extends RawDataQueryPlan {
   // group by level aggregation result path
   private final Map<String, AggregateResult> groupPathsResultMap = new LinkedHashMap<>();
   private final Map<String, TSDataType> groupedPathToTSDataType = new LinkedHashMap<>();
-  private final Map<AggregateResult, AggregateResult> resultToGroupedAhead = new HashMap<>();
+  private final Map<AggregateResult, AggregateResult> resultToGroupedAhead =
+      new Object2ObjectOpenHashMap<>();
 
   public AggregationPlan() {
     super();
@@ -103,6 +106,10 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
+  }
+
+  public void setAggrAttrs(List<Map<String, String>> aggrAttrs) {
+    this.aggrAttrs = aggrAttrs;
   }
 
   public List<String> getDeduplicatedAggregations() {

@@ -25,38 +25,26 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.HeapLongKLLSketch;
-import org.apache.iotdb.tsfile.utils.KLLSketchForQuantile;
+import org.apache.iotdb.tsfile.utils.KLLSketchLazyExact;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
-import static org.apache.iotdb.tsfile.file.metadata.statistics.Statistics.SYNOPSIS_SIZE_IN_BYTE;
 
-public class KLLDebugResult extends AggregateResult {
+public class ExactQuantileDDSketchAggrResult extends AggregateResult {
   private TSDataType seriesDataType;
   private int iteration;
-  private long pageKLLNum;
-  private long cntL, cntR, lastL;
-  private long n, K1, heapN;
-  private HeapLongKLLSketch heapKLL;
+  private long cntL, cntR, detL, detR;
+  private long n, K1, K2, countOfLessThanCntL;
+  private KLLSketchLazyExact heapKLL;
   private boolean hasFinalResult;
-  private final int maxMemoryByte = 1 << 19; // half of the limit
-  private final int pageAvgError = 50, pageMaxError = 127;
-  private final int pageKLLMemoryByte = (68 + 15) * 8,
-      pageKLLNumMemoryByte = SYNOPSIS_SIZE_IN_BYTE * Long.BYTES;
-  //  private List<HeapLongKLLSketch> pageKLL;
-  private List<KLLSketchForQuantile> pageKLL;
-  private int pageKLLIndex;
-  private final int pageKLLMaxSize = (int) Math.floor((1.0 * maxMemoryByte / pageKLLMemoryByte));
+  //  double PR=1.0;
   long DEBUG = 0;
 
   private int getBitsOfDataType() {
@@ -73,35 +61,9 @@ public class KLLDebugResult extends AggregateResult {
     }
   }
 
-  private long approximateDataAvgError() {
-    long dataAvgError = (long) Math.ceil(2.0 * heapN / heapKLL.getMaxMemoryNum()) + 1;
-    return dataAvgError;
-  }
-
-  private long approximateStatAvgError() {
-    double rate = 1.0 * pageKLLNumMemoryByte * pageKLLNum / maxMemoryByte;
-    long pageStatAvgError;
-    if (rate < 1.0) {
-      pageStatAvgError = (long) Math.ceil(pageAvgError * Math.pow(pageKLLNum, 0.5));
-      if (pageKLLNum <= 10) pageStatAvgError += pageMaxError;
-    } else {
-      int memKLLNum = maxMemoryByte / pageKLLNumMemoryByte;
-      long memErr = (long) Math.ceil(pageAvgError * Math.pow(memKLLNum, 0.5));
-      pageStatAvgError = (long) Math.ceil(rate * 0.5 * memErr + 0.5 * memErr);
-    }
-    return pageStatAvgError;
-  }
-
-  private long approximateMaxError() {
-    return 0;
-  }
-
-  private boolean hasTwoMedians() {
-    return (n & 1) == 0;
-  }
-
-  public KLLDebugResult(TSDataType seriesDataType) throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.EXACT_MEDIAN_KLL_DEBUG);
+  public ExactQuantileDDSketchAggrResult(TSDataType seriesDataType)
+      throws UnSupportedDataTypeException {
+    super(DOUBLE, AggregationType.EXACT_QUANTILE_BASELINE_KLL);
     this.seriesDataType = seriesDataType;
     reset();
   }
@@ -148,134 +110,158 @@ public class KLLDebugResult extends AggregateResult {
     if (iteration == 0) n++;
     if (cntL <= dataL && dataL <= cntR) {
       heapKLL.update(dataL);
-      heapN++;
-    } else if (lastL <= dataL && dataL < cntL) K1--;
-  }
-
-  private long getRankInKLL(long val) {
-    //    long rank = 0;
-    //    if (pageKLL != null) {
-    //      for (HeapLongKLLSketch heapLongKLLSketch : pageKLL)
-    //        if (heapLongKLLSketch != null) rank += heapLongKLLSketch.getApproxRank(val);
-    //    }
-    //    rank += heapKLL.getApproxRank(val);
-    //    return rank;
-    return heapKLL.getApproxRank(val);
-  }
-
-  public long findMaxValueWithRankLE(long K) {
-    long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
-    while (L < R) {
-      mid = L + ((R - L) >>> 1);
-      if (mid == L) mid++;
-      //      System.out.println(
-      //          "\t\t\t" + L + "\t" + R + "\t\t\tmid:" + mid + "\trank:" + getRankInKLL(mid));
-      if (getRankInKLL(mid) <= K) L = mid;
-      else R = mid - 1;
-      //      System.out.println("\t mid:"+mid+"  mid_rank:"+getRankInKLL(mid));
+    } else if (dataL < cntL) {
+      countOfLessThanCntL++;
     }
-    return L;
-  }
-
-  public long findMinValueWithRankGE(long K) {
-    long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
-    while (L < R) {
-      mid = L + ((R - L) >>> 1);
-      if (mid == R) mid--;
-      //      System.out.println(
-      //          "\t\t\t" + L + "\t" + R + "\t\t\tmid:" + mid + "\trank:" + getRankInKLL(mid));
-      if (getRankInKLL(mid) >= K) R = mid;
-      else L = mid + 1;
-    }
-    return L;
   }
 
   @Override
   public void startIteration() {
-    heapN = 0;
+    countOfLessThanCntL = 0;
     if (iteration == 0) { // first iteration
-      heapKLL = new HeapLongKLLSketch(maxMemoryByte);
-      lastL = cntL = Long.MIN_VALUE;
+      heapKLL = new KLLSketchLazyExact(maxMemoryByte);
+      cntL = Long.MIN_VALUE;
       cntR = Long.MAX_VALUE;
+      detL = cntL;
+      detR = cntR;
       n = 0;
-      pageKLLNum = 0;
-      pageKLL = new ArrayList<>(pageKLLMaxSize);
-      for (int i = 0; i < pageKLLMaxSize; i++) pageKLL.add(null);
-      pageKLLIndex = 0;
     } else {
-      heapKLL = new HeapLongKLLSketch(maxMemoryByte);
-      pageKLLNum = 0;
-      pageKLL = null;
+      heapKLL = new KLLSketchLazyExact(maxMemoryByte);
       System.out.println(
-          "\t[KLL STAT DEBUG] start iteration "
+          "\t[ExactQuantile DEBUG] start iteration "
               + iteration
               + " cntL,R:"
               + "["
-              + cntL
+              + longToResult(cntL)
               + ","
-              + cntR
+              + longToResult(cntR)
               + "]"
-              + "\tlastL:"
-              + lastL
-              + "\tK1:"
-              + K1);
+              + "\tK1,2:"
+              + K1
+              + ","
+              + K2);
     }
   }
 
   @Override
   public void finishIteration() {
-    System.out.println(
-        "\t[KLL STAT DEBUG]"
-            + "finish iteration "
-            + iteration
-            + " cntL,R:"
-            + "["
-            + cntL
-            + ","
-            + cntR
-            + "]"
-            + "\tlastL:"
-            + lastL
-            + "\tK1:"
-            + K1);
-    System.out.println(
-        "\t[KLL STAT DEBUG]" + " statNum:" + pageKLLNum + " heapN:" + heapKLL.getN());
+    //    System.out.println(
+    //        "\t[ExactQuantile DEBUG]"
+    //            + "finish iteration "
+    //            + iteration
+    //            + " cntL,R:"
+    //            + "["
+    //            + cntL
+    //            + ","
+    //            + cntR
+    //            + "]"
+    //            + "\tK1,2:"
+    //            + K1+","+K2);
     iteration++;
     if (n == 0) {
       hasFinalResult = true;
       return;
     }
-    lastL = cntL;
 
     if (iteration == 1) { // first iteration over
-      K1 = (n + 1) >> 1;
+      K1 = (int) Math.floor(QUANTILE * (n - 1) + 1);
+      K2 = (int) Math.ceil(QUANTILE * (n - 1) + 1);
     }
-    long K2 = hasTwoMedians() ? (K1 + 1) : K1;
-
-    System.out.println("\t[KLL STAT DEBUG]" + " K1,K2:" + K1 + ", " + K2);
-    if (pageKLLNum == 0) { // all in heapKLL
-      System.out.println("\t[KLL STAT DEBUG]" + " calc by heap only. N:" + heapKLL.getN());
-      heapKLL.show();
-
-      double v1 = longToResult(heapKLL.findMinValueWithRank(K1 - 1));
-      //      System.out.println("\t[KLL STAT DEBUG]" + "v1:" + v1);
-      double v2 = longToResult(heapKLL.findMinValueWithRank(K2 - 1));
-      double ans = 0.5 * (v1 + v2);
+    long cntK1 = K1 - countOfLessThanCntL, cntK2 = K2 - countOfLessThanCntL;
+    System.out.println(
+        "\t[ExactQuantile baselineKLL DEBUG]finish iter."
+            + " cntK1,2:"
+            + cntK1
+            + ","
+            + cntK2
+            + "\t\tkllN:"
+            + heapKLL.getN());
+    if (cntK1 <= 0 || cntK2 > heapKLL.getN()) { // iteration failed.
+      if (cntK1 <= 0) {
+        cntR = cntL;
+        cntL = detL;
+      } else {
+        cntL = cntR;
+        cntR = detR;
+      }
+      detL = cntL;
+      detR = cntR;
+      if (detL >= detR) {
+        double ans = (longToResult(detL) + longToResult(detR)) * 0.5;
+        setDoubleValue(ans);
+        hasFinalResult = true;
+      }
+      return;
+    }
+    if (cntL == cntR) {
+      double ans = (longToResult(cntL) + longToResult(cntR)) * 0.5;
       setDoubleValue(ans);
       hasFinalResult = true;
       return;
     }
-    // iteration = 0 && there are page KLL statistics
+    if (heapKLL.exactResult()) {
+      long valL = heapKLL.getExactResult((int) cntK1 - 1);
+      long valR = heapKLL.getExactResult((int) cntK2 - 1);
+      double ans = (longToResult(valL) + longToResult(valR)) * 0.5;
+      setDoubleValue(ans);
+      hasFinalResult = true;
+      return;
+    }
+
+    detL = cntL;
+    detR = cntR;
     //    heapKLL.show();
-    //    System.out.println("\t[KLL STAT DEBUG] remaining pageKLLSize:" + pageKLLIndex);
-    mergePageKLL();
-    heapKLL.show();
-    System.out.println("\t[KLL STAT DEBUG] heapN:" + heapKLL.getN() + "\tn_true:" + n);
-    double v1 = longToResult(heapKLL.findMinValueWithRank(K1 - 1));
-    double v2 = longToResult(heapKLL.findMinValueWithRank(K2 - 1));
-    double ans = 0.5 * (v1 + v2);
-    setDoubleValue(ans);
-    hasFinalResult = true;
+    double query_q1 = 1.0 * cntK1 / heapKLL.getN(), query_q2 = 1.0 * cntK2 / heapKLL.getN();
+
+    double esti_rel_err = 0;
+    for (int level = 2; level <= 100; level++) {
+      int[] capacity = KLLSketchLazyExact.calcLevelMaxSize(maxMemoryByte / 8, level);
+      long allCap = 0;
+      for (int i = 0; i < level; i++) allCap += (long) capacity[i] << i;
+      if (allCap < heapKLL.getN()) continue;
+      //      System.out.println("\t\t\t\t!! level:"+level);
+      int K = capacity[level - 1];
+      double CDF_COEF = 2.296, CDF_EXP = 0.9723;
+      esti_rel_err = CDF_COEF / Math.pow(K, CDF_EXP);
+      break;
+    }
+
+    double bound_q1 = Math.max(0, query_q1 - esti_rel_err),
+        bound_q2 = Math.min(1.0, query_q2 + esti_rel_err);
+    if (bound_q1 == 0) cntL = heapKLL.getMin();
+    else
+      cntL =
+          Math.max(
+              heapKLL.getMin(), heapKLL.findMinValueWithRank((int) (bound_q1 * heapKLL.getN())));
+    if (bound_q2 == 1) cntR = heapKLL.getMax();
+    else
+      cntR =
+          Math.min(
+              heapKLL.getMax(),
+              heapKLL.findMaxValueWithRank((int) (bound_q2 * heapKLL.getN())) + 1);
+
+    double[] deterministic_result = heapKLL.findResultRange(cntK1, cntK2, 1.0);
+    if (deterministic_result.length == 3 || deterministic_result[0] >= deterministic_result[1]) {
+      double ans = (deterministic_result[0] + deterministic_result[1]) * 0.5;
+      setDoubleValue(ans);
+      hasFinalResult = true;
+      return;
+    }
+    cntL = Math.max(cntL, dataToLong(deterministic_result[0]));
+    cntR = Math.min(cntR, dataToLong(deterministic_result[1]));
+    //    System.out.println("\t\t\titeration over.
+    // cntL,R:"+longToResult(cntL)+","+longToResult(cntR));
+
+    //    double[] deterministic_result = heapKLL.findResultRange(cntK1, cntK2, 1.0);
+    //    if (deterministic_result.length == 3 || deterministic_result[0] ==
+    // deterministic_result[1]) {
+    //      double ans = (deterministic_result[0] + deterministic_result[1]) * 0.5;
+    //      setDoubleValue(ans);
+    //      hasFinalResult = true;
+    //      return;
+    //    }
+    //    cntL = dataToLong(deterministic_result[0]);
+    //    cntR = dataToLong(deterministic_result[1]);
   }
 
   @Override
@@ -301,28 +287,6 @@ public class KLLDebugResult extends AggregateResult {
   //      heapKLL.mergeWithTempSpace(bigger_sketch);
   //    } else a.set(pos0, bigger_sketch);
   //  }
-  private void addSketch(KLLSketchForQuantile sketch) {
-    if (pageKLLIndex < pageKLLMaxSize) pageKLL.set(pageKLLIndex++, sketch);
-    else {
-      heapKLL.mergeWithTempSpace(pageKLL);
-      for (int i = 0; i < pageKLLMaxSize; i++) pageKLL.set(i, null);
-      pageKLLIndex = 0;
-      pageKLL.set(pageKLLIndex++, sketch);
-      //      System.out.println(
-      //          "\t[KLL STAT DEBUG]\theapKLL merge pageKLLList. newN: "
-      //              + heapKLL.getN()
-      //              + "   n_true:"
-      //              + n);
-      //      heapKLL.show();
-    }
-  }
-
-  private void mergePageKLL() {
-    HeapLongKLLSketch tmpSketch = heapKLL;
-    heapKLL = new HeapLongKLLSketch(maxMemoryByte * 2);
-    heapKLL.mergeWithTempSpace(tmpSketch);
-    heapKLL.mergeWithTempSpace(pageKLL);
-  }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
@@ -339,23 +303,10 @@ public class KLLDebugResult extends AggregateResult {
             String.format(
                 "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
     }
-    if (iteration == 0) {
-      n += statistics.getCount();
-      pageKLLNum++;
-      //      if (statistics.getType() == DOUBLE) {
-      //      }
-      if (statistics.getType() == DOUBLE) {
-        DoubleStatistics stat = (DoubleStatistics) statistics;
-        if (stat.getKllSketchNum() > 0) {
-          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) addSketch(sketch);
-          return;
-        } else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
-      }
-    }
     long minVal = dataToLong(statistics.getMinValue());
     long maxVal = dataToLong(statistics.getMaxValue());
     //    System.out.println(
-    //        "\t[KLL STAT DEBUG] no KLL in stat. update from statistics:\t"
+    //        "\t[ExactQuantile DEBUG] update from statistics:\t"
     //            + "min,max:"
     //            + minVal
     //            + ","
@@ -363,9 +314,9 @@ public class KLLDebugResult extends AggregateResult {
     //            + " n:"
     //            + statistics.getCount());
     // out of range
-    if (minVal > cntR || maxVal < lastL) return;
-    if (lastL <= minVal && maxVal < cntL) {
-      K1 -= statistics.getCount();
+    if (minVal > cntR) return;
+    if (maxVal < cntL) {
+      countOfLessThanCntL += statistics.getCount();
       return;
     }
     if (minVal == maxVal) { // min == max
@@ -417,7 +368,7 @@ public class KLLDebugResult extends AggregateResult {
 
   @Override
   public int maxIteration() {
-    return 1;
+    return 20;
   }
 
   @Override
@@ -452,24 +403,20 @@ public class KLLDebugResult extends AggregateResult {
   public void reset() {
     super.reset();
     heapKLL = null;
-    lastL = cntL = Long.MIN_VALUE;
+    cntL = Long.MIN_VALUE;
     cntR = Long.MAX_VALUE;
     n = 0;
     iteration = 0;
+    countOfLessThanCntL = 0;
     hasFinalResult = false;
   }
 
   @Override
   public boolean canUpdateFromStatistics(Statistics statistics) {
-    if ((seriesDataType == DOUBLE) && iteration == 0) {
-      DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      if (doubleStats.getKllSketchNum() > 0) return true;
-    }
     if (iteration > 0) {
       long minVal = dataToLong(statistics.getMinValue());
       long maxVal = dataToLong(statistics.getMaxValue());
-      if (minVal > cntR || maxVal < lastL) return true;
-      if (lastL <= minVal && maxVal < cntL) return true;
+      if (minVal > cntR || maxVal < cntL) return true;
     }
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
@@ -479,5 +426,31 @@ public class KLLDebugResult extends AggregateResult {
   @Override
   public boolean groupByLevelBeforeAggregation() {
     return true;
+  }
+
+  @Override
+  public boolean useStatisticsIfPossible() {
+    return true;
+  }
+
+  @Override
+  public void setAttributes(Map<String, String> attrs) {
+    if (attrs.containsKey("memory")) {
+      String mem = attrs.get("memory");
+      if (mem.contains("KB"))
+        this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 2)) * 1024;
+      else if (mem.contains("B"))
+        this.maxMemoryByte = Integer.parseInt(mem.substring(0, mem.length() - 1));
+    }
+    if (attrs.containsKey("quantile")) {
+      String q = attrs.get("quantile");
+      this.QUANTILE = Double.parseDouble(q);
+    }
+    //    if (attrs.containsKey("pr")) {
+    //      String pr = attrs.get("pr");
+    //      this.PR = Double.parseDouble(pr);
+    //    }
+    System.out.println(
+        "  [setAttributes DEBUG]\t\t\tmaxMemoryByte:" + maxMemoryByte + "\t\tquantile:" + QUANTILE);
   }
 }

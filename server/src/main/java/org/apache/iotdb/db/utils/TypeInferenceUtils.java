@@ -112,6 +112,7 @@ public class TypeInferenceUtils {
       case SQLConstant.MIN_TIME:
       case SQLConstant.MAX_TIME:
       case SQLConstant.COUNT:
+      case SQLConstant.FULL_READ_ONCE:
         return TSDataType.INT64;
       case SQLConstant.MIN_VALUE:
       case SQLConstant.LAST_VALUE:
@@ -147,6 +148,26 @@ public class TypeInferenceUtils {
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
       case SQLConstant.DDSKETCH_SINGLE:
       case SQLConstant.CHUNK_STAT_AVAIL:
+      case SQLConstant.EXACT_QUANTILE_BASELINE_KLL:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_NO_OPT:
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_STAT:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+      case SQLConstant.EXACT_QUANTILE_QUICK_SELECT:
+      case SQLConstant.EXACT_MULTI_QUANTILES_QUICK_SELECT:
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+      case SQLConstant.EXACT_QUANTILE_MRL:
+      case SQLConstant.EXACT_QUANTILE_TDIGEST:
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+      case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
+      case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+      case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);

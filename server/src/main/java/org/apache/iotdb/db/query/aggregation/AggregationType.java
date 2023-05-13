@@ -61,7 +61,28 @@ public enum AggregationType {
   SAMPLING_STAT_SINGLE,
   STRICT_KLL_STAT_SINGLE,
   DDSKETCH_SINGLE,
-  CHUNK_STAT_AVAIL;
+  CHUNK_STAT_AVAIL,
+  EXACT_QUANTILE_BASELINE_KLL,
+  EXACT_QUANTILE_PR_KLL_NO_OPT,
+  EXACT_QUANTILE_PR_KLL_OPT_STAT,
+  EXACT_QUANTILE_DDSKETCH,
+  EXACT_QUANTILE_PR_KLL_OPT_FILTER,
+  EXACT_QUANTILE_PR_KLL_OPT_SUMMARY,
+  FULL_READ_ONCE,
+  EXACT_QUANTILE_QUICK_SELECT,
+  EXACT_MULTI_QUANTILES_QUICK_SELECT,
+  EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY,
+  EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR,
+  EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR,
+  EXACT_QUANTILE_PR_KLL_POST_BEST_PR,
+  EXACT_QUANTILE_MRL,
+  EXACT_QUANTILE_TDIGEST,
+  EXACT_QUANTILE_DDSKETCH_POSITIVE,
+  EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR,
+  EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
+  EXACT_MULTI_QUANTILES_MRL,
+  EXACT_MULTI_QUANTILES_TDIGEST,
+  EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
 
   /**
    * give an integer to return a data type.
@@ -143,6 +164,49 @@ public enum AggregationType {
         return DDSKETCH_SINGLE;
       case 35:
         return CHUNK_STAT_AVAIL;
+      case 36:
+        return EXACT_QUANTILE_BASELINE_KLL;
+      case 37:
+        return EXACT_QUANTILE_PR_KLL_NO_OPT;
+      case 38:
+        return EXACT_QUANTILE_DDSKETCH;
+      case 39:
+        return EXACT_QUANTILE_PR_KLL_OPT_STAT;
+      case 40:
+        return EXACT_QUANTILE_PR_KLL_OPT_FILTER;
+      case 41:
+        return EXACT_QUANTILE_PR_KLL_OPT_SUMMARY;
+      case 42:
+        return FULL_READ_ONCE;
+      case 43:
+        return EXACT_QUANTILE_QUICK_SELECT;
+      case 44:
+        return EXACT_MULTI_QUANTILES_QUICK_SELECT;
+      case 45:
+        return EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY;
+      case 46:
+        return EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR;
+      case 47:
+        return EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR;
+      case 48:
+        return EXACT_QUANTILE_PR_KLL_POST_BEST_PR;
+      case 49:
+        return EXACT_QUANTILE_MRL;
+      case 50:
+        return EXACT_QUANTILE_TDIGEST;
+      case 51:
+        return EXACT_QUANTILE_DDSKETCH_POSITIVE;
+      case 52:
+        return EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR;
+      case 53:
+        return EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR;
+      case 54:
+        return EXACT_MULTI_QUANTILES_MRL;
+      case 55:
+        return EXACT_MULTI_QUANTILES_TDIGEST;
+      case 56:
+        return EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
+
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -258,6 +322,69 @@ public enum AggregationType {
         break;
       case CHUNK_STAT_AVAIL:
         i = 35;
+        break;
+      case EXACT_QUANTILE_BASELINE_KLL:
+        i = 36;
+        break;
+      case EXACT_QUANTILE_PR_KLL_NO_OPT:
+        i = 37;
+        break;
+      case EXACT_QUANTILE_DDSKETCH:
+        i = 38;
+        break;
+      case EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        i = 39;
+        break;
+      case EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        i = 40;
+        break;
+      case EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        i = 41;
+        break;
+      case FULL_READ_ONCE:
+        i = 42;
+        break;
+      case EXACT_QUANTILE_QUICK_SELECT:
+        i = 43;
+        break;
+      case EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        i = 44;
+        break;
+      case EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        i = 45;
+        break;
+      case EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        i = 46;
+        break;
+      case EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        i = 47;
+        break;
+      case EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        i = 48;
+        break;
+      case EXACT_QUANTILE_MRL:
+        i = 49;
+        break;
+      case EXACT_QUANTILE_TDIGEST:
+        i = 50;
+        break;
+      case EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        i = 51;
+        break;
+      case EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        i = 52;
+        break;
+      case EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        i = 53;
+        break;
+      case EXACT_MULTI_QUANTILES_MRL:
+        i = 54;
+        break;
+      case EXACT_MULTI_QUANTILES_TDIGEST:
+        i = 55;
+        break;
+      case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        i = 56;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

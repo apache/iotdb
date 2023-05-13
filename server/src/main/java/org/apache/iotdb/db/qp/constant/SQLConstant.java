@@ -103,6 +103,36 @@ public class SQLConstant {
   public static final String STRICT_KLL_STAT_SINGLE = "kll_quantile";
   public static final String DDSKETCH_SINGLE = "ddsketch_quantile";
   public static final String CHUNK_STAT_AVAIL = "chunk_stat_available";
+  public static final String EXACT_QUANTILE_BASELINE_KLL = "exact_quantile_baseline_kll";
+  public static final String EXACT_QUANTILE_PR_KLL_NO_OPT = "exact_quantile_pr_kll_no_opt";
+  public static final String EXACT_QUANTILE_DDSKETCH = "exact_quantile_ddsketch";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_STAT = "exact_quantile_pr_kll_opt_stat";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_FILTER = "exact_quantile_pr_kll_opt_filter";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_SUMMARY =
+      "exact_quantile_pr_kll_opt_summary";
+  public static final String FULL_READ_ONCE = "full_read_once";
+  public static final String EXACT_QUANTILE_QUICK_SELECT = "exact_quantile_quick_select";
+  public static final String EXACT_MULTI_QUANTILES_QUICK_SELECT =
+      "exact_multi_quantiles_quick_select";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY =
+      "exact_multi_quantiles_pr_kll_opt_summary";
+  public static final String EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR =
+      "exact_quantile_pr_kll_priori_fix_pr";
+  public static final String EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR =
+      "exact_quantile_pr_kll_priori_best_pr";
+  public static final String EXACT_QUANTILE_PR_KLL_POST_BEST_PR =
+      "exact_quantile_pr_kll_post_best_pr";
+  public static final String EXACT_QUANTILE_MRL = "exact_quantile_mrl";
+  public static final String EXACT_QUANTILE_TDIGEST = "exact_quantile_tdigest";
+  public static final String EXACT_QUANTILE_DDSKETCH_POSITIVE = "exact_quantile_ddsketch_positive";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR =
+      "exact_multi_quantiles_pr_kll_post_best_pr";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR =
+      "exact_multi_quantiles_pr_kll_fix_pr";
+  public static final String EXACT_MULTI_QUANTILES_MRL = "exact_multi_quantiles_mrl";
+  public static final String EXACT_MULTI_QUANTILES_TDIGEST = "exact_multi_quantiles_tdigest";
+  public static final String EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE =
+      "exact_multi_quantiles_ddsketch_positive";
 
   public static final String ALL = "all";
 
@@ -144,7 +174,28 @@ public class SQLConstant {
               SAMPLING_STAT_SINGLE,
               STRICT_KLL_STAT_SINGLE,
               DDSKETCH_SINGLE,
-              CHUNK_STAT_AVAIL));
+              CHUNK_STAT_AVAIL,
+              EXACT_QUANTILE_BASELINE_KLL,
+              EXACT_QUANTILE_PR_KLL_NO_OPT,
+              EXACT_QUANTILE_DDSKETCH,
+              EXACT_QUANTILE_PR_KLL_OPT_STAT,
+              EXACT_QUANTILE_PR_KLL_OPT_FILTER,
+              EXACT_QUANTILE_PR_KLL_OPT_SUMMARY,
+              FULL_READ_ONCE,
+              EXACT_QUANTILE_QUICK_SELECT,
+              EXACT_MULTI_QUANTILES_QUICK_SELECT,
+              EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY,
+              EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR,
+              EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR,
+              EXACT_QUANTILE_PR_KLL_POST_BEST_PR,
+              EXACT_QUANTILE_MRL,
+              EXACT_QUANTILE_TDIGEST,
+              EXACT_QUANTILE_DDSKETCH_POSITIVE,
+              EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR,
+              EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
+              EXACT_MULTI_QUANTILES_MRL,
+              EXACT_MULTI_QUANTILES_TDIGEST,
+              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

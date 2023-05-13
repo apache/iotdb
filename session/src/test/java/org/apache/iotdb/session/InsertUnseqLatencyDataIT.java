@@ -49,15 +49,15 @@ public class InsertUnseqLatencyDataIT {
   private static int originCompactionThreadNum;
   private static final List<String> deviceList = new ArrayList<>();
   private static final List<Integer> sizeList = new ArrayList<>();
-  private static final int TABLET_SIZE = 8192;
-  private static final int baseSize = TABLET_SIZE * 6713; // 6713;
+  private static final int baseSize = (int) (3e8 + 1e7); // 8192*6713;
+  private static final int TABLET_SIZE = 262144, TABLET_NUM = baseSize / TABLET_SIZE;
   private static final int device_num = 1;
   private static final List<String> seriesList = new ArrayList<>();
   private static final List<TSDataType> dataTypeList = new ArrayList<>();
   private static final int series_num = 1;
   private static final int Long_Series_Num = 0;
   private static final boolean inMemory = false;
-  static final double mu = 3.0, sig = 2.6; // sig: 0,1.0,2.1,2.4,2.6
+  static final double mu = 3.0, sig = 0.6; // sig: 0,0.6,1.2,1.8,2.2,2.6,3.0
   static final String muS = Integer.toString((int) (Math.round(mu * 10)));
   static final String sigS = Integer.toString((int) (Math.round(sig * 10)));
 
@@ -67,7 +67,7 @@ public class InsertUnseqLatencyDataIT {
     System.out.println("\t\tmaxMem\t" + (Runtime.getRuntime().maxMemory()) / (1024 * 1024.0));
     System.out.println("\t\ttotalMem\t" + (Runtime.getRuntime().totalMemory()) / (1024 * 1024.0));
     for (int i = 0; i < device_num; i++) {
-      deviceList.add("root.sst_latency_" + muS + "_" + sigS + ".d" + i);
+      deviceList.add("root.Normal01_Page4096_Sum256Byte_SepLatency_" + muS + "_" + sigS + ".d" + i);
       sizeList.add(baseSize * (i + 1));
     }
     for (int i = 0; i < series_num; i++) {
@@ -81,7 +81,7 @@ public class InsertUnseqLatencyDataIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     if (inMemory) {
-      prepareTimeSeriesData(mu, sig);
+      prepareTimeSeriesData();
       //      insertDataFromTXT(5);
     }
   }
@@ -93,18 +93,21 @@ public class InsertUnseqLatencyDataIT {
     CONFIG.setConcurrentCompactionThread(originCompactionThreadNum);
   }
 
-  private static void prepareTimeSeriesData(double mu, double sig)
+  private static void prepareTimeSeriesData()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     System.out.println("\t\t????" + deviceList + "||||" + seriesList);
 
     long START_TIME = System.currentTimeMillis();
     final int START_SERIES = 0;
     for (String device : deviceList) {
+      String sgName = device.substring(0, device.lastIndexOf(".d"));
       for (int seriesID = START_SERIES; seriesID < series_num; seriesID++) {
         String series = seriesList.get(seriesID);
         try {
-          session.executeNonQueryStatement(
-              "delete storage group " + device.substring(0, device.length() - 3));
+          session.executeNonQueryStatement("delete storage group " + sgName);
+          Thread.sleep(1000);
+          session.executeNonQueryStatement("delete timeseries " + device + "." + series);
+          Thread.sleep(1000);
         } catch (Exception e) {
           // no-op
         }
@@ -139,7 +142,12 @@ public class InsertUnseqLatencyDataIT {
       //      aa[i] = i;
       bb[i] = (long) Math.round(i + Math.exp(mu + sig * random.nextGaussian()));
     }
-    cc.sort((x, y) -> (Long.compare(bb[x], bb[y])));
+    cc.unstableSort((x, y) -> (Long.compare(bb[x], bb[y])));
+
+    System.out.println("sort over!");
+    System.out.println("\t\tfreeMem\t" + (Runtime.getRuntime().freeMemory()) / (1024 * 1024.0));
+    System.out.println("\t\tmaxMem\t" + (Runtime.getRuntime().maxMemory()) / (1024 * 1024.0));
+    System.out.println("\t\ttotalMem\t" + (Runtime.getRuntime().totalMemory()) / (1024 * 1024.0));
 
     for (int deviceID = 0; deviceID < device_num; deviceID++) {
       String device = deviceList.get(deviceID);
@@ -149,15 +157,16 @@ public class InsertUnseqLatencyDataIT {
       //      session.insertRecord(device, 1L << 40, seriesList, dataTypeList, tmpList.toArray());
       //      session.executeNonQueryStatement("flush");
 
-      Tablet unSeqTablet =
-          new Tablet(device, schemaList, TABLET_SIZE); //  重要！ 先插一批时间戳极大的数据并且flush，这样后续数据才会全部划归乱序区。
-      for (int i = 0; i < TABLET_SIZE; i++) {
-        unSeqTablet.rowSize++;
-        unSeqTablet.timestamps[i] = (1L << 40) + i;
-        ((double[]) unSeqTablet.values[0])[i] = -2.33;
-      }
-      session.insertTablet(unSeqTablet);
-      session.executeNonQueryStatement("flush");
+      //      Tablet unSeqTablet =
+      //          new Tablet(device, schemaList, TABLET_SIZE); //  重要！
+      // 先插一批时间戳极大的数据并且flush，这样后续数据才会全部划归乱序区。
+      //      for (int i = 0; i < TABLET_SIZE; i++) {
+      //        unSeqTablet.rowSize++;
+      //        unSeqTablet.timestamps[i] = (1L << 40) + i;
+      //        ((double[]) unSeqTablet.values[0])[i] = -2.33;
+      //      }
+      //      session.insertTablet(unSeqTablet);
+      //      session.executeNonQueryStatement("flush");
 
       int TABLET_NUM = (baseSize / TABLET_SIZE) * (deviceID + 1);
       long TOTAL_SIZE = baseSize * (deviceID + 1);
@@ -190,7 +199,7 @@ public class InsertUnseqLatencyDataIT {
         session.insertTablet(tablet);
         //        session.executeNonQueryStatement("flush");
       }
-      //      session.executeNonQueryStatement("flush");
+      session.executeNonQueryStatement("flush");
     }
     System.out.println(
         "\t\t create designed data cost time:" + (System.currentTimeMillis() - START_TIME));
@@ -299,8 +308,8 @@ public class InsertUnseqLatencyDataIT {
   @Test
   public void insertDATA() {
     try {
-      //            prepareTimeSeriesData(mu, sig);
-      insertDataFromFile(1);
+      prepareTimeSeriesData();
+      //      insertDataFromFile(1);
       //      insertDataFromTXT();
       //      insertDataFromTXT(3, 3, 0);
     } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {

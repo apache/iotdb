@@ -46,6 +46,11 @@
             <artifactId>snappy-java</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-statistics-distribution</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
         </dependency>

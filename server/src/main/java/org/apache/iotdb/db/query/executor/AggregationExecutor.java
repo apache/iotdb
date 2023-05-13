@@ -44,6 +44,7 @@ import org.apache.iotdb.db.query.reader.series.*;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -56,6 +57,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +82,8 @@ public class AggregationExecutor {
   protected QueryContext context;
   protected AggregateResult[] aggregateResultList;
 
+  public List<Map<String, String>> aggrAttrs = new ArrayList<>();
+
   /**
    * e.g. when there are 2 time series root.test.d0.s0, root.vehicle.d0.s0 the query is "select
    * exact_median(s0) from root.** group by level=0" let exact_median(root.test.d0.s0) ->
@@ -90,6 +95,12 @@ public class AggregationExecutor {
   /** aggregation batch calculation size. */
   private int aggregateFetchSize;
 
+  public static Object2ObjectOpenHashMap<IChunkMetadata, IntArrayList> chunkMdToLtCount;
+  public static double aggrResultsMinCntL = -Double.MAX_VALUE,
+      aggrResultsMaxCntR = Double.MAX_VALUE;
+  public static boolean usingLtCount;
+  static IntArrayList cntChunkMdLtCountList = null;
+
   protected AggregationExecutor(QueryContext context, AggregationPlan aggregationPlan) {
     this.selectedSeries = new ArrayList<>();
     aggregationPlan
@@ -98,6 +109,8 @@ public class AggregationExecutor {
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
+    this.aggrAttrs = aggregationPlan.aggrAttrs;
+    //    System.out.println("\t\t\t\t[DEBUG AggregationExecutor]\t"+aggrAttrs.toString());
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.ascending = aggregationPlan.isAscending();
     this.context = context;
@@ -149,6 +162,7 @@ public class AggregationExecutor {
     for (int i = 0; i < selectedSeries.size(); i++) {
       aggregateResultList[i] =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), dataTypes.get(i));
+      aggregateResultList[i].setAttributes(aggrAttrs.get(i));
       maxIteration = Math.max(maxIteration, aggregateResultList[i].maxIteration());
     }
     //    for (int i = 0; i < selectedSeries.size(); i++)
@@ -158,12 +172,42 @@ public class AggregationExecutor {
     aggregationPlan.groupAggResultByLevelBeforeAggregation(Arrays.asList(aggregateResultList));
     resultToGroupedAhead = aggregationPlan.getresultToGroupedAhead();
 
+    aggrResultsMinCntL = -Double.MAX_VALUE;
+    aggrResultsMaxCntR = Double.MAX_VALUE;
+    chunkMdToLtCount = new Object2ObjectOpenHashMap<>();
+
     for (int iteration = 0; iteration < maxIteration; iteration++) {
 
       List<AggregateResult> remainingGroupedAheadAggr =
           findUnfinishedGroupedAheadAggr(iteration, resultToGroupedAhead);
-      for (AggregateResult groupedAheadAggr : remainingGroupedAheadAggr)
+      if (remainingGroupedAheadAggr.isEmpty()) break;
+
+      double cntMinCntL = Double.MAX_VALUE, cntMaxCntR = -Double.MAX_VALUE;
+      for (AggregateResult groupedAheadAggr : remainingGroupedAheadAggr) {
         groupedAheadAggr.startIteration();
+        //        System.out.println("\t\tgroupedAheadAggr.getCntL\t"+groupedAheadAggr.getCntL());
+        cntMinCntL = Math.min(cntMinCntL, groupedAheadAggr.getCntL());
+        cntMaxCntR = Math.max(cntMaxCntR, groupedAheadAggr.getCntR());
+      }
+      usingLtCount = false;
+      if (remainingGroupedAheadAggr.size() == 1
+          && remainingGroupedAheadAggr.get(0).canUpdateFromLtCount()) {
+        usingLtCount = cntMinCntL >= aggrResultsMinCntL && cntMaxCntR <= aggrResultsMaxCntR;
+        if (!usingLtCount) System.out.println("\t\tLast iter FAILED. can;t use ltCount");
+      }
+      //      System.out.println(
+      //          "[DEBUG start query iter]cntL,R ... cntIter:"
+      //              + iteration
+      //              + "\t\tcntVL,R:"
+      //              + cntMinCntL
+      //              + ".."
+      //              + cntMaxCntR
+      //              + "\t\tlastVL,R:"
+      //              + aggrResultsMinCntL
+      //              + "..."
+      //              + aggrResultsMaxCntR);
+      aggrResultsMinCntL = cntMinCntL;
+      aggrResultsMaxCntR = cntMaxCntR;
 
       // find unfinished AggrIndexes
       Set<Integer> remainingAggrIndexes =
@@ -293,7 +337,7 @@ public class AggregationExecutor {
       throws StorageEngineException, IOException, QueryProcessException {
 
     if (resultToGroupedAhead == null) {
-      resultToGroupedAhead = new HashMap<>();
+      resultToGroupedAhead = new Object2ObjectOpenHashMap<>();
       for (AggregateResult aggregateResult : ascAggregateResultList)
         resultToGroupedAhead.put(aggregateResult, aggregateResult);
       for (AggregateResult aggregateResult : descAggregateResultList)
@@ -334,6 +378,10 @@ public class AggregationExecutor {
               ascAggregateResultList.get(0);
           (((SeriesAggregateReader) seriesReader).getSeriesReader()).aggrSST = true;
         }
+        if (ascAggregateResultList.get(0).getAggregationType()
+            == AggregationType.EXACT_QUANTILE_PR_KLL_POST_BEST_PR)
+          (((SeriesAggregateReader) seriesReader).getSeriesReader())
+              .setNoUpdate(ascAggregateResultList.get(0).ignoreUpdateInThisPass());
       } else {
         if (strategy == 1)
           seriesReader =
@@ -484,12 +532,20 @@ public class AggregationExecutor {
     return remainingAggrIndexes;
   }
 
-  private static void aggregatePagesFromReader(
+  private static IntArrayList aggregatePagesFromReaderWithLtCount(
       IAggregateReader seriesReader,
       List<AggregateResult> aggregateResultList,
       Map<AggregateResult, AggregateResult> resultToGroupedAhead)
       throws QueryProcessException, IOException {
+    IntArrayList ltCount = new IntArrayList();
+    int pageID = -1;
+
     while (seriesReader.hasNextPage()) {
+      //      System.out.println("\t[nextPage.]");
+      pageID++;
+      ltCount.add(-233);
+      int pageLtCount = -233;
+
       aggregateResultList =
           findUnfinishedAggregateResults(aggregateResultList, resultToGroupedAhead);
 
@@ -540,6 +596,89 @@ public class AggregationExecutor {
         }
       }
 
+      if (usingLtCount
+          && cntChunkMdLtCountList != null
+          && pageID < cntChunkMdLtCountList.size()
+          && cntChunkMdLtCountList.getInt(pageID) >= 0) {
+        if (aggregateResultList.size() == 1) {
+          AggregateResult groupedAheadAggr = resultToGroupedAhead.get(aggregateResultList.get(0));
+          if (groupedAheadAggr.canUpdateFromLtCount()) {
+            //            System.out.println(
+            //                "\t\t\t[DEBUG updateFromLtCount]\tval:"
+            //                    + seriesReader.currentPageStatistics().getMinValue()
+            //                    + "..."
+            //                    + seriesReader.currentPageStatistics().getMaxValue());
+            groupedAheadAggr.updateFromLtCount(cntChunkMdLtCountList.getInt(pageID));
+            ltCount.set(pageID, cntChunkMdLtCountList.getInt(pageID));
+            seriesReader.skipCurrentPage();
+            continue;
+          }
+        }
+      }
+
+      // try to calc by page statistics
+      if (seriesReader.canUseCurrentPageStatistics()) {
+        Statistics pageStatistics = seriesReader.currentPageStatistics();
+        List<AggregateResult> remainingAggregateResultList =
+            tryToAggregateFromStatistics(aggregateResultList, pageStatistics, resultToGroupedAhead);
+        if (remainingAggregateResultList.isEmpty()) {
+          seriesReader.skipCurrentPage();
+          continue;
+        }
+        IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
+        for (AggregateResult aggregateResult : remainingAggregateResultList) {
+          AggregateResult groupedAheadAggr = resultToGroupedAhead.get(aggregateResult);
+          groupedAheadAggr.updateResultFromPageData(batchDataIterator);
+          pageLtCount = groupedAheadAggr.getLastLtCountFromPageData();
+          batchDataIterator.reset();
+        }
+      } else {
+        BatchData batchData = seriesReader.nextPage();
+        if (batchData == null) {
+          System.out.println("[DEBUG] pageData NULL");
+          continue;
+        }
+        IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+        //        System.out.print(
+        //            "[DEBUG] got pageData. minT:"
+        //                + batchDataIterator.currentTime()
+        //                + "\tlen:"
+        //                + batchDataIterator.totalLength());
+        for (AggregateResult aggregateResult : aggregateResultList) {
+          AggregateResult groupedAheadAggr = resultToGroupedAhead.get(aggregateResult);
+          //          System.out.println("[DEBUG] "+aggregateResult.hashCode()+"
+          // "+groupedAheadAggr.hashCode());
+          if (groupedAheadAggr.useOverlapStat()) {
+            groupedAheadAggr.updateResultFromOverlap(seriesReader);
+          } else {
+            groupedAheadAggr.updateResultFromPageData(batchDataIterator);
+            pageLtCount = groupedAheadAggr.getLastLtCountFromPageData();
+            batchDataIterator.reset();
+          }
+        }
+        //        long mxT = Long.MIN_VALUE;
+        //        while (batchDataIterator.hasNext()) {
+        //          mxT = Math.max(mxT, batchDataIterator.currentTime());
+        //          batchDataIterator.next();
+        //        }
+        //        System.out.println("\tmxT:" + mxT);
+      }
+
+      ltCount.set(pageID, pageLtCount);
+    }
+    return ltCount;
+  }
+
+  private static void aggregatePagesFromReader(
+      IAggregateReader seriesReader,
+      List<AggregateResult> aggregateResultList,
+      Map<AggregateResult, AggregateResult> resultToGroupedAhead)
+      throws QueryProcessException, IOException {
+    while (seriesReader.hasNextPage()) {
+
+      aggregateResultList =
+          findUnfinishedAggregateResults(aggregateResultList, resultToGroupedAhead);
+
       // try to calc by page statistics
       if (seriesReader.canUseCurrentPageStatistics()) {
         Statistics pageStatistics = seriesReader.currentPageStatistics();
@@ -578,12 +717,6 @@ public class AggregationExecutor {
             batchDataIterator.reset();
           }
         }
-        long mxT = Long.MIN_VALUE;
-        while (batchDataIterator.hasNext()) {
-          mxT = Math.max(mxT, batchDataIterator.currentTime());
-          batchDataIterator.next();
-        }
-        //        System.out.println("\tmxT:" + mxT);
       }
     }
   }
@@ -593,22 +726,58 @@ public class AggregationExecutor {
       List<AggregateResult> aggregateResultList,
       Map<AggregateResult, AggregateResult> resultToGroupedAhead)
       throws QueryProcessException, IOException {
-    while (seriesReader.hasNextChunk()) {
+    List<AggregateResult> tmpList;
+    while (seriesReader.hasNextChunk() && !aggregateResultList.isEmpty()) {
+      //      System.out.println("\t[nextChunk.]");
+      IChunkMetadata cntChunkMd =
+          ((SeriesAggregateReader) seriesReader).getSeriesReader().firstChunkMetadata;
       aggregateResultList =
           findUnfinishedAggregateResults(aggregateResultList, resultToGroupedAhead);
+
+      tmpList = aggregateResultList;
       // try to calc by chunk statistics
       if (seriesReader.canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-        List<AggregateResult> remainingAggregateResultList =
+        tmpList =
             tryToAggregateFromStatistics(
                 aggregateResultList, chunkStatistics, resultToGroupedAhead);
-        if (remainingAggregateResultList.isEmpty()) {
+        if (tmpList.isEmpty()) {
           seriesReader.skipCurrentChunk();
           continue;
         }
-        aggregatePagesFromReader(seriesReader, remainingAggregateResultList, resultToGroupedAhead);
+        //        cntChunkMdLtCountList = chunkMdToLtCount.getOrDefault(cntChunkMd, null);
+        //        System.out.println("\t[DEBUG] to aggr pages. ltCountList:" +
+        // cntChunkMdLtCountList);
+        //        IntArrayList newLtCountList =
+        //            aggregatePagesFromReader(
+        //                seriesReader, remainingAggregateResultList, resultToGroupedAhead);
+        //        System.out.println("\t[DEBUG] after aggr pages. ltCountList:" + newLtCountList);
+        //        chunkMdToLtCount.put(cntChunkMd, newLtCountList);
+      }
+
+      if (usingLtCount) {
+        cntChunkMdLtCountList = chunkMdToLtCount.getOrDefault(cntChunkMd, null);
+        //      System.out.println("\t[DEBUG] to aggr pages. ltCountList:" + cntChunkMdLtCountList);
+
+        if (cntChunkMdLtCountList != null
+            && tmpList.size() == 1
+            && tmpList.get(0).canUpdateFromLtCount()) {
+          boolean ltCountAvail = true;
+          for (int ltCount : cntChunkMdLtCountList) ltCountAvail &= (ltCount >= 0);
+          if (ltCountAvail) {
+            //          System.out.println("\t\t\t[DEBUG updateFromLtCount] skip chunk.\t");
+            for (int ltCount : cntChunkMdLtCountList)
+              resultToGroupedAhead.get(tmpList.get(0)).updateFromLtCount(ltCount);
+            seriesReader.skipCurrentChunk();
+            continue;
+          }
+        }
+        IntArrayList newLtCountList =
+            aggregatePagesFromReaderWithLtCount(seriesReader, tmpList, resultToGroupedAhead);
+        //      System.out.println("\t[DEBUG] after aggr pages. ltCountList:" + newLtCountList);
+        chunkMdToLtCount.put(cntChunkMd, newLtCountList);
       } else {
-        aggregatePagesFromReader(seriesReader, aggregateResultList, resultToGroupedAhead);
+        aggregatePagesFromReader(seriesReader, tmpList, resultToGroupedAhead);
       }
     }
   }
@@ -618,7 +787,16 @@ public class AggregationExecutor {
       List<AggregateResult> aggregateResultList,
       Map<AggregateResult, AggregateResult> resultToGroupedAhead)
       throws QueryProcessException, IOException {
+    boolean consumingSeq = true;
     while (seriesReader.hasNextFile()) {
+      if (consumingSeq
+          && ((SeriesAggregateReader) seriesReader).getSeriesReader().NoUpdateAndConsumingUnSeq) {
+        if (aggregateResultList.get(0).getAggregationType()
+            == AggregationType.EXACT_QUANTILE_PR_KLL_POST_BEST_PR)
+          aggregateResultList.get(0).informUnSeq();
+        consumingSeq = false;
+      }
+      //      System.out.println("\t[nextFile.]");
       aggregateResultList =
           findUnfinishedAggregateResults(aggregateResultList, resultToGroupedAhead);
       //      System.out.println(

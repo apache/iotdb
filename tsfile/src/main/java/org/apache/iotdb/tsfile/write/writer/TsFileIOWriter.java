@@ -319,7 +319,8 @@ public class TsFileIOWriter implements AutoCloseable {
       throws IOException {
     int chunkNum = chunkMetadataList.size(),
         lsmLevel = (int) Math.round(Math.log(chunkNum) / Math.log(30));
-    System.out.println("\t[DEBUG flushOneChunkMetadata]\tchunkNum=" + chunkMetadataList.size());
+    //    System.out.println("\t[DEBUG flushOneChunkMetadata]\tchunkNum=" +
+    // chunkMetadataList.size());
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
     TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
