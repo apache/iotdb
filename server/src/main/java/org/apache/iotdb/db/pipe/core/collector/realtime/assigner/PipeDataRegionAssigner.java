@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
@@ -53,7 +54,7 @@ public class PipeDataRegionAssigner {
         .match(event)
         .forEach(
             collector -> {
-              event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+              event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
               collector.collect(event);
             });
     event.gcSchemaInfo();

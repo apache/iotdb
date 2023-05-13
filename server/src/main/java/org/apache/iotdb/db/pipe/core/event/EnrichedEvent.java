@@ -19,10 +19,36 @@
 
 package org.apache.iotdb.db.pipe.core.event;
 
+/**
+ * EnrichedEvent is an event that can be enriched with additional runtime information. The
+ * additional information mainly includes the reference count of the event.
+ */
 public interface EnrichedEvent {
-  boolean increaseReferenceCount(String invokerMessage);
 
-  boolean decreaseReferenceCount(String invokerMessage);
+  /**
+   * Increase the reference count of this event.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is increased successfully, false if the event is not
+   *     controlled by the invoker, which means the data stored in the event is not safe to use
+   */
+  boolean increaseReferenceCount(String holderMessage);
+
+  /**
+   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
+   * can be recycled and the data stored in the event is not safe to use.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is decreased successfully, false otherwise
+   */
+  boolean decreaseReferenceCount(String holderMessage);
+
+  /**
+   * Get the reference count of this event.
+   *
+   * @return the reference count
+   */
+  int getReferenceCount();
 
   // TODO: ConsensusIndex getConsensusIndex();
 }

@@ -163,7 +163,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       lock.readLock().unlock();
     }
 
-    //    matchedCollectors.forEach(collector -> collector.collect(event));
     return matchedCollectors;
   }
 

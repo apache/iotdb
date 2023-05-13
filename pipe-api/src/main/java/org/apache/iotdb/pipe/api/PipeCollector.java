@@ -31,8 +31,6 @@ import org.apache.iotdb.pipe.api.event.Event;
  *
  * <p>Various data sources can be supported by implementing different PipeCollector classes.
  *
- * <p>TODO: Event life manage.
- *
  * <p>The lifecycle of a PipeCollector is as follows:
  *
  * <ul>
@@ -50,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
  */
+// TODO: support event lifecycle management
 public interface PipeCollector extends PipePlugin {
 
   /**

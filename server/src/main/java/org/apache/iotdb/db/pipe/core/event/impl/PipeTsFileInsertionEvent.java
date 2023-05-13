@@ -28,10 +28,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 
 public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
+
   private File tsFile;
 
   public PipeTsFileInsertionEvent(File tsFile) {
@@ -49,37 +50,43 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public String toString() {
-    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
-  }
-
-  @Override
-  public boolean increaseReferenceCount(String invokerMessage) {
+  public boolean increaseReferenceCount(String holderMessage) {
     try {
-      this.tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
-    } catch (IOException e) {
+      // TODO: increase reference count for mods & resource files
+      tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
+      return true;
+    } catch (Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for TsFile %s error. Invoker Message: %s",
-              tsFile.getPath(), invokerMessage),
+              "Increase reference count for TsFile %s error. Holder Message: %s",
+              tsFile.getPath(), holderMessage),
           e);
       return false;
     }
-    return true;
   }
 
   @Override
-  public boolean decreaseReferenceCount(String invokerMessage) {
+  public boolean decreaseReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.file().decreaseFileReference(tsFile);
-    } catch (IOException e) {
+      return true;
+    } catch (Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for TsFile %s error. Invoker Message: %s",
-              tsFile.getPath(), invokerMessage),
+              "Decrease reference count for TsFile %s error. Holder Message: %s",
+              tsFile.getPath(), holderMessage),
           e);
       return false;
     }
-    return true;
+  }
+
+  @Override
+  public int getReferenceCount() {
+    return PipeResourceManager.file().getFileReferenceCount(tsFile);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
   }
 }

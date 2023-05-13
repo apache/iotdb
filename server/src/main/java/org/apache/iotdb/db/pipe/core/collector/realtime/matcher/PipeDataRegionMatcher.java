@@ -40,7 +40,10 @@ public interface PipeDataRegionMatcher {
 
   /**
    * Match the event's schema info with the registered collectors' patterns. If the event's schema
-   * info matches the pattern of a collector, the event will be assigned to the collector.
+   * info matches the pattern of a collector, the collector will be returned.
+   *
+   * @param event the event to be matched
+   * @return the matched collectors
    */
   Set<PipeRealtimeDataRegionCollector> match(PipeRealtimeCollectEvent event);
 

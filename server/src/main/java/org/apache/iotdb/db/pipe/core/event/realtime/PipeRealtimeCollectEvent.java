@@ -61,19 +61,24 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
   }
 
   @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    return !(event instanceof EnrichedEvent)
+        || ((EnrichedEvent) event).increaseReferenceCount(holderMessage);
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    return !(event instanceof EnrichedEvent)
+        || ((EnrichedEvent) event).decreaseReferenceCount(holderMessage);
+  }
+
+  @Override
+  public int getReferenceCount() {
+    return event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReferenceCount() : 0;
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeCollectEvent{" + "event=" + event + ", tsFileEpoch=" + tsFileEpoch + '}';
-  }
-
-  @Override
-  public boolean increaseReferenceCount(String invokerMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).increaseReferenceCount(invokerMessage);
-  }
-
-  @Override
-  public boolean decreaseReferenceCount(String invokerMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).decreaseReferenceCount(invokerMessage);
   }
 }
