@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -28,7 +29,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
 
   private final InsertNode insertNode;
 
@@ -54,5 +55,17 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public String toString() {
     return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
+  }
+
+  @Override
+  public boolean increaseReferenceCount(String invokerMessage) {
+    // TODO: use WALPipeHandler pinMemtable
+    return true;
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String invokerMessage) {
+    // TODO: use WALPipeHandler unpinMemetable
+    return true;
   }
 }

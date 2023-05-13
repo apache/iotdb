@@ -47,7 +47,7 @@ import java.nio.file.Files;
 
 import static org.junit.Assert.fail;
 
-public class PipeTsFileResourceManagerTest {
+public class PipeFileResourceManagerTest {
 
   private static final String ROOT_DIR = "target" + File.separator + "PipeTsFileHolderTest";
   private static final String SEQUENCE_DIR =
@@ -55,11 +55,11 @@ public class PipeTsFileResourceManagerTest {
   private static final String TS_FILE_NAME = SEQUENCE_DIR + File.separator + "test.tsfile";
   private static final String MODS_FILE_NAME = TS_FILE_NAME + ".mods";
 
-  private PipeTsFileResourceManager pipeTsFileResourceManager;
+  private PipeFileResourceManager pipeFileResourceManager;
 
   @Before
   public void setUp() throws Exception {
-    pipeTsFileResourceManager = new PipeTsFileResourceManager();
+    pipeFileResourceManager = new PipeFileResourceManager();
 
     createTsfile(TS_FILE_NAME);
     creatModsFile(MODS_FILE_NAME);
@@ -150,27 +150,27 @@ public class PipeTsFileResourceManagerTest {
   public void testIncreaseTsfile() throws IOException {
     File originTsfile = new File(TS_FILE_NAME);
     File originModFile = new File(MODS_FILE_NAME);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originTsfile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile));
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(originTsfile));
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(originModFile));
 
-    File pipeTsfile = pipeTsFileResourceManager.increaseFileReference(originTsfile, true);
-    File pipeModFile = pipeTsFileResourceManager.increaseFileReference(originModFile, false);
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    File pipeTsfile = pipeFileResourceManager.increaseFileReference(originTsfile, true);
+    File pipeModFile = pipeFileResourceManager.increaseFileReference(originModFile, false);
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeTsfile));
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertTrue(Files.exists(originTsfile.toPath()));
     Assert.assertTrue(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
 
     // test use hardlinkTsFile to increase reference counts
-    pipeTsFileResourceManager.increaseFileReference(pipeTsfile, true);
-    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
+    pipeFileResourceManager.increaseFileReference(pipeTsfile, true);
+    Assert.assertEquals(2, pipeFileResourceManager.getFileReferenceCount(pipeTsfile));
     Assert.assertTrue(Files.exists(originTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
 
     // test use copyFile to increase reference counts
-    pipeTsFileResourceManager.increaseFileReference(pipeModFile, false);
-    Assert.assertEquals(2, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    pipeFileResourceManager.increaseFileReference(pipeModFile, false);
+    Assert.assertEquals(2, pipeFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertTrue(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
   }
@@ -180,15 +180,15 @@ public class PipeTsFileResourceManagerTest {
     File originFile = new File(TS_FILE_NAME);
     File originModFile = new File(MODS_FILE_NAME);
 
-    pipeTsFileResourceManager.decreaseFileReference(originFile);
-    pipeTsFileResourceManager.decreaseFileReference(originModFile);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originFile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(originModFile));
+    pipeFileResourceManager.decreaseFileReference(originFile);
+    pipeFileResourceManager.decreaseFileReference(originModFile);
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(originFile));
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(originModFile));
 
-    File pipeTsfile = pipeTsFileResourceManager.increaseFileReference(originFile, true);
-    File pipeModFile = pipeTsFileResourceManager.increaseFileReference(originModFile, false);
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    File pipeTsfile = pipeFileResourceManager.increaseFileReference(originFile, true);
+    File pipeModFile = pipeFileResourceManager.increaseFileReference(originModFile, false);
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeTsfile));
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
@@ -199,17 +199,17 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
 
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(1, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeTsfile));
+    Assert.assertEquals(1, pipeFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
     Assert.assertTrue(Files.exists(pipeTsfile.toPath()));
     Assert.assertTrue(Files.exists(pipeModFile.toPath()));
 
-    pipeTsFileResourceManager.decreaseFileReference(pipeTsfile);
-    pipeTsFileResourceManager.decreaseFileReference(pipeModFile);
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsfile));
-    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
+    pipeFileResourceManager.decreaseFileReference(pipeTsfile);
+    pipeFileResourceManager.decreaseFileReference(pipeModFile);
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(pipeTsfile));
+    Assert.assertEquals(0, pipeFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
     Assert.assertFalse(Files.exists(pipeTsfile.toPath()));

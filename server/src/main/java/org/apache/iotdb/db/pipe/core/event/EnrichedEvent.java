@@ -17,6 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource;
+package org.apache.iotdb.db.pipe.core.event;
 
-public class PipeFileManager {}
+public interface EnrichedEvent {
+  boolean increaseReferenceCount(String invokerMessage);
+
+  boolean decreaseReferenceCount(String invokerMessage);
+
+  // TODO: ConsensusIndex getConsensusIndex();
+}

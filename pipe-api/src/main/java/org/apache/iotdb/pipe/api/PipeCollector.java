@@ -31,6 +31,8 @@ import org.apache.iotdb.pipe.api.event.Event;
  *
  * <p>Various data sources can be supported by implementing different PipeCollector classes.
  *
+ * <p>TODO: Event life manage.
+ *
  * <p>The lifecycle of a PipeCollector is as follows:
  *
  * <ul>

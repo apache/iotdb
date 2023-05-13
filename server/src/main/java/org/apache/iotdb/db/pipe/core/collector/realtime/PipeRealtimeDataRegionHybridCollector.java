@@ -91,6 +91,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       // this would not happen, but just in case.
       // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
       // TODO: memory control when elements in queue are too many.
+      // TODO: Discard TsFile Exception should be reported
     }
   }
 
@@ -118,6 +119,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                   "Unsupported event type %s for Hybrid Realtime Collector %s",
                   collectEvent.getEvent().getType(), this));
       }
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
@@ -135,7 +137,11 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
         .migrateState(
             this,
             state ->
-                (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
+                (state.equals(TsFileEpoch.State.EMPTY)
+                        && event.increaseReferenceCount(
+                            PipeRealtimeDataRegionHybridCollector.class.getName()))
+                    ? TsFileEpoch.State.USING_TABLET
+                    : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
       return event.getEvent();
@@ -160,6 +166,14 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
             });
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
+      if (!event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+        LOGGER.warn(
+            String.format(
+                "Increase reference count of TsFile Event %s error, can not supply it to task.",
+                event.getEvent()));
+        // TODO: Discard TsFile Exception should be reported
+        return null;
+      }
       return event.getEvent();
     }
     // if the state is USING_TABLET, discard the event and poll the next one.

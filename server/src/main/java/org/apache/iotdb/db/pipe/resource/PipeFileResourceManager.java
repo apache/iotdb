@@ -32,7 +32,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeTsFileResourceManager {
+public class PipeFileResourceManager {
 
   private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
 
