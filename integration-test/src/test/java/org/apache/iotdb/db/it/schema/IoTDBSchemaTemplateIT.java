@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -53,18 +54,41 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv().initClusterEnvironment();
-
     prepareTemplate();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
+  }
+
+  private void prepareTemplate() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create database
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.sg3");
+
+      // create schema template
+      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
+    }
   }
 
   @Test
@@ -405,21 +429,6 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       while (resultSet.next()) {
         Assert.assertEquals(2L, resultSet.getLong("COUNT(root.test.sg_satosg.s1)"));
       }
-    }
-  }
-
-  private void prepareTemplate() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // create database
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
-      statement.execute("CREATE DATABASE root.sg3");
-
-      // create schema template
-      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
     }
   }
 

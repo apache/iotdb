@@ -111,6 +111,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesState
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
@@ -457,6 +458,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
       for (Expression expression : resultExpressions) {
+        // TODO: CRTODO If this expression is a logical view, replace the original expression with
+        // the parsed View Expression.
+        // And the view expression should be converted into expression.
+
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
           continue;
@@ -3018,5 +3023,49 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setWhereExpression(whereExpression);
+  }
+
+  // create Logical View
+  @Override
+  public Analysis visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    // TODO: CRTODO: add more analyzing
+    context.setQueryType(QueryType.WRITE);
+
+    // check target paths; check source expressions.
+    Pair<Boolean, Exception> checkResult = createLogicalViewStatement.checkAll();
+    if (checkResult.left == false) {
+      throw new RuntimeException(checkResult.right);
+    }
+
+    Analysis queryAnalysis = null;
+    if (createLogicalViewStatement.getQueryStatement() != null) {
+      // analysis query statement
+      //      AnalyzeVisitor queryVisitor = new AnalyzeVisitor(this.partitionFetcher,
+      // this.schemaFetcher);
+      //      queryAnalysis =
+      // queryVisitor.visitQuery(createLogicalViewStatement.getQueryStatement(), null);
+      this.visitQuery(createLogicalViewStatement.getQueryStatement(), null);
+      // get all expression from resultColumns
+      List<ResultColumn> resultColumns =
+          createLogicalViewStatement.getQueryStatement().getSelectComponent().getResultColumns();
+      List<Expression> expressionList = new ArrayList<>();
+      for (ResultColumn resultCol : resultColumns) {
+        expressionList.add(resultCol.getExpression());
+      }
+      createLogicalViewStatement.setSourceExpressions(expressionList);
+    }
+    analysis.setStatement(createLogicalViewStatement);
+
+    // set schema partition info, this info will be used to split logical plan node.
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath thisFullPath : createLogicalViewStatement.getTargetPathList()) {
+      patternTree.appendFullPath(thisFullPath);
+    }
+    SchemaPartition schemaPartitionInfo = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+    analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+    return analysis;
   }
 }

@@ -17,24 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
+@FunctionalInterface
+public interface PendingQueueNotFullToFullListener {
 
-import org.junit.Before;
-import org.mockito.Mockito;
-
-public class PipeAssignerSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeAssignerSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeAssignerSubtask("PipeAssignerSubtaskExecutorTest") {
-              @Override
-              public void executeForAWhile() {}
-            });
-  }
+  void onPendingQueueNotFullToFull();
 }

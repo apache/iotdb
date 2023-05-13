@@ -843,7 +843,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
     }
     if (isNeedInferType) {
       return;

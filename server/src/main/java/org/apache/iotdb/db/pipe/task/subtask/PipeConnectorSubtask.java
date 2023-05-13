@@ -19,55 +19,60 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  // input
-  private final ArrayBlockingQueue<Event> pendingQueue;
-  // output
-  private final PipeConnector pipeConnector;
+  private final ListenableBlockingPendingQueue<Event> inputPendingQueue;
+  private final PipeConnector outputPipeConnector;
 
   /** @param taskID connectorAttributeSortedString */
-  public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
+  public PipeConnectorSubtask(
+      String taskID,
+      ListenableBlockingPendingQueue<Event> inputPendingQueue,
+      PipeConnector outputPipeConnector) {
     super(taskID);
-    // TODO: make the size of the queue size reasonable and configurable
-    this.pendingQueue = new ArrayBlockingQueue<>(1024 * 1024);
-    this.pipeConnector = pipeConnector;
-  }
-
-  public ArrayBlockingQueue<Event> getInputPendingQueue() {
-    return pendingQueue;
+    this.inputPendingQueue = inputPendingQueue;
+    this.outputPipeConnector = outputPipeConnector;
   }
 
   // TODO: for a while
   @Override
   protected void executeForAWhile() {
-    if (pendingQueue.isEmpty()) {
+    try {
+      // TODO: reduce the frequency of heartbeat
+      outputPipeConnector.heartbeat();
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          "PipeConnector: failed to connect to the target system.", e);
+    }
+
+    final Event event = inputPendingQueue.poll();
+    if (event == null) {
       return;
     }
 
-    final Event event = pendingQueue.poll();
-
     try {
       if (event instanceof TabletInsertionEvent) {
-        pipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
-        pipeConnector.transfer((TsFileInsertionEvent) event);
+        outputPipeConnector.transfer((TsFileInsertionEvent) event);
       } else if (event instanceof DeletionEvent) {
-        pipeConnector.transfer((DeletionEvent) event);
+        outputPipeConnector.transfer((DeletionEvent) event);
       } else {
         throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
       }
@@ -80,9 +85,49 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
+  public void onFailure(@NotNull Throwable throwable) {
+    // retry to connect to the target system if the connection is broken
+    if (throwable instanceof PipeConnectionException) {
+      int retry = 0;
+      while (retry < MAX_RETRY_TIMES) {
+        try {
+          outputPipeConnector.handshake();
+          break;
+        } catch (Exception e) {
+          retry++;
+          LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
+          try {
+            // TODO: make the retry interval configurable
+            Thread.sleep(retry * 1000L);
+          } catch (InterruptedException interruptedException) {
+            LOGGER.info(
+                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");
+            Thread.currentThread().interrupt();
+          }
+        }
+      }
+
+      // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      // times
+      if (retry == MAX_RETRY_TIMES) {
+        LOGGER.error(
+            "Failed to reconnect to the target system after {} times, stopping current pipe task {}...",
+            MAX_RETRY_TIMES,
+            taskID);
+        lastFailedCause = throwable;
+        PipeAgent.runtime().report(this);
+        return;
+      }
+    }
+
+    // handle other exceptions as usual
+    super.onFailure(throwable);
+  }
+
+  @Override
   public void close() {
     try {
-      pipeConnector.close();
+      outputPipeConnector.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

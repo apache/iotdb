@@ -17,6 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource;
+package org.apache.iotdb.pipe.api.exception;
 
-public class PipeTsFileHolder {}
+public class PipeConnectionException extends PipeException {
+
+  public PipeConnectionException(String message) {
+    super(message);
+  }
+
+  public PipeConnectionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

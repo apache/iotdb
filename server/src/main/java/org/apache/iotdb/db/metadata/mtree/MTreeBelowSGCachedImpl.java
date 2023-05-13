@@ -66,6 +66,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -716,6 +717,27 @@ public class MTreeBelowSGCachedImpl {
       unPinPath(cur);
     }
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    ICachedMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    } finally {
+      if (deviceMNode != null) {
+        unPinMNode(deviceMNode);
+      }
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -1058,8 +1080,8 @@ public class MTreeBelowSGCachedImpl {
                 return node.getAlias();
               }
 
-              public MeasurementSchema getSchema() {
-                return (MeasurementSchema) node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -1078,6 +1100,11 @@ public class MTreeBelowSGCachedImpl {
 
               public boolean isUnderAlignedDevice() {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
+              }
+
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
               }
 
               public String getFullPath() {

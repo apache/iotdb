@@ -17,21 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.pipe.config;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+public class PipeProcessorConstant {
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
-  }
+  public static final String PROCESSOR_KEY = "processor";
 
-  @Override
-  protected void executeForAWhile() {
-    // do nothing
-  }
-
-  @Override
-  public void close() {
-    // TODO
+  private PipeProcessorConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

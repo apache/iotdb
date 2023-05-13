@@ -423,6 +423,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       DataNodeSchemaCache.getInstance().invalidateAll();
+      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
@@ -1009,14 +1010,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setTimeSeriesNum(
+      resp.setRegionDeviceNumMap(
+          schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+      resp.setRegionTimeSeriesNumMap(
           schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
     }
     if (req.getDataRegionIds() != null) {
       spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
+    // Update schema quota if necessary
+    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
     return resp;
   }
 

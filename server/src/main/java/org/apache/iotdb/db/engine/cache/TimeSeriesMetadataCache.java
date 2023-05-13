@@ -238,12 +238,11 @@ public class TimeSeriesMetadataCache {
     return entryAverageSize.get();
   }
 
-  public long calculateBloomFilterHitRatio() {
+  public double calculateBloomFilterHitRatio() {
     if (bloomFilterRequestCount.get() == 0L) {
-      return 1L;
+      return 1.0d;
     }
-    return (long)
-        ((double) bloomFilterPreventCount.get() / (double) bloomFilterRequestCount.get() * 100L);
+    return bloomFilterPreventCount.get() * 100.0d / bloomFilterRequestCount.get();
   }
 
   /** clear LRUCache. */
