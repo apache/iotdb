@@ -29,7 +29,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.Pipe
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -41,6 +43,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -160,6 +164,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     pipeMetaKeeper.removePipeMeta(plan.getPipeName());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public DataSet showPipes() {
+    return new PipeTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        StreamSupport.stream(getPipeMetaList().spliterator(), false).collect(Collectors.toList()));
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {
