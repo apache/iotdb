@@ -281,6 +281,8 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
+      case ShowPipeV2:
+        return pipeInfo.getPipeTaskInfo().showPipes();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

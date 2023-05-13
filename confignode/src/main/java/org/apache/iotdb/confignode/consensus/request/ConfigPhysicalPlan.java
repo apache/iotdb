@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -387,6 +388,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropPipeV2:
           plan = new DropPipePlanV2();
+          break;
+        case ShowPipeV2:
+          plan = new ShowPipePlanV2();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

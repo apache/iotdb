@@ -178,6 +178,8 @@ public enum ConfigPhysicalPlanType {
   /** START PIPE & STOP PIPE */
   SetPipeStatusV2((short) 1501),
   DropPipeV2((short) 1502),
+  /** SHOW PIPES */
+  ShowPipeV2((short) 1503),
   ;
 
   private final short planType;
