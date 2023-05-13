@@ -75,7 +75,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.HandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -402,8 +402,10 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
       case DropPipeV2:
         return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
-      case HandleLeaderChange:
-        return pipeInfo.getPipeTaskInfo().handleLeaderChange((HandleLeaderChangePlan) physicalPlan);
+      case PipeHandleLeaderChange:
+        return pipeInfo
+            .getPipeTaskInfo()
+            .handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

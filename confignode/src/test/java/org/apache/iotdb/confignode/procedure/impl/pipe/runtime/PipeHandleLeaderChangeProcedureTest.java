@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.procedure.impl.pipe.coordinator.HandleLeaderChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.coordinator.PipeHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -36,7 +36,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class HandleLeaderChangeProcedureTest {
+public class PipeHandleLeaderChangeProcedureTest {
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -47,14 +47,14 @@ public class HandleLeaderChangeProcedureTest {
     leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new Pair<>(2, 3));
     leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new Pair<>(4, 5));
 
-    HandleLeaderChangeProcedure proc = new HandleLeaderChangeProcedure(leaderMap);
+    PipeHandleLeaderChangeProcedure proc = new PipeHandleLeaderChangeProcedure(leaderMap);
 
     try {
       proc.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      HandleLeaderChangeProcedure proc2 =
-          (HandleLeaderChangeProcedure) ProcedureFactory.getInstance().create(buffer);
+      PipeHandleLeaderChangeProcedure proc2 =
+          (PipeHandleLeaderChangeProcedure) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
     } catch (Exception e) {

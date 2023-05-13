@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.coordinator;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.HandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -56,11 +56,12 @@ import java.util.Objects;
 
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
- * HandleLeaderChangeProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
+ * PipeHandleLeaderChangeProcedure} is executed, the {@link AddConfigNodeProcedure}, {@link
  * RemoveConfigNodeProcedure} or {@link RemoveDataNodeProcedure} will not be executed at the same
  * time.
  */
-public class HandleLeaderChangeProcedure extends AbstractNodeProcedure<HandleLeaderChangeState> {
+public class PipeHandleLeaderChangeProcedure
+    extends AbstractNodeProcedure<HandleLeaderChangeState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipePluginProcedure.class);
 
@@ -70,11 +71,11 @@ public class HandleLeaderChangeProcedure extends AbstractNodeProcedure<HandleLea
 
   private Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap = new HashMap<>();
 
-  public HandleLeaderChangeProcedure() {
+  public PipeHandleLeaderChangeProcedure() {
     super();
   }
 
-  public HandleLeaderChangeProcedure(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
+  public PipeHandleLeaderChangeProcedure(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
     super();
     this.leaderMap = leaderMap;
   }
@@ -111,10 +112,11 @@ public class HandleLeaderChangeProcedure extends AbstractNodeProcedure<HandleLea
 
     Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
     leaderMap.forEach((regionId, leaderPair) -> newLeaderMap.put(regionId, leaderPair.getRight()));
-    final HandleLeaderChangePlan handleLeaderChangePlan = new HandleLeaderChangePlan(newLeaderMap);
+    final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
+        new PipeHandleLeaderChangePlan(newLeaderMap);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(handleLeaderChangePlan);
+        configNodeManager.getConsensusManager().write(pipeHandleLeaderChangePlan);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
@@ -155,10 +157,11 @@ public class HandleLeaderChangeProcedure extends AbstractNodeProcedure<HandleLea
 
     Map<TConsensusGroupId, Integer> oldLeaderMap = new HashMap<>();
     leaderMap.forEach((regionId, leaderPair) -> oldLeaderMap.put(regionId, leaderPair.getLeft()));
-    final HandleLeaderChangePlan handleLeaderChangePlan = new HandleLeaderChangePlan(oldLeaderMap);
+    final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
+        new PipeHandleLeaderChangePlan(oldLeaderMap);
 
     final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(handleLeaderChangePlan);
+        configNodeManager.getConsensusManager().write(pipeHandleLeaderChangePlan);
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
@@ -236,7 +239,7 @@ public class HandleLeaderChangeProcedure extends AbstractNodeProcedure<HandleLea
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    HandleLeaderChangeProcedure that = (HandleLeaderChangeProcedure) o;
+    PipeHandleLeaderChangeProcedure that = (PipeHandleLeaderChangeProcedure) o;
     return this.leaderMap.equals(that.leaderMap)
         && this.isRollbackFromHandleOnDataNodesSuccessful
             == that.isRollbackFromHandleOnDataNodesSuccessful;

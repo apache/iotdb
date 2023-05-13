@@ -19,21 +19,25 @@
 
 package org.apache.iotdb.confignode.manager.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeCoordinator.class);
 
   private final ConfigManager configManager;
 
@@ -43,22 +47,34 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    // Do nothing
+    // do nothing, because pipe task is not related to statistics
   }
 
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
+    // we only care about data region leader change
+    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupNewLeaderMap =
+        new HashMap<>();
     event
         .getLeaderMap()
-        .keySet()
-        .removeIf(regionId -> !regionId.getType().equals(TConsensusGroupType.DataRegion));
-    if (event.getLeaderMap().isEmpty()) {
+        .forEach(
+            (regionId, pair) -> {
+              if (regionId.getType().equals(TConsensusGroupType.DataRegion)) {
+                dataRegionGroupNewLeaderMap.put(regionId, pair);
+              }
+            });
+
+    // if no data region leader change, return
+    if (dataRegionGroupNewLeaderMap.isEmpty()) {
       return;
     }
-    TSStatus result = configManager.getProcedureManager().handleLeaderChange(event.getLeaderMap());
+
+    final TSStatus result =
+        configManager.getProcedureManager().pipeHandleLeaderChange(dataRegionGroupNewLeaderMap);
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "PipeRuntimeCoordinator meets error in handle leader change, status: ({})", result);
+          "PipeRuntimeCoordinator meets error in handling data region leader change, status: ({})",
+          result);
     }
   }
 }

@@ -31,29 +31,32 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HandleLeaderChangePlan extends ConfigPhysicalPlan {
+public class PipeHandleLeaderChangePlan extends ConfigPhysicalPlan {
 
-  private Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+  private Map<TConsensusGroupId, Integer> newConsensusGroupId2DataRegionLeaderIdMap =
+      new HashMap<>();
 
-  public HandleLeaderChangePlan() {
-    super(ConfigPhysicalPlanType.HandleLeaderChange);
+  public PipeHandleLeaderChangePlan() {
+    super(ConfigPhysicalPlanType.PipeHandleLeaderChange);
   }
 
-  public HandleLeaderChangePlan(Map<TConsensusGroupId, Integer> newLeaderMap) {
-    super(ConfigPhysicalPlanType.HandleLeaderChange);
-    this.newLeaderMap = newLeaderMap;
+  public PipeHandleLeaderChangePlan(
+      Map<TConsensusGroupId, Integer> newConsensusGroupId2DataRegionLeaderIdMap) {
+    super(ConfigPhysicalPlanType.PipeHandleLeaderChange);
+    this.newConsensusGroupId2DataRegionLeaderIdMap = newConsensusGroupId2DataRegionLeaderIdMap;
   }
 
-  public Map<TConsensusGroupId, Integer> getNewLeaderMap() {
-    return newLeaderMap;
+  public Map<TConsensusGroupId, Integer> getNewConsensusGroupId2DataRegionLeaderIdMap() {
+    return newConsensusGroupId2DataRegionLeaderIdMap;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(newLeaderMap.size());
-    for (Map.Entry<TConsensusGroupId, Integer> entry : newLeaderMap.entrySet()) {
+    stream.writeInt(newConsensusGroupId2DataRegionLeaderIdMap.size());
+    for (Map.Entry<TConsensusGroupId, Integer> entry :
+        newConsensusGroupId2DataRegionLeaderIdMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -63,7 +66,7 @@ public class HandleLeaderChangePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = buffer.getInt();
     for (int i = 0; i < size; ++i) {
-      newLeaderMap.put(
+      newConsensusGroupId2DataRegionLeaderIdMap.put(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(buffer)),
           ReadWriteIOUtils.readInt(buffer));
     }

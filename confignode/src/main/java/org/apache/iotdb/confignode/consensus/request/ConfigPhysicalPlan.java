@@ -76,7 +76,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.HandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -389,8 +389,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case DropPipeV2:
           plan = new DropPipePlanV2();
           break;
-        case HandleLeaderChange:
-          plan = new HandleLeaderChangePlan();
+        case PipeHandleLeaderChange:
+          plan = new PipeHandleLeaderChangePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

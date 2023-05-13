@@ -50,7 +50,7 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.coordinator.HandleLeaderChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.coordinator.PipeHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
@@ -734,9 +734,12 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus handleLeaderChange(Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap) {
+  public TSStatus pipeHandleLeaderChange(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupNewLeaderMap) {
     try {
-      long procedureId = executor.submitProcedure(new HandleLeaderChangeProcedure(leaderMap));
+      long procedureId =
+          executor.submitProcedure(
+              new PipeHandleLeaderChangeProcedure(dataRegionGroupNewLeaderMap));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
