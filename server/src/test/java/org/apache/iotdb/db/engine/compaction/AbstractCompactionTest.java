@@ -32,11 +32,13 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBloc
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -70,6 +72,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.junit.Assert.fail;
 
@@ -205,9 +208,9 @@ public class AbstractCompactionTest {
       boolean isSeq)
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
-      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -277,9 +280,9 @@ public class AbstractCompactionTest {
       throws IOException, WriteProcessException {
     String value = isSeq ? "seqTestValue" : "unseqTestValue";
     for (int i = 0; i < fileNum; i++) {
-      long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -581,9 +584,9 @@ public class AbstractCompactionTest {
   }
 
   protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
-    long version = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+    fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
     String fileName =
-        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + version + "-0-0.tsfile";
+        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -591,12 +594,32 @@ public class AbstractCompactionTest {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
-    resource.updatePlanIndexes(fileVersion++);
+    resource.updatePlanIndexes(fileVersion);
     resource.setStatus(TsFileResourceStatus.CLOSED);
     return resource;
   }
 
   protected void setDataType(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  protected void resetFileName(TsFileResource resource, int version) {
+    // rename TsFile
+    File file = resource.getTsFile();
+    String[] fileInfo = file.getPath().split(FILE_NAME_SEPARATOR);
+    fileInfo[1] = String.valueOf(version);
+    String newFileName = StringUtil.join(fileInfo, FILE_NAME_SEPARATOR);
+    file.renameTo(new File(newFileName));
+
+    resource.setVersion(version);
+    resource.setFile(new File(newFileName));
+
+    // rename resource file
+    file = new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
+
+    // rename mods file
+    file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+    file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
   }
 }
