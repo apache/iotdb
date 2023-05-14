@@ -125,8 +125,35 @@ public class PipeStaticMeta {
   }
 
   public static PipeStaticMeta deserialize(InputStream inputStream) throws IOException {
-    return deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+    final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
+
+    pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(inputStream);
+    pipeStaticMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
+
+    pipeStaticMeta.collectorParameters = new PipeParameters(new HashMap<>());
+    pipeStaticMeta.processorParameters = new PipeParameters(new HashMap<>());
+    pipeStaticMeta.connectorParameters = new PipeParameters(new HashMap<>());
+
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      final String key = ReadWriteIOUtils.readString(inputStream);
+      final String value = ReadWriteIOUtils.readString(inputStream);
+      pipeStaticMeta.collectorParameters.getAttribute().put(key, value);
+    }
+    size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      final String key = ReadWriteIOUtils.readString(inputStream);
+      final String value = ReadWriteIOUtils.readString(inputStream);
+      pipeStaticMeta.processorParameters.getAttribute().put(key, value);
+    }
+    size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      final String key = ReadWriteIOUtils.readString(inputStream);
+      final String value = ReadWriteIOUtils.readString(inputStream);
+      pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
+    }
+
+    return pipeStaticMeta;
   }
 
   public static PipeStaticMeta deserialize(ByteBuffer byteBuffer) {

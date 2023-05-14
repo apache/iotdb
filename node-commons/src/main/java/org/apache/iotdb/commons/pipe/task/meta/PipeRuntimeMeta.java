@@ -87,8 +87,19 @@ public class PipeRuntimeMeta {
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
-    return deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+
+    pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
+
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      pipeRuntimeMeta.consensusGroupIdToTaskMetaMap.put(
+          new TConsensusGroupId(
+              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(inputStream)),
+          PipeTaskMeta.deserialize(inputStream));
+    }
+
+    return pipeRuntimeMeta;
   }
 
   public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {

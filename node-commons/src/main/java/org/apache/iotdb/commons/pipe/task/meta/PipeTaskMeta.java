@@ -122,8 +122,19 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
-    return deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
+    PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(inputStream));
+    PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(inputStream));
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      final boolean critical = ReadWriteIOUtils.readBool(inputStream);
+      final String message = ReadWriteIOUtils.readString(inputStream);
+      PipeTaskMeta.exceptionMessages.add(
+          critical
+              ? new PipeRuntimeCriticalException(message)
+              : new PipeRuntimeNonCriticalException(message));
+    }
+    return PipeTaskMeta;
   }
 
   @Override
