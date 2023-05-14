@@ -69,9 +69,6 @@ public class LogDispatcher {
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
 
-  private final AtomicLong logEntriesNum = new AtomicLong(0);
-  private final AtomicLong logEntriesSize = new AtomicLong(0);
-
   public LogDispatcher(
       IoTConsensusServerImpl impl,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
@@ -188,14 +185,6 @@ public class LogDispatcher {
 
   public long getLogEntriesFromQueue() {
     return logEntriesFromQueue.get();
-  }
-
-  public long getLogEntriesNum() {
-    return logEntriesNum.get();
-  }
-
-  public long getLogEntriesSize() {
-    return logEntriesSize.get();
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -343,8 +332,6 @@ public class LogDispatcher {
           logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
           logEntriesFromQueue.addAndGet(
               batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
-          logEntriesNum.addAndGet(batch.getLogEntries().size());
-          logEntriesSize.addAndGet(batch.getSerializedSize());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
