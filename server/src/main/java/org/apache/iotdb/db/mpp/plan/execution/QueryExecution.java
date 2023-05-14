@@ -61,6 +61,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -134,6 +135,7 @@ public class QueryExecution implements IQueryExecution {
   private long totalExecutionTime;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -319,7 +321,10 @@ public class QueryExecution implements IQueryExecution {
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
     this.scheduler.start();
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(System.nanoTime() - startTime);
+
+    long endTime = System.nanoTime() - startTime;
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(endTime);
+    QueryStatistics.getInstance().addCost(QueryStatistics.DISPATCHER, endTime);
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
@@ -341,7 +346,9 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      long endTime = System.nanoTime() - startTime;
+      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, endTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.DISTRIBUTION_PLANNER, endTime);
     }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
@@ -456,7 +463,9 @@ public class QueryExecution implements IQueryExecution {
           ListenableFuture<?> blocked = resultHandle.isBlocked();
           blocked.get();
         } finally {
-          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+          long costTime = System.nanoTime() - startTime;
+          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, costTime);
+          QUERY_STATISTICS.addCost(QueryStatistics.WAIT_FOR_RESULT, costTime);
         }
 
         if (!resultHandle.isFinished()) {

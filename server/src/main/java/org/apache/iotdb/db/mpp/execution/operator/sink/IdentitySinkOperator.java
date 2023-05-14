@@ -57,7 +57,7 @@ public class IdentitySinkOperator implements Operator {
   public boolean hasNext() throws Exception {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
     boolean currentChannelClosed = sinkHandle.isChannelClosed(currentIndex);
-    if (!currentChannelClosed && children.get(currentIndex).hasNext()) {
+    if (!currentChannelClosed && children.get(currentIndex).hasNextWithTimer()) {
       return true;
     } else if (currentChannelClosed) {
       // we close the child directly. The child could be an ExchangeOperator which is the downstream
@@ -96,7 +96,7 @@ public class IdentitySinkOperator implements Operator {
       needToReturnNull = false;
       return null;
     }
-    return children.get(downStreamChannelIndex.getCurrentIndex()).next();
+    return children.get(downStreamChannelIndex.getCurrentIndex()).nextWithTimer();
   }
 
   @Override

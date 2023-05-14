@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 
@@ -47,21 +47,6 @@ public class PriorityMergeReader implements IPointReader {
             });
   }
 
-  // only used in external sort, need to refactor later
-  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
-      throws IOException {
-    heap =
-        new PriorityQueue<>(
-            (o1, o2) -> {
-              int timeCompare =
-                  Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
-              return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
-            });
-    for (IPointReader reader : prioritySeriesReaders) {
-      addReader(reader, startPriority++);
-    }
-  }
-
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
@@ -74,11 +59,17 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(
       IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
-    if (reader.hasNextTimeValuePair()) {
-      heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      currentReadStopTime = Math.max(currentReadStopTime, endTime);
-    } else {
-      reader.close();
+    long startTime = System.nanoTime();
+    try {
+      if (reader.hasNextTimeValuePair()) {
+        heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
+        currentReadStopTime = Math.max(currentReadStopTime, endTime);
+      } else {
+        reader.close();
+      }
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.MERGE_READER_ADD_READER, System.nanoTime() - startTime);
     }
   }
 
@@ -93,19 +84,25 @@ public class PriorityMergeReader implements IPointReader {
 
   @Override
   public TimeValuePair nextTimeValuePair() throws IOException {
-    Element top = heap.poll();
-    TimeValuePair ret = top.getTimeValuePair();
-    TimeValuePair topNext = null;
-    if (top.hasNext()) {
-      top.next();
-      topNext = top.currPair();
+    long startTime = System.nanoTime();
+    try {
+      Element top = heap.poll();
+      TimeValuePair ret = top.getTimeValuePair();
+      TimeValuePair topNext = null;
+      if (top.hasNext()) {
+        top.next();
+        topNext = top.currPair();
+      }
+      updateHeap(ret, topNext);
+      if (topNext != null) {
+        top.timeValuePair = topNext;
+        heap.add(top);
+      }
+      return ret;
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.MERGE_READER_NEXT, System.nanoTime() - startTime);
     }
-    updateHeap(ret, topNext);
-    if (topNext != null) {
-      top.timeValuePair = topNext;
-      heap.add(top);
-    }
-    return ret;
   }
 
   @Override
@@ -119,29 +116,35 @@ public class PriorityMergeReader implements IPointReader {
    * TimeValuePair
    */
   protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
-    long topTime = ret.getTimestamp();
-    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
-    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
-      Element e = heap.poll();
-      fillNullValue(ret, e.getTimeValuePair());
-      if (!e.hasNext()) {
-        e.reader.close();
-        continue;
-      }
-      e.next();
-      if (e.currTime() == topNextTime) {
-        // if the next value of the peek will be overwritten by the next of the top, skip it
-        fillNullValue(topNext, e.getTimeValuePair());
-        if (e.hasNext()) {
-          e.next();
-          heap.add(e);
-        } else {
-          // the chunk is end
-          e.close();
+    long startTime = System.nanoTime();
+    try {
+      long topTime = ret.getTimestamp();
+      long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
+      while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
+        Element e = heap.poll();
+        fillNullValue(ret, e.getTimeValuePair());
+        if (!e.hasNext()) {
+          e.reader.close();
+          continue;
         }
-      } else {
-        heap.add(e);
+        e.next();
+        if (e.currTime() == topNextTime) {
+          // if the next value of the peek will be overwritten by the next of the top, skip it
+          fillNullValue(topNext, e.getTimeValuePair());
+          if (e.hasNext()) {
+            e.next();
+            heap.add(e);
+          } else {
+            // the chunk is end
+            e.close();
+          }
+        } else {
+          heap.add(e);
+        }
       }
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.MERGE_READER_UPDATE_HEAP, System.nanoTime() - startTime);
     }
   }
 

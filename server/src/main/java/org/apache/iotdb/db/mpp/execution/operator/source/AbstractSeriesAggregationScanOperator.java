@@ -22,8 +22,10 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -41,6 +43,17 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.AGG_SCAN_OPERATOR;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.BUILD_AGG_RES;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_CHUNK;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_CHUNK_STAT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_FILE;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_FILE_STAT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_PAGE;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_PAGE_STAT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_NEXT_AGG_RES;
 
 public abstract class AbstractSeriesAggregationScanOperator extends AbstractDataSourceOperator {
 
@@ -122,28 +135,33 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
+    try {
+      while (System.nanoTime() - start < maxRuntime
+          && timeRangeIterator.hasNextTimeRange()
+          && !resultTsBlockBuilder.isFull()) {
+        // move to next time window
+        curTimeRange = timeRangeIterator.nextTimeRange();
 
-    while (System.nanoTime() - start < maxRuntime
-        && timeRangeIterator.hasNextTimeRange()
-        && !resultTsBlockBuilder.isFull()) {
-      // move to next time window
-      curTimeRange = timeRangeIterator.nextTimeRange();
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.reset();
+        }
 
-      // clear previous aggregation result
-      for (Aggregator aggregator : aggregators) {
-        aggregator.reset();
+        long startTime = System.nanoTime();
+        // calculate aggregation result on current time window
+        calculateNextAggregationResult();
+        operatorContext.addOperatorTime(CAL_NEXT_AGG_RES, System.nanoTime() - startTime);
       }
 
-      // calculate aggregation result on current time window
-      calculateNextAggregationResult();
-    }
-
-    if (resultTsBlockBuilder.getPositionCount() > 0) {
-      TsBlock resultTsBlock = resultTsBlockBuilder.build();
-      resultTsBlockBuilder.reset();
-      return resultTsBlock;
-    } else {
-      return null;
+      if (resultTsBlockBuilder.getPositionCount() > 0) {
+        TsBlock resultTsBlock = resultTsBlockBuilder.build();
+        resultTsBlockBuilder.reset();
+        return resultTsBlock;
+      } else {
+        return null;
+      }
+    } finally {
+      operatorContext.addOperatorTime(AGG_SCAN_OPERATOR, System.nanoTime() - start);
     }
   }
 
@@ -184,8 +202,10 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void updateResultTsBlock() {
+    long startTime = System.nanoTime();
     appendAggregationResult(
         resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    operatorContext.addOperatorTime(BUILD_AGG_RES, System.nanoTime() - startTime);
   }
 
   protected boolean calcFromCachedData() {
@@ -193,139 +213,205 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   private boolean calcFromRawData(TsBlock tsBlock) {
-    Pair<Boolean, TsBlock> calcResult =
-        calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
-    inputTsBlock = calcResult.getRight();
-    return calcResult.getLeft();
+    long startTime = System.nanoTime();
+    try {
+      Pair<Boolean, TsBlock> calcResult =
+          calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
+      inputTsBlock = calcResult.getRight();
+      return calcResult.getLeft();
+    } finally {
+      operatorContext.addOperatorTime(
+          QueryStatistics.CAL_AGG_FROM_RAW_DATA, System.nanoTime() - startTime);
+      QueryMetricsManager.getInstance()
+          .recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+    }
   }
 
   protected void calcFromStatistics(Statistics[] statistics) {
-    for (Aggregator aggregator : aggregators) {
-      if (aggregator.hasFinalResult()) {
-        continue;
+    long startTime = System.nanoTime();
+    try {
+      for (Aggregator aggregator : aggregators) {
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+        aggregator.processStatistics(statistics);
       }
-      aggregator.processStatistics(statistics);
+    } finally {
+      QueryMetricsManager.getInstance()
+          .recordExecutionCost(AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
+      operatorContext.addOperatorTime(
+          QueryStatistics.CAL_AGG_FROM_STAT, System.nanoTime() - startTime);
     }
   }
 
   protected boolean readAndCalcFromFile() throws IOException {
-    while (seriesScanUtil.hasNextFile()) {
-      if (canUseCurrentFileStatistics()) {
-        Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
-        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            return true;
-          } else {
-            seriesScanUtil.skipCurrentFile();
-            continue;
+    long startTime = System.nanoTime();
+    long chunkCostTime = 0L;
+    try {
+      while (seriesScanUtil.hasNextFile()) {
+        long start = System.nanoTime();
+        try {
+          if (canUseCurrentFileStatistics()) {
+            Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
+            if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+              if (ascending) {
+                return true;
+              } else {
+                seriesScanUtil.skipCurrentFile();
+                continue;
+              }
+            }
+            // calc from fileMetaData
+            if (curTimeRange.contains(
+                fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+              Statistics[] statisticsList = new Statistics[subSensorSize];
+              for (int i = 0; i < subSensorSize; i++) {
+                statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
+              }
+              calcFromStatistics(statisticsList);
+              seriesScanUtil.skipCurrentFile();
+              if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+                return true;
+              } else {
+                continue;
+              }
+            }
           }
+        } finally {
+          operatorContext.addOperatorTime(CAL_AGG_FROM_FILE_STAT, System.nanoTime() - start);
         }
-        // calc from fileMetaData
-        if (curTimeRange.contains(
-            fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
-          }
-          calcFromStatistics(statisticsList);
-          seriesScanUtil.skipCurrentFile();
-          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
-            return true;
-          } else {
-            continue;
-          }
-        }
-      }
 
-      // read chunk
-      if (readAndCalcFromChunk()) {
-        return true;
+        // read chunk
+        start = System.nanoTime();
+        try {
+          if (readAndCalcFromChunk()) {
+            return true;
+          }
+        } finally {
+          chunkCostTime += System.nanoTime() - start;
+        }
       }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(
+          CAL_AGG_FROM_FILE, System.nanoTime() - startTime - chunkCostTime);
     }
-
-    return false;
   }
 
   protected boolean readAndCalcFromChunk() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
-      if (canUseCurrentChunkStatistics()) {
-        Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
-        if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            return true;
-          } else {
-            seriesScanUtil.skipCurrentChunk();
-            continue;
+    long startTime = System.nanoTime();
+    long pageCostTime = 0L;
+    try {
+      while (seriesScanUtil.hasNextChunk()) {
+        long start = System.nanoTime();
+        try {
+          if (canUseCurrentChunkStatistics()) {
+            Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
+            if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+              if (ascending) {
+                return true;
+              } else {
+                seriesScanUtil.skipCurrentChunk();
+                continue;
+              }
+            }
+            // calc from chunkMetaData
+            if (curTimeRange.contains(
+                chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+              // calc from chunkMetaData
+              Statistics[] statisticsList = new Statistics[subSensorSize];
+              for (int i = 0; i < subSensorSize; i++) {
+                statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
+              }
+              calcFromStatistics(statisticsList);
+              seriesScanUtil.skipCurrentChunk();
+              if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+                return true;
+              } else {
+                continue;
+              }
+            }
           }
+        } finally {
+          operatorContext.addOperatorTime(CAL_AGG_FROM_CHUNK_STAT, System.nanoTime() - start);
         }
-        // calc from chunkMetaData
-        if (curTimeRange.contains(
-            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
-          // calc from chunkMetaData
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
-          }
-          calcFromStatistics(statisticsList);
-          seriesScanUtil.skipCurrentChunk();
-          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
-            return true;
-          } else {
-            continue;
-          }
-        }
-      }
 
-      // read page
-      if (readAndCalcFromPage()) {
-        return true;
+        // read page
+        start = System.nanoTime();
+        try {
+          if (readAndCalcFromPage()) {
+            return true;
+          }
+        } finally {
+          pageCostTime += System.nanoTime() - start;
+        }
       }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(
+          CAL_AGG_FROM_CHUNK, System.nanoTime() - startTime - pageCostTime);
     }
-    return false;
   }
 
   protected boolean readAndCalcFromPage() throws IOException {
-    while (seriesScanUtil.hasNextPage()) {
-      if (canUseCurrentPageStatistics()) {
-        Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
-        // There is no more eligible points in current time range
-        if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            return true;
-          } else {
-            seriesScanUtil.skipCurrentPage();
-            continue;
+    long startTime = System.nanoTime();
+    long rawDataCostTime = 0L;
+    try {
+      while (seriesScanUtil.hasNextPage()) {
+        long start = System.nanoTime();
+        try {
+          if (canUseCurrentPageStatistics()) {
+            Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
+            // There is no more eligible points in current time range
+            if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+              if (ascending) {
+                return true;
+              } else {
+                seriesScanUtil.skipCurrentPage();
+                continue;
+              }
+            }
+            // can use pageHeader
+            if (curTimeRange.contains(
+                pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+              Statistics[] statisticsList = new Statistics[subSensorSize];
+              for (int i = 0; i < subSensorSize; i++) {
+                statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
+              }
+              calcFromStatistics(statisticsList);
+              seriesScanUtil.skipCurrentPage();
+              if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+                return true;
+              } else {
+                continue;
+              }
+            }
           }
+        } finally {
+          operatorContext.addOperatorTime(CAL_AGG_FROM_PAGE_STAT, System.nanoTime() - start);
         }
-        // can use pageHeader
-        if (curTimeRange.contains(
-            pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
-          }
-          calcFromStatistics(statisticsList);
-          seriesScanUtil.skipCurrentPage();
-          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+
+        // calc from page data
+        TsBlock tsBlock = seriesScanUtil.nextPage();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
+
+        // calc from raw data
+        start = System.nanoTime();
+        try {
+          if (calcFromRawData(tsBlock)) {
             return true;
-          } else {
-            continue;
           }
+        } finally {
+          rawDataCostTime += System.nanoTime() - start;
         }
       }
-
-      // calc from page data
-      TsBlock tsBlock = seriesScanUtil.nextPage();
-      if (tsBlock == null || tsBlock.isEmpty()) {
-        continue;
-      }
-
-      // calc from raw data
-      if (calcFromRawData(tsBlock)) {
-        return true;
-      }
+      return false;
+    } finally {
+      operatorContext.addOperatorTime(
+          CAL_AGG_FROM_PAGE, System.nanoTime() - startTime - rawDataCostTime);
     }
-    return false;
   }
 
   protected boolean canUseCurrentFileStatistics() throws IOException {

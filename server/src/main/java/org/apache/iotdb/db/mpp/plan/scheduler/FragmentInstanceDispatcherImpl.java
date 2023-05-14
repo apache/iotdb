@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -124,7 +125,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       } finally {
-        QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
+        long endTime = System.nanoTime() - startTime;
+        QUERY_METRICS.recordExecutionCost(DISPATCH_READ, endTime);
+        QueryStatistics.getInstance().addCost(QueryStatistics.DISPATCH_READ, endTime);
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
